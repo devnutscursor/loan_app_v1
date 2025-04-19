@@ -1,0 +1,357 @@
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
+import MainLayout from '../../components/layout/MainLayout';
+import ProtectedRoute from '../../components/auth/ProtectedRoute';
+import { borrowerService } from '../../services/api';
+
+const DocumentItem = ({ document, onDelete }) => {
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+  
+  const getDocumentTypeLabel = (type) => {
+    const types = {
+      'id_proof': 'ID Proof',
+      'income_proof': 'Income Proof',
+      'address_proof': 'Address Proof',
+      'bank_statement': 'Bank Statement',
+      'tax_return': 'Tax Return',
+      'employment_verification': 'Employment Verification',
+      'loan_document': 'Loan Document'
+    };
+    
+    return types[type] || type;
+  };
+  
+  const getDocumentIcon = (fileType) => {
+    if (fileType.includes('pdf')) {
+      return (
+        <svg className="w-8 h-8 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h2v1h-2v2h-1v-2h-2v-1h2v-2h1v2zm6 4.5h-4v-1h4v1zm0-3h-4v-1h4v1z" />
+        </svg>
+      );
+    } else if (fileType.includes('image')) {
+      return (
+        <svg className="w-8 h-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zM15.96 11L13 15l-1-1-3 4h9l-2.04-3z" />
+        </svg>
+      );
+    } else if (fileType.includes('word') || fileType.includes('document')) {
+      return (
+        <svg className="w-8 h-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zm-3-6H8c-.55 0-1-.45-1-1s.45-1 1-1h7c.55 0 1 .45 1 1s-.45 1-1 1zm0-4H8c-.55 0-1-.45-1-1s.45-1 1-1h7c.55 0 1 .45 1 1s-.45 1-1 1zm0 8H8c-.55 0-1-.45-1-1s.45-1 1-1h7c.55 0 1 .45 1 1s-.45 1-1 1z" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-8 h-8 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
+        </svg>
+      );
+    }
+  };
+  
+  return (
+    <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="px-4 py-4 sm:px-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            {getDocumentIcon(document.fileType)}
+            <div className="ml-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 truncate">
+                {document.fileName}
+              </h3>
+              <div className="flex items-center mt-1">
+                <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                  {getDocumentTypeLabel(document.documentType)}
+                </span>
+                <span className="ml-2 text-sm text-gray-500">
+                  Uploaded: {formatDate(document.createdAt)}
+                </span>
+                {document.loanId && (
+                  <span className="ml-2 text-sm text-gray-500">
+                    Loan ID: {document.loanId.substring(0, 8)}...
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <a
+              href={document.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              View
+            </a>
+            <button
+              onClick={() => onDelete(document._id)}
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-red-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Documents = () => {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [documentType, setDocumentType] = useState('');
+  const [loanId, setLoanId] = useState('');
+  const [loans, setLoans] = useState([]);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch documents
+        const documentsResponse = await borrowerService.getDocuments();
+        setDocuments(documentsResponse.data.data.documents);
+        
+        // Fetch loans for selection
+        const loansResponse = await borrowerService.getLoans();
+        setLoans(loansResponse.data.data.loans);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load documents');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+  
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+    
+    if (!documentType) {
+      toast.error('Please select a document type');
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('document', selectedFile);
+      formData.append('documentType', documentType);
+      
+      if (loanId) {
+        formData.append('loanId', loanId);
+      }
+      
+      const response = await borrowerService.uploadDocument(formData);
+      
+      // Add the new document to the list
+      setDocuments([...documents, response.data.data]);
+      
+      // Reset form
+      setSelectedFile(null);
+      setDocumentType('');
+      setLoanId('');
+      
+      // Reset file input
+      document.getElementById('document-upload').value = '';
+      
+      toast.success('Document uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error('Failed to upload document');
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const handleDeleteDocument = async (documentId) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await borrowerService.deleteDocument(documentId);
+        
+        // Remove the document from the list
+        setDocuments(documents.filter(doc => doc._id !== documentId));
+        
+        toast.success('Document deleted successfully');
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        toast.error('Failed to delete document');
+      }
+    }
+  };
+  
+  return (
+    <ProtectedRoute roles={['borrower']}>
+      <MainLayout title="Documents">
+        <div className="py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-6">My Documents</h1>
+            
+            {/* Upload Form */}
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+              <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Upload New Document
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Upload documents related to your loan applications and personal information.
+                </p>
+              </div>
+              <div className="px-4 py-5 sm:p-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="col-span-2">
+                      <label htmlFor="document-upload" className="block text-sm font-medium text-gray-700">
+                        Document
+                      </label>
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div className="space-y-1 text-center">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <div className="flex text-sm text-gray-600">
+                            <label htmlFor="document-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
+                              <span>Upload a file</span>
+                              <input id="document-upload" name="document-upload" type="file" className="sr-only" onChange={handleFileChange} />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            PDF, PNG, JPG, DOCX up to 10MB
+                          </p>
+                          {selectedFile && (
+                            <p className="text-sm text-gray-900 font-medium mt-2">
+                              Selected: {selectedFile.name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="document-type" className="block text-sm font-medium text-gray-700">
+                        Document Type
+                      </label>
+                      <select
+                        id="document-type"
+                        name="document-type"
+                        value={documentType}
+                        onChange={(e) => setDocumentType(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                      >
+                        <option value="">Select a document type</option>
+                        <option value="id_proof">ID Proof</option>
+                        <option value="income_proof">Income Proof</option>
+                        <option value="address_proof">Address Proof</option>
+                        <option value="bank_statement">Bank Statement</option>
+                        <option value="tax_return">Tax Return</option>
+                        <option value="employment_verification">Employment Verification</option>
+                        <option value="loan_document">Loan Document</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="loan-id" className="block text-sm font-medium text-gray-700">
+                        Related Loan (Optional)
+                      </label>
+                      <select
+                        id="loan-id"
+                        name="loan-id"
+                        value={loanId}
+                        onChange={(e) => setLoanId(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                      >
+                        <option value="">Not related to a specific loan</option>
+                        {loans.map(loan => (
+                          <option key={loan._id} value={loan._id}>
+                            {loan.purpose} - {loan.status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={uploading || !selectedFile || !documentType}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Uploading...
+                        </span>
+                      ) : (
+                        'Upload Document'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            {/* Document List */}
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            ) : documents.length > 0 ? (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Your Documents
+                  </h3>
+                </div>
+                <ul className="divide-y divide-gray-200">
+                  {documents.map(document => (
+                    <li key={document._id} className="px-4 py-4 sm:px-6">
+                      <DocumentItem document={document} onDelete={handleDeleteDocument} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:p-6 text-center">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No documents</h3>
+                  <p className="mt-1 text-sm text-gray-500">You haven't uploaded any documents yet.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </MainLayout>
+    </ProtectedRoute>
+  );
+};
+
+export default Documents;

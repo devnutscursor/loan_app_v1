@@ -1,0 +1,327 @@
+import React, { useState } from 'react';
+
+/**
+ * Residence History Form
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.borrower - Borrower data
+ * @param {Function} props.onChange - Function to handle input changes
+ * @param {Object} props.errors - Form validation errors
+ * @returns {JSX.Element} Residence history form component
+ */
+const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
+  // Local state initialized from props once
+  const [streetAddress, setStreetAddress] = useState(borrower?.currentAddress?.streetAddress || '');
+  const [aptSteNum, setAptSteNum] = useState(borrower?.currentAddress?.aptSteNum || '');
+  const [city, setCity] = useState(borrower?.currentAddress?.city || '');
+  const [state, setState] = useState(borrower?.currentAddress?.state || '');
+  const [zipCode, setZipCode] = useState(borrower?.currentAddress?.zipCode || '');
+  const [ownershipStatus, setOwnershipStatus] = useState(borrower?.currentAddress?.ownershipStatus || '');
+  const [yearsAtAddress, setYearsAtAddress] = useState(borrower?.currentAddress?.yearsAtAddress || '');
+  const [monthsAtAddress, setMonthsAtAddress] = useState(borrower?.currentAddress?.monthsAtAddress || '');
+  
+  // Local state for mailing address
+  const [sameAsCurrentAddress, setSameAsCurrentAddress] = useState(borrower?.mailingAddress?.sameAsCurrentAddress || false);
+  
+  // Handle form field changes - pass the event directly to parent
+  const handleChange = (e) => {
+    onChange(e);
+  };
+
+  // Handle form field changes for current address
+  const handleCurrentAddressChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Update local state for immediate feedback
+    switch (name) {
+      case 'streetAddress':
+        setStreetAddress(value);
+        break;
+      case 'aptSteNum':
+        setAptSteNum(value);
+        break;
+      case 'city':
+        setCity(value);
+        break;
+      case 'state':
+        setState(value);
+        break;
+      case 'zipCode':
+        setZipCode(value);
+        break;
+      case 'ownershipStatus':
+        setOwnershipStatus(value);
+        break;
+      case 'yearsAtAddress':
+        setYearsAtAddress(value);
+        break;
+      case 'monthsAtAddress':
+        setMonthsAtAddress(value);
+        break;
+      default:
+        break;
+    }
+    
+    // Send to parent component with proper path
+    onChange({
+      target: {
+        name: `currentAddress.${name}`,
+        value
+      }
+    });
+  };
+  
+  // Handle form field changes for mailing address
+  const handleMailingAddressChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Send to parent component with proper path
+    onChange({
+      target: {
+        name: `mailingAddress.${name}`,
+        value
+      }
+    });
+  };
+
+  // Handle same as current address checkbox
+  const handleSameAsCurrentAddress = (e) => {
+    const { checked } = e.target;
+    
+    // Update local state
+    setSameAsCurrentAddress(checked);
+    
+    let updatedMailingAddress = {
+      ...(borrower.mailingAddress || {}),
+      sameAsCurrentAddress: checked
+    };
+    
+    if (checked && borrower.currentAddress) {
+      // Copy current address fields to mailing address
+      updatedMailingAddress = {
+        ...updatedMailingAddress,
+        streetAddress: streetAddress,
+        aptSteNum: aptSteNum,
+        city: city,
+        state: state,
+        zipCode: zipCode
+      };
+    }
+    
+    // Send to parent component
+    onChange({
+      target: {
+        name: 'mailingAddress',
+        value: updatedMailingAddress
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-700 mb-2">Where does asad live?</h2>
+        <p className="text-gray-600 mb-4">
+          Please tell us a little about your current home.
+        </p>
+        <hr className="border-t border-gray-300 mb-6" />
+      </div>
+
+      {/* Current Address */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-700 mb-4">Current Address</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label htmlFor="streetAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Street Address
+            </label>
+            <input
+              type="text"
+              id="streetAddress"
+              name="streetAddress"
+              value={streetAddress}
+              onChange={handleCurrentAddressChange}
+              className={`w-full border ${errors['currentAddress.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            />
+            {errors['currentAddress.streetAddress'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.streetAddress']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="aptSteNum" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Apt/Ste #
+            </label>
+            <input
+              type="text"
+              id="aptSteNum"
+              name="aptSteNum"
+              value={aptSteNum}
+              onChange={handleCurrentAddressChange}
+              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="city" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              City
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={city}
+              onChange={handleCurrentAddressChange}
+              className={`w-full border ${errors['currentAddress.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            />
+            {errors['currentAddress.city'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.city']}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label htmlFor="state" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              State
+            </label>
+            <div className="relative">
+              <select
+                id="state"
+                name="state"
+                value={state}
+                onChange={handleCurrentAddressChange}
+                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select State</option>
+                <option value="AL">Alabama</option>
+                <option value="AK">Alaska</option>
+                <option value="AZ">Arizona</option>
+                {/* Add all states here */}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            {errors['currentAddress.state'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.state']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Zip Code
+            </label>
+            <input
+              type="text"
+              id="zipCode"
+              name="zipCode"
+              value={zipCode}
+              onChange={handleCurrentAddressChange}
+              className={`w-full border ${errors['currentAddress.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            />
+            {errors['currentAddress.zipCode'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.zipCode']}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div>
+            <label htmlFor="ownershipStatus" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Ownership Status
+            </label>
+            <div className="relative">
+              <select
+                id="ownershipStatus"
+                name="ownershipStatus"
+                value={ownershipStatus}
+                onChange={handleCurrentAddressChange}
+                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select</option>
+                <option value="own">Own</option>
+                <option value="rent">Rent</option>
+                <option value="livingRentFree">Living Rent Free</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            {errors['currentAddress.ownershipStatus'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.ownershipStatus']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="yearsAtAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Years at Address
+            </label>
+            <input
+              type="number"
+              id="yearsAtAddress"
+              name="yearsAtAddress"
+              value={yearsAtAddress}
+              onChange={handleCurrentAddressChange}
+              min="0"
+              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="monthsAtAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Months at Address
+            </label>
+            <input
+              type="number"
+              id="monthsAtAddress"
+              name="monthsAtAddress"
+              value={monthsAtAddress}
+              onChange={handleCurrentAddressChange}
+              min="0"
+              max="11"
+              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Mailing Address */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-700 mb-4">Mailing Address</h3>
+        
+        <div className="mb-4">
+          <label className="inline-flex items-center">
+            <input
+              type="checkbox"
+              checked={sameAsCurrentAddress}
+              onChange={handleSameAsCurrentAddress}
+              className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            />
+            <span className="ml-2 text-gray-700">Same as Current Address</span>
+          </label>
+        </div>
+        
+        {!sameAsCurrentAddress && (
+          <div className="p-4 border border-gray-200 rounded-md">
+            <button
+              type="button"
+              className="flex items-center px-4 py-2 text-sm font-medium text-indigo-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h5a1 1 0 000-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3zM13 16a1 1 0 102 0v-5.586l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 101.414 1.414L13 10.414V16z" />
+              </svg>
+              Add Mailing Address (If Different)
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ResidenceHistory;

@@ -1,0 +1,121 @@
+import ApiService from './api.service';
+import { AuditLogService } from './index';
+
+/**
+ * Loan Service
+ * 
+ * Provides methods for loan application management, including submission,
+ * retrieval, updates, and progress tracking. Handles loan application lifecycle.
+ */
+class LoanService {
+  /**
+   * Submit a new loan application
+   * @param {Object} loanData - Loan application data
+   * @param {Array} documents - Optional documents to upload with application
+   * @returns {Promise<Object>} Response with submission status and loan details
+   */
+  async submitApplication(loanData, documents = []) {
+    try {
+      console.log('Submitting loan application with data structure:', Object.keys(loanData));
+      
+      // Create a new object with all properties stringified
+      const formattedData = {};
+      
+      // Process each field to ensure proper formatting
+      for (const [key, value] of Object.entries(loanData)) {
+        if (key === 'documents') continue; // Skip documents
+        
+        // Convert objects to JSON strings
+        if (value !== null && typeof value === 'object') {
+          formattedData[key] = JSON.stringify(value);
+          console.log(`Field ${key} converted to JSON string`);
+        } else {
+          formattedData[key] = value;
+        }
+      }
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      
+      // Add all formatted fields to formData
+      for (const [key, value] of Object.entries(formattedData)) {
+        formData.append(key, value);
+      }
+      
+      // Add documents if any
+      if (documents && documents.length > 0) {
+        documents.forEach(doc => {
+          formData.append('documents', doc);
+        });
+      }
+      
+      console.log('Sending formatted loan data to backend');
+      
+      const response = await ApiService.post('/api/v1/borrower/loans', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Log the loan application submission
+      try {
+        await AuditLogService.createAuditLog(
+          'loan_submission',
+          `Loan application submitted for ${loanData.purpose || 'unspecified purpose'}`,
+          {
+            loanId: response.data._id,
+            purpose: loanData.purpose
+          }
+        );
+      } catch (logError) {
+        // Continue even if logging fails
+        console.warn('Failed to create audit log, but loan submission succeeded', logError);
+      }
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Loan application submission error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to submit loan application'
+      };
+    }
+  }
+  
+  /**
+   * Save loan application as draft
+   * @param {Object} draftData - Loan application draft data
+   * @returns {Promise<Object>} Response with save status and draft details
+   */
+  async saveDraft(draftData) {
+    try {
+      const response = await ApiService.post('/api/v1/borrower/loans/draft', draftData);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Loan draft save error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to save loan application draft'
+      };
+    }
+  }
+  
+  /**
+   * Submit a new loan application (alias for submitApplication)
+   * @param {Object} loanData - Loan application data
+   * @param {Array} documents - Optional documents to upload with application
+   * @returns {Promise<Object>} Response with submission status and loan details
+   */
+  async submitLoan(loanData, documents = []) {
+    return this.submitApplication(loanData, documents);
+  }
+}
+
+export default new LoanService(); 

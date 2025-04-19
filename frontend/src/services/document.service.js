@@ -1,0 +1,435 @@
+import ApiService from './api.service';
+import { toast } from 'react-hot-toast';
+import { AuditLogService } from './index';
+
+/**
+ * Document Service
+ * 
+ * Provides methods for document management, including upload, download,
+ * retrieval, status updates, and document verification workflows.
+ * Handles both borrower and lender document operations.
+ */
+class DocumentService {
+  /**
+   * Upload a document to the server
+   * @param {Object} documentData - Document data including file, type, description
+   * @param {string} loanId - ID of the loan to associate the document with
+   * @param {File} file - The file object to upload
+   * @returns {Promise<Object>} Response with upload status and document details
+   */
+  async uploadDocument(documentData, loanId, file) {
+    try {
+      // Create a FormData object to handle file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', documentData.type);
+      formData.append('description', documentData.description || '');
+      
+      if (loanId) {
+        formData.append('loanId', loanId);
+      }
+      
+      if (documentData.tags && documentData.tags.length > 0) {
+        documentData.tags.forEach(tag => {
+          formData.append('tags', tag);
+        });
+      }
+      
+      const response = await ApiService.post('/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Log the document upload action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'upload',
+        details: `Uploaded document: ${documentData.type}`,
+        resourceId: response.data._id
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Document upload error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to upload document'
+      };
+    }
+  }
+  
+  /**
+   * Get documents for a specific loan
+   * @param {string} loanId - ID of the loan to get documents for
+   * @param {Object} filters - Optional filters for document type, status, etc.
+   * @returns {Promise<Object>} Response with documents list
+   */
+  async getLoanDocuments(loanId, filters = {}) {
+    try {
+      let url = `/documents/loan/${loanId}`;
+      
+      // Add query parameters for filters
+      if (Object.keys(filters).length > 0) {
+        const queryParams = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+        url += `?${queryParams.toString()}`;
+      }
+      
+      const response = await ApiService.get(url);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Get loan documents error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get documents'
+      };
+    }
+  }
+  
+  /**
+   * Get all documents for the current user
+   * @param {Object} filters - Optional filters for document type, status, etc.
+   * @returns {Promise<Object>} Response with documents list
+   */
+  async getUserDocuments(filters = {}) {
+    try {
+      let url = '/documents/user';
+      
+      // Add query parameters for filters
+      if (Object.keys(filters).length > 0) {
+        const queryParams = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+        url += `?${queryParams.toString()}`;
+      }
+      
+      const response = await ApiService.get(url);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Get user documents error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get documents'
+      };
+    }
+  }
+  
+  /**
+   * Download a document
+   * @param {string} documentId - ID of the document to download
+   * @returns {Promise<Object>} Response with download URL or file data
+   */
+  async downloadDocument(documentId) {
+    try {
+      const response = await ApiService.get(`/documents/download/${documentId}`, {
+        responseType: 'blob'
+      });
+      
+      // Log the document download action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'download',
+        details: `Downloaded document`,
+        resourceId: documentId
+      });
+      
+      // Create a download link and trigger the download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const filename = response.headers['content-disposition']
+        ? response.headers['content-disposition'].split('filename=')[1].replace(/"/g, '')
+        : `document-${documentId}`;
+      
+      return {
+        success: true,
+        data: {
+          url,
+          filename
+        }
+      };
+    } catch (error) {
+      console.error('Document download error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to download document'
+      };
+    }
+  }
+  
+  /**
+   * Delete a document
+   * @param {string} documentId - ID of the document to delete
+   * @returns {Promise<Object>} Response with deletion status
+   */
+  async deleteDocument(documentId) {
+    try {
+      const response = await ApiService.delete(`/documents/${documentId}`);
+      
+      // Log the document deletion action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'delete',
+        details: `Deleted document`,
+        resourceId: documentId
+      });
+      
+      return {
+        success: true,
+        message: 'Document deleted successfully'
+      };
+    } catch (error) {
+      console.error('Document deletion error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete document'
+      };
+    }
+  }
+  
+  /**
+   * Update document status by lender (approve, reject, request changes)
+   * @param {string} documentId - ID of the document to update
+   * @param {string} status - New status (approved, rejected, needs_changes)
+   * @param {string} feedback - Optional feedback message for the borrower
+   * @returns {Promise<Object>} Response with update status
+   */
+  async updateDocumentStatus(documentId, status, feedback = '') {
+    try {
+      const response = await ApiService.put(`/documents/${documentId}/status`, {
+        status,
+        feedback
+      });
+      
+      // Log the document status update action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'update_status',
+        details: `Updated document status to ${status}`,
+        resourceId: documentId
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: `Document ${status.replace('_', ' ')} successfully`
+      };
+    } catch (error) {
+      console.error('Document status update error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update document status'
+      };
+    }
+  }
+  
+  /**
+   * Request additional documents from borrower
+   * @param {string} loanId - ID of the loan application
+   * @param {Array<Object>} requestedDocuments - Array of document types and descriptions to request
+   * @param {string} message - Optional message explaining the request
+   * @returns {Promise<Object>} Response with request status
+   */
+  async requestAdditionalDocuments(loanId, requestedDocuments, message = '') {
+    try {
+      const response = await ApiService.post(`/documents/request/${loanId}`, {
+        requestedDocuments,
+        message
+      });
+      
+      // Log the document request action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'request_documents',
+        details: `Requested ${requestedDocuments.length} additional documents`,
+        resourceId: loanId
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: 'Document request sent successfully'
+      };
+    } catch (error) {
+      console.error('Request documents error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send document request'
+      };
+    }
+  }
+  
+  /**
+   * Get document verification queue for lenders
+   * @param {Object} filters - Optional filters (priority, date range, document type)
+   * @param {number} page - Page number for pagination
+   * @param {number} limit - Number of items per page
+   * @returns {Promise<Object>} Response with documents pending verification
+   */
+  async getVerificationQueue(filters = {}, page = 1, limit = 10) {
+    try {
+      let url = '/documents/verification-queue';
+      
+      // Add query parameters for pagination and filters
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page);
+      queryParams.append('limit', limit);
+      
+      if (Object.keys(filters).length > 0) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+      }
+      
+      url += `?${queryParams.toString()}`;
+      
+      const response = await ApiService.get(url);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Get verification queue error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get verification queue'
+      };
+    }
+  }
+  
+  /**
+   * Update document metadata or status
+   * @param {string} documentId - ID of the document to update
+   * @param {Object} updateData - New document metadata or status
+   * @returns {Promise<Object>} Response with updated document data
+   */
+  async updateDocument(documentId, updateData) {
+    try {
+      const response = await ApiService.put(`/documents/${documentId}`, updateData);
+      
+      // Log the document update action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'update',
+        details: `Updated document: ${updateData.type || ''}`,
+        resourceId: documentId
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Document update error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update document'
+      };
+    }
+  }
+  
+  /**
+   * Request a document from a borrower (lender only)
+   * @param {string} borrowerId - ID of the borrower
+   * @param {string} loanId - ID of the loan to request document for
+   * @param {Object} requestData - Document request details
+   * @returns {Promise<Object>} Response with request status
+   */
+  async requestDocument(borrowerId, loanId, requestData) {
+    try {
+      const response = await ApiService.post(`/documents/request`, {
+        borrowerId,
+        loanId,
+        ...requestData
+      });
+      
+      // Log the document request action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'request',
+        details: `Requested document: ${requestData.type}`,
+        resourceId: loanId
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Document request error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to request document'
+      };
+    }
+  }
+  
+  /**
+   * Get document requirements for a loan
+   * @param {string} loanId - ID of the loan to get requirements for
+   * @returns {Promise<Object>} Response with document requirements
+   */
+  async getDocumentRequirements(loanId) {
+    try {
+      const response = await ApiService.get(`/documents/requirements/${loanId}`);
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Get document requirements error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get document requirements'
+      };
+    }
+  }
+  
+  /**
+   * Verify a document (lender only)
+   * @param {string} documentId - ID of the document to verify
+   * @param {Object} verificationData - Verification details including status and notes
+   * @returns {Promise<Object>} Response with verification status
+   */
+  async verifyDocument(documentId, verificationData) {
+    try {
+      const response = await ApiService.post(`/documents/verify/${documentId}`, verificationData);
+      
+      // Log the document verification action
+      await AuditLogService.createLog({
+        eventType: 'document',
+        action: 'verify',
+        details: `Verified document with status: ${verificationData.status}`,
+        resourceId: documentId
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Document verification error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to verify document'
+      };
+    }
+  }
+}
+
+export default new DocumentService();
