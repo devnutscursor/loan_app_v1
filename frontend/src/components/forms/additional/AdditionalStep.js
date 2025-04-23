@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropertyOwned from './PropertyOwned';
 import MilitaryService from './MilitaryService';
 
@@ -18,11 +18,15 @@ import MilitaryService from './MilitaryService';
  * @returns {JSX.Element} Additional step with tab navigation
  */
 const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevStep, errors = {} }) => {
-  const [activeTab, setActiveTab] = useState('propertyOwned');
+  const [activeTab, setActiveTab] = useState('propertiesOwned');
+
+  useEffect(() => {
+    console.log('formData from AdditionalStep is ', formData);
+  }, [formData]);
 
   // Function to handle changes to the property owned section
   const handlePropertyOwnedChange = (propertyOwned) => {
-    handleChange('propertyOwned', propertyOwned);
+    handleChange('propertiesOwned', propertyOwned);
   };
 
   // Function to handle changes to the military service section
@@ -41,9 +45,9 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
     // Determine if tab is complete based on required fields
     let isComplete = false;
     
-    if (tabName === 'propertyOwned') {
+    if (tabName === 'propertiesOwned') {
       // Consider the tab complete if they've answered the ownership question
-      isComplete = formData.propertyOwned && (formData.propertyOwned.ownsProperty !== undefined);
+      isComplete = formData.propertiesOwned && (formData.propertiesOwned.ownsProperty !== undefined);
     } else if (tabName === 'militaryService') {
       // Consider the tab complete if they've answered the service question
       isComplete = formData.militaryService && (formData.militaryService.hasServed !== undefined);
@@ -87,10 +91,10 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
   // Render the appropriate tab content
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'propertyOwned':
+      case 'propertiesOwned':
         return (
           <PropertyOwned
-            propertyOwned={formData.propertyOwned || {}}
+            propertyOwned={formData.propertiesOwned || {}}
             onChange={handlePropertyOwnedChange}
             borrower={formData.borrowers?.[0] || {}}
             errors={errors}
@@ -116,12 +120,12 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
       <div className="flex space-x-2 mb-6">
         <button
           type="button"
-          className={getTabClass('propertyOwned')}
-          onClick={() => handleTabChange('propertyOwned')}
+          className={getTabClass('propertiesOwned')}
+          onClick={() => handleTabChange('propertiesOwned')}
         >
           <div className="flex items-center">
             <span>Property Owned</span>
-            {getTabIcon('propertyOwned') && <span className="ml-2">{getTabIcon('propertyOwned')}</span>}
+            {getTabIcon('propertiesOwned') && <span className="ml-2">{getTabIcon('propertiesOwned')}</span>}
           </div>
         </button>
         <button
@@ -143,7 +147,7 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
       
       {/* Navigation Buttons */}
       <div className="flex justify-between pt-4 border-t border-gray-200">
-        {activeTab === 'propertyOwned' ? (
+        {activeTab === 'propertiesOwned' ? (
           <button
             type="button"
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -157,7 +161,7 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
               if (activeTab === 'militaryService') {
-                setActiveTab('propertyOwned');
+                setActiveTab('propertiesOwned');
               }
             }}
           >
@@ -165,12 +169,12 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
           </button>
         )}
         
-        {activeTab === 'propertyOwned' ? (
+        {activeTab === 'propertiesOwned' ? (
           <button
             type="button"
             className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
-              if (validateTab('propertyOwned')) {
+              if (validateTab('propertiesOwned')) {
                 setActiveTab('militaryService');
               } else {
                 alert('Please complete all required fields before proceeding');

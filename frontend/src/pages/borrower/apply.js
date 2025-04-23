@@ -76,19 +76,49 @@ const LoanApplication = () => {
       },
       propertyValue: '',
       propertyType: '',
-      occupancyType: ''
+      occupancyType: '',
+      // Properties with accepted offer
+      hasAcceptedOffer: '',
+      contractPurchasePrice: '',
+      isMixedUse: '',
+      isManufactured: '',
+      numberOfUnits: '',
+      yearBuilt: '',
+      proposedRentalIncome: ''
     },
     loanInfo: {
       loanType: '',
       loanPurpose: '',
       loanAmount: '',
       loanTerm: '',
-      interestRate: ''
+      interestRate: '',
+      // Purchase fields
+      purchasePrice: '',
+      downPayment: '',
+      // Refinance fields
+      yearAcquired: '',
+      currentLoanBalance: '',
+      requestedLoanAmount: '',
+      refinanceType: '',
+      // Construction fields
+      yearLotAcquired: '',
+      originalCost: '',
+      existingLoans: '',
+      presentValueOfLot: '',
+      costOfImprovements: '',
+      constructionType: ''
     },
     // Assets & Debts
     assets: {
-      bankAccounts: [],
-      otherAssets: []
+      checkingAndSavings: [],
+      stocksAndBonds: [],
+      giftsAndGrants: [],
+      miscellaneous: {
+        earnestMoney: 0,
+        lifeInsurance: 0,
+        vestedInterestInRetirement: 0,
+        otherAssets: 0
+      }
     },
     income: {
       baseIncome: '',
@@ -101,7 +131,37 @@ const LoanApplication = () => {
     debts: [],
     expenses: [],
     // Additional Information
-    propertiesOwned: [],
+    propertiesOwned: {
+      ownsProperty: true,
+      properties: [{
+        id: `property-${Date.now()}`,
+        address: {
+          streetAddress: '123 Rental St',
+          apt: '',
+          city: 'Investment City',
+          state: 'TX',
+          zipCode: '77777'
+        },
+        propertyType: 'Single Family',
+        presentMarketValue: '300000',
+        statusOfProperty: 'retained',
+        intendedOccupancy: 'investment',
+        monthlyCosts: '450',
+        grossRentalIncome: '1800',
+        netRentalIncome: '1500',
+        hasLoan: true,
+        monthlyPayment: '1200',
+        unpaidBalance: '200000'
+      }],
+      rent: '',
+      firstMortgage: '1500',
+      otherFinancing: '0',
+      hazardInsurance: '120',
+      realEstateTaxes: '350',
+      mortgageInsurance: '75',
+      hoaDues: '0',
+      otherHousingExpenses: '0'
+    },
     militaryService: {
       isMilitary: false,
       serviceStatus: '',
@@ -114,6 +174,10 @@ const LoanApplication = () => {
     documents: []
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    console.log('Form data:', formData);
+  }, [formData]);
 
   // Load draft on component mount
   useEffect(() => {
@@ -303,76 +367,88 @@ const LoanApplication = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    
     setLoading(true);
     
-    // Detailed console logging to track form data
-    console.log('FORM SUBMISSION - Starting validation');
-    console.log('FORM DATA - Complete data structure:', formData);
-    console.log('FORM DATA - Borrower info:', formData.borrowers[0]);
-    
-    // Validate all steps before submission
-    const stepValidations = [
-      validateStep(1),
-      validateStep(2),
-      validateStep(3),
-      validateStep(4),
-      validateStep(5)
-    ];
-    
-    // Check if all steps are valid
-    const allStepsValid = stepValidations.every(valid => valid);
-    console.log('FORM VALIDATION - All steps valid:', allStepsValid);
-    
-    if (!allStepsValid) {
-      setLoading(false);
-      toast.error('Please complete all required information before submitting.');
-      return;
-    }
-    
     try {
-      console.log('FORM TRANSFORMATION - Starting data transformation');
+      // Validate all steps before submission
+      const validationErrors = {};
+      for (let i = 1; i <= 5; i++) {
+        const stepErrors = validateStep(i);
+        Object.assign(validationErrors, stepErrors);
+      }
       
-      // Deep copy the borrower data for better debugging
-      const borrowerData = JSON.parse(JSON.stringify(formData.borrowers[0] || {}));
-      console.log('FORM DATA DETAILS - Borrower data copy:', borrowerData);
-
-      // Debug log for form structure
-      console.log('FORM DEBUG - borrowers array:', formData.borrowers);
-      console.log('FORM DEBUG - borrower first name:', formData.borrowers?.[0]?.firstName);
-      console.log('FORM DEBUG - borrower employers:', formData.borrowers?.[0]?.employers);
+      if (Object.keys(validationErrors).length > 0) {
+        console.log('FORM SUBMISSION - Validation errors:', validationErrors);
+        setErrors(validationErrors);
+        toast.error('Please fix all errors before submitting the application');
+        setLoading(false);
+        return;
+      }
       
-      // Fill in test data for demonstration if fields are empty
-      if (!borrowerData.firstName && !borrowerData.lastName) {
-        console.log('FORM DEBUG - Adding sample data for testing');
-        borrowerData.firstName = 'John';
-        borrowerData.lastName = 'Smith';
-        borrowerData.email = 'john.smith@example.com';
-        borrowerData.phone = '(123) 456-7890';
+      // Process the borrowers data for submission
+      const borrowerData = {
+        ...(formData.borrowers[0] || {}),
+        dependents: Array.isArray(formData.borrowers?.[0]?.dependents) ? formData.borrowers[0].dependents : [],
+        employers: Array.isArray(formData.borrowers?.[0]?.employers) ? formData.borrowers[0].employers : [],
+        previousAddresses: Array.isArray(formData.borrowers?.[0]?.previousAddresses) ? formData.borrowers[0].previousAddresses : []
+      };
+      
+      // Transform propertyOwned data to propertiesOwned array
+      const transformedPropertiesOwned = [];
+      if (formData.propertiesOwned && formData.propertiesOwned.ownsProperty === true && 
+          Array.isArray(formData.propertiesOwned.properties) && formData.propertiesOwned.properties.length > 0) {
+        
+        // Map each property to the format expected by the backend
+        formData.propertiesOwned.properties.forEach(property => {
+          transformedPropertiesOwned.push({
+            propertyAddress: {
+              streetAddress: property.address?.streetAddress || '',
+              apt: property.address?.apt || '',
+              city: property.address?.city || '',
+              state: property.address?.state || '',
+              zipCode: property.address?.zipCode || ''
+            },
+            propertyType: property.propertyType || '',
+            presentMarketValue: parseFloat(property.presentMarketValue) || 0,
+            unpaidBalance: parseFloat(property.unpaidBalance) || 0,
+            mortgageBalance: parseFloat(property.mortgageBalance) || 0,
+            monthlyPayment: parseFloat(property.monthlyPayment) || 0,
+            monthlyCosts: parseFloat(property.monthlyCosts) || 0,
+            grossRentalIncome: parseFloat(property.grossRentalIncome) || 0,
+            netRentalIncome: parseFloat(property.netRentalIncome) || 0,
+            statusOfProperty: property.statusOfProperty || '',
+            intendedOccupancy: property.intendedOccupancy || '',
+            hasLoan: property.hasLoan === true,
+            currentHousingExpenses: {
+              rent: parseFloat(formData.propertiesOwned.rent) || 0,
+              firstMortgage: parseFloat(formData.propertiesOwned.firstMortgage) || 0,
+              otherFinancing: parseFloat(formData.propertiesOwned.otherFinancing) || 0,
+              hazardInsurance: parseFloat(formData.propertiesOwned.hazardInsurance) || 0,
+              realEstateTaxes: parseFloat(formData.propertiesOwned.realEstateTaxes) || 0,
+              mortgageInsurance: parseFloat(formData.propertiesOwned.mortgageInsurance) || 0,
+              hoaDues: parseFloat(formData.propertiesOwned.hoaDues) || 0,
+              otherHousingExpenses: parseFloat(formData.propertiesOwned.otherHousingExpenses) || 0
+            }
+          });
+        });
       }
 
-      // Ensure arrays are properly initialized
-      borrowerData.dependents = Array.isArray(borrowerData.dependents) ? borrowerData.dependents : [];
-      borrowerData.previousAddresses = Array.isArray(borrowerData.previousAddresses) ? borrowerData.previousAddresses : [];
-      borrowerData.employers = Array.isArray(borrowerData.employers) ? borrowerData.employers : [
-        {
-          companyName: borrowerData.employers?.[0]?.companyName || '',
-          companyPhone: borrowerData.employers?.[0]?.companyPhone || '',
-          employmentStatus: borrowerData.employers?.[0]?.employmentStatus || '',
-          jobTitle: borrowerData.employers?.[0]?.jobTitle || '',
-          startDate: borrowerData.employers?.[0]?.startDate || '',
-          yearsInProfession: borrowerData.employers?.[0]?.yearsInProfession || '',
-          monthsInProfession: borrowerData.employers?.[0]?.monthsInProfession || '',
-          streetAddress: borrowerData.employers?.[0]?.streetAddress || '',
-          aptSteNum: borrowerData.employers?.[0]?.aptSteNum || '',
-          city: borrowerData.employers?.[0]?.city || '',
-          state: borrowerData.employers?.[0]?.state || '',
-          zipCode: borrowerData.employers?.[0]?.zipCode || ''
-        }
-      ];
+      // Prepare the proper propertiesOwned structure
+      const formattedPropertiesOwned = {
+        ownsProperty: formData.propertiesOwned?.ownsProperty || false,
+        properties: transformedPropertiesOwned,
+        rent: parseFloat(formData.propertiesOwned?.rent) || 0,
+        firstMortgage: parseFloat(formData.propertiesOwned?.firstMortgage) || 0,
+        otherFinancing: parseFloat(formData.propertiesOwned?.otherFinancing) || 0,
+        hazardInsurance: parseFloat(formData.propertiesOwned?.hazardInsurance) || 0,
+        realEstateTaxes: parseFloat(formData.propertiesOwned?.realEstateTaxes) || 0,
+        mortgageInsurance: parseFloat(formData.propertiesOwned?.mortgageInsurance) || 0,
+        hoaDues: parseFloat(formData.propertiesOwned?.hoaDues) || 0,
+        otherHousingExpenses: parseFloat(formData.propertiesOwned?.otherHousingExpenses) || 0
+      };
       
-      console.log('FORM DATA DETAILS - Enhanced borrower data:', borrowerData);
-
       // Transform form data to match backend model structure
       const submissionData = {
         // For the MongoDB reference to the Borrower model
@@ -387,24 +463,45 @@ const LoanApplication = () => {
           addressLine2: formData.propertyInfo?.address?.aptSteNum || '',
           city: formData.propertyInfo?.address?.city || 'To be updated',
           state: formData.propertyInfo?.address?.state || 'To be updated',
-          zipCode: formData.propertyInfo?.address?.zipCode || '00000',
+          zipCode: formData.propertyInfo?.zipCode || formData.propertyInfo?.address?.zipCode || '00000',
           county: formData.propertyInfo?.address?.county || '',
-          propertyType: formData.propertyInfo?.propertyType || 'Single Family Residence',
+          propertyType: formData.propertyInfo?.propertyType || 'Single Family Home',
           occupancyType: formData.propertyInfo?.occupancyType || 'Primary Residence',
           numberOfUnits: formData.propertyInfo?.numberOfUnits || 1,
           yearBuilt: formData.propertyInfo?.yearBuilt || new Date().getFullYear(),
           propertyValue: parseFloat(formData.propertyInfo?.propertyValue) || 100000,
-          isNewConstruction: formData.propertyInfo?.isNewConstruction || false
+          isNewConstruction: formData.propertyInfo?.isNewConstruction || false,
+          // Fields for property with accepted offer
+          hasAcceptedOffer: formData.propertyInfo?.hasAcceptedOffer || false,
+          contractPurchasePrice: parseFloat(formData.propertyInfo?.contractPurchasePrice) || 0,
+          isMixedUse: formData.propertyInfo?.isMixedUse || 'No',
+          isManufactured: formData.propertyInfo?.isManufactured || 'No',
+          proposedRentalIncome: parseFloat(formData.propertyInfo?.proposedRentalIncome) || 0
         },
         
         // Loan details (from Step 2)
         loanDetails: {
-          loanPurpose: formData.loanInfo?.loanPurpose || 'Purchase',
-          loanType: formData.loanInfo?.loanType || 'Conventional',
-          loanAmount: parseFloat(formData.loanInfo?.loanAmount) || 50000,
-          loanTerm: parseInt(formData.loanInfo?.loanTerm) || 30,
-          interestRate: parseFloat(formData.loanInfo?.interestRate) || 4.5,
+          loanPurpose: formData.loanInfo?.loanType || 'Purchase',
+          loanAmount: parseFloat(formData.loanInfo?.loanAmount) || 0,
+          purchasePrice: parseFloat(formData.loanInfo?.purchasePrice) || 0,
           downPayment: parseFloat(formData.loanInfo?.downPayment) || 0,
+          downPaymentSource: formData.loanInfo?.downPaymentSource || 'Savings',
+          
+          // Refinance-specific fields
+          yearAcquired: parseInt(formData.loanInfo?.yearAcquired) || 0,
+          currentLoanBalance: parseFloat(formData.loanInfo?.currentLoanBalance) || 0,
+          requestedLoanAmount: parseFloat(formData.loanInfo?.requestedLoanAmount) || 0,
+          refinanceType: formData.loanInfo?.refinanceType || '',
+          
+          // Construction-specific fields
+          yearLotAcquired: parseInt(formData.loanInfo?.yearLotAcquired) || 0, 
+          originalCost: parseFloat(formData.loanInfo?.originalCost) || 0,
+          existingLoans: parseFloat(formData.loanInfo?.existingLoans) || 0,
+          presentValueOfLot: parseFloat(formData.loanInfo?.presentValueOfLot) || 0,
+          costOfImprovements: parseFloat(formData.loanInfo?.costOfImprovements) || 0,
+          constructionType: formData.loanInfo?.constructionType || '',
+          
+          // Other fields
           downPaymentPercentage: parseFloat(formData.loanInfo?.downPaymentPercentage) || 20,
           isFixedRate: formData.loanInfo?.isFixedRate !== false,
           includeEscrow: formData.loanInfo?.includeEscrow !== false,
@@ -412,7 +509,17 @@ const LoanApplication = () => {
         },
         
         // Financial information (from Step 3)
-        assets: formData.assets || { bankAccounts: [], otherAssets: [] },
+        assets: formData.assets || { 
+          checkingAndSavings: [], 
+          stocksAndBonds: [], 
+          giftsAndGrants: [],
+          miscellaneous: {
+            earnestMoney: 0,
+            lifeInsurance: 0,
+            vestedInterestInRetirement: 0,
+            otherAssets: 0
+          }
+        },
         income: formData.income || { 
           baseIncome: 0, 
           overtime: 0, 
@@ -425,7 +532,7 @@ const LoanApplication = () => {
         expenses: Array.isArray(formData.expenses) ? formData.expenses : [],
         
         // Additional information (from Step 4)
-        propertiesOwned: Array.isArray(formData.propertiesOwned) ? formData.propertiesOwned : [],
+        propertiesOwned: formattedPropertiesOwned, // Use the properly formatted object
         militaryService: formData.militaryService || { isMilitary: false },
         
         // Declarations & Demographics (from Step 5)
@@ -559,7 +666,7 @@ const LoanApplication = () => {
           county: 'Dream County'
         },
         propertyValue: '450000',
-        propertyType: 'Single Family Residence',
+        propertyType: 'Single Family Home',
         occupancyType: 'Primary Residence',
         numberOfUnits: 1,
         yearBuilt: 2010,
@@ -567,16 +674,10 @@ const LoanApplication = () => {
       },
       
       loanInfo: {
-        loanType: 'Conventional',
-        loanPurpose: 'Purchase',
+        loanType: 'Purchase',
         loanAmount: '360000',
+        purchasePrice: '360000',
         downPayment: '90000',
-        downPaymentPercentage: 20,
-        loanTerm: '30',
-        interestRate: 4.5,
-        isFixedRate: true,
-        includeEscrow: true,
-        includeMortgageInsurance: true
       },
       
       // Financial Information
@@ -632,30 +733,7 @@ const LoanApplication = () => {
       
       // Debts
       debts: [
-        {
-          debtType: 'Credit Card',
-          creditor: 'Chase Bank',
-          accountNumber: 'XXXX9876',
-          balance: 5000,
-          monthlyPayment: 150,
-          isPaidBeforeClosing: false
-        },
-        {
-          debtType: 'Auto Loan',
-          creditor: 'Auto Finance',
-          accountNumber: 'XXXX5432',
-          balance: 15000,
-          monthlyPayment: 350,
-          isPaidBeforeClosing: false
-        },
-        {
-          debtType: 'Student Loan',
-          creditor: 'Student Loan Servicer',
-          accountNumber: 'XXXX1111',
-          balance: 30000,
-          monthlyPayment: 400,
-          isPaidBeforeClosing: false
-        }
+        
       ],
       
       // Expenses
@@ -673,25 +751,36 @@ const LoanApplication = () => {
       ],
       
       // Additional Information
-      propertiesOwned: [
-        {
-          propertyAddress: {
+      propertiesOwned: {
+        ownsProperty: true,
+        properties: [{
+          id: `property-${Date.now()}`,
+          address: {
             streetAddress: '123 Rental St',
+            apt: '',
             city: 'Investment City',
             state: 'TX',
             zipCode: '77777'
           },
-          propertyType: 'Single Family Residence',
-          propertyValue: 300000,
-          mortgageBalance: 200000,
-          monthlyRentalIncome: 1800,
-          monthlyMortgagePayment: 1200
-        }
-      ],
-      
-      // For Additional Step validations
-      propertyOwned: {
-        ownsProperty: true
+          propertyType: 'Single Family',
+          presentMarketValue: '300000',
+          statusOfProperty: 'retained',
+          intendedOccupancy: 'investment',
+          monthlyCosts: '450',
+          grossRentalIncome: '1800',
+          netRentalIncome: '1500',
+          hasLoan: true,
+          monthlyPayment: '1200',
+          unpaidBalance: '200000'
+        }],
+        rent: '',
+        firstMortgage: '1500',
+        otherFinancing: '0',
+        hazardInsurance: '120',
+        realEstateTaxes: '350',
+        mortgageInsurance: '75',
+        hoaDues: '0',
+        otherHousingExpenses: '0'
       },
       
       // Military Service
@@ -742,17 +831,17 @@ const LoanApplication = () => {
     setFormData(testData);
     
     // Reset to first step to ensure form is properly displayed
-    setCurrentStep(1);
-    setCurrentSubStep('personalDetails');
+    // setCurrentStep(1);
+    // setCurrentSubStep('personalDetails');
     
     // Temporarily disable validation to allow navigation through the form
-    window._tempValidateOverride = true;
+    // window._tempValidateOverride = true;
     
     // Add function to jump to review step
-    window.goToReviewStep = () => {
-      setCurrentStep(6); // Review step
-      toast.success('Jumped to review step');
-    };
+    // window.goToReviewStep = () => {
+    //   setCurrentStep(6); // Review step
+    //   toast.success('Jumped to review step');
+    // };
     
     // Log message and set toast
     console.log('FILL TEST DATA - Form data set successfully. Navigation buttons should now work.');
@@ -760,13 +849,13 @@ const LoanApplication = () => {
     toast.success('Form filled with test data. You can now navigate using the step buttons.');
     
     // Attempt to automatically navigate to review step (last step)
-    setTimeout(() => {
-      try {
-        console.log('Current formData after fill:', formData);
-      } catch (err) {
-        console.error('Error logging form data:', err);
-      }
-    }, 500);
+    // setTimeout(() => {
+    //   try {
+    //     console.log('Current formData after fill:', formData);
+    //   } catch (err) {
+    //     console.error('Error logging form data:', err);
+    //   }
+    // }, 500);
   };
 
   // Validate form data for each step
@@ -847,10 +936,10 @@ const LoanApplication = () => {
         
       case 4: // Additional Information step
         if (tabName) {
-          if (tabName === 'propertyOwned') {
+          if (tabName === 'propertiesOwned') {
             // PropertyOwned validation - make sure they've answered the question
-            if (formData.propertyOwned?.ownsProperty === undefined) {
-              newErrors['propertyOwned.ownsProperty'] = 'Please indicate if you own additional property';
+            if (formData.propertiesOwned?.ownsProperty === undefined) {
+              newErrors['propertiesOwned.ownsProperty'] = 'Please indicate if you own additional property';
             }
           } else if (tabName === 'militaryService') {
             // MilitaryService validation - make sure they've answered the question
@@ -861,8 +950,8 @@ const LoanApplication = () => {
         } else {
           // If no tab specified, validate the whole step
           // Check propertyOwned
-          if (formData.propertyOwned?.ownsProperty === undefined) {
-            newErrors['propertyOwned.ownsProperty'] = 'Please indicate if you own additional property';
+          if (formData.propertiesOwned?.ownsProperty === undefined) {
+            newErrors['propertiesOwned.ownsProperty'] = 'Please indicate if you own additional property';
           }
           
           // Check militaryService
@@ -974,6 +1063,10 @@ const LoanApplication = () => {
         newFormData.loanInfo = {};
       }
       newFormData.loanInfo[field] = value;
+      
+      // Log the updated loanInfo for debugging
+      console.log(`Updated loanInfo.${field} to ${value}`);
+      console.log('Current loanInfo state:', newFormData.loanInfo);
     } else {
       // Direct field in the form data
       newFormData[name] = value;

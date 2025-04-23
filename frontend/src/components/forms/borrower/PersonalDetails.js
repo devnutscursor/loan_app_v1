@@ -67,7 +67,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
     }
     
     // DEBUG: Log personal details changes
-    console.log(`PersonalDetails - Field ${name} changed to:`, value);
+    // console.log(`PersonalDetails - Field ${name} changed to:`, value);
     
     // Pass to parent component
     onChange(e);
@@ -75,19 +75,19 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
   
   // Helper function for dependent field changes
   const handleChangeDependentField = (index, field, value) => {
-    console.log(`PersonalDetails - Dependent #${index} field ${field} changed to:`, value);
+    // console.log(`PersonalDetails - Dependent #${index} field ${field} changed to:`, value);
     handleDependentChange(index, field, value);
   };
 
   // DEBUG: Log component render with current data
-  console.log('PersonalDetails rendering with borrower data:', {
-    firstName, lastName, dependents: borrower.dependents || []
-  });
+  // console.log('PersonalDetails rendering with borrower data:', {
+  //   firstName, lastName, dependents: borrower.dependents || []
+  // });
 
   // Ensure dependents is initialized
   useEffect(() => {
     if (!borrower.dependents) {
-      console.log('PersonalDetails - Initializing empty dependents array');
+      // console.log('PersonalDetails - Initializing empty dependents array');
       // Initialize dependents as empty array if not defined
       onChange({ target: { name: 'dependents', value: [] } });
     }
@@ -379,7 +379,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
         <button
           type="button"
           onClick={() => {
-            console.log('PersonalDetails - Adding new dependent');
+            // console.log('PersonalDetails - Adding new dependent');
             addDependent();
           }}
           style={{

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropertyInformation from './PropertyInformation';
 import LoanDetails from './LoanDetails';
 
@@ -18,6 +18,9 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
   const [activeTab, setActiveTab] = useState('propertyInformation');
   const { propertyInfo, loanInfo } = formData;
 
+  useEffect(() => {
+    console.log('loanInfo is ', loanInfo);
+  }, [loanInfo]);
   // Handle form field changes - pass through to parent component
   const handleFieldChange = (e) => {
     // Pass the event directly to the parent's handler
@@ -39,13 +42,32 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
     let isComplete = false;
     
     if (tabName === 'propertyInformation') {
-      isComplete = propertyInfo && 
-                 propertyInfo.propertyType && 
-                 propertyInfo.homePurpose;
+      // Check basic required fields for property info
+      const basicFieldsComplete = propertyInfo && 
+                propertyInfo.propertyType && 
+                propertyInfo.occupancyType;
+                
+      // Additional validation if they have an accepted offer
+      if (propertyInfo.hasAcceptedOffer === true) {
+        isComplete = basicFieldsComplete && 
+                    propertyInfo.contractPurchasePrice &&
+                    propertyInfo.zipCode &&
+                    propertyInfo.isMixedUse &&
+                    propertyInfo.isManufactured &&
+                    propertyInfo.numberOfUnits &&
+                    propertyInfo.yearBuilt;
+      } else {
+        // Only basic fields required if no accepted offer
+        isComplete = basicFieldsComplete;
+      }
     } else if (tabName === 'loanDetails') {
       isComplete = loanInfo && 
                  loanInfo.loanType && 
-                 (loanInfo.loanAmount || (loanInfo.loanType === 'refinance' && loanInfo.requestedLoanAmount));
+                 (
+                   (loanInfo.loanType === 'Purchase' && loanInfo.purchasePrice) ||
+                   (loanInfo.loanType === 'Refinance' && loanInfo.requestedLoanAmount) ||
+                   (loanInfo.loanType === 'Construction' && loanInfo.loanAmount)
+                 );
     }
     
     if (isComplete) {
@@ -85,6 +107,26 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
       default:
         return null;
     }
+  };
+
+  // Validate property information based on whether they have an accepted offer
+  const validatePropertyInfo = () => {
+    if (!propertyInfo?.propertyType || !propertyInfo?.occupancyType) {
+      return false;
+    }
+
+    // Additional validation if they have an accepted offer
+    if (propertyInfo.hasAcceptedOffer === true) {
+      return (
+        propertyInfo.contractPurchasePrice &&
+        propertyInfo.isMixedUse &&
+        propertyInfo.isManufactured &&
+        propertyInfo.numberOfUnits &&
+        propertyInfo.yearBuilt
+      );
+    }
+
+    return true;
   };
   
   return (
@@ -144,8 +186,8 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             type="button"
             className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
-              // Ensure propertyInfo exists and has required fields before proceeding
-              if (!propertyInfo?.propertyType || !propertyInfo?.homePurpose) {
+              // Validate property info before proceeding
+              if (!validatePropertyInfo()) {
                 alert('Please complete all required fields before proceeding');
                 return;
               }
@@ -160,10 +202,26 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
               // Ensure loanInfo exists and has required fields before proceeding to next step
-              if (!loanInfo?.loanType || !(loanInfo?.loanAmount || (loanInfo?.loanType === 'refinance' && loanInfo?.requestedLoanAmount))) {
-                alert('Please complete all required fields before proceeding');
+              if (!loanInfo?.loanType) {
+                alert('Please select a loan type before proceeding');
                 return;
               }
+              
+              if (loanInfo.loanType === 'Purchase' && !loanInfo.purchasePrice) {
+                alert('Please enter the purchase price before proceeding');
+                return;
+              }
+              
+              if (loanInfo.loanType === 'Refinance' && !loanInfo.requestedLoanAmount) {
+                alert('Please enter the requested loan amount before proceeding');
+                return;
+              }
+              
+              if (loanInfo.loanType === 'Construction' && !loanInfo.loanAmount) {
+                alert('Please enter the loan amount before proceeding');
+                return;
+              }
+              
               nextStep();
             }}
           >

@@ -3,10 +3,14 @@ const borrowerController = require('../controllers/borrower.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
 const debugMiddleware = require('../middleware/debug.middleware');
+const loanController = require('../controllers/loan.controller');
 
 const router = express.Router();
 
-// All routes require authentication
+// Public routes (no authentication required)
+router.get('/loan-types', loanController.getLoanTypes);
+
+// All other routes require authentication
 router.use(authenticate);
 
 // Dashboard routes for borrowers
@@ -16,12 +20,13 @@ router.get('/loans/draft/recent', borrowerController.getRecentDraftLoans);
 router.get('/activities', borrowerController.getBorrowerActivities);
 
 // Loan draft routes (these use the loan controller)
-const loanController = require('../controllers/loan.controller');
 router.post('/loans/draft', loanController.saveDraft);
 router.get('/loans/draft/:id', loanController.getDraft);
 
 // Loan application routes - using upload.array('documents') to handle multipart/form-data
 router.post('/loans', upload.array('documents'), debugMiddleware, loanController.createLoan);
+// Add route to get loan by loan number
+router.get('/loans/by-number/:number', loanController.getLoanByNumber);
 router.get('/loans/:id', loanController.getLoan);
 router.delete('/loans/:loanId/documents/:documentId', loanController.removeDocument);
 

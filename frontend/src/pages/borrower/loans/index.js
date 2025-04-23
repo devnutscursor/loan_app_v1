@@ -17,9 +17,9 @@ const Loans = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching loans with filter:', filter);
+        // console.log('Fetching loans with filter:', filter);
         const response = await LoanService.getLoans({ status: filter !== 'all' ? filter : undefined });
-        console.log('Loan response:', response);
+        // console.log('Loan response:', response);
         
         if (response.success) {
           // Carefully extract loans array from the response with proper validation
@@ -37,7 +37,7 @@ const Loans = () => {
             // Still use an empty array as fallback
           }
           
-          console.log('Extracted loans array:', loansArray);
+          // console.log('Extracted loans array:', loansArray);
           setLoans(loansArray);
         } else {
           console.warn('Unsuccessful loan fetch:', response.message);
@@ -64,11 +64,11 @@ const Loans = () => {
   
   // Ensure loans is always an array before filtering
   const loansList = Array.isArray(loans) ? loans : [];
-  console.log('Loans for filtering:', loansList);
+  // console.log('Loans for filtering:', loansList);
   
   // Log each loan's status to debug
   loansList.forEach((loan, index) => {
-    console.log(`Loan ${index + 1} status:`, loan.status, loan);
+    // console.log(`Loan ${index + 1} status:`, loan.status, loan);
   });
   
   // Group loans by status for better organization - use lowercase comparison for safety
@@ -105,14 +105,14 @@ const Loans = () => {
   };
   
   // Log the grouped loans
-  console.log('Loans grouped by status:', {
-    pending: statusGroups.pending.length,
-    approved: statusGroups.approved.length,
-    processing: statusGroups.processing.length,
-    rejected: statusGroups.rejected.length,
-    closed: statusGroups.closed.length,
-    other: statusGroups.other.length
-  });
+  // console.log('Loans grouped by status:', {
+  //   pending: statusGroups.pending.length,
+  //   approved: statusGroups.approved.length,
+  //   processing: statusGroups.processing.length,
+  //   rejected: statusGroups.rejected.length,
+  //   closed: statusGroups.closed.length,
+  //   other: statusGroups.other.length
+  // });
   
   return (
     <ProtectedRoute roles={['borrower', 'admin']}>

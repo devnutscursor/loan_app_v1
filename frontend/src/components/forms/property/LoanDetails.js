@@ -124,29 +124,6 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
     });
   };
 
-  // Handle radio button changes
-  const handleRadioChange = (name, value) => {
-    // Update local state for immediate feedback
-    switch(name) {
-      case 'loanType':
-        setLoanType(value);
-        break;
-      case 'loanPurpose':
-        setLoanPurpose(value);
-        break;
-      default:
-        break;
-    }
-    
-    // Send to parent component
-    onChange({
-      target: {
-        name: `loanInfo.${name}`,
-        value
-      }
-    });
-  };
-
   // Format currency input
   const formatCurrency = (value) => {
     if (!value) return '';
@@ -231,9 +208,9 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
             style={{ '--focus-ring-color': theme.colors.primary }}
           >
             <option value="">Select</option>
-            <option value="purchase">Purchase</option>
-            <option value="refinance">Refinance</option>
-            <option value="construction">Construction</option>
+            <option value="Purchase">Purchase</option>
+            <option value="Refinance">Refinance</option>
+            <option value="Construction">Construction</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -248,7 +225,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       
 
       {/* Purchase Details */}
-      {loanType === 'purchase' && (
+      {loanType === 'Purchase' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-lg font-medium text-gray-700 mb-4">Purchase Details</h3>
           
@@ -302,7 +279,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       )}
 
       {/* Refinance Details */}
-      {loanType === 'refinance' && (
+      {loanType === 'Refinance' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-lg font-medium text-gray-700 mb-4">Refinance Details</h3>
           
@@ -383,8 +360,9 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select</option>
-                  <option value="refinance">Refinance</option>
-                  <option value="cashout">Home Equity Line of Credit</option>
+                  <option value="Refinance">Refinance</option>
+                  <option value="Home Equity Line of Credit">Home Equity Line of Credit</option>
+                  <option value="Cash-Out Refinance">Cash-Out Refinance</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                   <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -398,7 +376,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       )}
 
       {/* Construction Details */}
-      {loanType === 'construction' && (
+      {loanType === 'Construction' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-lg font-medium text-gray-700 mb-4">Construction Details</h3>
           
@@ -543,8 +521,8 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>
-                <option value="construction">Construction</option>
-                <option value="construction-permanent">Construction-permanent</option>
+                <option value="Construction">Construction</option>
+                <option value="Construction-Permanent">Construction-Permanent</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">

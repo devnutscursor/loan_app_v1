@@ -17,8 +17,13 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
   const [localProperties, setLocalProperties] = useState(propertyOwned.properties || []);
   const [ownsProperty, setOwnsProperty] = useState(propertyOwned.ownsProperty ?? false); // Use nullish coalescing for clarity
 
+  useEffect(() => {
+    console.log('propertyOwned from PropertyOwned is ', propertyOwned);
+  }, [propertyOwned]);
+
   // Update local state when props change
   useEffect(() => {
+    console.log('propertyOwned.ownsProperty is ', propertyOwned.ownsProperty);
     setLocalProperties(propertyOwned.properties || []);
     setOwnsProperty(propertyOwned.ownsProperty ?? false);
   }, [propertyOwned]);
@@ -287,7 +292,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                   </label>
                   <input
                     type="text"
-                    value={property.address?.streetAddress || ''}
+                    value={property.propertyAddress?.streetAddress || ''}
                     onChange={(e) => handlePropertyChange(property.id, 'address.streetAddress', e.target.value)}
                     className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     // style={{ '--focus-ring-color': theme.colors.primary }} // Use Tailwind focus classes instead if possible

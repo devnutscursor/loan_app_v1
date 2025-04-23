@@ -195,25 +195,27 @@ exports.createLoan = async (req, res, next) => {
     
     // Prepare property data
     const propertyData = {
-      addressLine1: property?.addressLine1 || 'To be updated',
-      addressLine2: property?.addressLine2 || '',
-      city: property?.city || 'To be updated',
-      state: property?.state || 'To be updated',
       zipCode: property?.zipCode || '00000',
-      county: property?.county || '',
-      propertyType: property?.propertyType || 'Single Family Residence',
+      propertyType: property?.propertyType || 'Single Family Home',
       occupancyType: property?.occupancyType || 'Primary Residence',
       numberOfUnits: property?.numberOfUnits || 1,
       yearBuilt: property?.yearBuilt || new Date().getFullYear(),
       propertyValue: parseFloat(property?.propertyValue) || 100000,
-      isNewConstruction: property?.isNewConstruction || false
+      isNewConstruction: property?.isNewConstruction || false,
+      // Add fields for property with accepted offer
+      hasAcceptedOffer: property?.hasAcceptedOffer || false,
+      contractPurchasePrice: parseFloat(property?.contractPurchasePrice) || 0,
+      isMixedUse: property?.isMixedUse || 'No',
+      isManufactured: property?.isManufactured || 'No',
+      proposedRentalIncome: parseFloat(property?.proposedRentalIncome) || 0
     };
     
     // Prepare loan details data
     const cleanLoanAmount = parseFloat(loanDetails?.loanAmount) || 50000;
+    
+    // Base loan details that apply to all loan types
     const loanDetailsData = {
-      loanPurpose: loanDetails?.loanPurpose || 'Purchase',
-      loanType: loanDetails?.loanType || 'Conventional',
+      loanType: loanDetails?.loanType || 'Purchase',
       loanAmount: cleanLoanAmount,
       downPayment: parseFloat(loanDetails?.downPayment) || 0,
       downPaymentPercentage: parseFloat(loanDetails?.downPaymentPercentage) || 20,
@@ -223,6 +225,25 @@ exports.createLoan = async (req, res, next) => {
       includeEscrow: loanDetails?.includeEscrow !== false, // Default to true
       includeMortgageInsurance: loanDetails?.includeMortgageInsurance !== false // Default to true
     };
+    
+    // Add fields specific to the loan type
+    if (loanDetails?.loanType === 'Purchase') {
+      loanDetailsData.purchasePrice = parseFloat(loanDetails?.purchasePrice) || 0;
+    } 
+    else if (loanDetails?.loanType === 'Refinance') {
+      loanDetailsData.yearAcquired = parseInt(loanDetails?.yearAcquired) || 0;
+      loanDetailsData.currentLoanBalance = parseFloat(loanDetails?.currentLoanBalance) || 0;
+      loanDetailsData.requestedLoanAmount = parseFloat(loanDetails?.requestedLoanAmount) || 0;
+      loanDetailsData.refinanceType = loanDetails?.refinanceType || 'Refinance';
+    } 
+    else if (loanDetails?.loanType === 'Construction') {
+      loanDetailsData.yearLotAcquired = parseInt(loanDetails?.yearLotAcquired) || 0;
+      loanDetailsData.originalCost = parseFloat(loanDetails?.originalCost) || 0;
+      loanDetailsData.existingLoans = parseFloat(loanDetails?.existingLoans) || 0;
+      loanDetailsData.presentValueOfLot = parseFloat(loanDetails?.presentValueOfLot) || 0;
+      loanDetailsData.costOfImprovements = parseFloat(loanDetails?.costOfImprovements) || 0;
+      loanDetailsData.constructionType = loanDetails?.constructionType || 'Construction';
+    }
     
     // Ensure borrower details structure is complete
     const borrowerDetailsData = {
@@ -279,16 +300,51 @@ exports.createLoan = async (req, res, next) => {
       newLoan.debts = debts;
     }
     
-    if (declarations) {
-      newLoan.declarations = declarations;
+    if (expenses) {
+      newLoan.expenses = expenses;
     }
     
-    if (demographics) {
-      newLoan.demographics = demographics;
-    }
-    
+    // Process properties owned data
     if (propertiesOwned) {
-      newLoan.propertiesOwned = propertiesOwned;
+      // Check if propertiesOwned includes the "ownsProperty" flag
+      if (propertiesOwned.ownsProperty !== undefined) {
+        // Handle the structured property owned object
+        const propertyOwnedData = {
+          properties: propertiesOwned.properties || [],
+          ownsProperty: propertiesOwned.ownsProperty || false,
+          // Include housing expenses
+          rent: propertiesOwned.rent || '',
+          firstMortgage: propertiesOwned.firstMortgage || '',
+          otherFinancing: propertiesOwned.otherFinancing || '',
+          hazardInsurance: propertiesOwned.hazardInsurance || '',
+          realEstateTaxes: propertiesOwned.realEstateTaxes || '',
+          mortgageInsurance: propertiesOwned.mortgageInsurance || '',
+          hoaDues: propertiesOwned.hoaDues || '',
+          otherHousingExpenses: propertiesOwned.otherHousingExpenses || ''
+        };
+        
+        logger.info(`Processing property owned data with ownsProperty: ${propertyOwnedData.ownsProperty}`);
+        // Save the entire propertyOwnedData object instead of just the properties array
+        newLoan.propertiesOwned = propertyOwnedData;
+      } else if (Array.isArray(propertiesOwned)) {
+        // Handle the array of properties (legacy format)
+        logger.info(`Processing ${propertiesOwned.length} properties owned (legacy array format)`);
+        // Convert legacy array format to new object format
+        newLoan.propertiesOwned = {
+          properties: propertiesOwned,
+          ownsProperty: propertiesOwned.length > 0,
+          rent: '',
+          firstMortgage: '',
+          otherFinancing: '',
+          hazardInsurance: '',
+          realEstateTaxes: '',
+          mortgageInsurance: '',
+          hoaDues: '',
+          otherHousingExpenses: ''
+        };
+      } else {
+        logger.warn('Received propertiesOwned data but format is not recognized');
+      }
     }
     
     if (militaryService) {
@@ -503,6 +559,52 @@ exports.getLoan = async (req, res, next) => {
     
     // Find the loan
     const loan = await Loan.findById(id)
+      .populate('primaryBorrower')
+      .populate('coBorrowers')
+      .populate('assignedLoanOfficer', 'firstName lastName email phone');
+    
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check permissions
+    if (req.user.role === 'borrower') {
+      // Find the borrower profile
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      
+      // Check if this borrower is the primary or co-borrower on the loan
+      const isPrimaryBorrower = loan.primaryBorrower._id.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
+        coBorrower._id.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBorrower) {
+        return next(new ApiError('You are not authorized to view this loan', 403));
+      }
+    }
+    // Lenders and admins can view any loan
+    
+    res.status(200).json({
+      status: 'success',
+      data: loan
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get a loan by its loan number
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanByNumber = async (req, res, next) => {
+  try {
+    const { number } = req.params;
+    
+    // Find the loan by loanNumber instead of _id
+    const loan = await Loan.findOne({ loanNumber: number })
       .populate('primaryBorrower')
       .populate('coBorrowers')
       .populate('assignedLoanOfficer', 'firstName lastName email phone');
@@ -1070,8 +1172,7 @@ exports.saveDraft = async (req, res, next) => {
         propertyValue: 0
       },
       loanDetails: draftData.loanDetails || {
-        loanPurpose: 'Purchase',
-        loanType: 'Conventional',
+        loanType: 'Purchase',
         loanAmount: 0
       },
       // Add any other data provided
@@ -1255,6 +1356,32 @@ exports.calculateLoanMetrics = async (req, res, next) => {
       status: 'success',
       message: 'Loan metrics calculated successfully',
       data: financialCalculations
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get available loan types
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanTypes = async (req, res, next) => {
+  try {
+    // Return a list of available loan types
+    const loanTypes = [
+      { id: 'conventional', name: 'Conventional', description: 'Traditional mortgage loan' },
+      { id: 'fha', name: 'FHA', description: 'Federal Housing Administration loan' },
+      { id: 'va', name: 'VA', description: 'Veterans Affairs loan' },
+      { id: 'usda', name: 'USDA', description: 'USDA Rural Development loan' },
+      { id: 'jumbo', name: 'Jumbo', description: 'Loan exceeding conforming loan limits' }
+    ];
+    
+    res.status(200).json({
+      status: 'success',
+      data: loanTypes
     });
   } catch (error) {
     next(error);

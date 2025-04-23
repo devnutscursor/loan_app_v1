@@ -1,51 +1,46 @@
 const mongoose = require('mongoose');
 
 const propertySchema = new mongoose.Schema({
-  addressLine1: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  addressLine2: {
-    type: String,
-    trim: true
-  },
-  city: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  state: {
-    type: String,
-    required: true,
-    trim: true
-  },
+  
   zipCode: {
     type: String,
-    required: true,
     trim: true
   },
-  county: {
+  hasAcceptedOffer: {
+    type: Boolean,
+    default: false
+  },
+  contractPurchasePrice: {
+    type: Number,
+    min: 0
+  },
+  isMixedUse: {
     type: String,
-    trim: true
+    enum: ['Yes', 'No']
+  },
+  isManufactured: {
+    type: String,
+    enum: ['Yes', 'No']
+  },
+  proposedRentalIncome: {
+    type: Number,
+    min: 0
   },
   propertyType: {
     type: String,
     enum: [
-      'Single Family Residence',
+      'Single Family Home',
       'Condominium',
       'Townhouse',
-      'Multi-Family (2-4 Units)',
+      'Multi-Family',
       'Manufactured Home',
       'Cooperative',
       'Planned Unit Development (PUD)'
-    ],
-    required: true
+    ]
   },
   occupancyType: {
     type: String,
-    enum: ['Primary Residence', 'Secondary Home', 'Investment Property'],
-    required: true
+    enum: ['Primary Residence', 'Vacation Home', 'Investment', 'Other']
   },
   numberOfUnits: {
     type: Number,
@@ -68,80 +63,70 @@ const propertySchema = new mongoose.Schema({
 });
 
 const loanDetailSchema = new mongoose.Schema({
-  loanPurpose: {
-    type: String,
-    enum: ['Purchase', 'Refinance'],
-    required: true
-  },
   loanType: {
     type: String,
     enum: [
-      'Conventional',
-      'FHA',
-      'VA',
-      'USDA',
-      'Jumbo',
-      'DSCR',
+      'Purchase',
+      'Refinance',
       'Construction'
     ],
     required: true
   },
-  loanAmount: {
+  purchasePrice: {
     type: Number,
-    required: true,
     min: 0
   },
   downPayment: {
     type: Number,
     min: 0
   },
-  downPaymentPercentage: {
+  yearAcquired: {
     type: Number,
     min: 0,
     max: 100
   },
-  interestRate: {
+  currentLoanBalance: {
     type: Number,
     min: 0
   },
-  loanTerm: {
-    type: Number,
-    enum: [10, 15, 20, 25, 30, 40],
-    default: 30
-  },
-  monthlyPayment: {
+  requestedLoanAmount: {
     type: Number,
     min: 0
   },
-  isFixedRate: {
-    type: Boolean,
-    default: true
+  refinanceType: {
+    type: String,
+    enum: ['Refinance', 'Cash Out Refinance', 'Home Equity Line of Credit'],
+    default: 'Refinance'
   },
-  includeEscrow: {
-    type: Boolean,
-    default: true
-  },
-  includeMortgageInsurance: {
-    type: Boolean,
-    default: true
-  },
-  estimatedClosingCosts: {
+  loanAmount: {
     type: Number,
     min: 0
   },
-  estimatedCashToClose: {
+  yearLotAcquired: {
     type: Number,
     min: 0
   },
-  fundingFeePercentage: {
-    type: Number,
-    min: 0,
-    max: 100
-  },
-  fundingFeeAmount: {
+  originalCost: {
     type: Number,
     min: 0
-  }
+  },
+  existingLoans: {
+    type: Number,
+    min: 0
+  },
+  presentValueOfLot: {
+    type: Number,
+    min: 0
+  },
+  costOfImprovements: {
+    type: Number,
+    min: 0
+  },
+  constructionType: {
+    type: String,
+    enum: ['Construction', 'Construction-Permanent'],
+    default: 'Construction'
+  },
 });
 
 const milestoneSchema = new mongoose.Schema({
@@ -314,15 +299,16 @@ const incomeSchema = new mongoose.Schema({
 });
 
 const debtSchema = new mongoose.Schema({
-  debtType: {
+  id: {
     type: String,
+    required: true,
     trim: true
   },
-  creditorName: {
-    type: String,
-    trim: true
+  paidAtClosing: {
+    type: Boolean,
+    default: false
   },
-  accountNumber: {
+  creditor: {
     type: String,
     trim: true
   },
@@ -330,28 +316,76 @@ const debtSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
-  outstandingBalance: {
+  balance: {
     type: Number,
     min: 0
   },
-  remainingMonths: {
-    type: Number,
-    min: 0
-  }
 });
 
 const propertyOwnedSchema = new mongoose.Schema({
+  ownsProperty: {
+    type: Boolean,
+    default: false
+  },
   propertyAddress: {
     streetAddress: String,
+    apt: String,
     city: String,
     state: String,
     zipCode: String
   },
   propertyType: String,
-  marketValue: Number,
+  presentMarketValue: Number,
+  unpaidBalance: Number,
   mortgageBalance: Number,
   monthlyPayment: Number,
-  rentalIncome: Number
+  monthlyCosts: Number,
+  grossRentalIncome: Number,
+  netRentalIncome: Number,
+  statusOfProperty: {
+    type: String,
+    enum: ['sold', 'retained', 'sellingHomeBeforeBuying']
+  },
+  intendedOccupancy: {
+    type: String, 
+    enum: ['primaryResidence', 'vacationHome', 'investment', 'other']
+  },
+  hasLoan: Boolean,
+  // Current Primary Housing Expenses
+  currentHousingExpenses: {
+    rent: {
+      type: Number,
+      default: 0
+    },
+    firstMortgage: {
+      type: Number,
+      default: 0
+    },
+    otherFinancing: {
+      type: Number,
+      default: 0
+    },
+    hazardInsurance: {
+      type: Number,
+      default: 0
+    },
+    realEstateTaxes: {
+      type: Number,
+      default: 0
+    },
+    mortgageInsurance: {
+      type: Number,
+      default: 0
+    },
+    hoaDues: {
+      type: Number,
+      default: 0
+    },
+    otherHousingExpenses: {
+      type: Number,
+      default: 0
+    }
+  }
 });
 
 const militaryServiceSchema = new mongoose.Schema({
@@ -557,17 +591,116 @@ const loanSchema = new mongoose.Schema({
   }],
   // URLA Form 1003 specific fields
   assets: {
-    bankAccounts: [assetSchema],
-    otherAssets: [assetSchema]
+    checkingAndSavings: [{
+      bankName: {
+        type: String,
+        trim: true
+      },
+      accountType: {
+        type: String,
+        enum: ['Checking', 'Savings', 'Money Market', 'Certificate of Deposit']
+      },
+      value: {
+        type: Number,
+        min: 0
+      }
+    }],
+    stocksAndBonds: [{
+      description: {
+        type: String,
+        trim: true
+      },
+      value: {
+        type: Number,
+        min: 0
+      }
+    }],
+    giftsAndGrants: [{
+      assetType: {
+        type: String,
+        enum: ['Cash Gift', 'Grant', 'Down Payment Assistance', 'Other']
+      },
+      source: {
+        type: String,
+        enum: ['Relative', 'Friend', 'Employer', 'Municipality', 'Non-Profit', 'Other']
+      },
+      value: {
+        type: Number,
+        min: 0
+      },
+      deposited: {
+        type: Boolean,
+        default: false
+      }
+    }],
+    miscellaneous: {
+      earnestMoney: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      lifeInsurance: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      vestedInterestInRetirement: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      otherAssets: {
+        type: Number,
+        min: 0,
+        default: 0
+      }
+    }
   },
   income: incomeSchema,
   debts: [debtSchema],
   expenses: [{
     expenseType: String,
     amount: Number,
-    description: String
   }],
-  propertiesOwned: [propertyOwnedSchema],
+  propertiesOwned: {
+    ownsProperty: {
+      type: Boolean,
+      default: false
+    },
+    properties: [propertyOwnedSchema],
+    rent: {
+      type: Number,
+      default: 0
+    },
+    firstMortgage: {
+      type: Number,
+      default: 0
+    },
+    otherFinancing: {
+      type: Number,
+      default: 0
+    },
+    hazardInsurance: {
+      type: Number,
+      default: 0
+    },
+    realEstateTaxes: {
+      type: Number,
+      default: 0
+    },
+    mortgageInsurance: {
+      type: Number,
+      default: 0
+    },
+    hoaDues: {
+      type: Number,
+      default: 0
+    },
+    otherHousingExpenses: {
+      type: Number,
+      default: 0
+    }
+  },
   militaryService: militaryServiceSchema,
   declarations: declarationsSchema,
   demographics: demographicsSchema,

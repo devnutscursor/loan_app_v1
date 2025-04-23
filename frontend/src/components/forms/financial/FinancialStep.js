@@ -24,7 +24,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
 
   // Function to handle changes to the assets section
   const handleAssetsChange = (assets) => {
-    // Assets should be handled as an array, not an object with properties
+    // Assets should be handled as an object with categories
     handleChange('assets', assets);
   };
 
@@ -50,8 +50,13 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
     let isComplete = false;
     
     if (tabName === 'assets') {
-      // Consider assets tab complete if at least some data exists
-      isComplete = formData.assets && Object.keys(formData.assets).length > 0;
+      // Consider assets tab complete if we have at least one asset in any category
+      isComplete = formData.assets && (
+        (formData.assets.checkingAndSavings && formData.assets.checkingAndSavings.length > 0) ||
+        (formData.assets.stocksAndBonds && formData.assets.stocksAndBonds.length > 0) ||
+        (formData.assets.giftsAndGrants && formData.assets.giftsAndGrants.length > 0) ||
+        formData.assets.miscellaneous
+      );
     } else if (tabName === 'income') {
       // Consider income tab complete if base income exists
       isComplete = formData.income && formData.income.baseIncome;
@@ -105,7 +110,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           <Assets
             assets={formData.assets || {}}
             onChange={handleAssetsChange}
-            borrower={formData.borrower || {}}
+            borrower={formData.borrowers?.[0] || {}}
             errors={errors}
           />
         );
@@ -114,7 +119,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           <Income
             income={formData.income || {}}
             onChange={handleIncomeChange}
-            borrower={formData.borrower || {}}
+            borrower={formData.borrowers?.[0] || {}}
             errors={errors}
           />
         );
@@ -124,7 +129,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
             debts={formData.debts || []}
             expenses={formData.expenses || []}
             onChange={handleDebtExpenseChange}
-            borrower={formData.borrower || {}}
+            borrower={formData.borrowers?.[0] || {}}
             errors={errors}
           />
         );

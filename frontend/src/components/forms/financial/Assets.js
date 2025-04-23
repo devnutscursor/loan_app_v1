@@ -4,20 +4,44 @@ import theme from '../../../styles/theme';
 /**
  * Assets Form Component
  * 
+ * This component manages the asset section of the loan application form.
+ * It handles different asset types: checking/savings accounts, stocks/bonds,
+ * gifts/grants, and miscellaneous assets.
+ * 
  * @param {Object} props - Component props
- * @param {Array} props.assets - Array of asset objects
+ * @param {Object} props.assets - Assets object with categories
  * @param {Function} props.onChange - Function to handle changes to assets
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
  * @returns {JSX.Element} Assets form component
  */
-const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
-  // Local state for immediate UI updates
-  const [localAssets, setLocalAssets] = useState(Array.isArray(assets) ? assets : []);
+const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
+  // Initialize local state with proper structure
+  const [localAssets, setLocalAssets] = useState({
+    checkingAndSavings: Array.isArray(assets.checkingAndSavings) ? assets.checkingAndSavings : [],
+    stocksAndBonds: Array.isArray(assets.stocksAndBonds) ? assets.stocksAndBonds : [],
+    giftsAndGrants: Array.isArray(assets.giftsAndGrants) ? assets.giftsAndGrants : [],
+    miscellaneous: assets.miscellaneous || {
+      earnestMoney: 0,
+      lifeInsurance: 0,
+      vestedInterestInRetirement: 0,
+      otherAssets: 0
+    }
+  });
   
   // Update local state when props change
   useEffect(() => {
-    setLocalAssets(Array.isArray(assets) ? assets : []);
+    setLocalAssets({
+      checkingAndSavings: Array.isArray(assets.checkingAndSavings) ? assets.checkingAndSavings : [],
+      stocksAndBonds: Array.isArray(assets.stocksAndBonds) ? assets.stocksAndBonds : [],
+      giftsAndGrants: Array.isArray(assets.giftsAndGrants) ? assets.giftsAndGrants : [],
+      miscellaneous: assets.miscellaneous || {
+        earnestMoney: 0,
+        lifeInsurance: 0,
+        vestedInterestInRetirement: 0,
+        otherAssets: 0
+      }
+    });
   }, [assets]);
 
   // Get borrower's full name for display
@@ -32,104 +56,244 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
   const addAccount = () => {
     const newAccount = {
       id: `account-${Date.now()}`,
-      type: 'account',
-      accountType: 'checking',
-      institution: '',
-      value: '',
+      bankName: '',
+      accountType: 'Checking',
+      value: ''
     };
-    // Update local state immediately
-    setLocalAssets([...localAssets, newAccount]);
-    // Ensure assets is treated as an array
-    const currentAssets = Array.isArray(assets) ? assets : [];
-    onChange([...currentAssets, newAccount]);
+    const updatedAccounts = [...localAssets.checkingAndSavings, newAccount];
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
   };
 
   // Add a new stock or bond
   const addStockOrBond = () => {
     const newStock = {
       id: `stock-${Date.now()}`,
-      type: 'investment',
-      investmentType: 'stock',
       description: '',
-      value: '',
+      value: ''
     };
-    // Update local state immediately
-    setLocalAssets([...localAssets, newStock]);
-    // Ensure assets is treated as an array
-    const currentAssets = Array.isArray(assets) ? assets : [];
-    onChange([...currentAssets, newStock]);
+    const updatedStocks = [...localAssets.stocksAndBonds, newStock];
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
   };
 
   // Add a new gift or grant
   const addGiftOrGrant = () => {
     const newGift = {
       id: `gift-${Date.now()}`,
-      type: 'gift',
-      giftType: 'cash',
-      source: '',
+      assetType: 'Cash Gift',
+      source: 'Relative',
       value: '',
-      deposited: false,
+      deposited: false
     };
-    // Update local state immediately
-    setLocalAssets([...localAssets, newGift]);
-    // Ensure assets is treated as an array
-    const currentAssets = Array.isArray(assets) ? assets : [];
-    onChange([...currentAssets, newGift]);
+    const updatedGifts = [...localAssets.giftsAndGrants, newGift];
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
   };
 
-  // Add a new miscellaneous asset
+  // Add miscellaneous assets if not present
   const addMiscAsset = () => {
-    const newMisc = {
-      id: `misc-${Date.now()}`,
-      type: 'miscellaneous',
-      description: '',
-      value: '',
+    const miscAsset = {
+      earnestMoney: 0,
+      lifeInsurance: 0,
+      vestedInterestInRetirement: 0,
+      otherAssets: 0
     };
-    // Update local state immediately
-    setLocalAssets([...localAssets, newMisc]);
-    // Ensure assets is treated as an array
-    const currentAssets = Array.isArray(assets) ? assets : [];
-    onChange([...currentAssets, newMisc]);
-  };
-
-  // Handle change for a specific asset field
-  const handleAssetChange = (id, field, value) => {
-    // Update local state immediately for responsive UI
-    const updatedLocalAssets = localAssets.map(asset => {
-      if (asset.id === id) {
-        return { ...asset, [field]: value };
-      }
-      return asset;
-    });
-    setLocalAssets(updatedLocalAssets);
     
-    // Also update parent component state
-    const updatedAssets = (Array.isArray(assets) ? assets : []).map(asset => {
-      if (asset.id === id) {
-        return { ...asset, [field]: value };
-      }
-      return asset;
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      miscellaneous: miscAsset
     });
-    onChange(updatedAssets);
-  };
-
-  // Remove an asset
-  const removeAsset = (id) => {
-    // Update local state immediately
-    const updatedLocalAssets = localAssets.filter(asset => asset.id !== id);
-    setLocalAssets(updatedLocalAssets);
     
-    // Ensure assets is treated as an array
-    const currentAssets = Array.isArray(assets) ? assets : [];
-    const updatedAssets = currentAssets.filter(asset => asset.id !== id);
-    onChange(updatedAssets);
+    // Update parent component
+    onChange({
+      ...localAssets,
+      miscellaneous: miscAsset
+    });
   };
 
-  // Filter local assets by type for responsive UI
-  const accountAssets = localAssets.filter(asset => asset.type === 'account');
-  const investmentAssets = localAssets.filter(asset => asset.type === 'investment');
-  const giftAssets = localAssets.filter(asset => asset.type === 'gift');
-  const miscAssets = localAssets.filter(asset => asset.type === 'miscellaneous');
+  // Handle change for checking/savings accounts
+  const handleAccountChange = (id, field, value) => {
+    const updatedAccounts = localAssets.checkingAndSavings.map(account => {
+      if (account.id === id) {
+        return { ...account, [field]: value };
+      }
+      return account;
+    });
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
+  };
+
+  // Handle change for stocks/bonds
+  const handleStockChange = (id, field, value) => {
+    const updatedStocks = localAssets.stocksAndBonds.map(stock => {
+      if (stock.id === id) {
+        return { ...stock, [field]: value };
+      }
+      return stock;
+    });
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
+  };
+
+  // Handle change for gifts/grants
+  const handleGiftChange = (id, field, value) => {
+    const updatedGifts = localAssets.giftsAndGrants.map(gift => {
+      if (gift.id === id) {
+        return { ...gift, [field]: value };
+      }
+      return gift;
+    });
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
+  };
+
+  // Handle change for miscellaneous assets
+  const handleMiscChange = (field, value) => {
+    const updatedMisc = {
+      ...localAssets.miscellaneous,
+      [field]: value
+    };
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      miscellaneous: updatedMisc
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      miscellaneous: updatedMisc
+    });
+  };
+
+  // Remove an account
+  const removeAccount = (id) => {
+    const updatedAccounts = localAssets.checkingAndSavings.filter(account => account.id !== id);
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      checkingAndSavings: updatedAccounts
+    });
+  };
+
+  // Remove a stock/bond
+  const removeStock = (id) => {
+    const updatedStocks = localAssets.stocksAndBonds.filter(stock => stock.id !== id);
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      stocksAndBonds: updatedStocks
+    });
+  };
+
+  // Remove a gift/grant
+  const removeGift = (id) => {
+    const updatedGifts = localAssets.giftsAndGrants.filter(gift => gift.id !== id);
+    
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      giftsAndGrants: updatedGifts
+    });
+  };
+
+  // Remove miscellaneous assets
+  const removeMiscAssets = () => {
+    // Update local state
+    setLocalAssets({
+      ...localAssets,
+      miscellaneous: null
+    });
+    
+    // Update parent component
+    onChange({
+      ...localAssets,
+      miscellaneous: null
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -147,11 +311,11 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
           Checking and Savings Accounts
         </h3>
 
-        {accountAssets.map(account => (
+        {localAssets.checkingAndSavings.map(account => (
           <div key={account.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
             <button
               type="button"
-              onClick={() => removeAsset(account.id)}
+              onClick={() => removeAccount(account.id)}
               className="absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this account"
             >
@@ -169,10 +333,10 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
               </label>
               <input
                 type="text"
-                value={account.institution || ''}
-                onChange={(e) => handleAssetChange(account.id, 'institution', e.target.value)}
+                value={account.bankName || ''}
+                onChange={(e) => handleAccountChange(account.id, 'bankName', e.target.value)}
                 className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ focusRing: theme.colors.primary }}
+                style={{ focusRing: theme.colors.primary }}
                 placeholder="Bank of America"
               />
             </div>
@@ -189,7 +353,7 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   <input
                     type="text"
                     value={account.value || ''}
-                    onChange={(e) => handleAssetChange(account.id, 'value', e.target.value)}
+                    onChange={(e) => handleAccountChange(account.id, 'value', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -203,14 +367,14 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <div className="relative">
                   <select
-                    value={account.accountType || 'checking'}
-                    onChange={(e) => handleAssetChange(account.id, 'accountType', e.target.value)}
+                    value={account.accountType || 'Checking'}
+                    onChange={(e) => handleAccountChange(account.id, 'accountType', e.target.value)}
                     className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="checking">Checking</option>
-                    <option value="savings">Savings</option>
-                    <option value="moneyMarket">Money Market</option>
-                    <option value="cd">Certificate of Deposit</option>
+                    <option value="Checking">Checking</option>
+                    <option value="Savings">Savings</option>
+                    <option value="Money Market">Money Market</option>
+                    <option value="Certificate of Deposit">Certificate of Deposit</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -255,11 +419,11 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
           Stocks and Bonds
         </h3>
 
-        {investmentAssets.map(investment => (
-          <div key={investment.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
+        {localAssets.stocksAndBonds.map(stock => (
+          <div key={stock.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
             <button
               type="button"
-              onClick={() => removeAsset(investment.id)}
+              onClick={() => removeStock(stock.id)}
               className="absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this stock or bond"
             >
@@ -278,10 +442,10 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <input
                   type="text"
-                  value={investment.description || ''}
-                  onChange={(e) => handleAssetChange(investment.id, 'description', e.target.value)}
+                  value={stock.description || ''}
+                  onChange={(e) => handleStockChange(stock.id, 'description', e.target.value)}
                   className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ focusRing: theme.colors.primary }}
+                  style={{ focusRing: theme.colors.primary }}
                   placeholder="Tesla Stock"
                 />
               </div>
@@ -296,8 +460,8 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   </div>
                   <input
                     type="text"
-                    value={investment.value || ''}
-                    onChange={(e) => handleAssetChange(investment.id, 'value', e.target.value)}
+                    value={stock.value || ''}
+                    onChange={(e) => handleStockChange(stock.id, 'value', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -340,11 +504,11 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
           Gifts and Grants
         </h3>
 
-        {giftAssets.map(gift => (
+        {localAssets.giftsAndGrants.map(gift => (
           <div key={gift.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
             <button
               type="button"
-              onClick={() => removeAsset(gift.id)}
+              onClick={() => removeGift(gift.id)}
               className="absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this gift or grant"
             >
@@ -363,13 +527,14 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <div className="relative">
                   <select
-                    value={gift.giftType || 'cash'}
-                    onChange={(e) => handleAssetChange(gift.id, 'giftType', e.target.value)}
+                    value={gift.assetType || 'Cash Gift'}
+                    onChange={(e) => handleGiftChange(gift.id, 'assetType', e.target.value)}
                     className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="cash">Cash Gift</option>
-                    <option value="grant">Grant</option>
-                    <option value="downPayment">Gift of Equity</option>
+                    <option value="Cash Gift">Cash Gift</option>
+                    <option value="Grant">Grant</option>
+                    <option value="Down Payment Assistance">Down Payment Assistance</option>
+                    <option value="Other">Other</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -385,20 +550,16 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <div className="relative">
                   <select
-                    value={gift.source || ''}
-                    onChange={(e) => handleAssetChange(gift.id, 'source', e.target.value)}
+                    value={gift.source || 'Relative'}
+                    onChange={(e) => handleGiftChange(gift.id, 'source', e.target.value)}
                     className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="">Select Source</option>
-                    <option value="employer">Employer</option>
-                    <option value="relative">Relative</option>
-                    <option value="federalAgency">Federal Agency</option>
-                    <option value="localAgency">Local Agency</option>
-                    <option value="religiousNonprofit">Religious Nonprofit</option>
-                    <option value="communityNonprofit">Community Nonprofit</option>
-                    <option value="stateAgency">State Agency</option>
-                    <option value="lender">Lender</option>
-                    <option value="other">Other</option>
+                    <option value="Relative">Relative</option>
+                    <option value="Friend">Friend</option>
+                    <option value="Employer">Employer</option>
+                    <option value="Municipality">Municipality</option>
+                    <option value="Non-Profit">Non-Profit</option>
+                    <option value="Other">Other</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -419,7 +580,7 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   <input
                     type="text"
                     value={gift.value || ''}
-                    onChange={(e) => handleAssetChange(gift.id, 'value', e.target.value)}
+                    onChange={(e) => handleGiftChange(gift.id, 'value', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -433,7 +594,7 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 <input
                   type="checkbox"
                   checked={gift.deposited || false}
-                  onChange={(e) => handleAssetChange(gift.id, 'deposited', e.target.checked)}
+                  onChange={(e) => handleGiftChange(gift.id, 'deposited', e.target.checked)}
                   className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                 />
                 <span className="ml-2 text-gray-700">Deposited</span>
@@ -474,8 +635,22 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
           Miscellaneous Assets
         </h3>
 
-        {miscAssets.length > 0 && (
+        {localAssets.miscellaneous ? (
           <div className="mb-6 border border-gray-200 rounded-md p-4 relative">
+            <button
+              type="button"
+              onClick={removeMiscAssets}
+              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              aria-label="Remove miscellaneous assets"
+            >
+              <div className="flex items-center">
+                <span className="text-xs mr-1">Remove</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </button>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
@@ -487,8 +662,8 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   </div>
                   <input
                     type="text"
-                    value={miscAssets[0]?.earnestMoney || ''}
-                    onChange={(e) => handleAssetChange(miscAssets[0]?.id, 'earnestMoney', e.target.value)}
+                    value={localAssets.miscellaneous.earnestMoney || ''}
+                    onChange={(e) => handleMiscChange('earnestMoney', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -506,8 +681,8 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   </div>
                   <input
                     type="text"
-                    value={miscAssets[0]?.lifeInsurance || ''}
-                    onChange={(e) => handleAssetChange(miscAssets[0]?.id, 'lifeInsurance', e.target.value)}
+                    value={localAssets.miscellaneous.lifeInsurance || ''}
+                    onChange={(e) => handleMiscChange('lifeInsurance', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -527,8 +702,8 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                   </div>
                   <input
                     type="text"
-                    value={miscAssets[0]?.retirementFund || ''}
-                    onChange={(e) => handleAssetChange(miscAssets[0]?.id, 'retirementFund', e.target.value)}
+                    value={localAssets.miscellaneous.vestedInterestInRetirement || ''}
+                    onChange={(e) => handleMiscChange('vestedInterestInRetirement', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -540,28 +715,14 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   Other Assets
                 </label>
-                {/* Remove Button */}
-                <button
-                  type="button"
-                  onClick={() => removeAsset(miscAssets[0]?.id)}
-                  className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                  aria-label="Remove this asset"
-                >
-                  <div className="flex items-center">
-                    <span className="text-xs mr-1">Remove</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </button>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-500 sm:text-sm">$</span>
                   </div>
                   <input
                     type="text"
-                    value={miscAssets[0]?.otherAssets || ''}
-                    onChange={(e) => handleAssetChange(miscAssets[0]?.id, 'otherAssets', e.target.value)}
+                    value={localAssets.miscellaneous.otherAssets || ''}
+                    onChange={(e) => handleMiscChange('otherAssets', e.target.value)}
                     className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
@@ -570,27 +731,25 @@ const Assets = ({ assets = [], onChange, borrower = {}, errors = {} }) => {
               </div>
             </div>
           </div>
-        )}
-
-        {miscAssets.length === 0 && (
+        ) : (
           <button
             type="button"
             onClick={addMiscAsset}
             style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
-          className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.5rem 0.75rem',
+              borderWidth: '1px',
+              borderColor: theme.colors.primary,
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              lineHeight: '1.25rem',
+              fontWeight: '500',
+              color: theme.colors.primary,
+              backgroundColor: 'white',
+              transition: 'all 150ms ease-in-out',
+            }}
+            className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
