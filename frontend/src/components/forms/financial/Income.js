@@ -32,7 +32,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       [field]: value
     });
     
-    // Update parent component
+    // Update parent component - use original income prop as base
     onChange({
       ...income,
       [field]: value
@@ -56,7 +56,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       otherIncome: localOtherIncome
     });
     
-    // Update parent component
+    // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome.push(newItem);
     onChange({
@@ -78,7 +78,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       otherIncome: localOtherIncome
     });
     
-    // Update parent component
+    // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome[index] = {
       ...otherIncome[index],
@@ -100,7 +100,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       otherIncome: localOtherIncome
     });
     
-    // Update parent component
+    // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome.splice(index, 1);
     onChange({

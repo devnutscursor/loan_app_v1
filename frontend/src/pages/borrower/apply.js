@@ -190,7 +190,22 @@ const LoanApplication = () => {
           if (result.success && result.data) {
             console.log('Draft data loaded:', result.data);
             setFormData(prev => ({ ...prev, ...result.data }));
-            setDraftId(result.data._id);
+            
+            // If it's a loan number (LN prefix), store both the MongoDB ID and the loan number
+            if (draft.startsWith('LN')) {
+              setDraftId(draft); // Keep the LN number as the draftId
+              // Store original MongoDB ID if available
+              if (result.data._id) {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  originalLoanId: result.data._id,
+                  isExistingLoan: true
+                }));
+              }
+            } else {
+              // Regular draft - just use the MongoDB ID
+              setDraftId(result.data._id);
+            }
             
             // Check if this is an existing loan being edited
             if (result.data.isExistingLoan) {
@@ -370,6 +385,8 @@ const LoanApplication = () => {
     if (e) e.preventDefault();
     
     setLoading(true);
+    console.log('Form submission started - draftId:', draftId);
+    console.log('Is existing loan?', formData.isExistingLoan);
     
     try {
       // Validate all steps before submission
@@ -481,7 +498,7 @@ const LoanApplication = () => {
         
         // Loan details (from Step 2)
         loanDetails: {
-          loanPurpose: formData.loanInfo?.loanType || 'Purchase',
+          loanType: formData.loanInfo?.loanType || 'Purchase',
           loanAmount: parseFloat(formData.loanInfo?.loanAmount) || 0,
           purchasePrice: parseFloat(formData.loanInfo?.purchasePrice) || 0,
           downPayment: parseFloat(formData.loanInfo?.downPayment) || 0,
@@ -543,20 +560,34 @@ const LoanApplication = () => {
       console.log('FORM SUBMISSION - Submitting data:', submissionData);
       
       // Make API call to submit the loan application
-      const response = await LoanService.submitLoan(submissionData);
+      let response;
+      
+      // If we're editing an existing loan (with LN prefix), use updateLoan instead
+      if (formData.isExistingLoan && draftId && draftId.startsWith('LN')) {
+        console.log('Updating existing loan application:', draftId);
+        // For loan numbers, we need to use the LN number, not the MongoDB ID
+        response = await LoanService.updateLoan(draftId, submissionData);
+      } else {
+        // Otherwise create a new loan
+        console.log('Creating new loan application');
+        response = await LoanService.submitLoan(submissionData);
+      }
+      
       console.log('FORM SUBMISSION - API Response:', response);
       
       if (response.success) {
         toast.success('Loan application submitted successfully!');
         
-        // Delete the draft after successful submission if there was one
-        if (draftId) {
+        // Delete the draft after successful submission if there was one and it's not an LN number
+        if (draftId && !draftId.startsWith('LN')) {
           try {
             await LoanService.deleteDraft(draftId);
             console.log('Draft deleted successfully');
           } catch (deleteError) {
             console.error('Failed to delete draft after submission:', deleteError);
           }
+        } else if (draftId && draftId.startsWith('LN')) {
+          console.log('Draft deleted successfully, please fix the issues and shouldn\'t create a new application instead edit the existing one');
         }
         
         // Redirect to loans page
@@ -598,8 +629,8 @@ const LoanApplication = () => {
           
           // Dependents - ensure we have proper array data
           dependents: [
-            { age: 10, relationship: 'Child' },
-            { age: 8, relationship: 'Child' }
+            { name: 'Child 1', age: 10, relationship: 'Child' },
+            { name: 'Child 2', age: 8, relationship: 'Child' }
           ],
           
           // Address information
@@ -1019,27 +1050,26 @@ const LoanApplication = () => {
     return Object.keys(newErrors).length === 0; // Return true if no errors
   };
 
-  // Direct form update handler for borrowers step
+  // Direct form update handler for borrowers step (supports nested paths)
   const handleBorrowerChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Create a deep copy of form data
+    const { name, value, type, checked } = e.target;
     const newFormData = JSON.parse(JSON.stringify(formData));
-    
-    // Update the specific path
-    if (name.includes('.')) {
-      // Handle nested paths like 'currentAddress.city'
-      const [field, subField] = name.split('.');
-      if (!newFormData.borrowers[0][field]) {
-        newFormData.borrowers[0][field] = {};
+    const val = type === 'checkbox' ? checked : value;
+    const segments = name.split('.');
+    let targetObj = newFormData.borrowers[0];
+    // Traverse through nested keys except last
+    for (let i = 0; i < segments.length - 1; i++) {
+      const key = segments[i];
+      if (targetObj[key] == null) {
+        const nextKey = segments[i + 1];
+        // create array or object based on next segment
+        targetObj[key] = isNaN(parseInt(nextKey, 10)) ? {} : [];
       }
-      newFormData.borrowers[0][field][subField] = value;
-    } else {
-      // Handle direct fields like 'firstName'
-      newFormData.borrowers[0][name] = value;
+      targetObj = targetObj[key];
     }
-    
-    // Update the form data
+    // Set the final property
+    const lastKey = segments[segments.length - 1];
+    targetObj[lastKey] = val;
     setFormData(newFormData);
   };
   
@@ -1083,7 +1113,7 @@ const LoanApplication = () => {
         return (
           <BorrowerStep
             formData={formData}
-            handleChange={handleChange}
+            handleChange={handleBorrowerChange}
             validateStep={validateStep}
             nextStep={nextStep}
             errors={errors}
@@ -1180,7 +1210,7 @@ const LoanApplication = () => {
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout title="Apply for Loan">
         <div className="py-6">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-semibold text-gray-900">Apply for a Loan</h1>
               

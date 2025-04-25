@@ -348,7 +348,30 @@ exports.createLoan = async (req, res, next) => {
     }
     
     if (militaryService) {
-      newLoan.militaryService = militaryService;
+      newLoan.militaryService = {
+        isMilitary: militaryService.hasServed,
+        serviceStatus: militaryService.hasServed
+          ? (militaryService.currentlyServing
+              ? 'currentlyServing'
+              : militaryService.isRetired
+                ? 'retired'
+                : militaryService.isNonActivated
+                  ? 'nonActivated'
+                  : ''
+              )
+          : '',
+        dateOfService: militaryService.expirationDate
+          ? new Date(militaryService.expirationDate)
+          : null
+      };
+    }
+    
+    // Assign declarations and demographics if provided
+    if (declarations && Object.keys(declarations).length) {
+      newLoan.declarations = declarations;
+    }
+    if (demographics && Object.keys(demographics).length) {
+      newLoan.demographics = demographics;
     }
     
     // Process document uploads if any
@@ -717,6 +740,115 @@ exports.updateLoan = async (req, res, next) => {
       // Update the loan
       const updatedLoan = await Loan.findByIdAndUpdate(
         id,
+        updateData,
+        { 
+          new: true,
+          runValidators: true 
+        }
+      );
+      
+      // Log the update
+      logger.info(`Loan ${updatedLoan.loanNumber} updated by ${req.user.role} ${req.user._id}`);
+      
+      return res.status(200).json({
+        status: 'success',
+        message: 'Loan updated successfully',
+        data: updatedLoan
+      });
+    }
+    
+    // Fallback
+    return next(new ApiError('You are not authorized to update this loan', 403));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update a loan by its loan number
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateLoanByNumber = async (req, res, next) => {
+  try {
+    const { number } = req.params;
+    
+    // Find the loan by loanNumber instead of _id
+    const loan = await Loan.findOne({ loanNumber: number });
+    
+    
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check permissions
+    if (req.user.role === 'borrower') {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      
+      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+        coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBottower) {
+        return next(new ApiError('You are not authorized to update this loan', 403));
+      }
+      
+      // Borrowers can only update certain fields
+      // Add all possible fields you want to allow
+      const allowedFields = [
+        'property', 'loanDetails', 'borrowerDetails', 'assets', 'income', 
+        'debts', 'expenses', 'propertiesOwned', 'militaryService', 
+        'declarations', 'demographics'
+        // add any other fields you need
+      ];
+      const updateData = req.body;
+      // const updateData = {};
+      // Object.keys(req.body).forEach(key => {
+      //   if (allowedFields.includes(key)) {
+      //     updateData[key] = req.body[key];
+      //   }
+      // });
+      
+      // Update the loan
+      const updatedLoan = await Loan.findOneAndUpdate(
+        { loanNumber: number },
+        updateData,
+        { 
+          new: true,
+          runValidators: true 
+        }
+      );
+      
+      // Log the update
+      logger.info(`Loan ${updatedLoan.loanNumber} updated by borrower ${req.user._id}`);
+      
+      return res.status(200).json({
+        status: 'success',
+        message: 'Loan updated successfully',
+        data: updatedLoan
+      });
+    }
+    
+    // Lenders and admins can update more fields
+    if (req.user.role === 'lender' || req.user.role === 'admin') {
+      const allowedFields = [
+        'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
+        'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
+        'completionPercentage', 'assignedLoanOfficer'
+      ];
+      
+      const updateData = {};
+      Object.keys(req.body).forEach(key => {
+        if (allowedFields.includes(key)) {
+          updateData[key] = req.body[key];
+        }
+      });
+      
+      // Update the loan
+      const updatedLoan = await Loan.findOneAndUpdate(
+        { loanNumber: number },
         updateData,
         { 
           new: true,

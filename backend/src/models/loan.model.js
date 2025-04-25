@@ -395,25 +395,37 @@ const militaryServiceSchema = new mongoose.Schema({
 });
 
 const declarationsSchema = new mongoose.Schema({
-  occupyAsPrimary: Boolean,
-  firstTimeBuyer: Boolean,
-  ownOtherProperties: Boolean,
-  bankruptcyHistory: Boolean,
-  foreclosureHistory: Boolean,
-  lawsuitPending: Boolean,
-  obligatedToPayAlimony: Boolean,
-  downPaymentBorrowed: Boolean,
-  coMakerOrEndorser: Boolean,
-  usCitizen: Boolean,
-  permanentResident: Boolean
+  occupyAsPrimary: { type: Boolean, default: false },
+  hadOwnershipInterest: { type: Boolean, default: false },
+  ownedPropertyType: { type: String, default: '' },
+  titleHoldingType: { type: String, default: '' },
+  borrowingMoney: { type: Boolean, default: false },
+  borrowingMoneyAmount: { type: Number, default: 0 },
+  applyingForMortgage: { type: Boolean, default: false },
+  applyingForNewCredit: { type: Boolean, default: false },
+  propertySubjectToLien: { type: Boolean, default: false },
+  coSigner: { type: Boolean, default: false },
+  delinquent: { type: Boolean, default: false },
+  partyToLawsuit: { type: Boolean, default: false },
+  conveyedTitle: { type: Boolean, default: false },
+  preForeclosureSale: { type: Boolean, default: false },
+  propertyForeclosed: { type: Boolean, default: false },
+  outstandingJudgements: { type: Boolean, default: false },
+  declaredBankruptcy: { type: Boolean, default: false },
+  bankruptcyType: { type: String, default: '' },
+  familyRelationship: { type: Boolean, default: false },
+  firstTimeBuyer: { type: Boolean, default: false }
 });
 
 const demographicsSchema = new mongoose.Schema({
-  ethnicity: String,
-  origin: String,
-  gender: String,
-  race: String,
-  tribe: String
+  ethnicity: { type: String, default: '' },
+  origin: { type: String, default: '' },
+  otherOrigin: { type: String, default: '' },
+  gender: { type: String, default: '' },
+  race: { type: String, default: '' },
+  tribe: { type: String, default: '' },
+  asianOrigin: { type: String, default: '' },
+  pacificIslanderOrigin: { type: String, default: '' }
 });
 
 const borrowerDetailsSchema = new mongoose.Schema({
@@ -457,6 +469,10 @@ const borrowerDetailsSchema = new mongoose.Schema({
     trim: true
   },
   dependents: [{
+    name: {
+      type: String,
+      trim: true
+    },
     age: Number,
     relationship: String
   }],

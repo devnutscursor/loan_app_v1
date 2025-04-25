@@ -21,23 +21,9 @@ const BorrowerStep = ({ formData, handleChange, validateStep, nextStep, prevStep
   const [activeTab, setActiveTab] = useState('personalDetails');
   const borrower = formData.borrowers[0]; // Using first borrower for now
 
-  // Enhanced handler to pass form changes up to parent
+  // Forward field changes directly to parent
   const handleFieldChange = (e) => {
-    if (e && e.target) {
-      // If it's a direct event, add the borrower index prefix to the name
-      const name = `borrowers[0].${e.target.name}`;
-      handleChange({
-        target: {
-          name: name,
-          value: e.target.value,
-          type: e.target.type,
-          checked: e.target.checked
-        }
-      });
-    } else {
-      // If it's not an event, assume it's a direct name/value call
-      handleChange(e);
-    }
+    handleChange(e);
   };
 
   // Tab styling
@@ -109,7 +95,8 @@ const BorrowerStep = ({ formData, handleChange, validateStep, nextStep, prevStep
     const dependents = formData.borrowers[0].dependents || [];
     const newDependents = [...dependents, { name: '', age: '', relationship: '' }];
     
-    handleChange({
+    // Properly prefix nested name
+    handleFieldChange({
       target: {
         name: 'dependents',
         value: newDependents
@@ -122,7 +109,8 @@ const BorrowerStep = ({ formData, handleChange, validateStep, nextStep, prevStep
     const dependents = [...(formData.borrowers[0].dependents || [])];
     dependents.splice(index, 1);
     
-    handleChange({
+    // Properly prefix nested name
+    handleFieldChange({
       target: {
         name: 'dependents',
         value: dependents

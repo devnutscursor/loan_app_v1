@@ -41,7 +41,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       // If changing to 'Yes' and no properties exist, add a default property
       const defaultProperty = {
         id: `property-${Date.now()}`,
-        address: {
+        propertyAddress: {
           streetAddress: '',
           apt: '', // Added missing field
           city: '',
@@ -77,7 +77,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
     const newProperty = {
       // Initialize all fields accessed in the form
       id: `property-${Date.now()}`,
-      address: {
+      propertyAddress: {
         streetAddress: '',
         apt: '', // Added missing field
         city: '',
@@ -293,12 +293,12 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                   <input
                     type="text"
                     value={property.propertyAddress?.streetAddress || ''}
-                    onChange={(e) => handlePropertyChange(property.id, 'address.streetAddress', e.target.value)}
+                    onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.streetAddress', e.target.value)}
                     className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     // style={{ '--focus-ring-color': theme.colors.primary }} // Use Tailwind focus classes instead if possible
                     placeholder="e.g., 123 Main St"
                   />
-                  {/* Error display example: {errors?.[`properties.${index}.address.streetAddress`] && <p className="text-red-500 text-xs mt-1">{errors[`properties.${index}.address.streetAddress`]}</p>} */}
+                  {/* Error display example: {errors?.[`properties.${index}.propertyAddress.streetAddress`] && <p className="text-red-500 text-xs mt-1">{errors[`properties.${index}.propertyAddress.streetAddress`]}</p>} */}
                 </div>
 
                 <div className="mb-4">
@@ -307,8 +307,8 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                   </label>
                   <input
                     type="text"
-                    value={property.address?.apt || ''}
-                    onChange={(e) => handlePropertyChange(property.id, 'address.apt', e.target.value)}
+                    value={property.propertyAddress?.apt || ''}
+                    onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.apt', e.target.value)}
                     className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="e.g., Unit 5B"
                   />
@@ -321,8 +321,8 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     </label>
                     <input
                       type="text"
-                      value={property.address?.city || ''}
-                      onChange={(e) => handlePropertyChange(property.id, 'address.city', e.target.value)}
+                      value={property.propertyAddress?.city || ''}
+                      onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.city', e.target.value)}
                       className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       placeholder="e.g., Anytown"
                     />
@@ -332,8 +332,8 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                       State
                     </label>
                     <select
-                      value={property.address?.state || ''}
-                      onChange={(e) => handlePropertyChange(property.id, 'address.state', e.target.value)}
+                      value={property.propertyAddress?.state || ''}
+                      onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.state', e.target.value)}
                       className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
                     >
                       <option value="">Select State</option>
@@ -350,8 +350,8 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     <input
                       type="text"
                       inputMode="numeric" // Helps mobile keyboards
-                      value={property.address?.zipCode || ''}
-                      onChange={(e) => handlePropertyChange(property.id, 'address.zipCode', e.target.value.replace(/[^0-9]/g, ''))} // Allow only digits
+                      value={property.propertyAddress?.zipCode || ''}
+                      onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.zipCode', e.target.value.replace(/[^0-9]/g, ''))}
                       className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       placeholder="e.g., 90210"
                       maxLength={5}

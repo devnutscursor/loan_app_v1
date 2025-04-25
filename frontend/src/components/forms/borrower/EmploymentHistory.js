@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import theme from '../../../styles/theme';
 
 /**
@@ -13,6 +13,11 @@ import theme from '../../../styles/theme';
 const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
   // Local state initialized from props once
   const [employers, setEmployers] = useState(borrower?.employers || []);
+
+  // Sync local employers when borrower prop updates
+  useEffect(() => {
+    setEmployers(borrower?.employers || []);
+  }, [borrower.employers]);
 
   // Handle employer field changes
   const handleEmployerChange = (index, field, value) => {

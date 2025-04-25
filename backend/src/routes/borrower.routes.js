@@ -25,9 +25,14 @@ router.get('/loans/draft/:id', loanController.getDraft);
 
 // Loan application routes - using upload.array('documents') to handle multipart/form-data
 router.post('/loans', upload.array('documents'), debugMiddleware, loanController.createLoan);
-// Add route to get loan by loan number
+// Add routes for loan number operations
 router.get('/loans/by-number/:number', loanController.getLoanByNumber);
+// Add PUT route for updating loans by loan number
+router.put('/loans/by-number/:number', loanController.updateLoanByNumber);
+
+// Regular loan routes
 router.get('/loans/:id', loanController.getLoan);
+router.put('/loans/:id', loanController.updateLoan);
 router.delete('/loans/:loanId/documents/:documentId', loanController.removeDocument);
 
 // Routes for both borrowers and lenders

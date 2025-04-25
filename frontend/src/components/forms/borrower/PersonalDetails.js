@@ -93,6 +93,19 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
     }
   }, []);
 
+  useEffect(() => {
+    setFirstName(borrower?.firstName || '');
+    setMiddleName(borrower?.middleName || '');
+    setLastName(borrower?.lastName || '');
+    setSuffix(borrower?.suffix || '');
+    setDateOfBirth(borrower?.dateOfBirth || '');
+    setSsn(borrower?.ssn || '');
+    setCitizenship(borrower?.citizenship || '');
+    setMaritalStatus(borrower?.maritalStatus || '');
+    setPhone(borrower?.phone || '');
+    setEmail(borrower?.email || '');
+  }, [borrower]);
+
   return (
     <div className="space-y-6">
       <div>

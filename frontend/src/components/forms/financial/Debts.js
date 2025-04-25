@@ -42,7 +42,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     };
     // Update local state for immediate feedback
     setLocalDebts([...localDebts, newDebt]);
-    // Update parent component
+    // Update parent component - use original debts as base
     onChange('debts', [...debts, newDebt]);
   };
 
@@ -57,7 +57,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     });
     setLocalDebts(updatedLocalDebts);
     
-    // Update parent component
+    // Update parent component - use original debts as base
     const updatedDebts = debts.map(debt => {
       if (debt.id === id) {
         return { ...debt, [field]: value };
@@ -73,7 +73,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     const updatedLocalDebts = localDebts.filter(debt => debt.id !== id);
     setLocalDebts(updatedLocalDebts);
     
-    // Update parent component
+    // Update parent component - use original debts as base
     const updatedDebts = debts.filter(debt => debt.id !== id);
     onChange('debts', updatedDebts);
   };
@@ -87,7 +87,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     };
     // Update local state for immediate feedback
     setLocalExpenses([...localExpenses, newExpense]);
-    // Update parent component
+    // Update parent component - use original expenses as base
     onChange('expenses', [...expenses, newExpense]);
   };
 
@@ -102,7 +102,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     });
     setLocalExpenses(updatedLocalExpenses);
     
-    // Update parent component
+    // Update parent component - use original expenses as base
     const updatedExpenses = expenses.map(expense => {
       if (expense.id === id) {
         return { ...expense, [field]: value };
@@ -118,7 +118,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     const updatedLocalExpenses = localExpenses.filter(expense => expense.id !== id);
     setLocalExpenses(updatedLocalExpenses);
     
-    // Update parent component
+    // Update parent component - use original expenses as base
     const updatedExpenses = expenses.filter(expense => expense.id !== id);
     onChange('expenses', updatedExpenses);
   };

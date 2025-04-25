@@ -71,6 +71,24 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
   // Get status
   const status = loan.status || 'Processing';
   
+  // Get alternative fields that are more likely to be available
+  const loanNumber = loan.loanNumber || '';
+  const loanType = loan.loanDetails?.loanType || 'Standard';
+  const propertyAddress = loan.property?.address?.street || '';
+  const propertyCity = loan.property?.address?.city || '';
+  const propertyState = loan.property?.address?.state || '';
+  const propertyInfo = propertyAddress ? 
+    (propertyCity && propertyState ? 
+      `${propertyAddress}, ${propertyCity}, ${propertyState}` : 
+      propertyAddress) : 
+    'Property details not available';
+  
+  // Get borrower name if available
+  const borrowerName = loan.borrowerDetails?.fullName || 
+                       loan.borrowerDetails?.firstName && loan.borrowerDetails?.lastName ? 
+                       `${loan.borrowerDetails.firstName} ${loan.borrowerDetails.lastName}` : 
+                       '';
+  
   return (
     <div className="bg-white overflow-hidden shadow rounded-lg">
       <div className="p-4 sm:p-5">
@@ -84,18 +102,47 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
         </div>
         
         <div className="mt-4 grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Amount</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(loanAmount)}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Term</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{loanTerm} years</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Interest Rate</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{interestRate}%</dd>
-          </div>
+          {loanAmount > 0 ? (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Amount</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(loanAmount)}</dd>
+            </div>
+          ) : (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Loan Number</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{loanNumber || "Not assigned"}</dd>
+            </div>
+          )}
+          
+          {loanTerm > 0 ? (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Term</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{loanTerm} years</dd>
+            </div>
+          ) : (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Loan Type</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{loanType}</dd>
+            </div>
+          )}
+          
+          {interestRate > 0 ? (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Interest Rate</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">{interestRate}%</dd>
+            </div>
+          ) : borrowerName ? (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Borrower</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900 truncate">{borrowerName}</dd>
+            </div>
+          ) : (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Property</dt>
+              <dd className="mt-1 text-sm text-gray-900 truncate">{propertyInfo}</dd>
+            </div>
+          )}
+          
           <div>
             <dt className="text-sm font-medium text-gray-500">Application Date</dt>
             <dd className="mt-1 text-sm text-gray-900">{formatDate(applicationDate)}</dd>

@@ -194,20 +194,40 @@ const LoanDetails = () => {
                       <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.property?.propertyValue)}</dd>
                     </div>
                     <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Term</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{loan.loanDetails?.loanTerm ? `${loan.loanDetails.loanTerm} months` : 'N/A'}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Purchase Price</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.loanDetails?.purchasePrice) || 'N/A'}</dd>
                     </div>
                     <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Interest Rate</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{loan.loanDetails?.interestRate ? `${loan.loanDetails.interestRate}%` : 'N/A'}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Down Payment</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.loanDetails?.downPayment) || 'N/A'}</dd>
                     </div>
+                    {loan.loanDetails?.refinanceType && (
+                      <div className="sm:col-span-1">
+                        <dt className="text-sm font-medium text-gray-500">Refinance Type</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{loan.loanDetails.refinanceType}</dd>
+                      </div>
+                    )}
+                    {loan.loanDetails?.constructionType && (
+                      <div className="sm:col-span-1">
+                        <dt className="text-sm font-medium text-gray-500">Construction Type</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{loan.loanDetails.constructionType}</dd>
+                      </div>
+                    )}
                     <div className="sm:col-span-1">
                       <dt className="text-sm font-medium text-gray-500">Application Date</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formatDate(loan.createdAt)}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">{formatDate(loan.applicationDate || loan.createdAt)}</dd>
                     </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">Purpose</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{loan.loanDetails?.loanPurpose || 'N/A'}</dd>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Processing Status</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.processingStatus || 'N/A'}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Completion Percentage</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.completionPercentage ? `${loan.completionPercentage}%` : 'N/A'}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Approval Type</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.approvalType || 'N/A'}</dd>
                     </div>
                   </dl>
                 </div>
@@ -257,8 +277,8 @@ const LoanDetails = () => {
                     <div className="sm:col-span-1">
                       <dt className="text-sm font-medium text-gray-500">Property Address</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {loan.property ? 
-                          `${loan.property.addressLine1 || ''} ${loan.property.addressLine2 || ''}, ${loan.property.city || ''}, ${loan.property.state || ''} ${loan.property.zipCode || ''}`.trim() : 
+                        {loan.property?.zipCode ? 
+                          `${loan.property.address?.streetAddress || ''} ${loan.property.address?.aptSteNum || ''}, ${loan.property.address?.city || ''}, ${loan.property.address?.state || ''} ${loan.property.zipCode || ''}`.trim() : 
                           'N/A'}
                       </dd>
                     </div>
@@ -278,6 +298,24 @@ const LoanDetails = () => {
                       <dt className="text-sm font-medium text-gray-500">Year Built</dt>
                       <dd className="mt-1 text-sm text-gray-900">{loan.property?.yearBuilt || 'N/A'}</dd>
                     </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Has Accepted Offer</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.property?.hasAcceptedOffer ? 'Yes' : 'No'}</dd>
+                    </div>
+                    {loan.property?.hasAcceptedOffer && (
+                      <div className="sm:col-span-1">
+                        <dt className="text-sm font-medium text-gray-500">Contract Purchase Price</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.property?.contractPurchasePrice)}</dd>
+                      </div>
+                    )}
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Mixed Use Property</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.property?.isMixedUse || 'No'}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Manufactured Home</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.property?.isManufactured || 'No'}</dd>
+                    </div>
                   </dl>
                 </div>
                 
@@ -289,8 +327,42 @@ const LoanDetails = () => {
                 <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                   <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
                     <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Monthly Income</dt>
+                      <dt className="text-sm font-medium text-gray-500">Base Monthly Income</dt>
                       <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.income?.baseIncome || 0)}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Overtime</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.income?.overtime || 0)}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Commissions</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.income?.commissions || 0)}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Bonuses</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.income?.bonuses || 0)}</dd>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Military Entitlements</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.income?.militaryEntitlements || 0)}</dd>
+                    </div>
+                    {Array.isArray(loan.income?.otherIncome) && loan.income?.otherIncome.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-sm font-medium text-gray-500">Other Income Sources</dt>
+                        <dd className="mt-1 text-sm text-gray-900">
+                          <ul className="list-disc pl-5 space-y-1">
+                            {loan.income.otherIncome.map((item, index) => (
+                              <li key={index}>
+                                {item.description}: {formatCurrency(item.amount || 0)}
+                              </li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    )}
+                    <div className="sm:col-span-1">
+                      <dt className="text-sm font-medium text-gray-500">Total Monthly Income</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.financialCalculations?.totalIncome || 0)}</dd>
                     </div>
                     <div className="sm:col-span-1">
                       <dt className="text-sm font-medium text-gray-500">Total Monthly Debt</dt>
@@ -301,11 +373,279 @@ const LoanDetails = () => {
                       <dd className="mt-1 text-sm text-gray-900">{loan.financialCalculations?.dti ? `${loan.financialCalculations.dti}%` : 'N/A'}</dd>
                     </div>
                     <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Loan-to-Value Ratio</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{loan.financialCalculations?.ltv ? `${loan.financialCalculations.ltv}%` : 'N/A'}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Housing Ratio</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{loan.financialCalculations?.housingRatio ? `${loan.financialCalculations.housingRatio}%` : 'N/A'}</dd>
                     </div>
+                    
+                    {/* Additional expenses section */}
+                    {Array.isArray(loan.expenses) && loan.expenses.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-sm font-medium text-gray-500">Monthly Expenses</dt>
+                        <dd className="mt-1 text-sm text-gray-900">
+                          <ul className="list-disc pl-5 space-y-1">
+                            {loan.expenses.map((expense, index) => (
+                              <li key={index}>
+                                {expense.expenseType}: {formatCurrency(expense.amount || 0)}
+                              </li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
+                
+                {/* Properties Owned Section */}
+                {loan.propertiesOwned && (
+                  <>
+                    <div className="px-4 py-5 sm:px-6 bg-gray-50 border-t border-gray-200">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">Properties Owned</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">Information about properties owned by the borrower.</p>
+                    </div>
+                    <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <dt className="text-sm font-medium text-gray-500">Owns Property</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.propertiesOwned.ownsProperty ? 'Yes' : 'No'}</dd>
+                        </div>
+                        
+                        {loan.propertiesOwned.ownsProperty && Array.isArray(loan.propertiesOwned.properties) && loan.propertiesOwned.properties.length > 0 && (
+                          <div className="sm:col-span-2">
+                            <dt className="text-sm font-medium text-gray-500">Property Details</dt>
+                            <dd className="mt-2">
+                              {loan.propertiesOwned.properties.map((property, index) => (
+                                <div key={index} className="mb-6 bg-gray-50 p-4 rounded-md">
+                                  <h4 className="text-sm font-medium text-gray-700 mb-2">Property {index + 1}</h4>
+                                  <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Address: </span>
+                                      <span className="text-sm text-gray-900">
+                                        {property.propertyAddress ? 
+                                          `${property.propertyAddress.streetAddress || ''} ${property.propertyAddress.apt || ''}, ${property.propertyAddress.city || ''}, ${property.propertyAddress.state || ''} ${property.propertyAddress.zipCode || ''}`.trim() : 
+                                          'N/A'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Property Type: </span>
+                                      <span className="text-sm text-gray-900">{property.propertyType || 'N/A'}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Market Value: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.presentMarketValue || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Unpaid Balance: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.unpaidBalance || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Monthly Payment: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.monthlyPayment || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Monthly Costs: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.monthlyCosts || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Rental Income: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.grossRentalIncome || 0)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs font-medium text-gray-500">Net Income: </span>
+                                      <span className="text-sm text-gray-900">{formatCurrency(property.netRentalIncome || 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </dd>
+                          </div>
+                        )}
+                        
+                        {/* Current Housing Expenses */}
+                        {loan.propertiesOwned.firstMortgage > 0 && (
+                          <>
+                            <div className="sm:col-span-2 border-t border-gray-200 pt-4 mt-2">
+                              <dt className="text-sm font-medium text-gray-600">Current Housing Expenses</dt>
+                            </div>
+                            {loan.propertiesOwned.firstMortgage > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">First Mortgage</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.firstMortgage)}</dd>
+                              </div>
+                            )}
+                            {loan.propertiesOwned.rent > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">Rent</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.rent)}</dd>
+                              </div>
+                            )}
+                            {loan.propertiesOwned.hazardInsurance > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">Hazard Insurance</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.hazardInsurance)}</dd>
+                              </div>
+                            )}
+                            {loan.propertiesOwned.realEstateTaxes > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">Real Estate Taxes</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.realEstateTaxes)}</dd>
+                              </div>
+                            )}
+                            {loan.propertiesOwned.mortgageInsurance > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">Mortgage Insurance</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.mortgageInsurance)}</dd>
+                              </div>
+                            )}
+                            {loan.propertiesOwned.hoaDues > 0 && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-xs font-medium text-gray-500">HOA Dues</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.propertiesOwned.hoaDues)}</dd>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </dl>
+                    </div>
+                  </>
+                )}
+                
+                {/* Military Service Section */}
+                {loan.militaryService && (
+                  <>
+                    <div className="px-4 py-5 sm:px-6 bg-gray-50 border-t border-gray-200">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">Military Service</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">Information about military service history.</p>
+                    </div>
+                    <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Military Service</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.militaryService.isMilitary ? 'Yes' : 'No'}</dd>
+                        </div>
+                        {loan.militaryService.isMilitary && (
+                          <>
+                            {loan.militaryService.serviceStatus && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-sm font-medium text-gray-500">Service Status</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{loan.militaryService.serviceStatus}</dd>
+                              </div>
+                            )}
+                            {loan.militaryService.dateOfService && (
+                              <div className="sm:col-span-1">
+                                <dt className="text-sm font-medium text-gray-500">Date of Service</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{formatDate(loan.militaryService.dateOfService)}</dd>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </dl>
+                    </div>
+                  </>
+                )}
+                
+                {/* Declarations Section */}
+                {loan.declarations && (
+                  <>
+                    <div className="px-4 py-5 sm:px-6 bg-gray-50 border-t border-gray-200">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">Declarations</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">Required declarations for the loan application.</p>
+                    </div>
+                    <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Occupy as Primary Residence</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.occupyAsPrimary ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Previous Ownership Interest</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.hadOwnershipInterest ? 'Yes' : 'No'}</dd>
+                        </div>
+                        {loan.declarations.hadOwnershipInterest && (
+                          <div className="sm:col-span-1">
+                            <dt className="text-sm font-medium text-gray-500">Property Type Owned</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{loan.declarations.ownedPropertyType || 'N/A'}</dd>
+                          </div>
+                        )}
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Title Holding Type</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.titleHoldingType || 'N/A'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">First-Time Homebuyer</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.firstTimeBuyer ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Borrowing Additional Money</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.borrowingMoney ? 'Yes' : 'No'}</dd>
+                        </div>
+                        {loan.declarations.borrowingMoney && loan.declarations.borrowingMoneyAmount > 0 && (
+                          <div className="sm:col-span-1">
+                            <dt className="text-sm font-medium text-gray-500">Additional Amount</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{formatCurrency(loan.declarations.borrowingMoneyAmount)}</dd>
+                          </div>
+                        )}
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Co-Signer on Other Loans</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.coSigner ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Outstanding Judgements</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.outstandingJudgements ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Declared Bankruptcy</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.declaredBankruptcy ? 'Yes' : 'No'}</dd>
+                        </div>
+                        {loan.declarations.declaredBankruptcy && loan.declarations.bankruptcyType && (
+                          <div className="sm:col-span-1">
+                            <dt className="text-sm font-medium text-gray-500">Bankruptcy Type</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{loan.declarations.bankruptcyType}</dd>
+                          </div>
+                        )}
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Property Foreclosed</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.propertyForeclosed ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Party to Lawsuit</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.declarations.partyToLawsuit ? 'Yes' : 'No'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </>
+                )}
+                
+                {/* Demographics Section */}
+                {loan.demographics && (
+                  <>
+                    <div className="px-4 py-5 sm:px-6 bg-gray-50 border-t border-gray-200">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">Demographics</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">Demographic information (optional).</p>
+                    </div>
+                    <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Ethnicity</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.demographics.ethnicity || 'Not Provided'}</dd>
+                        </div>
+                        {loan.demographics.origin && (
+                          <div className="sm:col-span-1">
+                            <dt className="text-sm font-medium text-gray-500">Origin</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{loan.demographics.origin}</dd>
+                          </div>
+                        )}
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Race</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.demographics.race || 'Not Provided'}</dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">Gender</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{loan.demographics.gender || 'Not Provided'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </>
+                )}
 
                 {/* Documents Section */}
                 {loan.documents && loan.documents.length > 0 && (

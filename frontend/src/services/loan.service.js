@@ -199,7 +199,7 @@ class LoanService {
    * @returns {Object} Draft format of the loan data
    */
   async convertLoanToDraft(loanData) {
-    // console.log('Converting loan to draft format:', loanData);
+    console.log('Converting loan to draft format:', loanData);
     
     // Create a draft structure that matches the form's expected structure
     const draftData = {
@@ -272,11 +272,20 @@ class LoanService {
         constructionType: loanData.data.loanDetails?.constructionType || ''
       },
       
-      // Assets & Debts
+      // Assets - Ensure proper structure for the Assets form component
       assets: loanData.data.assets || {
-        bankAccounts: [],
-        otherAssets: []
+        checkingAndSavings: [],
+        stocksAndBonds: [],
+        giftsAndGrants: [],
+        miscellaneous: {
+          earnestMoney: 0,
+          lifeInsurance: 0,
+          vestedInterestInRetirement: 0,
+          otherAssets: 0
+        }
       },
+      
+      // Income - Ensure proper structure for the Income form component
       income: loanData.data.income || {
         baseIncome: '',
         overtime: '',
@@ -285,15 +294,22 @@ class LoanService {
         militaryEntitlements: '',
         otherIncome: []
       },
-      debts: loanData.data.debts || [],
-      expenses: loanData.data.expenses || [],
+      
+      // Debts and Expenses - Ensure proper array structure for the Debts component
+      debts: Array.isArray(loanData.data.debts) ? loanData.data.debts : [],
+      expenses: Array.isArray(loanData.data.expenses) ? loanData.data.expenses : [],
       
       // Additional Information
       propertiesOwned: loanData.data.propertiesOwned || [],
-      militaryService: loanData.data.militaryService || {
-        isMilitary: false,
-        serviceStatus: '',
-        dateOfService: ''
+      militaryService: {
+        hasServed: loanData.data.militaryService?.isMilitary || false,
+        currentlyServing: loanData.data.militaryService?.serviceStatus === 'currentlyServing',
+        isRetired: loanData.data.militaryService?.serviceStatus === 'retired',
+        isNonActivated: loanData.data.militaryService?.serviceStatus === 'nonActivated',
+        isSurvivingSpouse: loanData.data.militaryService?.serviceStatus === 'survivingSpouse',
+        expirationDate: loanData.data.militaryService?.dateOfService
+          ? new Date(loanData.data.militaryService.dateOfService).toISOString().split('T')[0]
+          : ''
       },
       
       // Declarations & Demographics
@@ -305,6 +321,13 @@ class LoanService {
       loanId: loanData.data._id, // Reference to the original loan
       isExistingLoan: true
     };
+    
+    console.log('Structured draft data for financial forms:', {
+      assets: draftData.assets,
+      income: draftData.income,
+      debts: draftData.debts,
+      expenses: draftData.expenses
+    });
     
     return draftData;
   }
@@ -389,15 +412,17 @@ class LoanService {
    */
   async updateLoan(loanId, updateData) {
     try {
-      const response = await ApiService.put(`/borrower/loans/${loanId}`, updateData);
+      // Create appropriate endpoint based on whether we're using a loan number or MongoDB ID
+      const endpoint = loanId.startsWith('LN')
+        ? `/api/v1/borrower/loans/by-number/${loanId}`  // For loan numbers
+        : `/api/v1/borrower/loans/${loanId}`;         // For MongoDB IDs
+        
+      console.log('Loan update endpoint:', endpoint);
+      console.log('Loan update data:', updateData);
+      const response = await ApiService.put(endpoint, updateData);
       
-      // Log the loan application update
-      await AuditLogService.createLog({
-        eventType: 'loan',
-        action: 'update',
-        details: `Loan application updated`,
-        resourceId: loanId
-      });
+      // Log information to console instead of using AuditLogService
+      console.log(`Loan application ${loanId} updated successfully`);
       
       return {
         success: true,

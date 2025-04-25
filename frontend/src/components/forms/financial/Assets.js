@@ -68,9 +68,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       checkingAndSavings: updatedAccounts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       checkingAndSavings: updatedAccounts
     });
   };
@@ -90,9 +90,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       stocksAndBonds: updatedStocks
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       stocksAndBonds: updatedStocks
     });
   };
@@ -114,9 +114,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       giftsAndGrants: updatedGifts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       giftsAndGrants: updatedGifts
     });
   };
@@ -136,9 +136,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       miscellaneous: miscAsset
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       miscellaneous: miscAsset
     });
   };
@@ -158,9 +158,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       checkingAndSavings: updatedAccounts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       checkingAndSavings: updatedAccounts
     });
   };
@@ -180,9 +180,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       stocksAndBonds: updatedStocks
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       stocksAndBonds: updatedStocks
     });
   };
@@ -202,9 +202,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       giftsAndGrants: updatedGifts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       giftsAndGrants: updatedGifts
     });
   };
@@ -222,9 +222,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       miscellaneous: updatedMisc
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       miscellaneous: updatedMisc
     });
   };
@@ -239,9 +239,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       checkingAndSavings: updatedAccounts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       checkingAndSavings: updatedAccounts
     });
   };
@@ -256,9 +256,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       stocksAndBonds: updatedStocks
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       stocksAndBonds: updatedStocks
     });
   };
@@ -273,9 +273,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       giftsAndGrants: updatedGifts
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       giftsAndGrants: updatedGifts
     });
   };
@@ -288,9 +288,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       miscellaneous: null
     });
     
-    // Update parent component
+    // Update parent component - use original assets prop as base
     onChange({
-      ...localAssets,
+      ...assets,
       miscellaneous: null
     });
   };

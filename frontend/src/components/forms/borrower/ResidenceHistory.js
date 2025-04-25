@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * Residence History Form
@@ -23,6 +23,19 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
   // Local state for mailing address
   const [sameAsCurrentAddress, setSameAsCurrentAddress] = useState(borrower?.mailingAddress?.sameAsCurrentAddress || false);
   
+  // Sync local state when borrower prop changes
+  useEffect(() => {
+    setStreetAddress(borrower?.currentAddress?.streetAddress || '');
+    setAptSteNum(borrower?.currentAddress?.aptSteNum || '');
+    setCity(borrower?.currentAddress?.city || '');
+    setState(borrower?.currentAddress?.state || '');
+    setZipCode(borrower?.currentAddress?.zipCode || '');
+    setOwnershipStatus(borrower?.currentAddress?.ownershipStatus || '');
+    setYearsAtAddress(borrower?.currentAddress?.yearsAtAddress || '');
+    setMonthsAtAddress(borrower?.currentAddress?.monthsAtAddress || '');
+    setSameAsCurrentAddress(borrower?.mailingAddress?.sameAsCurrentAddress || false);
+  }, [borrower.currentAddress, borrower.mailingAddress]);
+
   // Handle form field changes - pass the event directly to parent
   const handleChange = (e) => {
     onChange(e);
