@@ -163,9 +163,17 @@ const LoanApplication = () => {
       otherHousingExpenses: '0'
     },
     militaryService: {
-      isMilitary: false,
-      serviceStatus: '',
-      dateOfService: ''
+      hasServed: false,
+      currentlyServing: false,
+      isRetired: false,
+      isNonActivated: false,
+      isSurvivingSpouse: false,
+      serviceBranch: '',
+      serviceType: '',
+      yearsOfService: 0,
+      dischargeType: '',
+      dischargeDate: '',
+      expirationDate: ''
     },
     // Declarations & Demographics
     declarations: {},
@@ -816,12 +824,17 @@ const LoanApplication = () => {
       
       // Military Service
       militaryService: {
-        isMilitary: false,
         hasServed: false,
-        serviceStatus: '',
-        serviceStartDate: '',
-        serviceEndDate: '',
-        isDeployed: false
+        currentlyServing: false,
+        isRetired: false,
+        isNonActivated: false,
+        isSurvivingSpouse: false,
+        serviceBranch: '',
+        serviceType: '',
+        yearsOfService: 0,
+        dischargeType: '',
+        dischargeDate: '',
+        expirationDate: ''
       },
       
       // Declarations

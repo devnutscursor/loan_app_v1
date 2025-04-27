@@ -6,18 +6,12 @@ import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { LoanService } from '../../../services';
 
-// Import our card components
+// Import our new components
 import LoanSummaryCard from '../../../components/borrower/loan/LoanSummaryCard';
 import BorrowerInfoCard from '../../../components/borrower/loan/BorrowerInfoCard';
 import PropertyCard from '../../../components/borrower/loan/PropertyCard';
-import FinancialInfoCard from '../../../components/borrower/loan/FinancialInfoCard';
-import PropertiesOwnedCard from '../../../components/borrower/loan/PropertiesOwnedCard';
-import MilitaryServiceCard from '../../../components/borrower/loan/MilitaryServiceCard';
-import DocumentsCard from '../../../components/borrower/loan/DocumentsCard';
-import DemographicsCard from '../../../components/borrower/loan/DemographicsCard';
-import DeclarationsCard from '../../../components/borrower/loan/DeclarationsCard';
 
-const LoanDetails = () => {
+const LoanDetailsPage = () => {
   const router = useRouter();
   const { loanId } = router.query;
   const [loan, setLoan] = useState(null);
@@ -119,11 +113,13 @@ const LoanDetails = () => {
       <MainLayout title={loan ? `Loan ${loan.loanNumber || ''}` : 'Loan Details'} noSidebarMargin={true}>
         <div className="py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header Section */}
             <div className="mb-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <Link href="/borrower/loans" className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
+                    <Link href="/borrower/loans" 
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
                       <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                       </svg>
@@ -151,26 +147,22 @@ const LoanDetails = () => {
                         <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Submitted {formatDate(loan.applicationDate || loan.createdAt)}
+                        Submitted {formatDate(loan?.applicationDate || loan?.createdAt)}
                       </span>
                     )}
                   </div>
                 </div>
                 {loan && (
                   <div className="flex space-x-3">
-                    <Link
-                      href={`/borrower/documents?loanId=${loan._id}`}
-                      className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    >
+                    <Link href={`/borrower/documents?loanId=${loan._id}`}
+                      className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                       <svg className="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       Manage Documents
                     </Link>
-                    <Link
-                      href={`/borrower/apply?draft=${loan.loanNumber}`}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    >
+                    <Link href={`/borrower/apply?draft=${loan.loanNumber}`}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                       <svg className="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
@@ -181,51 +173,104 @@ const LoanDetails = () => {
               </div>
             </div>
 
+            {/* Content Section */}
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </div>
             ) : error ? (
-              <div className="bg-red-50 p-4 rounded-md">
+              <div className="bg-red-50 p-6 rounded-xl shadow-sm">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <svg className="h-6 w-6 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Error loading loan details</h3>
-                    <div className="mt-2 text-sm text-red-700">
+                    <h3 className="text-lg font-medium text-red-800">Error loading loan details</h3>
+                    <div className="mt-2 text-md text-red-700">
                       <p>{error}</p>
+                      <p className="mt-2">Please try again or contact support if the problem persists.</p>
+                    </div>
+                    <div className="mt-4">
+                      <button
+                        onClick={() => router.reload()}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        Refresh Page
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             ) : loan ? (
               <div className="space-y-6">
-                {/* Loan Summary Card */}
+                {/* Use our new components */}
                 <LoanSummaryCard loan={loan} formatCurrency={formatCurrency} />
                 <BorrowerInfoCard borrowerDetails={loan.borrowerDetails} />
                 <PropertyCard property={loan.property} formatCurrency={formatCurrency} />
-                <FinancialInfoCard loan={loan} formatCurrency={formatCurrency} />
-                <PropertiesOwnedCard loan={loan} formatCurrency={formatCurrency} />
-                {loan.declarations && (
-                  <DeclarationsCard loan={loan} formatCurrency={formatCurrency} />
+                
+                {/* Documents Section */}
+                {loan.documents && loan.documents.length > 0 && (
+                  <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100 my-6">
+                    <div className="px-6 py-5 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100">
+                      <div className="flex items-center">
+                        <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h3 className="ml-2 text-lg font-semibold text-gray-900">Documents</h3>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">Documents submitted with your application</p>
+                    </div>
+                    <div className="border-t border-gray-200">
+                      <ul role="list" className="divide-y divide-gray-100">
+                        {loan.documents.map((doc) => (
+                          <li key={doc._id} className="px-4 py-4 sm:px-6 flex items-center justify-between hover:bg-gray-50 transition-colors duration-150">
+                            <div className="flex items-center">
+                              <div className="p-2 bg-indigo-50 rounded-md mr-4">
+                                <svg className="h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{doc.originalname || doc.name || 'Document'}</p>
+                                <p className="text-xs text-gray-500 mt-1">{doc.documentType || 'Uploaded document'}</p>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              {doc.url && (
+                                <a 
+                                  href={doc.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                  <svg className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  View
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleRemoveDocument(doc._id)}
+                                className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                              >
+                                <svg className="h-4 w-4 mr-1 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Remove
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 )}
-                {loan.demographics && (
-                  <DemographicsCard loan={loan} />
-                )}
-                {loan.militaryService && (
-                  <MilitaryServiceCard loan={loan} formatDate={formatDate} />
-                )}
-                <DocumentsCard 
-                  documents={loan.documents} 
-                  formatDate={formatDate} 
-                  handleRemoveDocument={handleRemoveDocument} 
-                />
               </div>
             ) : (
               <div className="bg-white shadow rounded-lg p-6 text-center">
@@ -251,4 +296,4 @@ const LoanDetails = () => {
   );
 };
 
-export default LoanDetails;
+export default LoanDetailsPage;

@@ -300,15 +300,24 @@ class LoanService {
       expenses: Array.isArray(loanData.data.expenses) ? loanData.data.expenses : [],
       
       // Additional Information
-      propertiesOwned: loanData.data.propertiesOwned || [],
+      propertiesOwned: loanData.data.propertiesOwned || {},
       militaryService: {
-        hasServed: loanData.data.militaryService?.isMilitary || false,
-        currentlyServing: loanData.data.militaryService?.serviceStatus === 'currentlyServing',
-        isRetired: loanData.data.militaryService?.serviceStatus === 'retired',
-        isNonActivated: loanData.data.militaryService?.serviceStatus === 'nonActivated',
-        isSurvivingSpouse: loanData.data.militaryService?.serviceStatus === 'survivingSpouse',
-        expirationDate: loanData.data.militaryService?.dateOfService
-          ? new Date(loanData.data.militaryService.dateOfService).toISOString().split('T')[0]
+        hasServed: loanData.data.militaryService?.hasServed || false,
+        currentlyServing: loanData.data.militaryService?.currentlyServing || false,
+        isRetired: loanData.data.militaryService?.isRetired || false,
+        isNonActivated: loanData.data.militaryService?.isNonActivated || false,
+        isSurvivingSpouse: loanData.data.militaryService?.isSurvivingSpouse || false,
+        serviceBranch: loanData.data.militaryService?.serviceBranch || '',
+        serviceType: loanData.data.militaryService?.serviceType || '',
+        yearsOfService: loanData.data.militaryService?.yearsOfService || 0,
+        dischargeType: loanData.data.militaryService?.dischargeType || '',
+        dischargeDate: loanData.data.militaryService?.dischargeDate
+          ? new Date(loanData.data.militaryService.dischargeDate).toISOString().split('T')[0]
+          : '',
+        expirationDate: loanData.data.militaryService?.expirationDate
+          ? (typeof loanData.data.militaryService.expirationDate === 'string'
+              ? loanData.data.militaryService.expirationDate
+              : new Date(loanData.data.militaryService.expirationDate).toISOString().split('T')[0])
           : ''
       },
       
@@ -363,6 +372,7 @@ class LoanService {
     try {
       const response = await ApiService.get('/api/v1/borrower/loans', { params: filters });
       
+      console.log('Get loans response: from service ', response.data);
       return {
         success: true,
         data: response.data

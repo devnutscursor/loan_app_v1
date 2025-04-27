@@ -347,22 +347,20 @@ exports.createLoan = async (req, res, next) => {
       }
     }
     
+    console.log('militaryService', militaryService);
     if (militaryService) {
       newLoan.militaryService = {
-        isMilitary: militaryService.hasServed,
-        serviceStatus: militaryService.hasServed
-          ? (militaryService.currentlyServing
-              ? 'currentlyServing'
-              : militaryService.isRetired
-                ? 'retired'
-                : militaryService.isNonActivated
-                  ? 'nonActivated'
-                  : ''
-              )
-          : '',
-        dateOfService: militaryService.expirationDate
-          ? new Date(militaryService.expirationDate)
-          : null
+        hasServed: militaryService.hasServed || false,
+        currentlyServing: militaryService.currentlyServing || false,
+        isRetired: militaryService.isRetired || false,
+        isNonActivated: militaryService.isNonActivated || false,
+        isSurvivingSpouse: militaryService.isSurvivingSpouse || false,
+        serviceBranch: militaryService.serviceBranch || '',
+        serviceType: militaryService.serviceType || '',
+        yearsOfService: militaryService.yearsOfService || 0,
+        dischargeType: militaryService.dischargeType || '',
+        dischargeDate: militaryService.dischargeDate ? new Date(militaryService.dischargeDate) : null,
+        expirationDate: militaryService.expirationDate || ''
       };
     }
     

@@ -389,9 +389,17 @@ const propertyOwnedSchema = new mongoose.Schema({
 });
 
 const militaryServiceSchema = new mongoose.Schema({
-  isMilitary: Boolean,
-  serviceStatus: String,
-  dateOfService: Date
+  hasServed: { type: Boolean, default: false },
+  currentlyServing: { type: Boolean, default: false },
+  isRetired: { type: Boolean, default: false },
+  isNonActivated: { type: Boolean, default: false },
+  isSurvivingSpouse: { type: Boolean, default: false },
+  serviceBranch: { type: String, default: '' },
+  serviceType: { type: String, default: '' },
+  yearsOfService: { type: Number, default: 0 },
+  dischargeType: { type: String, default: '' },
+  dischargeDate: { type: Date },
+  expirationDate: { type: String, default: '' }
 });
 
 const declarationsSchema = new mongoose.Schema({

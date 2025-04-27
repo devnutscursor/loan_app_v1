@@ -25,84 +25,91 @@ const DocumentManager = ({ loanId, userRole = 'borrower' }) => {
   // State for refresh trigger
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Document categories available for upload
+  // Document categories available for upload - must match backend enum values
   const documentCategories = [
-    { value: 'identification', label: 'Identification Documents' },
-    { value: 'income', label: 'Income Verification' },
-    { value: 'property', label: 'Property Documents' },
-    { value: 'bank', label: 'Bank Statements' },
-    { value: 'tax', label: 'Tax Returns' },
-    { value: 'insurance', label: 'Insurance Documents' },
-    { value: 'other', label: 'Other' }
+    { value: 'Identity', label: 'Identification Documents' },
+    { value: 'Income', label: 'Income Verification' },
+    { value: 'Assets', label: 'Asset Documents' },
+    { value: 'Credit', label: 'Credit Documents' },
+    { value: 'Property', label: 'Property Documents' },
+    { value: 'Employment', label: 'Employment Verification' },
+    { value: 'Insurance', label: 'Insurance Documents' },
+    { value: 'Disclosures', label: 'Disclosure Documents' },
+    { value: 'Legal', label: 'Legal Documents' },
+    { value: 'Other', label: 'Other Documents' }
   ];
+  
+  // Document types corresponding to categories
+  const documentTypes = {
+    Identity: ['Driver License', 'Passport', 'Social Security Card'],
+    Income: ['Pay Stub', 'W2', 'Tax Return'],
+    Assets: ['Bank Statement', 'Retirement Account Statement', 'Investment Account Statement', 'Gift Letter'],
+    Credit: ['Credit Report'],
+    Property: ['Purchase Agreement', 'Property Appraisal', 'Title Report'],
+    Insurance: ['Insurance Declaration'],
+    Disclosures: ['Loan Estimate', 'Closing Disclosure'],
+    Employment: ['Employment Verification', 'Offer Letter'],
+    Legal: ['Contract', 'Agreement'],
+    Other: ['Other']
+  };
 
   // Fetch documents on component mount or when refreshTrigger changes
   useEffect(() => {
     const fetchDocuments = async () => {
       setIsLoading(true);
       try {
-        let response;
+        console.log('Fetching real documents from API');
         
+        // Get documents based on whether a loan is selected or not
+        let response;
         if (loanId) {
-          // Fetch documents for a specific loan
+          // Get documents for the specific loan
           response = await DocumentService.getLoanDocuments(loanId);
+          console.log('Fetched loan documents:', response);
         } else {
-          // Fetch all documents for the current user
+          // Get all user documents
           response = await DocumentService.getUserDocuments();
+          console.log('Fetched user documents:', response);
         }
         
         if (response.success) {
-          // Format documents for display
-          const formattedDocs = response.data.map(doc => ({
-            id: doc._id,
-            name: doc.fileName,
-            description: doc.description || '',
-            category: doc.type,
-            status: doc.status,
-            notes: doc.notes,
-            uploadedAt: new Date(doc.createdAt),
-            size: formatFileSize(doc.fileSize),
-            url: doc.fileUrl,
-            metadata: doc.metadata || {}
-          }));
+          // Handle the nested structure - documents are in response.data.data
+          const documentsArray = response.data.data || [];
+          console.log('Documents array:', documentsArray);
           
-          setDocuments(formattedDocs);
+          if (Array.isArray(documentsArray) && documentsArray.length > 0) {
+            // Format the documents for display
+            const formattedDocuments = documentsArray.map(doc => ({
+              id: doc._id,
+              name: doc.name,
+              description: doc.description || '',
+              category: doc.category,
+              status: doc.status,
+              uploadedAt: new Date(doc.createdAt || Date.now()),
+              size: formatFileSize(doc.size) || 'Unknown',
+              url: `/api/v1/documents/${doc._id}/download`,
+              originalFilename: doc.originalFilename
+            }));
+            
+            console.log('Formatted documents:', formattedDocuments);
+            setDocuments(formattedDocuments);
+          } else {
+            // If no documents found
+            console.log('No documents found in the response');
+            setDocuments([]);
+          }
         } else {
-          toast.error('Failed to load documents');
+          // If API error, show empty state
+          console.log('API error:', response.message);
+          setDocuments([]);
+          toast.error(response.message || 'Failed to fetch documents');
         }
       } catch (error) {
-        console.error('Error fetching documents:', error);
-        toast.error('Failed to load documents. Please try again later.');
+        console.error('Error handling documents:', error);
+        toast.error('Failed to load documents. Using sample data instead.');
         
-        // In development environment, use sample data as fallback
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('Using sample document data due to API error');
-          
-          const sampleDocuments = [
-            {
-              id: 'sample-1',
-              name: 'passport.pdf',
-              description: 'Passport for identification',
-              category: 'identification',
-              status: 'approved',
-              uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-              size: '2.3 MB',
-              url: '/sample-files/passport.pdf'
-            },
-            {
-              id: 'sample-2',
-              name: 'pay-stub-march-2023.pdf',
-              description: 'Pay stub for March 2023',
-              category: 'income',
-              status: 'pending',
-              uploadedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-              size: '1.8 MB',
-              url: '/sample-files/pay-stub.pdf'
-            }
-          ];
-          
-          setDocuments(sampleDocuments);
-        }
+        // Fallback to empty state on critical error
+        setDocuments([]);
       } finally {
         setIsLoading(false);
       }
@@ -122,16 +129,61 @@ const DocumentManager = ({ loanId, userRole = 'borrower' }) => {
   }, [loanId, refreshTrigger]);
 
   // Handle document upload
-  const handleUpload = async (documentData) => {
+  const handleUpload = async (formData) => {
     try {
+      // Extract the file, category and description from the FormData
+      const files = formData.getAll('files');
+      const file = files[0]; // Get the first file
+      const category = formData.get('category');
+      const description = formData.get('description');
+      
+      if (!file || !category) {
+        throw new Error('File and category are required');
+      }
+      
+      // Get a valid document type for the selected category
+      const validCategory = documentCategories.find(c => c.value === category)?.value || 'Other';
+      
+      // Select an appropriate document type based on the category and filename
+      let documentType = 'Other'; // Default
+      
+      if (documentTypes[validCategory] && documentTypes[validCategory].length > 0) {
+        // For simplicity, just use the first available document type for this category
+        documentType = documentTypes[validCategory][0];
+        
+        // Try to guess a more appropriate document type based on filename (optional)
+        const fileName = file.name.toLowerCase();
+        if (fileName.includes('passport')) {
+          documentType = 'Passport';
+        } else if (fileName.includes('license')) {
+          documentType = 'Driver License';
+        } else if (fileName.includes('bank') || fileName.includes('statement')) {
+          documentType = 'Bank Statement';
+        } else if (fileName.includes('tax') || fileName.includes('return')) {
+          documentType = 'Tax Return';
+        } else if (fileName.includes('pay') || fileName.includes('stub')) {
+          documentType = 'Pay Stub';
+        }
+        
+        // Ensure the selected document type is valid for the category
+        if (!documentTypes[validCategory].includes(documentType)) {
+          documentType = documentTypes[validCategory][0];
+        }
+      }
+      
+      console.log(`Using category: ${validCategory}, document type: ${documentType}`);
+      
+      // Pass the properly structured data to DocumentService
       const response = await DocumentService.uploadDocument(
         {
-          type: documentData.category,
-          description: documentData.description,
-          tags: documentData.tags || []
+          name: file.name,
+          type: documentType,  // Use a valid document type
+          category: validCategory, // Use a valid category from the enum
+          description: description || '',
+          tags: []
         },
         loanId,
-        documentData.file
+        file
       );
       
       if (response.success) {

@@ -5,6 +5,7 @@ const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs');
+const User = require('../models/user.model');
 
 /**
  * Upload a document
@@ -493,6 +494,390 @@ exports.downloadDocument = async (req, res, next) => {
     
     // Send file
     res.download(filePath, document.originalFilename);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get documents for the current user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getUserDocuments = async (req, res, next) => {
+  try {
+    // Build filter based on the current user
+    const filter = {};
+    
+    if (req.user.role === 'borrower') {
+      // For borrowers, find their associated borrower profile
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
+      filter.borrower = borrower._id;
+    } else if (req.user.role === 'lender') {
+      // For lenders, show documents from loans they manage
+      // This would require additional logic based on your system's design
+      // For now, we'll just return documents where they are the uploader
+      filter.uploadedBy = req.user._id;
+    } else if (req.user.role === 'admin') {
+      // Admins can see all documents, so no filter needed
+    } else {
+      // Unknown role type
+      return next(new ApiError('Unauthorized access', 403));
+    }
+    
+    // Implement pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Apply additional filters from query parameters
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+    
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { description: { $regex: req.query.search, $options: 'i' } },
+        { originalFilename: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    
+    // Get documents with pagination
+    const documents = await Document.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('uploadedBy', 'name email')
+      .populate('loan', 'loanNumber status')
+      .populate('borrower', 'firstName lastName');
+    
+    // Get total count for pagination
+    const total = await Document.countDocuments(filter);
+    
+    res.status(200).json({
+      status: 'success',
+      results: documents.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: documents
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get documents for a specific loan
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanDocuments = async (req, res, next) => {
+  try {
+    const { loanId } = req.params;
+    
+    // Check if loan exists
+    const loan = await Loan.findById(loanId);
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check permissions for borrowers
+    if (req.user.role === 'borrower') {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
+      
+      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
+        coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBorrower) {
+        return next(new ApiError('You are not authorized to view documents for this loan', 403));
+      }
+    }
+    
+    // Implement pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Build filter
+    const filter = { loan: loanId };
+    
+    // Apply additional filters from query parameters
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+    
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { description: { $regex: req.query.search, $options: 'i' } },
+        { originalFilename: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    
+    // Get documents with pagination
+    const documents = await Document.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('uploadedBy', 'name email')
+      .populate('borrower', 'firstName lastName');
+    
+    // Get total count for pagination
+    const total = await Document.countDocuments(filter);
+    
+    res.status(200).json({
+      status: 'success',
+      results: documents.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: documents
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get document requirements for a loan
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getDocumentRequirements = async (req, res, next) => {
+  try {
+    const { loanId } = req.params;
+    
+    // Check if loan exists
+    const loan = await Loan.findById(loanId);
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check permissions for borrowers
+    if (req.user.role === 'borrower') {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
+      
+      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
+        coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBorrower) {
+        return next(new ApiError('You are not authorized to view document requirements for this loan', 403));
+      }
+    }
+    
+    // Define required documents based on loan type, status, etc.
+    const requiredDocuments = [
+      {
+        id: 'identity',
+        name: 'Identity Documents',
+        description: 'Documents to verify your identity',
+        required: true,
+        examples: ['Driver\'s License', 'Passport', 'State ID']
+      },
+      {
+        id: 'income',
+        name: 'Income Verification',
+        description: 'Documents to verify your income',
+        required: true,
+        examples: ['Pay Stubs', 'W-2 Forms', 'Tax Returns']
+      },
+      {
+        id: 'assets',
+        name: 'Asset Documentation',
+        description: 'Documents to verify your assets',
+        required: true,
+        examples: ['Bank Statements', 'Investment Account Statements']
+      },
+      {
+        id: 'property',
+        name: 'Property Information',
+        description: 'Documents related to the property',
+        required: loan.loanDetails?.loanType === 'Purchase',
+        examples: ['Purchase Agreement', 'Property Listing', 'Appraisal']
+      }
+    ];
+    
+    // Get existing documents for this loan
+    const existingDocuments = await Document.find({ loan: loanId })
+      .select('category status name description')
+      .lean();
+    
+    // Combine information to show what's submitted and what's still needed
+    const requirementStatus = requiredDocuments.map(requirement => {
+      const submitted = existingDocuments.filter(doc => 
+        doc.category.toLowerCase() === requirement.id.toLowerCase()
+      );
+      
+      return {
+        ...requirement,
+        submitted: submitted.length > 0,
+        documentCount: submitted.length,
+        documents: submitted
+      };
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      data: requirementStatus
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify a document (update status, add notes)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.verifyDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    
+    // Validate input
+    if (!status) {
+      return next(new ApiError('Document status is required', 400));
+    }
+    
+    // Check valid status options
+    const validStatuses = ['Approved', 'Rejected', 'Pending Review', 'Needs Additional Information'];
+    if (!validStatuses.includes(status)) {
+      return next(new ApiError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 400));
+    }
+    
+    // Find document
+    const document = await Document.findById(id);
+    if (!document) {
+      return next(new ApiError('Document not found', 404));
+    }
+    
+    // Only lenders and admins can verify documents
+    if (!['lender', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('You are not authorized to verify documents', 403));
+    }
+    
+    // Update document status and notes
+    document.status = status;
+    document.notes = notes || document.notes;
+    document.reviewedBy = req.user._id;
+    document.reviewedAt = Date.now();
+    
+    await document.save();
+    
+    // Log the verification
+    logger.info(`Document ${id} verified with status ${status} by ${req.user.role} ${req.user._id}`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Document verified successfully',
+      data: document
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request a document from a borrower
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.requestDocument = async (req, res, next) => {
+  try {
+    const { borrowerId, loanId, documentType, description, dueDate } = req.body;
+    
+    // Validate required inputs
+    if (!borrowerId || !loanId || !documentType) {
+      return next(new ApiError('Borrower ID, loan ID, and document type are required', 400));
+    }
+    
+    // Check if borrower exists
+    const borrower = await Borrower.findById(borrowerId);
+    if (!borrower) {
+      return next(new ApiError('Borrower not found', 404));
+    }
+    
+    // Check if loan exists
+    const loan = await Loan.findById(loanId);
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check if borrower is associated with this loan
+    const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+    const isCoBorrower = loan.coBorrowers.some(coBorrower => 
+      coBorrower.toString() === borrower._id.toString()
+    );
+    
+    if (!isPrimaryBorrower && !isCoBorrower) {
+      return next(new ApiError('This borrower is not associated with the specified loan', 400));
+    }
+    
+    // Create a document request condition
+    const newCondition = {
+      title: `${documentType} Document Required`,
+      description: description || `Please upload your ${documentType} document`,
+      category: 'Document',
+      status: 'Pending',
+      assignedTo: borrower.user, // Assign to the borrower's user account
+      dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days
+    };
+    
+    // Add to loan conditions array
+    loan.conditions = loan.conditions || [];
+    loan.conditions.push(newCondition);
+    await loan.save();
+    
+    // Get the borrower's user to send notification
+    const borrowerUser = await User.findById(borrower.user);
+    
+    if (borrowerUser) {
+      // Log the request
+      logger.info(`Document request for ${documentType} created for borrower ${borrowerId} by ${req.user.role} ${req.user._id}`);
+      
+      // In a real system, you would send an email or notification here
+    }
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Document request created successfully',
+      data: {
+        condition: loan.conditions[loan.conditions.length - 1],
+        loan: {
+          _id: loan._id,
+          loanNumber: loan.loanNumber
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }
