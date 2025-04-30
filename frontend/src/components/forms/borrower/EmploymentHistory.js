@@ -17,7 +17,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
   // Sync local employers when borrower prop updates
   useEffect(() => {
     setEmployers(borrower?.employers || []);
-  }, [borrower.employers]);
+  }, [borrower?.employers]);
 
   // Handle employer field changes
   const handleEmployerChange = (index, field, value) => {
@@ -107,7 +107,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 
-      {borrower.employers && borrower.employers.map((employer, index) => (
+      {borrower?.employers && borrower?.employers?.map((employer, index) => (
         <div key={index} className="mb-8 pb-6 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-700 mb-4">Employer {index + 1}</h3>
           

@@ -83,7 +83,7 @@ const loanDetailSchema = new mongoose.Schema({
   yearAcquired: {
     type: Number,
     min: 0,
-    max: 100
+    max: 2100 // Increased to allow real year values
   },
   currentLoanBalance: {
     type: Number,
@@ -165,7 +165,7 @@ const conditionSchema = new mongoose.Schema({
   category: {
     type: String,
     enum: [
-      'Income',
+      'Document',
       'Assets',
       'Credit',
       'Property',

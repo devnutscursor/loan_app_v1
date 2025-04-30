@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/v1`;
 
 // Create axios instance with default config
 const api = axios.create({
@@ -72,22 +72,25 @@ export const borrowerService = {
   }),
   getDocuments: () => api.get('/borrower/documents'),
   deleteDocument: (id) => api.delete(`/borrower/documents/${id}`),
+  
+  // Loan Conditions (Document Requests)
+  getActiveLoanConditions: () => api.get('/borrower/loan-conditions'),
 };
 
 // Lender Services
 export const lenderService = {
   // Dashboard
-  getDashboard: () => api.get('/lender/dashboard'),
+  getDashboard: () => api.get('/lenders/dashboard'),
   
   // Applications
-  getApplications: (params) => api.get('/lender/applications', { params }),
-  getApplication: (id) => api.get(`/lender/applications/${id}`),
-  updateApplicationStatus: (id, status, notes) => 
-    api.patch(`/lender/applications/${id}/status`, { status, notes }),
+  getApplications: (params) => api.get('/loans', { params }),
+  getApplication: (id) => api.get(`/loans/${id}`),
+  updateApplicationStatus: (id, status, notes) => api.patch(`/loans/${id}/status`, { status, notes }),
   
   // Loans
-  getLoans: (params) => api.get('/lender/loans', { params }),
-  getLoan: (id) => api.get(`/lender/loans/${id}`),
+  getLoans: (params) => api.get('/loans', { params }),
+  getLoan: (id) => api.get(`/loans/${id}`),
+  updateLoan: (id, loanData) => api.put(`/borrower/loans/by-number/${loanData.loanDetails?.loanNumber || loanData.loanNumber || id}`, loanData),
   
   // Profile
   getProfile: () => api.get('/lender/profile'),
@@ -100,6 +103,26 @@ export const lenderService = {
   // Borrowers
   getBorrowers: (params) => api.get('/lender/borrowers', { params }),
   getBorrower: (id) => api.get(`/lender/borrowers/${id}`),
+  // Get loan documents
+  getLoanDocuments: (loanId) => api.get(`/documents/loan/${loanId}`),
+  
+  // Request borrower to re-upload a specific document
+  requestDocument: (loanId, docData) => {
+    console.log(`📡 Requesting document:`, { loanId, ...docData });
+    // The correct endpoint is just '/request' without the loanId in the path
+    // The loanId should be part of the request body
+    return api.post(`/documents/request`, { ...docData, loanId });
+  },
+  
+  // Approve a document - using mock function since backend endpoint is not implemented yet
+  approveDocument: (loanId, docId) => {
+    return api.put(`/documents/${docId}/approve`, { loanId });
+  },
+  
+  // Reject a document - using mock function since backend endpoint is not implemented yet
+  rejectDocument: (loanId, docId) => {
+    return api.put(`/documents/${docId}/reject`, { loanId });
+  },
 };
 
 // Admin Services

@@ -41,6 +41,10 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
       setUpdating(false);
     }
   };
+
+  useEffect(() => {
+    console.log('Application:', application);
+  }, [application]);
   
   return (
     <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -48,7 +52,7 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
         <div className="flex justify-between flex-wrap">
           <div>
             <h3 className="text-lg leading-6 font-medium text-gray-900">
-              {application.borrower.firstName} {application.borrower.lastName}
+              {application.borrowerDetails.firstName} {application.borrowerDetails.lastName}
             </h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
               Application ID: {application._id.substring(0, 8)}...
@@ -113,16 +117,16 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
                 <dl className="divide-y divide-gray-100">
                   <div className="py-2 grid grid-cols-3 gap-4">
                     <dt className="text-sm font-medium text-gray-500">Email</dt>
-                    <dd className="text-sm text-gray-900 col-span-2">{application.borrower.email}</dd>
+                    <dd className="text-sm text-gray-900 col-span-2">{application.borrowerDetails.email}</dd>
                   </div>
                   <div className="py-2 grid grid-cols-3 gap-4">
                     <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                    <dd className="text-sm text-gray-900 col-span-2">{application.borrower.phone}</dd>
+                    <dd className="text-sm text-gray-900 col-span-2">{application.borrowerDetails.phone}</dd>
                   </div>
                   <div className="py-2 grid grid-cols-3 gap-4">
                     <dt className="text-sm font-medium text-gray-500">Address</dt>
                     <dd className="text-sm text-gray-900 col-span-2">
-                      {application.borrower.address?.street}, {application.borrower.address?.city}, {application.borrower.address?.state} {application.borrower.address?.zipCode}
+                      {application.borrowerDetails.currentAddress?.streetAddress}, {application.borrowerDetails.currentAddress?.city}, {application.borrowerDetails.currentAddress?.state} {application.borrowerDetails.currentAddress?.zipCode}
                     </dd>
                   </div>
                 </dl>
@@ -263,7 +267,7 @@ const ApplicationsPage = () => {
       try {
         setLoading(true);
         const response = await lenderService.getApplications();
-        setApplications(response.data.data);
+        setApplications(response.data.data.loans);
       } catch (error) {
         console.error('Error fetching applications:', error);
         toast.error('Failed to load loan applications');

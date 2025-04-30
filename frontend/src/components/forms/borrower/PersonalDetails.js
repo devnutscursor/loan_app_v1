@@ -86,7 +86,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
 
   // Ensure dependents is initialized
   useEffect(() => {
-    if (!borrower.dependents) {
+    if (!borrower?.dependents) {
       // console.log('PersonalDetails - Initializing empty dependents array');
       // Initialize dependents as empty array if not defined
       onChange({ target: { name: 'dependents', value: [] } });
@@ -331,9 +331,9 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
       <div>
         <h3 className="text-lg font-medium text-gray-700 mb-4">Dependents</h3>
         
-        {borrower.dependents && borrower.dependents.length > 0 && (
+        {borrower?.dependents && borrower?.dependents?.length > 0 && (
           <div className="space-y-4 mb-4">
-            {borrower.dependents.map((dependent, index) => (
+            {borrower?.dependents?.map((dependent, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-md">
                 <div>
                   <label className="block text-xs uppercase font-medium text-gray-500 mb-1">

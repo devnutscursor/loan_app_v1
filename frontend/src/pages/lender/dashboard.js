@@ -139,18 +139,18 @@ const LenderDashboard = () => {
         
         // Fetch dashboard stats
         const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lender/dashboard`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
         // Fetch recent applications
         const applicationsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lender/applications?limit=5`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loans?limit=5`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
         setStats(statsResponse.data.data);
-        setRecentApplications(applicationsResponse.data.data.applications);
+        setRecentApplications(applicationsResponse.data.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast.error('Failed to load dashboard data');

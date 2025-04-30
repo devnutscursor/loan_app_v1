@@ -802,6 +802,8 @@ exports.updateLoanByNumber = async (req, res, next) => {
         // add any other fields you need
       ];
       const updateData = req.body;
+
+      console.log("updateData", updateData);
       // const updateData = {};
       // Object.keys(req.body).forEach(key => {
       //   if (allowedFields.includes(key)) {
@@ -831,18 +833,21 @@ exports.updateLoanByNumber = async (req, res, next) => {
     
     // Lenders and admins can update more fields
     if (req.user.role === 'lender' || req.user.role === 'admin') {
-      const allowedFields = [
-        'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
-        'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
-        'completionPercentage', 'assignedLoanOfficer'
-      ];
+      // const allowedFields = [
+      //   'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
+      //   'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
+      //   'completionPercentage', 'assignedLoanOfficer'
+      // ];
       
-      const updateData = {};
-      Object.keys(req.body).forEach(key => {
-        if (allowedFields.includes(key)) {
-          updateData[key] = req.body[key];
-        }
-      });
+      // const updateData = {};
+      // Object.keys(req.body).forEach(key => {
+      //   if (allowedFields.includes(key)) {
+      //     updateData[key] = req.body[key];
+      //   }
+      // });
+
+      const updateData = req.body;
+      console.log("updateData", updateData);
       
       // Update the loan
       const updatedLoan = await Loan.findOneAndUpdate(

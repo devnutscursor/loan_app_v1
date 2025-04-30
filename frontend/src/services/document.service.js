@@ -25,8 +25,8 @@ class DocumentService {
       
       // Map fields to what the backend expects
       formData.append('name', documentData.name || file.name); // Required by backend
-      formData.append('category', documentData.category || documentData.type); // Required by backend
-      formData.append('documentType', documentData.type); // Optional field for document type
+      formData.append('category', documentData.category); // Required by backend
+      formData.append('documentType', documentData.documentType); // Document type field
       formData.append('description', documentData.description || '');
       
       if (loanId) {
@@ -42,8 +42,8 @@ class DocumentService {
       // Log what we're sending for debugging
       console.log('Document upload data:', {
         name: documentData.name || file.name,
-        category: documentData.category || documentData.type,
-        documentType: documentData.type,
+        category: documentData.category,
+        documentType: documentData.documentType,
         loanId
       });
       

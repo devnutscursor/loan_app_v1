@@ -640,3 +640,63 @@ exports.getRecentDraftLoans = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get loan conditions (document requests) for the borrower
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanConditions = async (req, res, next) => {
+  try {
+    // Verify user is a borrower
+    if (req.user.role !== 'borrower') {
+      return next(new ApiError('You are not authorized to access this resource', 403));
+    }
+    
+    // Get borrower profile
+    const borrower = await Borrower.findOne({ user: req.user._id });
+    
+    if (!borrower) {
+      return next(new ApiError('Borrower profile not found', 404));
+    }
+    
+    // Find loans associated with this borrower (either as primary or co-borrower)
+    const loans = await Loan.find({
+      $or: [
+        { primaryBorrower: borrower._id },
+        { coBorrowers: borrower._id }
+      ]
+    });
+    
+    // Extract conditions from all loans
+    const allConditions = [];
+    loans.forEach(loan => {
+      if (loan.conditions && loan.conditions.length > 0) {
+        loan.conditions.forEach(condition => {
+          // Only include conditions assigned to this user
+          if (condition.assignedTo && condition.assignedTo.toString() === req.user._id.toString()) {
+            allConditions.push({
+              ...condition.toObject(),
+              loanNumber: loan.loanNumber,
+              loanId: loan._id
+            });
+          }
+        });
+      }
+    });
+    
+    // Get document-related conditions with 'Pending' status
+    const documentRequests = allConditions.filter(
+      condition => condition.category === 'Document' && condition.status === 'Pending'
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: documentRequests
+    });
+  } catch (error) {
+    logger.error(`Error fetching loan conditions: ${error.message}`);
+    next(error);
+  }
+};

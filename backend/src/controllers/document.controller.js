@@ -852,6 +852,9 @@ exports.requestDocument = async (req, res, next) => {
       dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days
     };
     
+    console.log('Loan:', loan);
+    console.log('New Condition:', newCondition);
+    
     // Add to loan conditions array
     loan.conditions = loan.conditions || [];
     loan.conditions.push(newCondition);
@@ -879,6 +882,139 @@ exports.requestDocument = async (req, res, next) => {
       }
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Approve a document
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.approveDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { loanId, notes } = req.body;
+    
+    console.log('Loan ID:', loanId);
+    // Log the incoming request
+    logger.info(`Document approval request received for document ID: ${id} by user: ${req.user._id}`);
+    
+    // Validate required inputs
+    if (!id) {
+      return next(new ApiError('Document ID is required', 400));
+    }
+    
+    // Find document
+    const document = await Document.findById(id);
+    if (!document) {
+      return next(new ApiError('Document not found', 404));
+    }
+    
+    // Check if loan exists if loanId is provided
+    if (loanId) {
+      const loan = await Loan.findById(loanId);
+      if (!loan) {
+        return next(new ApiError('Loan not found', 404));
+      }
+    }
+    
+    // Add detailed debugging for authorization
+    console.log('🔐 Authorization check:');
+    console.log('👤 User:', req.user); 
+    console.log('🔑 User role:', req.user.role);
+    console.log('✅ Allowed roles:', ['lender', 'admin']);
+    console.log('🔍 Role check result:', ['lender', 'admin'].includes(req.user.role));
+    
+    // Only lenders and admins can approve documents
+    if (!['lender', 'admin'].includes(req.user.role)) {
+      console.log('❌ Authorization failed: User role does not match required roles');
+      return next(new ApiError('You are not authorized to approve documents', 403));
+    }
+    
+    console.log('✅ Authorization passed')
+    
+    console.log('Document:  ', document);
+    // Update document status
+    document.status = 'Approved';
+    document.notes = notes || document.notes;
+    document.reviewedBy = req.user._id;
+    document.reviewedAt = Date.now();
+    
+    await document.save();
+    
+    // Log the approval
+    logger.info(`Document ${id} approved by ${req.user.role} ${req.user._id}`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Document approved successfully',
+      data: document
+    });
+  } catch (error) {
+    logger.error(`Error approving document: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Reject a document
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.rejectDocument = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { loanId, notes, reason } = req.body;
+    
+    // Log the incoming request
+    logger.info(`Document rejection request received for document ID: ${id} by user: ${req.user._id}`);
+    
+    // Validate required inputs
+    if (!id) {
+      return next(new ApiError('Document ID is required', 400));
+    }
+    
+    // Find document
+    const document = await Document.findById(id);
+    if (!document) {
+      return next(new ApiError('Document not found', 404));
+    }
+    
+    // Check if loan exists if loanId is provided
+    if (loanId) {
+      const loan = await Loan.findById(loanId);
+      if (!loan) {
+        return next(new ApiError('Loan not found', 404));
+      }
+    }
+    
+    // Only lenders and admins can reject documents
+    if (!['lender', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('You are not authorized to reject documents', 403));
+    }
+    
+    // Update document status
+    document.status = 'Rejected';
+    document.notes = notes || document.notes;
+    document.rejectionReason = reason || 'Document rejected';
+    document.reviewedBy = req.user._id;
+    document.reviewedAt = Date.now();
+    
+    await document.save();
+    
+    // Log the rejection
+    logger.info(`Document ${id} rejected by ${req.user.role} ${req.user._id}`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Document rejected successfully',
+      data: document
+    });
+  } catch (error) {
+    logger.error(`Error rejecting document: ${error.message}`);
     next(error);
   }
 };

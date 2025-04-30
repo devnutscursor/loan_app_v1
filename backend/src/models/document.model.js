@@ -82,7 +82,7 @@ const documentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending Review', 'Accepted', 'Rejected', 'Needs Correction'],
+    enum: ['Pending Review', 'Approved', 'Rejected', 'Needs Correction'],
     default: 'Pending Review'
   },
   reviewedBy: {

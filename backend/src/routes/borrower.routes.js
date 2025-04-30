@@ -19,6 +19,9 @@ router.get('/loans', borrowerController.getBorrowerLoans);
 router.get('/loans/draft/recent', borrowerController.getRecentDraftLoans);
 router.get('/activities', borrowerController.getBorrowerActivities);
 
+// Document & condition routes
+router.get('/loan-conditions', borrowerController.getLoanConditions);
+
 // Loan draft routes (these use the loan controller)
 router.post('/loans/draft', loanController.saveDraft);
 router.get('/loans/draft/:id', loanController.getDraft);

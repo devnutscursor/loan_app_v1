@@ -17,13 +17,13 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
   const [localProperties, setLocalProperties] = useState(propertyOwned.properties || []);
   const [ownsProperty, setOwnsProperty] = useState(propertyOwned.ownsProperty ?? false); // Use nullish coalescing for clarity
 
-  useEffect(() => {
-    console.log('propertyOwned from PropertyOwned is ', propertyOwned);
-  }, [propertyOwned]);
+  // useEffect(() => {
+  //   console.log('propertyOwned from PropertyOwned is ', propertyOwned);
+  // }, [propertyOwned]);
 
   // Update local state when props change
   useEffect(() => {
-    console.log('propertyOwned.ownsProperty is ', propertyOwned.ownsProperty);
+    // console.log('propertyOwned.ownsProperty is ', propertyOwned.ownsProperty);
     setLocalProperties(propertyOwned.properties || []);
     setOwnsProperty(propertyOwned.ownsProperty ?? false);
   }, [propertyOwned]);

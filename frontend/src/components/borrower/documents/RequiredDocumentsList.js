@@ -8,7 +8,7 @@ import { DocumentService } from '../../../services';
  * Displays a checklist of required documents for a loan application
  * with status indicators and upload buttons.
  */
-const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
+const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingDocId, setUploadingDocId] = useState(null);
@@ -82,6 +82,52 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
   ];
   
   // Fetch required documents and their statuses from the API
+  // Effect to handle the selected document request
+  useEffect(() => {
+    if (selectedRequest && requirements.length > 0) {
+      let foundMatchingRequirement = false;
+      
+      // Find the requirement that matches the selected document request
+      const updatedReqs = requirements.map(req => {
+        if (req.category === selectedRequest.category && 
+            req.documentType === selectedRequest.documentType) {
+          foundMatchingRequirement = true;
+          // If document was previously submitted, move it back to required state
+          return {
+            ...req,
+            isHighlighted: true,
+            isSubmitted: false, // Reset submission status for re-upload
+            status: 'Requested', // Mark as requested
+            // Update title and description if provided in the request
+            title: selectedRequest.title || req.title,
+            description: selectedRequest.description || req.description
+          };
+        }
+        return {
+          ...req,
+          isHighlighted: false
+        };
+      });
+      
+      // If no matching requirement was found, add it as a new requirement
+      if (!foundMatchingRequirement) {
+        updatedReqs.push({
+          id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
+          title: selectedRequest.title,
+          description: selectedRequest.description,
+          category: selectedRequest.category,
+          documentType: selectedRequest.documentType,
+          isHighlighted: true,
+          isSubmitted: false,
+          status: 'Requested',
+          required: true
+        });
+      }
+      
+      setRequirements(updatedReqs);
+    }
+  }, [selectedRequest]);
+
   useEffect(() => {
     const fetchRequirements = async () => {
       setLoading(true);
@@ -120,26 +166,56 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
     
     // Also fetch any existing documents for this loan to check status
     const fetchExistingDocuments = async () => {
-      if (!loanId) return;
-      
       try {
-        const response = await DocumentService.getLoanDocuments(loanId);
-        
-        if (response.success && response.data && response.data.data) {
-          const existingDocs = response.data.data;
-          console.log('Existing documents:', existingDocs);
+        if (loanId) {
+          // Use the getLoanDocuments method to get documents for this loan
+          const response = await DocumentService.getLoanDocuments(loanId);
           
-          // Log each document to help with debugging
-          existingDocs.forEach(doc => {
-            console.log(`Document: ${doc.name}, Type: ${doc.documentType}, Category: ${doc.category}`);
-          });
+          console.log('Existing documents response:', response);
           
-          // Update requirements with status based on existing documents
-          const updatedReqs = mapRequirementsWithStatus(standardRequirements, existingDocs);
-          setRequirements(updatedReqs);
+          let documents = [];
+          
+          // Check if we have valid data and extract the documents array
+          if (response.success) {
+            if (response.data && response.data.data) {
+              // If the API returns a nested data structure
+              documents = response.data.data;
+            } else if (Array.isArray(response.data)) {
+              // If the API returns an array directly
+              documents = response.data;
+            }
+            
+            console.log('Processed documents array:', documents);
+            
+            // If we have a selected request, check if it corresponds to a document that needs to be removed
+            if (selectedRequest) {
+              // Filter out documents that match the selected request - they should be re-uploaded
+              const filteredDocuments = documents.filter(doc => 
+                !(doc.category === selectedRequest.category && 
+                  doc.documentType === selectedRequest.documentType));
+                
+              console.log('Filtered out requested document for re-upload', 
+                documents.length - filteredDocuments.length, 'documents removed');
+              
+              const updatedReqs = mapRequirementsWithStatus(standardRequirements, filteredDocuments);
+              setRequirements(updatedReqs);
+            } else {
+              // Use the standard requirements as the base and update with document statuses
+              const updatedReqs = mapRequirementsWithStatus(standardRequirements, documents);
+              setRequirements(updatedReqs);
+            }
+          } else {
+            console.warn('API returned unsuccessful response:', response);
+            // Just use standard requirements if API call failed
+            setRequirements(mapRequirementsWithStatus(standardRequirements, []));
+          }
         }
       } catch (error) {
         console.error('Error fetching existing documents:', error);
+        // Just use standard requirements without status updates
+        setRequirements(mapRequirementsWithStatus(standardRequirements, []));
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -149,30 +225,54 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
   
   // Map requirements with status based on existing documents
   const mapRequirementsWithStatus = (requirements, existingDocs) => {
+    console.log('Mapping requirements with existing docs:', { requirements, existingDocs });
+    
     return requirements.map(req => {
-      // First try to find an exact title match (most specific)
-      let matchingDoc = existingDocs.find(doc => 
-        doc.name && doc.name.toLowerCase().includes(req.title.toLowerCase())
-      );
+      let matchingDoc = null;
       
-      // If no title match, try document type + category (more specific match)
-      if (!matchingDoc) {
+      // Ensure existingDocs is an array before processing
+      if (Array.isArray(existingDocs) && existingDocs.length > 0) {
+        // First try document type + category (most specific match)
         matchingDoc = existingDocs.find(doc => 
-          doc.documentType === req.documentType && doc.category === req.category
+          doc.documentType === req.documentType && 
+          doc.category === req.category
         );
+        
+        if (matchingDoc) {
+          console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
+        }
+        
+        // If no match, try title match
+        if (!matchingDoc) {
+          matchingDoc = existingDocs.find(doc => 
+            doc.name && req.title && doc.name.toLowerCase().includes(req.title.toLowerCase())
+          );
+          
+          if (matchingDoc) {
+            console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
+          }
+        }
+        
+        // Last resort - just check the document type
+        if (!matchingDoc && req.documentType !== 'Other') {
+          matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
+          
+          if (matchingDoc) {
+            console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
+          }
+        }
       }
       
-      // Last resort - just check the document type if we have one
-      if (!matchingDoc && req.documentType !== 'Other') {
-        matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
-      }
-      
-      return {
+      // Create the updated requirement with status information
+      const updatedReq = {
         ...req,
         status: matchingDoc ? matchingDoc.status : 'Not Submitted',
         documentId: matchingDoc ? matchingDoc._id : null,
-        isSubmitted: !!matchingDoc
+        isSubmitted: !!matchingDoc,
+        uploadedDate: matchingDoc ? new Date(matchingDoc.createdAt || Date.now()).toLocaleDateString() : null
       };
+      
+      return updatedReq;
     });
   };
   
@@ -185,11 +285,13 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
     try {
       // Create document data
       const documentData = {
-        name: file.name,
-        type: requirement.documentType,
+        name: requirement.title || file.name, // Use the requirement title for better matching
+        documentType: requirement.documentType,
         category: requirement.category,
         description: requirement.description
       };
+      
+      console.log('Uploading document with data:', documentData);
       
       // Upload the document
       const response = await DocumentService.uploadDocument(documentData, loanId, file);
@@ -197,14 +299,25 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
       if (response.success) {
         toast.success(`${requirement.title} document uploaded successfully`);
         
-        // Update the requirement status
+        // Update the requirement status locally
         setRequirements(prevReqs => 
           prevReqs.map(req => 
             req.id === requirement.id 
-              ? { ...req, status: 'Pending Review', isSubmitted: true, documentId: response.data._id } 
+              ? { 
+                  ...req, 
+                  status: 'Pending Review', 
+                  isSubmitted: true, 
+                  documentId: response.data._id,
+                  uploadedDate: new Date().toLocaleDateString()
+                } 
               : req
           )
         );
+        
+        // Refresh the documents list to get updated status from server
+        setTimeout(() => {
+          fetchExistingDocuments();
+        }, 1000);
         
         // Notify parent component
         if (onDocumentUploaded) {
@@ -269,9 +382,17 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
             </div>
             
             <div className="mt-2 border rounded-lg overflow-hidden">
-              <ul className="divide-y divide-gray-200">
-                {requirements.filter(req => !req.isSubmitted).map((req) => (
-                  <li key={req.id} className="hover:bg-gray-50 transition-colors duration-150">
+              <ul role="list" className="divide-y divide-gray-200">
+                {/* If there's a selected request, show it first and filter the rest */}
+                {requirements.filter(req => !req.isSubmitted)
+                  .sort((a, b) => {
+                    // Sort highlighted items to the top
+                    if (a.isHighlighted && !b.isHighlighted) return -1;
+                    if (!a.isHighlighted && b.isHighlighted) return 1;
+                    return 0;
+                  })
+                  .map((req) => (
+                  <li key={req.id} className={`py-3 ${req.isHighlighted ? 'bg-yellow-50 -mx-4 px-4 rounded-md border-l-4 border-yellow-400' : ''} hover:bg-gray-50 transition-colors duration-150`}>
                     <div className="p-4">
                       <div className="flex items-start">
                         <div className="flex-shrink-0 mt-1">
@@ -298,6 +419,14 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded }) => {
                             <input
                               id={`file-upload-${req.id}`}
                               name={`file-upload-${req.id}`}
+                              type="file"
+                              className="sr-only"
+                              onChange={(e) => handleFileUpload(e, req)}
+                              disabled={uploadingDocId !== null}
+                            />
+                            {/* Hidden file input specifically for document requests by category/type */}
+                            <input
+                              id={`fileInput-${req.category}-${req.documentType}`}
                               type="file"
                               className="sr-only"
                               onChange={(e) => handleFileUpload(e, req)}

@@ -5,6 +5,7 @@ import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import DocumentManager from '../../components/borrower/documents/DocumentManager';
 import RequiredDocumentsList from '../../components/borrower/documents/RequiredDocumentsList';
 import { LoanService } from '../../services';
+import { borrowerService } from '../../services/api';
 
 /**
  * Documents Component
@@ -17,6 +18,9 @@ const Documents = () => {
   const [selectedLoanId, setSelectedLoanId] = useState('');
   const [isLoadingLoans, setIsLoadingLoans] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [documentRequests, setDocumentRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [selectedDocumentRequest, setSelectedDocumentRequest] = useState(null);
 
   // Fetch user's loans on component mount
   useEffect(() => {
@@ -57,7 +61,34 @@ const Documents = () => {
     fetchLoans();
   }, []);
 
+  // Fetch document requests from loan conditions
+  useEffect(() => {
+    const fetchDocumentRequests = async () => {
+      setIsLoadingRequests(true);
+      try {
+        const response = await borrowerService.getActiveLoanConditions();
+        console.log('Document requests response:', response);
+        
+        if (response && response.data && Array.isArray(response.data.data)) {
+          // Filter for document-related conditions with 'Pending' status
+          const requests = response.data.data;
+          console.log(`Loaded ${requests.length} document requests`);
+          setDocumentRequests(requests);
+        } else {
+          console.log('No document requests found or invalid response format');
+          setDocumentRequests([]);
+        }
+      } catch (error) {
+        console.error('Error fetching document requests:', error);
+        toast.error('Failed to load document requests');
+        setDocumentRequests([]);
+      } finally {
+        setIsLoadingRequests(false);
+      }
+    };
 
+    fetchDocumentRequests();
+  }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
 
   // We no longer need this handler as we're using onClick directly
   // Keep the function to avoid breaking any other code references
@@ -150,11 +181,89 @@ const Documents = () => {
               </div>
             </div>
             
+            {/* Document Requests from Lender */}
+            {documentRequests.length > 0 && (
+              <div className="mb-6">
+                <div className="bg-white shadow rounded-lg overflow-hidden">
+                  <div className="border-b border-gray-200 px-6 py-4 flex items-center">
+                    <div className="flex-shrink-0 bg-yellow-100 rounded-full p-2 mr-3">
+                      <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">Document Requests from Lender</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        The following documents have been requested by your lender
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="px-6 py-4">
+                    {isLoadingRequests ? (
+                      <div className="space-y-3">
+                        <div className="animate-pulse h-16 bg-gray-100 rounded-md"></div>
+                        <div className="animate-pulse h-16 bg-gray-100 rounded-md"></div>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-200">
+                        {documentRequests.map((request, index) => (
+                          <li key={index} className="py-4">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0 bg-yellow-50 rounded-full p-2">
+                                <svg className="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="text-base font-medium text-gray-900">{request.title}</h4>
+                                    <p className="mt-1 text-sm text-gray-500">{request.description}</p>
+                                    <p className="mt-1 text-xs text-gray-500">Due: {new Date(request.dueDate).toLocaleDateString()} · Loan: {request.loanNumber}</p>
+                                  </div>
+                                  <div className="ml-4">
+                                    <button
+                                      onClick={() => {
+                                        // Set the selected loan to match this request's loan
+                                        if (request.loanId) setSelectedLoanId(request.loanId);
+                                        // Set the selected document request
+                                        setSelectedDocumentRequest({
+                                          category: request.category,
+                                          documentType: request.documentType,
+                                          title: request.title,
+                                          description: request.description,
+                                          id: request._id
+                                        });
+                                        // Open file upload dialog directly for this document
+                                        document.getElementById(`fileInput-${request.category}-${request.documentType}`)?.click();
+                                      }}
+                                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                    >
+                                      Upload Document
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Required Documents Checklist */}
-            <div className="mb-6">
+            <div className="mb-6" id="upload-section">
               <RequiredDocumentsList 
                 loanId={selectedLoanId} 
-                onDocumentUploaded={() => setRefreshTrigger(prev => prev + 1)} 
+                onDocumentUploaded={() => {
+                  setRefreshTrigger(prev => prev + 1);
+                  setSelectedDocumentRequest(null);
+                }} 
+                selectedRequest={selectedDocumentRequest}
               />
             </div>
             

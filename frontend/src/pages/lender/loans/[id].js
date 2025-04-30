@@ -1,592 +1,734 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/router';
-import { FiFileText, FiUser, FiDollarSign, FiClock, FiChevronRight, FiArrowLeft } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
-import { LoanService, DocumentService, NotificationService } from '../../../services';
+import { lenderService } from '../../../services/api';
 
-const LoanDetail = () => {
+// Form components for editing
+import PersonalDetails from '../../../components/forms/borrower/PersonalDetails';
+import ResidenceHistory from '../../../components/forms/borrower/ResidenceHistory';
+import PropertyInformation from '../../../components/forms/property/PropertyInformation';
+import LoanDetailsForm from '../../../components/forms/property/LoanDetails';
+import EmploymentHistory from '../../../components/forms/borrower/EmploymentHistory';
+import Income from '../../../components/forms/financial/Income';
+import Debts from '../../../components/forms/financial/Debts';
+import Assets from '../../../components/forms/financial/Assets';
+import PropertyOwned from '../../../components/forms/additional/PropertyOwned';
+import MilitaryService from '../../../components/forms/additional/MilitaryService';
+import Declarations from '../../../components/forms/declarations/Declarations';
+import Demographics from '../../../components/forms/declarations/Demographics';
+
+// Import document components
+import DocumentsCard from '../../../components/borrower/loan/DocumentsCard';
+import LenderDocumentRequirements from '../../../components/lender/documents/LenderDocumentRequirements';
+
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+const formatDate = (dateString) =>
+  new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+const LoanDetails = () => {
   const router = useRouter();
   const { id } = router.query;
-  
   const [loan, setLoan] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingDocuments, setLoadingDocuments] = useState(true);
-  const [statusAction, setStatusAction] = useState('');
-  const [actionData, setActionData] = useState({
-    reason: '',
-    terms: '',
-    message: '',
-    requestedItems: [],
-    amount: '',
-    fundingDate: '',
-    closingStatus: 'completed'
-  });
-  const [showActionModal, setShowActionModal] = useState(false);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('loan'); // Default active tab
+  
+  // Helper function to normalize loan data structure
+  const normalizeData = (loanData) => {
+    return {
+      borrowerDetails: loanData.borrowerDetails || {},
+      loanDetails: loanData.loanDetails || {},
+      property: loanData.property || {},
+      income: loanData.income || {},
+      assets: loanData.assets || [],
+      debts: loanData.debts || [],
+      propertiesOwned: loanData.propertiesOwned || [],
+      declarations: loanData.declarations || {},
+      demographics: loanData.demographics || {},
+      militaryService: loanData.militaryService || {},
+      ...loanData
+    };
+  }
+  
+  // Define tabs structure
+  const tabs = [
+    { id: 'loan', label: 'Loan Details', icon: '📄' },
+    { id: 'borrower', label: 'Borrower Information', icon: '👤' },
+    { id: 'property', label: 'Property Information', icon: '🏠' },
+    { id: 'financial', label: 'Financial Information', icon: '💰' },
+    { id: 'additional', label: 'Additional Information', icon: '📋' },
+    { id: 'documents', label: 'Documents', icon: '📎' },
+  ];
 
   useEffect(() => {
-    if (id) {
-      loadLoanData();
-      loadDocuments();
-    }
+    // Don't fetch until id is available
+    if (!id) return;
+
+    const fetchLoanDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        console.log('Fetching loan details for ID:', id);
+
+        const response = await lenderService.getLoan(id);
+        console.log('Loan details response:', response);
+
+        if (response && (response.data || response.data?.data)) {
+          // Extract loan data, handling different response structures
+          // Based on the API structure in memory, data is nested under response.data.data
+          const loanData = response.data?.data?.loan || response.data?.data || response.data;
+          console.log('Loan details:', loanData);
+
+          // Ensure all required properties exist with defaults
+          const normalizedData = {
+            borrowerDetails: loanData.borrowerDetails || {},
+            loanDetails: loanData.loanDetails || {},
+            property: loanData.property || {},
+            income: loanData.income || {},
+            assets: loanData.assets || [],
+            debts: loanData.debts || [],
+            propertiesOwned: loanData.propertiesOwned || [],
+            declarations: loanData.declarations || {},
+            demographics: loanData.demographics || {},
+            militaryService: loanData.militaryService || {},
+            ...loanData
+          };
+          
+          // Add console logs to inspect data
+          console.log('Normalized data structure:', normalizedData);
+          console.log('Borrower details:', normalizedData.borrowerDetails);
+          console.log('Loan details:', normalizedData.loanDetails);
+
+          setLoan(normalizedData);
+          
+          // Fetch documents separately since they are stored in a different collection
+          try {
+            const docsResponse = await lenderService.getLoanDocuments(id);
+            console.log('Documents response:', docsResponse);
+            
+            if (docsResponse && docsResponse.data) {
+              // Extract documents, handling nested structure
+              const docsData = docsResponse.data?.data || docsResponse.data;
+              setDocuments(Array.isArray(docsData) ? docsData : []);
+            }
+          } catch (docError) {
+            console.error('Error fetching loan documents:', docError);
+            // Don't fail the whole page load just because documents failed
+          }
+        } else {
+          console.warn('Failed to fetch loan details');
+          setError('Failed to load loan details');
+          toast.error('Failed to load loan details');
+        }
+      } catch (error) {
+        console.error('Error fetching loan details:', error);
+        setError('An error occurred while loading the loan details');
+        toast.error('Failed to load loan details. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLoanDetails();
   }, [id]);
 
-  const loadLoanData = async () => {
-    setLoading(true);
-    try {
-      const response = await LoanService.getLenderLoanDetails(id);
-      if (response.success) {
-        setLoan(response.data);
-      } else {
-        toast.error(response.message || 'Failed to load loan details');
-      }
-    } catch (error) {
-      console.error('Error loading loan details:', error);
-      toast.error('Error loading loan details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDocuments = async () => {
-    setLoadingDocuments(true);
-    try {
-      const response = await DocumentService.getDocumentsByLoan(id);
-      if (response.success) {
-        setDocuments(response.data);
-      } else {
-        toast.error(response.message || 'Failed to load documents');
-      }
-    } catch (error) {
-      console.error('Error loading documents:', error);
-      toast.error('Error loading documents');
-    } finally {
-      setLoadingDocuments(false);
-    }
-  };
-
-  const handleActionChange = (e) => {
-    const { name, value } = e.target;
-    setActionData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const openActionModal = (action) => {
-    setStatusAction(action);
-    setShowActionModal(true);
-  };
-
-  const closeActionModal = () => {
-    setShowActionModal(false);
-    setStatusAction('');
-    setActionData({
-      reason: '',
-      terms: '',
-      message: '',
-      requestedItems: [],
-      amount: '',
-      fundingDate: '',
-      closingStatus: 'completed'
-    });
-  };
-
-  const submitAction = async () => {
-    try {
-      let response;
-      
-      switch (statusAction) {
-        case 'approve':
-          response = await LoanService.approveLoan(id, {
-            terms: actionData.terms
-          });
-          break;
-        case 'reject':
-          response = await LoanService.rejectLoan(id, actionData.reason);
-          break;
-        case 'request_info':
-          response = await LoanService.requestAdditionalInfo(
-            id, 
-            actionData.requestedItems.split(',').map(item => item.trim()),
-            actionData.message
-          );
-          break;
-        case 'fund':
-          response = await LoanService.fundLoan(id, {
-            amount: parseFloat(actionData.amount),
-            fundingDate: actionData.fundingDate || new Date().toISOString()
-          });
-          break;
-        case 'close':
-          response = await LoanService.closeLoan(id, {
-            status: actionData.closingStatus
-          });
-          break;
-        default:
-          toast.error('Invalid action');
-          return;
-      }
-      
-      if (response.success) {
-        toast.success(response.message || 'Action completed successfully');
-        loadLoanData(); // Refresh loan data
-        
-        // Create notification for borrower
-        await NotificationService.createNotification({
-          recipient: loan.borrower._id,
-          type: 'loan_update',
-          title: `Loan ${statusAction.replace('_', ' ')}`,
-          message: getNotificationMessage(statusAction),
-          relatedItem: {
-            type: 'loan',
-            id: id
-          }
-        });
-      } else {
-        toast.error(response.message || 'Failed to complete action');
-      }
-      
-      closeActionModal();
-    } catch (error) {
-      console.error(`Error processing ${statusAction}:`, error);
-      toast.error(`Failed to ${statusAction.replace('_', ' ')} loan`);
-    }
+  const handleRemoveDocument = async (documentId) => {
+    // Document removal is only for borrowers, but we can show a message here
+    toast.info('Only borrowers can remove documents');
   };
   
-  const getNotificationMessage = (action) => {
-    switch (action) {
-      case 'approve':
-        return 'Your loan application has been approved!';
-      case 'reject':
-        return `Your loan application has been rejected. Reason: ${actionData.reason}`;
-      case 'request_info':
-        return 'Additional information is required for your loan application.';
-      case 'fund':
-        return `Your loan has been funded with $${parseFloat(actionData.amount).toLocaleString()}`;
-      case 'close':
-        return `Your loan has been closed with status: ${actionData.closingStatus}`;
-      default:
-        return 'There has been an update to your loan application.';
+  const getStatusBadgeColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
+    status = status.toLowerCase();
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'closed': return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  // Handle form field changes with better null checks
+  const handleFieldChange = (section, field, value) => {
+    console.log(`Updating ${section}.${field} with:`, value);
+    
+    setLoan(prev => {
+      // Make sure the section exists
+      const sectionData = prev[section] || {};
+      
+      return {
+        ...prev,
+        [section]: {
+          ...sectionData,
+          [field]: value
+        }
+      };
     });
   };
 
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      reviewing: 'bg-blue-100 text-blue-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      funded: 'bg-purple-100 text-purple-800',
-      closed: 'bg-gray-100 text-gray-800'
-    };
+  // Handle nested field changes
+  const handleNestedFieldChange = (section, nestedSection, field, value) => {
+    console.log(`Updating ${section}.${nestedSection}.${field} with:`, value);
     
-    return (
-      <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusMap[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
+    setLoan(prev => {
+      // Make sure the section and nested section exist
+      const sectionData = prev[section] || {};
+      const nestedSectionData = sectionData[nestedSection] || {};
+      
+      return {
+        ...prev,
+        [section]: {
+          ...sectionData,
+          [nestedSection]: {
+            ...nestedSectionData,
+            [field]: value
+          }
+        }
+      };
+    });
   };
 
-  const handleViewDocument = (documentId) => {
-    router.push(`/lender/document-verification?documentId=${documentId}&returnTo=/lender/loans/${id}`);
+  // Save all changes to the loan
+  const saveLoan = async () => {
+    try {
+      setSaving(true);
+      await lenderService.updateLoan(id, loan);
+      toast.success('Loan details saved successfully');
+    } catch (error) {
+      console.error('Error saving loan:', error);
+      toast.error('Failed to save loan details. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <ProtectedRoute allowedRoles={['lender']}>
-      <MainLayout title={`Loan Application ${id?.substring(0, 8) || ''}`}>
+      <MainLayout>
         <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-6">
-              <button
-                onClick={() => router.push('/lender/loan-management')}
-                className="flex items-center text-primary hover:text-primary-dark"
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            <div className="flex items-center mb-4">
+              <Link 
+                href="/lender/loans"
+                className="text-primary hover:text-primary-dark flex items-center mr-3"
               >
-                <FiArrowLeft className="mr-1" /> Back to Loan Applications
-              </button>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Back to Loans
+              </Link>
+              <h1 className="text-2xl font-semibold text-gray-900">Loan Application Details</h1>
             </div>
-            
+
+            <div className="bg-white shadow overflow-hidden rounded-lg mb-6">
+              <div className="flex items-center justify-between px-4 py-4 sm:px-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 bg-primary rounded-md p-2">
+                    <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 10H21M7 15H8M12 15H13M6 19H18C19.6569 19 21 17.6569 21 16V8C21 6.34315 19.6569 5 18 5H6C4.34315 5 3 6.34315 3 8V16C3 17.6569 4.34315 19 6 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h2 className="text-lg font-medium text-gray-900">
+                      Loan {loan?.loanNumber || ''}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {loan?.loanDetails?.loanType || 'Loan'}
+                    </p>
+                  </div>
+                </div>
+                {loan?.status && (
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(loan.status)}`}>
+                    {loan.status.replace(/_/g, ' ').toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+                <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               </div>
-            ) : !loan ? (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 text-center">
-                <p className="text-gray-500">Loan application not found</p>
-              </div>
-            ) : (
-              <>
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        Loan Application Details
-                      </h3>
-                      <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                        Application ID: {loan._id}
-                      </p>
-                    </div>
-                    <div>
-                      {getStatusBadge(loan.status)}
+            ) : error ? (
+              <div className="bg-red-50 p-4 rounded-md">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error loading loan details</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
                     </div>
                   </div>
-                  
-                  <div className="border-t border-gray-200">
-                    <dl>
-                      <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500 flex items-center">
-                          <FiUser className="mr-2" /> Borrower Information
-                        </dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <div className="mb-2">
-                            <strong>Name:</strong> {loan.borrower.firstName} {loan.borrower.lastName}
-                          </div>
-                          <div className="mb-2">
-                            <strong>Email:</strong> {loan.borrower.email}
-                          </div>
-                          <div>
-                            <strong>Phone:</strong> {loan.borrower.phone || 'Not provided'}
-                          </div>
-                        </dd>
-                      </div>
-                      
-                      <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500 flex items-center">
-                          <FiDollarSign className="mr-2" /> Loan Details
-                        </dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <div className="mb-2">
-                            <strong>Amount Requested:</strong> {formatCurrency(loan.loanAmount)}
-                          </div>
-                          <div className="mb-2">
-                            <strong>Loan Type:</strong> {loan.loanType.charAt(0).toUpperCase() + loan.loanType.slice(1)}
-                          </div>
-                          <div className="mb-2">
-                            <strong>Purpose:</strong> {loan.purpose.charAt(0).toUpperCase() + loan.purpose.slice(1)}
-                          </div>
-                          <div>
-                            <strong>Term:</strong> {loan.term} {loan.term === 1 ? 'month' : 'months'}
-                          </div>
-                        </dd>
-                      </div>
-                      
-                      <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500 flex items-center">
-                          <FiClock className="mr-2" /> Timeline
-                        </dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <div className="mb-2">
-                            <strong>Submitted:</strong> {formatDate(loan.createdAt)}
-                          </div>
-                          {loan.approvedAt && (
-                            <div className="mb-2">
-                              <strong>Approved:</strong> {formatDate(loan.approvedAt)}
-                            </div>
-                          )}
-                          {loan.fundedAt && (
-                            <div className="mb-2">
-                              <strong>Funded:</strong> {formatDate(loan.fundedAt)}
-                            </div>
-                          )}
-                          {loan.closedAt && (
-                            <div>
-                              <strong>Closed:</strong> {formatDate(loan.closedAt)}
-                            </div>
-                          )}
-                        </dd>
-                      </div>
-                      
-                      <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500 flex items-center">
-                          <FiFileText className="mr-2" /> Documents
-                        </dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          {loadingDocuments ? (
-                            <div className="text-center py-4">
-                              <div className="animate-spin inline-block h-6 w-6 border-t-2 border-b-2 border-primary rounded-full"></div>
-                            </div>
-                          ) : documents.length === 0 ? (
-                            <p className="text-gray-500">No documents submitted</p>
-                          ) : (
-                            <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
-                              {documents.map((doc) => (
-                                <li 
-                                  key={doc._id}
-                                  className="pl-3 pr-4 py-3 flex items-center justify-between text-sm hover:bg-gray-50 cursor-pointer"
-                                  onClick={() => handleViewDocument(doc._id)}
-                                >
-                                  <div className="w-0 flex-1 flex items-center">
-                                    <FiFileText className="flex-shrink-0 h-5 w-5 text-gray-400" />
-                                    <span className="ml-2 flex-1 w-0 truncate">
-                                      {doc.name}
-                                    </span>
-                                  </div>
-                                  <div className="ml-4 flex-shrink-0 flex items-center">
-                                    {doc.status === 'pending' && (
-                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        Needs Review
-                                      </span>
-                                    )}
-                                    {doc.status === 'approved' && (
-                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        Approved
-                                      </span>
-                                    )}
-                                    {doc.status === 'rejected' && (
-                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                        Rejected
-                                      </span>
-                                    )}
-                                    <FiChevronRight className="h-5 w-5 text-gray-400 ml-2" />
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </dd>
-                      </div>
-                      
-                      {loan.additionalNotes && (
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                          <dt className="text-sm font-medium text-gray-500">Additional Notes</dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                            {loan.additionalNotes}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
+                </div>
+              </div>
+            ) : loan ? (
+              <div className="space-y-6">
+                {/* Tabs Navigation */}
+                <div className="mb-6">
+                  <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+                      {tabs.map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`
+                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                            ${activeTab === tab.id
+                              ? 'border-primary text-primary'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                          `}
+                        >
+                          <span className="mr-2">{tab.icon}</span>
+                          {tab.label}
+                        </button>
+                      ))}
+                    </nav>
                   </div>
                 </div>
                 
-                {/* Action Buttons */}
-                <div className="bg-white shadow sm:rounded-lg mb-6">
-                  <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Take Action
-                    </h3>
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      {loan.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => openActionModal('approve')}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openActionModal('reject')}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none"
-                          >
-                            Reject
-                          </button>
-                          <button
-                            onClick={() => openActionModal('request_info')}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                          >
-                            Request Information
-                          </button>
-                        </>
-                      )}
+                <form onSubmit={(e) => { e.preventDefault(); saveLoan(); }}>                
+                  {/* Loan Details Tab */}
+                  {activeTab === 'loan' && (
+                    <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                      <div className="px-4 py-5 sm:px-6">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900">Loan Details</h3>
+                      </div>
+                      <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                        <LoanDetailsForm 
+                          loanInfo={loan.loanDetails || {}} 
+                          onChange={(field, value) => {
+                            if (typeof field === 'object' && field.target) {
+                              // Extract the actual field name by removing 'loanInfo.' prefix if present
+                              const fieldName = field.target.name.replace('loanInfo.', '');
+                              handleFieldChange('loanDetails', fieldName, field.target.value);
+                            } else {
+                              handleFieldChange('loanDetails', field, value);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Borrower Information Tab */}
+                  {activeTab === 'borrower' && (
+                    <>
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Personal Details</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <PersonalDetails 
+                            borrower={loan.borrowerDetails || {}} 
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                handleFieldChange('borrowerDetails', field.target.name, field.target.value);
+                              } else {
+                                handleFieldChange('borrowerDetails', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
                       
-                      {loan.status === 'approved' && (
-                        <button
-                          onClick={() => openActionModal('fund')}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none"
-                        >
-                          Fund Loan
-                        </button>
-                      )}
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Employment History</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <EmploymentHistory 
+                            borrower={loan.borrowerDetails} 
+                            onChange={(field, value) => {
+                              if (field === 'employers') {
+                                handleFieldChange('borrowerDetails', 'employers', value);
+                              } else if (typeof field === 'object' && field.target) {
+                                handleFieldChange('borrowerDetails', field.target.name, field.target.value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
                       
-                      {loan.status === 'funded' && (
-                        <button
-                          onClick={() => openActionModal('close')}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none"
-                        >
-                          Close Loan
-                        </button>
-                      )}
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Residence History</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <ResidenceHistory
+                            borrower={loan.borrowerDetails || {}}
+                            onChange={(field, value) => {
+                              if (field === 'addresses') {
+                                handleFieldChange('borrowerDetails', 'addresses', value);
+                              } else if (typeof field === 'object' && field.target) {
+                                handleFieldChange('borrowerDetails', field.target.name, field.target.value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Property Information Tab */}
+                  {activeTab === 'property' && (
+                    <>
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Property Information</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <PropertyInformation 
+                            propertyInfo={loan.property || {}} 
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                // Extract the actual field name by removing 'propertyInfo.' prefix if present
+                                const fieldName = field.target.name.replace('propertyInfo.', '');
+                                handleFieldChange('property', fieldName, field.target.value);
+                              } else {
+                                handleFieldChange('property', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Properties Owned</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <PropertyOwned
+                            propertyOwned={loan.propertiesOwned || []}
+                            onChange={(properties) => {
+                              setLoan(prev => ({
+                                ...prev,
+                                propertiesOwned: properties
+                              }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Financial Information Tab */}
+                  {activeTab === 'financial' && (
+                    <>
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Income Information</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <Income 
+                            income={{...loan.income || {}, otherIncome: Array.isArray(loan.income?.otherIncome) ? loan.income.otherIncome : []}} 
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                // Extract field name by removing any prefix
+                                const fieldName = field.target.name.replace('income.', '');
+                                handleFieldChange('income', fieldName, field.target.value);
+                              } else if (typeof field === 'object') {
+                                // Handle case where entire object is passed
+                                setLoan(prev => ({
+                                  ...prev,
+                                  income: field
+                                }));
+                              } else {
+                                handleFieldChange('income', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Assets</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <Assets 
+                            assets={loan.assets || []} 
+                            onChange={(assets) => {
+                              setLoan(prev => ({
+                                ...prev,
+                                assets: assets
+                              }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Debts & Liabilities</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <Debts 
+                            debts={Array.isArray(loan.debts) ? loan.debts : []}
+                            expenses={Array.isArray(loan.expenses) ? loan.expenses : []}
+                            onChange={(field, value) => {
+                              if (field === 'debts') {
+                                setLoan(prev => ({
+                                  ...prev,
+                                  debts: Array.isArray(value) ? value : []
+                                }));
+                              } else if (field === 'expenses') {
+                                setLoan(prev => ({
+                                  ...prev,
+                                  expenses: Array.isArray(value) ? value : []
+                                }));
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Additional Information Tab */}
+                  {activeTab === 'additional' && (
+                    <>
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Military Service</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <MilitaryService
+                            militaryService={loan.militaryService || {}}
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                // Extract field name, removing any 'militaryService.' prefix
+                                const fieldName = field.target.name.replace('militaryService.', '');
+                                handleFieldChange('militaryService', fieldName, field.target.value);
+                              } else if (typeof field === 'object') {
+                                // Handle case where entire object is passed
+                                setLoan(prev => ({
+                                  ...prev,
+                                  militaryService: field
+                                }));
+                              } else {
+                                handleFieldChange('militaryService', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Declarations</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <Declarations
+                            declarations={loan.declarations || {}}
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                // Extract field name, removing any 'declarations.' prefix
+                                const fieldName = field.target.name.replace('declarations.', '');
+                                handleFieldChange('declarations', fieldName, field.target.value);
+                              } else if (typeof field === 'object') {
+                                // Handle case where entire object is passed
+                                setLoan(prev => ({
+                                  ...prev,
+                                  declarations: field
+                                }));
+                              } else {
+                                handleFieldChange('declarations', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">Demographics</h3>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                          <Demographics
+                            demographics={loan.demographics || {}}
+                            borrower={loan.borrowerDetails || {}}
+                            onChange={(field, value) => {
+                              if (typeof field === 'object' && field.target) {
+                                // Extract field name, removing any 'demographics.' prefix
+                                const fieldName = field.target.name.replace('demographics.', '');
+                                handleFieldChange('demographics', fieldName, field.target.value);
+                              } else if (typeof field === 'object') {
+                                // Handle case where entire object is passed
+                                setLoan(prev => ({
+                                  ...prev,
+                                  demographics: field
+                                }));
+                              } else {
+                                handleFieldChange('demographics', field, value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Documents Tab */}
+                  {activeTab === 'documents' && (
+                    <>
+                      {/* Document Requirements Section */}
+                      <LenderDocumentRequirements
+                        loanId={id}
+                        documents={documents}
+                        refreshDocuments={() => {
+                          // Refresh the loan details to update documents
+                          console.log('=== REFRESHING LOAN DOCUMENTS ===');
+                          console.log('📡 Current loan ID:', id);
+                          console.log('📋 Current documents count:', documents?.length || 0);
+                          
+                          // Wrap in try-catch to prevent errors
+                          try {
+                            // Use the current id from props/state to fetch again
+                            if (id) {
+                              console.log('⏳ Starting data refresh operation...');
+                              setLoading(true);
+                              setError(null);
+                              
+                              // Fetch loan details and documents again
+                              console.log('🔎 Fetching loan details and documents using Promise.all');
+                              Promise.all([
+                                lenderService.getLoan(id),
+                                lenderService.getLoanDocuments(id)
+                              ])
+                              .then(([loanResponse, documentsResponse]) => {
+                                console.log('✅ Got loan details response:', loanResponse ? 'Success' : 'Failed');
+                                console.log('✅ Got documents response:', documentsResponse ? 'Success' : 'Failed');
+                                
+                                if (loanResponse && (loanResponse.data || loanResponse.data?.data)) {
+                                  // Process loan data
+                                  const loanData = loanResponse.data?.data || loanResponse.data;
+                                  console.log('📝 Processing loan data with ID:', loanData._id);
+                                  console.log('💾 Normalizing loan data...');
+                                  setLoan(normalizeData(loanData));
+                                } else {
+                                  console.warn('⚠️ No loan data found in response');
+                                }
+                                
+                                if (documentsResponse && documentsResponse.success) {
+                                  const newDocs = documentsResponse.data || [];
+                                  console.log('💾 Setting', newDocs.length, 'documents to state');
+                                  console.log('📎 Document IDs:', newDocs.map(d => d._id));
+                                  setDocuments(newDocs);
+                                } else {
+                                  console.warn('⚠️ No documents found in response');
+                                }
+                                
+                                console.log('✅ Data refresh complete');
+                              })
+                              .catch(error => {
+                                console.error('❌ Error refreshing loan details:', error);
+                                console.error('❌ Error details:', {
+                                  message: error.message,
+                                  stack: error.stack?.slice(0, 200) // Only log first part of stack
+                                });
+                                toast.error('Failed to refresh loan details');
+                              })
+                              .finally(() => {
+                                console.log('🔄 Setting loading state to false');
+                                setLoading(false);
+                                console.log('=== END OF REFRESH OPERATION ===\n');
+                              });
+                            } else {
+                              console.error('❌ Cannot refresh - no loan ID available');
+                            }
+                          } catch (error) {
+                            console.error('❌ Unexpected error during refresh operation:', error);
+                            console.error('❌ Error details:', {
+                              message: error.message,
+                              stack: error.stack?.slice(0, 200) // Only log first part of stack
+                            });
+                            setLoading(false);
+                          }
+                        }}
+                      />
+                    </>
+                  )}
+                  
+                  {/* Save Button - Always visible */}
+                  <div className="sticky bottom-0 bg-white p-4 border-t border-gray-200 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none"
+                    >
+                      {saving ? 'Saving Changes...' : 'Save All Changes'}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Lender Actions Section */}
+                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                  <div className="px-4 py-5 sm:px-6">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Lender Actions</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500">Actions you can take on this loan application</p>
+                  </div>
+                  <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => toast.info('Request document feature will be implemented soon')}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                        Request Additional Documents
+                      </button>
+                      <button
+                        onClick={() => toast.info('Update status feature will be implemented soon')}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                        Update Status
+                      </button>
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
+            ) : (
+              <div className="bg-white shadow rounded-lg p-6 text-center">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No loan found</h3>
+                <p className="mt-1 text-sm text-gray-500">This loan doesn't exist or you don't have permission to view it.</p>
+                <div className="mt-6">
+                  <Link
+                    href="/lender/loans"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  >
+                    Return to Loans
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         </div>
-        
-        {/* Action Modal */}
-        {showActionModal && (
-          <div className="fixed z-10 inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-              </div>
-              
-              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-              
-              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                      <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        {statusAction === 'approve' && 'Approve Loan'}
-                        {statusAction === 'reject' && 'Reject Loan'}
-                        {statusAction === 'request_info' && 'Request Additional Information'}
-                        {statusAction === 'fund' && 'Fund Loan'}
-                        {statusAction === 'close' && 'Close Loan'}
-                      </h3>
-                      <div className="mt-4">
-                        {statusAction === 'approve' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Terms and Conditions
-                            </label>
-                            <textarea
-                              name="terms"
-                              value={actionData.terms}
-                              onChange={handleActionChange}
-                              rows={4}
-                              className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                              placeholder="Enter loan terms and any additional conditions..."
-                            />
-                          </div>
-                        )}
-                        
-                        {statusAction === 'reject' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Reason for Rejection
-                            </label>
-                            <textarea
-                              name="reason"
-                              value={actionData.reason}
-                              onChange={handleActionChange}
-                              rows={4}
-                              className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                              placeholder="Explain why this loan application is being rejected..."
-                            />
-                          </div>
-                        )}
-                        
-                        {statusAction === 'request_info' && (
-                          <>
-                            <div className="mb-4">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Requested Items
-                              </label>
-                              <input
-                                type="text"
-                                name="requestedItems"
-                                value={actionData.requestedItems}
-                                onChange={handleActionChange}
-                                className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="e.g. bank statements, income verification (comma separated)"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Message to Borrower
-                              </label>
-                              <textarea
-                                name="message"
-                                value={actionData.message}
-                                onChange={handleActionChange}
-                                rows={4}
-                                className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="Explain what additional information is needed and why..."
-                              />
-                            </div>
-                          </>
-                        )}
-                        
-                        {statusAction === 'fund' && (
-                          <>
-                            <div className="mb-4">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Funding Amount
-                              </label>
-                              <input
-                                type="number"
-                                name="amount"
-                                value={actionData.amount}
-                                onChange={handleActionChange}
-                                className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                placeholder="Enter amount"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Funding Date
-                              </label>
-                              <input
-                                type="date"
-                                name="fundingDate"
-                                value={actionData.fundingDate}
-                                onChange={handleActionChange}
-                                className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                              />
-                            </div>
-                          </>
-                        )}
-                        
-                        {statusAction === 'close' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Closing Status
-                            </label>
-                            <select
-                              name="closingStatus"
-                              value={actionData.closingStatus}
-                              onChange={handleActionChange}
-                              className="w-full border border-gray-300 rounded-md shadow-sm p-2"
-                            >
-                              <option value="completed">Completed Successfully</option>
-                              <option value="default">Defaulted</option>
-                              <option value="pre_payment">Pre-payment</option>
-                              <option value="refinanced">Refinanced</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    onClick={submitAction}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeActionModal}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </MainLayout>
     </ProtectedRoute>
   );
 };
 
-export default LoanDetail;
+export default LoanDetails;

@@ -27,7 +27,13 @@ router.get('/requirements/:loanId', documentController.getDocumentRequirements);
 router.post('/verify/:id', authorize(['lender', 'admin']), documentController.verifyDocument);
 
 // Request a document from a borrower (lender only)
-router.post('/request', authorize(['lender', 'admin']), documentController.requestDocument);
+router.post('/request', documentController.requestDocument);
+
+// Approve a document (lender only)
+router.put('/:id/approve', documentController.approveDocument);
+
+// Reject a document (lender only)
+router.put('/:id/reject', documentController.rejectDocument);
 
 // Get a specific document
 router.get('/:id', documentController.getDocument);
