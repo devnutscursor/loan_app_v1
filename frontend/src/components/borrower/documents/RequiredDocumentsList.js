@@ -219,8 +219,8 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       }
     };
     
+    // Call fetchRequirements to initialize the document list
     fetchRequirements();
-    fetchExistingDocuments();
   }, [loanId]);
   
   // Map requirements with status based on existing documents
@@ -283,11 +283,41 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     
     setUploadingDocId(requirement.id);
     try {
+      // Ensure valid category and documentType values
+      // The document model requires specific enum values
+      const validCategories = [
+        'Identity', 'Income', 'Assets', 'Credit', 'Property', 
+        'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'
+      ];
+      
+      const validDocTypes = [
+        'Driver License', 'Passport', 'Social Security Card', 'Pay Stub', 'W2', 
+        'Tax Return', 'Bank Statement', 'Retirement Account Statement', 
+        'Investment Account Statement', 'Gift Letter', 'Credit Report', 
+        'Purchase Agreement', 'Property Appraisal', 'Title Report', 
+        'Insurance Declaration', 'Loan Estimate', 'Closing Disclosure', 
+        'Loan Application', 'Other'
+      ];
+      
+      // Use requirement's category or default to 'Other' if invalid
+      let category = requirement.category;
+      if (!validCategories.includes(category)) {
+        console.warn(`Invalid category '${category}', defaulting to 'Other'`);
+        category = 'Other';
+      }
+      
+      // Use requirement's documentType or default to 'Other' if invalid
+      let documentType = requirement.documentType;
+      if (!validDocTypes.includes(documentType)) {
+        console.warn(`Invalid documentType '${documentType}', defaulting to 'Other'`);
+        documentType = 'Other';
+      }
+      
       // Create document data
       const documentData = {
         name: requirement.title || file.name, // Use the requirement title for better matching
-        documentType: requirement.documentType,
-        category: requirement.category,
+        documentType: documentType,
+        category: category,
         description: requirement.description
       };
       
@@ -315,9 +345,10 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         );
         
         // Refresh the documents list to get updated status from server
-        setTimeout(() => {
-          fetchExistingDocuments();
-        }, 1000);
+        // setTimeout(() => {
+        //   // Reload the page requirements instead of calling fetchExistingDocuments
+        //   fetchRequirements();
+        // }, 1000);
         
         // Notify parent component
         if (onDocumentUploaded) {
