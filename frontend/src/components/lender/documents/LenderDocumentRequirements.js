@@ -288,8 +288,13 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
   };
 
   // Handle document request
-  const handleRequestDocument = async () => {
-    const { documentType, category, reason, customReason, isUpdate } = requestDetails;
+  const handleRequestDocument = async (e) => {
+    // If event is passed, prevent default form submission
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
+    const { documentType, category, reason, customReason, message, isUpdate } = requestDetails;
     
     if (!documentType || !category) {
       toast.error('Document type or category is missing');
@@ -300,6 +305,8 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     setProcessingDocId(requestId);
     
     try {
+      console.log('📝 Request details:', requestDetails);
+      
       // Determine the reason text to include in the description
       let reasonText = '';
       if (reason === 'custom' && customReason) {
@@ -315,9 +322,10 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         reasonText = reasonMap[reason] || reason.replace('_', ' ');
       }
       
-      let requestDescription = isUpdate
+      // Use the provided message if available, or generate a default one
+      let requestDescription = message || (isUpdate
         ? `Please resubmit your ${documentType} document. Reason: ${reasonText || 'Update required'}`
-        : `Please upload your ${documentType} document (${category})`;
+        : `Please upload your ${documentType} document (${category})`);
       
       let response;
       try {
@@ -331,12 +339,22 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           borrowerId: hardcodedBorrowerId,
           description: requestDescription,
           isUpdate: isUpdate,
-          reason: reason
+          reason: reason,
+          customReason: customReason
         };
         
+        console.log('📡 Sending document request data:', requestData);
         response = await lenderService.requestDocument(loanId, requestData);
       } catch (apiError) {
         console.error('API error requesting document:', apiError);
+        console.error('API error details:', {
+          message: apiError.message,
+          status: apiError.response?.status,
+          statusText: apiError.response?.statusText,
+          data: apiError.response?.data,
+          url: apiError.config?.url,
+          method: apiError.config?.method
+        });
         // Mock successful response for testing if API fails
         response = { success: true, message: 'Document requested (simulated)' };
       }
