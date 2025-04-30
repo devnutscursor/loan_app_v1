@@ -132,30 +132,75 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     const fetchRequirements = async () => {
       setLoading(true);
       try {
-        // Try to get actual requirements from the API if available
-        if (loanId) {
-          const response = await DocumentService.getDocumentRequirements(loanId);
-          
-          if (response.success && response.data) {
-            // Process real requirements from API
-            console.log('Got document requirements from API:', response.data);
-            
-            // TODO: Process actual requirements from API when implemented
-            // For now, just use our standard list
-            const updatedReqs = mapRequirementsWithStatus(standardRequirements, []);
-            setRequirements(updatedReqs);
-          } else {
-            // Fall back to standard requirements
-            const updatedReqs = mapRequirementsWithStatus(standardRequirements, []);
-            setRequirements(updatedReqs);
-          }
-        } else {
+        if (!loanId) {
           // No loan selected, show standard requirements
           setRequirements(standardRequirements);
+          setLoading(false);
+          return;
         }
+        
+        // First, get any existing documents for this loan
+        const docsResponse = await DocumentService.getLoanDocuments(loanId);
+        console.log('Existing documents response:', docsResponse);
+        
+        let existingDocuments = [];
+        
+        // Extract the documents array from the response
+        if (docsResponse.success) {
+          if (docsResponse.data && docsResponse.data.data) {
+            // If the API returns a nested data structure
+            existingDocuments = docsResponse.data.data;
+          } else if (Array.isArray(docsResponse.data)) {
+            // If the API returns an array directly
+            existingDocuments = docsResponse.data;
+          }
+          
+          console.log('Found existing documents:', existingDocuments);
+        } else {
+          console.warn('API returned unsuccessful response for documents:', docsResponse);
+        }
+        
+        // Check for document requirements from the API (future enhancement)
+        const reqResponse = await DocumentService.getDocumentRequirements(loanId);
+        let requirements = standardRequirements;
+        
+        // If API returns requirements, use them (future enhancement)
+        if (reqResponse.success && reqResponse.data && Array.isArray(reqResponse.data)) {
+          console.log('Got document requirements from API:', reqResponse.data);
+          // TODO: Use API requirements when implemented
+        }
+        
+        // If we have a selected request, filter out matching documents
+        if (selectedRequest) {
+          // Filter out documents that match the selected request - they should be re-uploaded
+          const filteredDocuments = existingDocuments.filter(doc => 
+            !(doc.category === selectedRequest.category && 
+              doc.documentType === selectedRequest.documentType));
+            
+          console.log('Filtered out requested document for re-upload', 
+            existingDocuments.length - filteredDocuments.length, 'documents removed');
+          
+          existingDocuments = filteredDocuments;
+        }
+        
+        // DEBUG - log all documents to check what's available
+        console.log('Documents to display:', {
+          count: existingDocuments.length,
+          documents: existingDocuments.map(d => ({
+            id: d._id,
+            name: d.name,
+            category: d.category,
+            documentType: d.documentType,
+            status: d.status
+          }))
+        });
+        
+        // Use the standard requirements as the base and update with document statuses
+        const updatedReqs = mapRequirementsWithStatus(requirements, existingDocuments);
+        setRequirements(updatedReqs);
       } catch (error) {
-        console.error('Error fetching document requirements:', error);
-        toast.error('Failed to load document requirements');
+        console.error('Error fetching document data:', error);
+        toast.error('Failed to load documents');
         
         // Fall back to standard requirements
         setRequirements(standardRequirements);
@@ -164,64 +209,9 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       }
     };
     
-    // Also fetch any existing documents for this loan to check status
-    const fetchExistingDocuments = async () => {
-      try {
-        if (loanId) {
-          // Use the getLoanDocuments method to get documents for this loan
-          const response = await DocumentService.getLoanDocuments(loanId);
-          
-          console.log('Existing documents response:', response);
-          
-          let documents = [];
-          
-          // Check if we have valid data and extract the documents array
-          if (response.success) {
-            if (response.data && response.data.data) {
-              // If the API returns a nested data structure
-              documents = response.data.data;
-            } else if (Array.isArray(response.data)) {
-              // If the API returns an array directly
-              documents = response.data;
-            }
-            
-            console.log('Processed documents array:', documents);
-            
-            // If we have a selected request, check if it corresponds to a document that needs to be removed
-            if (selectedRequest) {
-              // Filter out documents that match the selected request - they should be re-uploaded
-              const filteredDocuments = documents.filter(doc => 
-                !(doc.category === selectedRequest.category && 
-                  doc.documentType === selectedRequest.documentType));
-                
-              console.log('Filtered out requested document for re-upload', 
-                documents.length - filteredDocuments.length, 'documents removed');
-              
-              const updatedReqs = mapRequirementsWithStatus(standardRequirements, filteredDocuments);
-              setRequirements(updatedReqs);
-            } else {
-              // Use the standard requirements as the base and update with document statuses
-              const updatedReqs = mapRequirementsWithStatus(standardRequirements, documents);
-              setRequirements(updatedReqs);
-            }
-          } else {
-            console.warn('API returned unsuccessful response:', response);
-            // Just use standard requirements if API call failed
-            setRequirements(mapRequirementsWithStatus(standardRequirements, []));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching existing documents:', error);
-        // Just use standard requirements without status updates
-        setRequirements(mapRequirementsWithStatus(standardRequirements, []));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // Call fetchRequirements to initialize the document list
+    // Initialize document list by fetching requirements and documents
     fetchRequirements();
-  }, [loanId]);
+  }, [loanId, selectedRequest]); // Re-fetch when loan ID or selected request changes
   
   // Map requirements with status based on existing documents
   const mapRequirementsWithStatus = (requirements, existingDocs) => {
@@ -234,31 +224,47 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       if (Array.isArray(existingDocs) && existingDocs.length > 0) {
         // First try document type + category (most specific match)
         matchingDoc = existingDocs.find(doc => 
-          doc.documentType === req.documentType && 
-          doc.category === req.category
+          (doc.documentType === req.documentType && doc.category === req.category) ||
+          // Also consider 'Other' documentType with category match
+          (doc.documentType === 'Other' && doc.category === req.category)
         );
         
         if (matchingDoc) {
           console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
         }
         
-        // If no match, try title match
+        // If no match, try title match or name match
         if (!matchingDoc) {
-          matchingDoc = existingDocs.find(doc => 
-            doc.name && req.title && doc.name.toLowerCase().includes(req.title.toLowerCase())
-          );
+          matchingDoc = existingDocs.find(doc => {
+            // Try to match by title or document name
+            const docNameLower = (doc.name || '').toLowerCase();
+            const reqTitleLower = (req.title || '').toLowerCase();
+            const docOriginalFileLower = (doc.originalFilename || '').toLowerCase();
+            
+            return (docNameLower.includes(reqTitleLower) || 
+                   reqTitleLower.includes(docNameLower) ||
+                   docOriginalFileLower.includes(reqTitleLower));
+          });
           
           if (matchingDoc) {
             console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
           }
         }
         
-        // Last resort - just check the document type
-        if (!matchingDoc && req.documentType !== 'Other') {
+        // Last resort - try various matching methods
+        if (!matchingDoc) {
+          // Check documentType match (even if category doesn't match)
           matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
           
           if (matchingDoc) {
             console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
+          } else {
+            // Final attempt: match by category only
+            matchingDoc = existingDocs.find(doc => doc.category === req.category);
+            
+            if (matchingDoc) {
+              console.log(`Found matching document for category ${req.category}:`, matchingDoc);
+            }
           }
         }
       }
@@ -346,7 +352,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         
         // Refresh the documents list to get updated status from server
         // setTimeout(() => {
-        //   // Reload the page requirements instead of calling fetchExistingDocuments
+        //   // Reload the page requirements
         //   fetchRequirements();
         // }, 1000);
         
