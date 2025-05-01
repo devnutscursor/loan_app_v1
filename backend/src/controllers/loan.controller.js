@@ -1109,54 +1109,113 @@ exports.addCondition = async (req, res, next) => {
  */
 exports.updateCondition = async (req, res, next) => {
   try {
-    const { id, conditionId } = req.params;
+    const { loanId, conditionId } = req.params;
     const { title, description, category, status, dueDate, assignedTo } = req.body;
-    
+
     // Only lenders and admins can update conditions
     if (req.user.role !== 'lender' && req.user.role !== 'admin') {
       return next(new ApiError('You are not authorized to update conditions', 403));
     }
-    
-    // Find the loan
-    const loan = await Loan.findById(id);
-    
+
+    const loan = await Loan.findById(loanId);
     if (!loan) {
       return next(new ApiError('Loan not found', 404));
     }
-    
-    // Find the condition
+
+    // Find the condition by ID
     const conditionIndex = loan.conditions.findIndex(c => c._id.toString() === conditionId);
-    
     if (conditionIndex === -1) {
       return next(new ApiError('Condition not found', 404));
     }
-    
+
     // Update condition fields
     if (title) loan.conditions[conditionIndex].title = title;
     if (description) loan.conditions[conditionIndex].description = description;
     if (category) loan.conditions[conditionIndex].category = category;
     if (dueDate) loan.conditions[conditionIndex].dueDate = new Date(dueDate);
     if (assignedTo) loan.conditions[conditionIndex].assignedTo = assignedTo;
-    
-    // Handle status change
+
+    // Special handling for status changes
     if (status && loan.conditions[conditionIndex].status !== status) {
       loan.conditions[conditionIndex].status = status;
-      
-      if (status === 'Completed' || status === 'Waived') {
+
+      if (status === 'Completed' || status === 'Approved') {
         loan.conditions[conditionIndex].completedDate = new Date();
       }
     }
-    
-    // Save the loan
+
+    // Save the loan with updated condition
     await loan.save();
-    
-    // Log the condition update
+
+    // Log the update
     logger.info(`Condition "${loan.conditions[conditionIndex].title}" updated for loan ${loan.loanNumber}`);
-    
-    res.status(200).json({
+
+    return res.status(200).json({
       status: 'success',
       message: 'Condition updated successfully',
       data: loan.conditions[conditionIndex]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Remove a condition from a loan
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.removeCondition = async (req, res, next) => {
+  try {
+    // The route parameters are named ':id' and ':conditionId' in loan.routes.js
+    const { id: loanId, conditionId } = req.params;
+
+    // Allow both borrowers and lenders to remove conditions when documents are uploaded
+    const loan = await Loan.findById(loanId);
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+
+    // For borrowers, verify they're associated with the loan
+    if (req.user.role === 'borrower') {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
+
+      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+        coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBottower) {
+        return next(new ApiError('You are not authorized to modify this loan', 403));
+      }
+    }
+
+    // Find the condition by ID
+    const conditionIndex = loan.conditions.findIndex(c => c._id.toString() === conditionId);
+    if (conditionIndex === -1) {
+      return next(new ApiError('Condition not found', 404));
+    }
+
+    // Store condition info for logging
+    const conditionTitle = loan.conditions[conditionIndex].title;
+
+    // Remove the condition from the array
+    loan.conditions.splice(conditionIndex, 1);
+
+    // Save the loan with the condition removed
+    await loan.save();
+
+    // Log the removal
+    logger.info(`Condition "${conditionTitle}" removed from loan ${loan.loanNumber} by ${req.user.role}`);
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Condition removed successfully'
     });
   } catch (error) {
     next(error);

@@ -302,6 +302,28 @@ const Documents = () => {
                                                 return prevRequests.filter(req => req._id !== request._id);
                                               });
                                               
+                                              // Update the loan model to remove the condition
+                                              try {
+                                                console.log('Removing loan condition with ID:', request._id);
+                                                const loanId = selectedLoanId || request.loanId;
+                                                const conditionId = request._id;
+                                                
+                                                const removeResponse = await borrowerService.removeCondition(loanId, conditionId);
+                                                
+                                                if (removeResponse.data && removeResponse.data.status === 'success') {
+                                                  console.log('Successfully removed condition from loan model');
+                                                  
+                                                  // Also remove from the UI state immediately
+                                                  setDocumentRequests(prevRequests => {
+                                                    return prevRequests.filter(req => req._id !== request._id);
+                                                  });
+                                                } else {
+                                                  console.warn('Failed to remove condition from loan model:', removeResponse);
+                                                }
+                                              } catch (updateError) {
+                                                console.error('Error removing condition from loan model:', updateError);
+                                              }
+                                              
                                               // Refresh the documents list
                                               setRefreshTrigger(prev => prev + 1);
                                             } else {

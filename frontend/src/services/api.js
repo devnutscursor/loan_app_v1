@@ -75,6 +75,9 @@ export const borrowerService = {
   
   // Loan Conditions (Document Requests)
   getActiveLoanConditions: () => api.get('/borrower/loan-conditions'),
+  
+  // Remove a condition from a loan (used when a document is uploaded to fulfill a condition)
+  removeCondition: (loanId, conditionId) => api.delete(`/loans/${loanId}/conditions/${conditionId}`),
 };
 
 // Lender Services

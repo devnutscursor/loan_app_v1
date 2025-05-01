@@ -25,11 +25,10 @@ router.patch('/:id/status', authorize('lender', 'admin'), loanController.updateL
 // Manage loan milestones - lender/admin only
 router.patch('/:id/milestone', authorize('lender', 'admin'), loanController.updateMilestone);
 
-// Add a condition to a loan - lender/admin only
-router.post('/:id/condition', authorize('lender', 'admin'), loanController.addCondition);
-
-// Update a condition - lender/admin only
-router.patch('/:id/condition/:conditionId', authorize('lender', 'admin'), loanController.updateCondition);
+// Condition routes
+router.post('/:id/conditions', loanController.addCondition);
+router.put('/:id/conditions/:conditionId', loanController.updateCondition);
+router.delete('/:id/conditions/:conditionId', loanController.removeCondition);
 
 // Add a note to a loan - available to both borrowers and lenders
 router.post('/:id/note', loanController.addNote);
