@@ -4,7 +4,7 @@ import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import DocumentManager from '../../components/borrower/documents/DocumentManager';
 import RequiredDocumentsList from '../../components/borrower/documents/RequiredDocumentsList';
-import { LoanService } from '../../services';
+import { LoanService, DocumentService } from '../../services';
 import { borrowerService } from '../../services/api';
 
 /**
@@ -227,16 +227,97 @@ const Documents = () => {
                                       onClick={() => {
                                         // Set the selected loan to match this request's loan
                                         if (request.loanId) setSelectedLoanId(request.loanId);
-                                        // Set the selected document request
-                                        setSelectedDocumentRequest({
-                                          category: request.category,
-                                          documentType: request.documentType,
-                                          title: request.title,
-                                          description: request.description,
-                                          id: request._id
-                                        });
-                                        // Open file upload dialog directly for this document
-                                        document.getElementById(`fileInput-${request.category}-${request.documentType}`)?.click();
+                                        
+                                        // Create a dedicated file input for this document request
+                                        const fileInput = document.createElement('input');
+                                        fileInput.type = 'file';
+                                        fileInput.style.display = 'none';
+                                        document.body.appendChild(fileInput);
+                                        
+                                        // Handle file selection
+                                        fileInput.onchange = async (e) => {
+                                          const file = e.target.files[0];
+                                          if (!file) return;
+                                          
+                                          try {
+                                            // Get correct category and documentType
+                                            // Handle the case where category might be 'Document' which is not valid
+                                            let category = request.category;
+                                            if (category === 'Document') category = 'Identity';
+                                            if (!['Identity', 'Income', 'Assets', 'Credit', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
+                                              category = 'Other';
+                                            }
+                                            
+                                            // Make sure documentType is valid
+                                            let documentType = request.documentType;
+                                            if (!documentType || documentType === 'undefined') {
+                                              // If the request title contains a hint about the document type
+                                              if (request.title.toLowerCase().includes('driver') || request.title.toLowerCase().includes('license')) {
+                                                documentType = 'Driver License';
+                                              } else if (request.title.toLowerCase().includes('passport')) {
+                                                documentType = 'Passport';
+                                              } else {
+                                                documentType = 'Other';
+                                              }
+                                            }
+                                            
+                                            // Create document data
+                                            const documentData = {
+                                              name: request.title || file.name,
+                                              documentType: documentType,
+                                              category: category,
+                                              description: request.description || 'Document requested by lender'
+                                            };
+                                            
+                                            console.log('Using validated document data:', documentData);
+                                            
+                                            console.log('Uploading requested document:', documentData);
+                                            
+                                            // Before uploading, check if there's an existing document that matches this category/type
+                                            const existingDocsResponse = await DocumentService.getLoanDocuments(selectedLoanId || request.loanId);
+                                            let existingDocId = null;
+                                            
+                                            if (existingDocsResponse.success) {
+                                              const existingDocs = Array.isArray(existingDocsResponse.data) ? 
+                                                existingDocsResponse.data : existingDocsResponse.data?.data || [];
+                                                
+                                              // Look for a matching document
+                                              const matchingDoc = existingDocs.find(doc => 
+                                                doc.category === category && doc.documentType === documentType);
+                                                
+                                              if (matchingDoc) {
+                                                console.log('Found existing document to replace:', matchingDoc._id);
+                                                existingDocId = matchingDoc._id;
+                                              }
+                                            }
+                                            
+                                            // Upload the document directly
+                                            const response = await DocumentService.uploadDocument(documentData, selectedLoanId || request.loanId, file);
+                                            
+                                            if (response.success) {
+                                              toast.success(`${documentData.name} uploaded successfully`);
+                                              
+                                              // Remove the completed request from the list
+                                              setDocumentRequests(prevRequests => {
+                                                return prevRequests.filter(req => req._id !== request._id);
+                                              });
+                                              
+                                              // Refresh the documents list
+                                              setRefreshTrigger(prev => prev + 1);
+                                            } else {
+                                              toast.error(response.message || 'Failed to upload document');
+                                            }
+                                          } catch (error) {
+                                            console.error('Error uploading document:', error);
+                                            toast.error('Failed to upload document');
+                                          } finally {
+                                            // Clean up the temporary file input
+                                            document.body.removeChild(fileInput);
+                                          }
+                                        };
+                                        
+                                        // Trigger the file input click
+                                        fileInput.click();
                                       }}
                                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                     >

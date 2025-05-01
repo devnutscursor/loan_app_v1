@@ -84,49 +84,65 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   // Fetch required documents and their statuses from the API
   // Effect to handle the selected document request
   useEffect(() => {
-    if (selectedRequest && requirements.length > 0) {
-      let foundMatchingRequirement = false;
+    if (selectedRequest) {
+      console.log('Processing selected document request:', selectedRequest);
       
-      // Find the requirement that matches the selected document request
-      const updatedReqs = requirements.map(req => {
-        if (req.category === selectedRequest.category && 
-            req.documentType === selectedRequest.documentType) {
-          foundMatchingRequirement = true;
-          // If document was previously submitted, move it back to required state
-          return {
-            ...req,
+      // Create a new requirement from the request
+      const newRequirement = {
+        id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
+        title: selectedRequest.title || `${selectedRequest.documentType} Document Required`,
+        description: selectedRequest.description || 'Please submit the requested document',
+        category: selectedRequest.category || 'Identity',
+        documentType: selectedRequest.documentType || 'Other',
+        isHighlighted: true,
+        isSubmitted: false,
+        status: 'Requested',
+        required: true,
+        requestId: selectedRequest.id // Store the original request ID
+      };
+      
+      console.log('Created new requirement from request:', newRequirement);
+      
+      // Update our requirements list with the new requirement
+      setRequirements(prevRequirements => {
+        // Check if we already have this requirement
+        const existingIndex = prevRequirements.findIndex(req => 
+          (req.category === newRequirement.category && 
+          req.documentType === newRequirement.documentType) ||
+          (req.requestId && req.requestId === newRequirement.requestId));
+        
+        // If we have it, update it, otherwise add it
+        if (existingIndex >= 0) {
+          console.log('Updating existing requirement at index:', existingIndex);
+          const updatedRequirements = [...prevRequirements];
+          updatedRequirements[existingIndex] = {
+            ...updatedRequirements[existingIndex],
+            ...newRequirement,
             isHighlighted: true,
-            isSubmitted: false, // Reset submission status for re-upload
-            status: 'Requested', // Mark as requested
-            // Update title and description if provided in the request
-            title: selectedRequest.title || req.title,
-            description: selectedRequest.description || req.description
+            isSubmitted: false,
+            status: 'Requested'
           };
+          return updatedRequirements;
+        } else {
+          console.log('Adding new requirement to list');
+          return [...prevRequirements, newRequirement];
         }
-        return {
-          ...req,
-          isHighlighted: false
-        };
       });
-      
-      // If no matching requirement was found, add it as a new requirement
-      if (!foundMatchingRequirement) {
-        updatedReqs.push({
-          id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
-          title: selectedRequest.title,
-          description: selectedRequest.description,
-          category: selectedRequest.category,
-          documentType: selectedRequest.documentType,
-          isHighlighted: true,
-          isSubmitted: false,
-          status: 'Requested',
-          required: true
-        });
-      }
-      
-      setRequirements(updatedReqs);
+
+      // Directly trigger the file input for this document if it exists
+      // This needs to be delayed slightly to ensure the DOM is updated
+      setTimeout(() => {
+        const fileInputId = `fileInput-${selectedRequest.category}-${selectedRequest.documentType}`;
+        const fileInput = document.getElementById(fileInputId);
+        if (fileInput) {
+          console.log(`Triggering file input ${fileInputId}`);
+          fileInput.click();
+        } else {
+          console.warn(`File input ${fileInputId} not found in DOM yet`);
+        }
+      }, 500);
     }
-  }, [selectedRequest]);
+  }, [selectedRequest]); // Only depend on selectedRequest
 
   useEffect(() => {
     const fetchRequirements = async () => {
@@ -396,8 +412,44 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     );
   }
   
+  // Add hidden file inputs for direct uploads through document requests
+  const renderHiddenFileInputs = () => {
+    if (!selectedRequest) return null;
+    
+    return (
+      <input
+        id={`fileInput-${selectedRequest.category}-${selectedRequest.documentType}`}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          // Find the matching requirement
+          const matchingReq = requirements.find(req => 
+            req.category === selectedRequest.category && 
+            req.documentType === selectedRequest.documentType);
+          
+          if (matchingReq) {
+            handleFileUpload(e, matchingReq);
+          } else {
+            // Create a temporary requirement if none exists
+            const tempReq = {
+              id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
+              title: selectedRequest.title || `${selectedRequest.documentType} Document Required`,
+              description: selectedRequest.description || 'Please submit requested document',
+              category: selectedRequest.category || 'Identity',
+              documentType: selectedRequest.documentType || 'Other',
+            };
+            handleFileUpload(e, tempReq);
+          }
+        }}
+      />
+    );
+  };
+  
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+      {/* Hidden file inputs for direct document uploads */}
+      {renderHiddenFileInputs()}
+      
       <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
         <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
         <p className="mt-1 text-sm text-gray-600">
@@ -429,7 +481,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
                     return 0;
                   })
                   .map((req) => (
-                  <li key={req.id} className={`py-3 ${req.isHighlighted ? 'bg-yellow-50 -mx-4 px-4 rounded-md border-l-4 border-yellow-400' : ''} hover:bg-gray-50 transition-colors duration-150`}>
+                  <li key={req.id} className={`py-3 ${req.isHighlighted ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''} hover:bg-gray-50 transition-colors duration-150`}>
                     <div className="p-4">
                       <div className="flex items-start">
                         <div className="flex-shrink-0 mt-1">
