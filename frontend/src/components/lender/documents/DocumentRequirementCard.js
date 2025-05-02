@@ -11,12 +11,12 @@ const DocumentRequirementCard = ({
   openRequestModal
 }) => {
   // Log the req object to see if requestedUpdate is properly set
-  console.log(`⚠️ Rendering DocumentRequirementCard for ${req.documentType}, requestedUpdate=${req.requestedUpdate || false}`);
+  // console.log(`⚠️ Rendering DocumentRequirementCard for ${req.documentType}, requestedUpdate=${req.requestedUpdate || false}`);
   
   // Check if req has the requestedUpdate property
-  if (req.requestedUpdate) {
-    console.log(`⚠️ Found a requirement with requestedUpdate=true: ${req.documentType} in ${req.category}`);
-  }
+  // if (req.requestedUpdate) {
+  //   console.log(`⚠️ Found a requirement with requestedUpdate=true: ${req.documentType} in ${req.category}`);
+  // }
   
   return (
     <li className="py-4">

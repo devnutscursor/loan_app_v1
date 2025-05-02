@@ -42,7 +42,7 @@ const LoanDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('loan'); // Default active tab
+  const [activeTab, setActiveTab] = useState('borrower'); // Default active tab
   
   // Helper function to normalize loan data structure
   const normalizeData = (loanData) => {
@@ -63,8 +63,8 @@ const LoanDetails = () => {
   
   // Define tabs structure
   const tabs = [
-    { id: 'loan', label: 'Loan Details', icon: '📄' },
     { id: 'borrower', label: 'Borrower Information', icon: '👤' },
+    { id: 'loan', label: 'Loan Details', icon: '📄' },
     { id: 'property', label: 'Property Information', icon: '🏠' },
     { id: 'financial', label: 'Financial Information', icon: '💰' },
     { id: 'additional', label: 'Additional Information', icon: '📋' },

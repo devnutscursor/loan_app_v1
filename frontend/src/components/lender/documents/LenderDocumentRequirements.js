@@ -72,11 +72,35 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     if (!loanId) return;
     
     setLoading(true);
-    if (typeof refreshDocuments === 'function') {
-      await refreshDocuments();
-    } else {
-      console.log('No refreshDocuments function provided, updating local mapping only');
-      processDocuments(documents);
+    try {
+      console.log('🔄 Manually refreshing documents...');
+      
+      // Fetch fresh documents directly from the API
+      const freshDocumentsResponse = await DocumentService.getDocumentsByLoanId(loanId);
+      
+      if (freshDocumentsResponse && freshDocumentsResponse.data) {
+        console.log('✅ Fresh documents fetched from API:', freshDocumentsResponse.data.length);
+        
+        // Process the fresh documents
+        processDocuments(freshDocumentsResponse.data);
+        
+        // Also fetch fresh loan conditions
+        await fetchLoanConditions();
+        
+        toast.success('Documents refreshed successfully');
+      } else {
+        toast.error('Failed to refresh documents');
+      }
+      
+      // Still call refreshDocuments if available (for parent component updates)
+      if (typeof refreshDocuments === 'function') {
+        await refreshDocuments();
+      }
+    } catch (error) {
+      console.error('Error refreshing documents:', error);
+      toast.error('Failed to refresh documents');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -89,7 +113,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       console.log('⚠️ No documents found, setting default requirements');
       
       // Set default requirements without document mappings
-      const defaultRequirements = standardDocumentRequirements.map((req, index) => {
+      const updatedReqs = standardDocumentRequirements.map((req, index) => {
         // Check if there's a pending document condition for this requirement
         const hasCondition = hasDocumentCondition(loanConditions, req.category, req.documentType);
         
@@ -102,8 +126,8 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         };
       });
       
-      console.log('Requirements with loan condition updates:', updatedRequirements);
-      setRequirements(updatedRequirements);
+      console.log('Requirements with loan condition updates:', updatedReqs);
+      setRequirements(updatedReqs);
       setLoading(false);
       return;
     }
@@ -177,32 +201,20 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       };
     });
     
-    console.log('Updated requirements:', updatedReqs);
+    // console.log('Updated requirements:', updatedReqs);
     setRequirements(updatedReqs);
     setLoading(false);
   };
   
-  // Function to fetch loan conditions
-  const fetchLoanConditions = async () => {
-    if (!loanId) return;
-    
-    console.log('📃 Fetching loan conditions on demand');
-    try {
-      console.log('🔄 Fetching loan conditions for', loanId);
-      const response = await lenderService.getLoan(loanId);
-      
-      if (response && response.data) {
-        const conditions = response.data.data.conditions || [];
-        console.log('🔄 Fetched loan conditions:', conditions.length);
-        setLoanConditions(conditions);
-        
-        // Force refresh of requirements when conditions change
+  useEffect(() => {
+    console.log('Loan conditions:', loanConditions);
+    // Force refresh of requirements when conditions change
         // This ensures we update the UI based on the latest conditions
         const reqsCopy = [...requirements];
         const updatedReqs = reqsCopy.map(req => {
           // Check if this document has a condition
           const hasCondition = hasDocumentCondition(
-            conditions, 
+            loanConditions, 
             req.category, 
             req.documentType
           );
@@ -233,12 +245,30 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           
           setRequirements(updatedReqs);
         }
+  }, [loanConditions]);
+  
+
+  // Function to fetch loan conditions
+  const fetchLoanConditions = async () => {
+    if (!loanId) return;
+    
+    console.log('📃 Fetching loan conditions on demand');
+    try {
+      console.log('🔄 Fetching loan conditions for', loanId);
+      const response = await lenderService.getLoan(loanId);
+      
+      if (response && response.data) {
+        const conditions = response.data.data.conditions || [];
+        console.log('🔄 Fetched loan conditions:', conditions.length);
+        setLoanConditions(conditions);
+        
+        
       }
     } catch (error) {
       console.error('Error fetching loan conditions:', error);
     }
   };
-  
+
   // Add manual condition fetching on component mount
   useEffect(() => {
     if (!loanId) return;
@@ -249,11 +279,39 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     fetchLoanConditions();
     
   }, [loanId]);
-  
+
   // Use effect to map requirements with documents when loan ID changes or when refreshCounter changes
   useEffect(() => {
-    if (loanId) {
+    if (loanId && refreshCounter > 0) {
       console.log(`🔄 Updating requirements due to manual refresh (${refreshCounter})`);
+      
+      // Define a function to refresh everything
+      const refreshAll = async () => {
+        setLoading(true);
+        try {
+          // Fetch fresh documents directly from the API
+          const freshDocumentsResponse = await DocumentService.getDocumentsByLoanId(loanId);
+          
+          if (freshDocumentsResponse && freshDocumentsResponse.data) {
+            console.log('✅ Fresh documents fetched from API on refresh:', freshDocumentsResponse.data.length);
+            
+            // Process the fresh documents
+            processDocuments(freshDocumentsResponse.data);
+            
+            // Also fetch fresh loan conditions
+            await fetchLoanConditions();
+          }
+        } catch (error) {
+          console.error('Error refreshing data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      // Call the refresh function
+      refreshAll();
+    } else if (loanId) {
+      // Just process documents if it's the initial load
       processDocuments(documents);
     }
   }, [loanId, documents, refreshCounter]);
@@ -320,28 +378,33 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           
         toast.success(successMessage);
         
-        // Update local state
+        // Immediate local state update for responsive UI
         setRequirements(prevReqs => {
           return prevReqs.map(req => 
             req.documentId === documentId ? { ...req, status: 'Approved' } : req
           );
         });
         
-        // Refresh documents list
-        if (refreshDocuments) {
-          refreshDocuments();
+        // Force a refresh of the document data to update UI with server state
+        try {
+          const documents = await DocumentService.getDocumentsByLoanId(loanId);
+          if (documents && documents.data) {
+            console.log('✅ Fresh documents fetched after approval:', documents.data.length);
+            // Process the updated documents
+            processDocuments(documents.data);
+          }
+        } catch (error) {
+          console.error('Error fetching documents after approval:', error);
         }
+        
+        // Trigger a refresh of the document list
+        setRefreshCounter(prev => prev + 1);
       } else {
         toast.error(response?.data?.message || response?.message || 'Failed to approve document');
       }
     } catch (error) {
       console.error('Error approving document:', error);
       toast.error('An error occurred while approving the document');
-      
-      // Update UI anyway for better UX
-      setRequirements(prevReqs => prevReqs.map(req => 
-        req.documentId === documentId ? { ...req, status: 'Approved' } : req
-      ));
     } finally {
       setProcessingDocId(null);
     }
@@ -379,28 +442,33 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           
         toast.success(successMessage);
         
-        // Update local state
+        // Immediate local state update for responsive UI
         setRequirements(prevReqs => {
           return prevReqs.map(req => 
             req.documentId === documentId ? { ...req, status: 'Rejected' } : req
           );
         });
         
-        // Refresh documents list
-        if (refreshDocuments) {
-          refreshDocuments();
+        // Force a refresh of the document data to update UI with server state
+        try {
+          const documents = await DocumentService.getDocumentsByLoanId(loanId);
+          if (documents && documents.data) {
+            console.log('✅ Fresh documents fetched after rejection:', documents.data.length);
+            // Process the updated documents
+            processDocuments(documents.data);
+          }
+        } catch (error) {
+          console.error('Error fetching documents after rejection:', error);
         }
+        
+        // Trigger a refresh of the document list
+        setRefreshCounter(prev => prev + 1);
       } else {
         toast.error(response?.data?.message || response?.message || 'Failed to reject document');
       }
     } catch (error) {
       console.error('Error rejecting document:', error);
       toast.error('An error occurred while rejecting the document');
-      
-      // Update UI anyway for better UX
-      setRequirements(prevReqs => prevReqs.map(req => 
-        req.documentId === documentId ? { ...req, status: 'Rejected' } : req
-      ));
     } finally {
       setProcessingDocId(null);
     }
