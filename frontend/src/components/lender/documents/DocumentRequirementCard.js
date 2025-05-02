@@ -1,5 +1,7 @@
 import React from 'react';
 
+// The DocumentRequirementCard component displays a single document requirement
+// with actions for lenders to interact with the document
 const DocumentRequirementCard = ({
   req,
   processingDocId,
@@ -8,6 +10,14 @@ const DocumentRequirementCard = ({
   onReject,
   openRequestModal
 }) => {
+  // Log the req object to see if requestedUpdate is properly set
+  console.log(`⚠️ Rendering DocumentRequirementCard for ${req.documentType}, requestedUpdate=${req.requestedUpdate || false}`);
+  
+  // Check if req has the requestedUpdate property
+  if (req.requestedUpdate) {
+    console.log(`⚠️ Found a requirement with requestedUpdate=true: ${req.documentType} in ${req.category}`);
+  }
+  
   return (
     <li className="py-4">
       <div className="flex items-start space-x-4">
@@ -86,12 +96,11 @@ const DocumentRequirementCard = ({
                 {/* Approve button */}
                 {req.status !== 'Approved' && (
                   <button
-                    type="button"
                     onClick={() => onApprove(req.documentId)}
-                    disabled={processingDocId === req.documentId}
+                    disabled={processingDocId === `${req.category}-${req.documentType}`}
                     className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-2"
                   >
-                    {processingDocId === req.documentId ? (
+                    {processingDocId === `${req.category}-${req.documentType}` ? (
                       <svg className="animate-spin h-4 w-4 mr-1 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -108,12 +117,11 @@ const DocumentRequirementCard = ({
                 {/* Reject button */}
                 {req.status !== 'Rejected' && (
                   <button
-                    type="button"
-                    onClick={() => onReject(req.documentId)}
-                    disabled={processingDocId === req.documentId}
+                    onClick={() => onReject(req.documentId, 'Document does not meet requirements')}
+                    disabled={processingDocId === `${req.category}-${req.documentType}`}
                     className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mr-2"
                   >
-                    {processingDocId === req.documentId ? (
+                    {processingDocId === `${req.category}-${req.documentType}` ? (
                       <svg className="animate-spin h-4 w-4 mr-1 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -127,25 +135,48 @@ const DocumentRequirementCard = ({
                   </button>
                 )}
                 
-                {/* Request update button */}
-                <button
-                  type="button"
-                  onClick={() => openRequestModal(req.documentType, req.category, true)}
-                  disabled={processingDocId === `${req.category}-${req.documentType}`}
-                  className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  {processingDocId === `${req.category}-${req.documentType}` ? (
-                    <svg className="animate-spin h-4 w-4 mr-1 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4 mr-1 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  )}
-                  Request Update
-                </button>
+                {/* Request Update button - only show if not already requested */}
+                {(() => {
+                  if (!req.requestedUpdate) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // The parent component will handle creating the loan condition
+                          // Just open the modal - no need for localStorage
+                          openRequestModal(req.documentType, req.category, true);
+                          
+                          // Force hiding this button using DOM manipulation
+                          document.getElementById(`update-btn-${req.category}-${req.documentType}`)?.classList.add('hidden');
+                        }}
+                        id={`update-btn-${req.category}-${req.documentType}`}
+                        disabled={processingDocId === `${req.category}-${req.documentType}`}
+                        className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        {processingDocId === `${req.category}-${req.documentType}` ? (
+                          <svg className="animate-spin h-4 w-4 mr-1 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4 mr-1 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        )}
+                        Request Update
+                      </button>
+                    );
+                  } else {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-1.5 border border-orange-300 text-xs font-medium rounded-md text-orange-700 bg-orange-50">
+                        <svg className="h-4 w-4 mr-1 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Update Requested
+                      </span>
+                    );
+                  }
+                })()}
               </>
             ) : (
               /* Request document button - only for not submitted documents */

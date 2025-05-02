@@ -21,6 +21,95 @@ const Documents = () => {
   const [documentRequests, setDocumentRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [selectedDocumentRequest, setSelectedDocumentRequest] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // No longer need to manually clear document request flags as this is now handled
+  // automatically through the loan conditions system
+  
+  // Handle file upload for document requests
+  const handleFileUpload = async (event, documentRequest) => {
+    setIsUploading(true);
+    const file = event.target.files[0];
+    
+    if (!file) {
+      toast.error('Please select a file to upload');
+      setIsUploading(false);
+      return;
+    };
+
+    // Get correct category and documentType
+    // Handle the case where category might be 'Document' which is not valid
+    let category = documentRequest.category;
+    if (category === 'Document') category = 'Identity';
+    if (!['Identity', 'Income', 'Assets', 'Credit', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
+      category = 'Other';
+    }
+    
+    // Make sure documentType is valid
+    let documentType = documentRequest.documentType;
+    if (!documentType || documentType === 'undefined') {
+      // If the request title contains a hint about the document type
+      if (documentRequest.title.toLowerCase().includes('driver') || documentRequest.title.toLowerCase().includes('license')) {
+        documentType = 'Driver License';
+      } else if (documentRequest.title.toLowerCase().includes('passport')) {
+        documentType = 'Passport';
+      } else {
+        documentType = 'Other';
+      }
+    }
+    
+    // Create document data
+    const documentData = {
+      name: documentRequest.title || file.name,
+      documentType: documentType,
+      category: category,
+      description: documentRequest.description || 'Document requested by lender'
+    };
+    
+    console.log('Using validated document data:', documentData);
+    
+    console.log('Uploading requested document:', documentData);
+    
+    // Before uploading, check if there's an existing document that matches this category/type
+    // NOTE: We're just proceeding with upload directly
+    
+    // Upload the document
+    const response = await DocumentService.uploadDocument(documentData, documentRequest.loanId || selectedLoanId, file);
+    
+    if (response.success) {
+      toast.success('Document uploaded successfully');
+      
+      // No longer need to clear localStorage as we're using loan conditions now
+      console.log('Document uploaded successfully - any update requests will be automatically cleared');
+      
+      // Document successfully uploaded, now remove the condition from the loan
+      try {
+        console.log('Removing loan condition with ID:', documentRequest._id);
+        const loanId = selectedLoanId || documentRequest.loanId;
+        const conditionId = documentRequest._id;
+        
+        const removeResponse = await borrowerService.removeCondition(loanId, conditionId);
+        
+        if (removeResponse.data && removeResponse.data.status === 'success') {
+          console.log('Successfully removed condition from loan model');
+          
+          // Also remove from the UI state immediately
+          setDocumentRequests(prevRequests => {
+            return prevRequests.filter(req => req._id !== documentRequest._id);
+          });
+        } else {
+          console.warn('Failed to remove condition from loan model:', removeResponse);
+        }
+      } catch (updateError) {
+        console.error('Error removing condition from loan model:', updateError);
+      }
+      
+      // Refresh the documents list
+      setRefreshTrigger(prev => prev + 1);
+    } else {
+      toast.error(response.message || 'Failed to upload document');
+    }
+  };
 
   // Fetch user's loans on component mount
   useEffect(() => {
@@ -89,14 +178,6 @@ const Documents = () => {
 
     fetchDocumentRequests();
   }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
-
-  // We no longer need this handler as we're using onClick directly
-  // Keep the function to avoid breaking any other code references
-  const handleLoanChange = (e) => {
-    // This is now handled by the onClick handlers in the loan items
-  };
-
-
 
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
@@ -182,178 +263,64 @@ const Documents = () => {
             </div>
             
             {/* Document Requests from Lender */}
-            {documentRequests.length > 0 && (
-              <div className="mb-6">
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                  <div className="border-b border-gray-200 px-6 py-4 flex items-center">
-                    <div className="flex-shrink-0 bg-yellow-100 rounded-full p-2 mr-3">
-                      <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            {documentRequests && documentRequests.length > 0 && (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Document Requests
+                  </h3>
+                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                    The following documents have been requested for your loan applications.
+                  </p>
+                </div>
+                <div className="border-t border-gray-200">
+                  {isLoadingRequests ? (
+                    <div className="flex justify-center items-center h-32">
+                      <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">Document Requests from Lender</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        The following documents have been requested by your lender
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="px-6 py-4">
-                    {isLoadingRequests ? (
-                      <div className="space-y-3">
-                        <div className="animate-pulse h-16 bg-gray-100 rounded-md"></div>
-                        <div className="animate-pulse h-16 bg-gray-100 rounded-md"></div>
-                      </div>
-                    ) : (
-                      <ul className="divide-y divide-gray-200">
-                        {documentRequests.map((request, index) => (
-                          <li key={index} className="py-4">
-                            <div className="flex items-start">
-                              <div className="flex-shrink-0 bg-yellow-50 rounded-full p-2">
-                                <svg className="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                              </div>
-                              <div className="ml-3 flex-1">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h4 className="text-base font-medium text-gray-900">{request.title}</h4>
-                                    <p className="mt-1 text-sm text-gray-500">{request.description}</p>
-                                    <p className="mt-1 text-xs text-gray-500">Due: {new Date(request.dueDate).toLocaleDateString()} · Loan: {request.loanNumber}</p>
-                                  </div>
-                                  <div className="ml-4">
-                                    <button
-                                      onClick={() => {
-                                        // Set the selected loan to match this request's loan
-                                        if (request.loanId) setSelectedLoanId(request.loanId);
-                                        
-                                        // Create a dedicated file input for this document request
-                                        const fileInput = document.createElement('input');
-                                        fileInput.type = 'file';
-                                        fileInput.style.display = 'none';
-                                        document.body.appendChild(fileInput);
-                                        
-                                        // Handle file selection
-                                        fileInput.onchange = async (e) => {
-                                          const file = e.target.files[0];
-                                          if (!file) return;
-                                          
-                                          try {
-                                            // Get correct category and documentType
-                                            // Handle the case where category might be 'Document' which is not valid
-                                            let category = request.category;
-                                            if (category === 'Document') category = 'Identity';
-                                            if (!['Identity', 'Income', 'Assets', 'Credit', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
-                                              category = 'Other';
-                                            }
-                                            
-                                            // Make sure documentType is valid
-                                            let documentType = request.documentType;
-                                            if (!documentType || documentType === 'undefined') {
-                                              // If the request title contains a hint about the document type
-                                              if (request.title.toLowerCase().includes('driver') || request.title.toLowerCase().includes('license')) {
-                                                documentType = 'Driver License';
-                                              } else if (request.title.toLowerCase().includes('passport')) {
-                                                documentType = 'Passport';
-                                              } else {
-                                                documentType = 'Other';
-                                              }
-                                            }
-                                            
-                                            // Create document data
-                                            const documentData = {
-                                              name: request.title || file.name,
-                                              documentType: documentType,
-                                              category: category,
-                                              description: request.description || 'Document requested by lender'
-                                            };
-                                            
-                                            console.log('Using validated document data:', documentData);
-                                            
-                                            console.log('Uploading requested document:', documentData);
-                                            
-                                            // Before uploading, check if there's an existing document that matches this category/type
-                                            const existingDocsResponse = await DocumentService.getLoanDocuments(selectedLoanId || request.loanId);
-                                            let existingDocId = null;
-                                            
-                                            if (existingDocsResponse.success) {
-                                              const existingDocs = Array.isArray(existingDocsResponse.data) ? 
-                                                existingDocsResponse.data : existingDocsResponse.data?.data || [];
-                                                
-                                              // Look for a matching document
-                                              const matchingDoc = existingDocs.find(doc => 
-                                                doc.category === category && doc.documentType === documentType);
-                                                
-                                              if (matchingDoc) {
-                                                console.log('Found existing document to replace:', matchingDoc._id);
-                                                existingDocId = matchingDoc._id;
-                                              }
-                                            }
-                                            
-                                            // Upload the document directly
-                                            const response = await DocumentService.uploadDocument(documentData, selectedLoanId || request.loanId, file);
-                                            
-                                            if (response.success) {
-                                              toast.success(`${documentData.name} uploaded successfully`);
-                                              
-                                              // Remove the completed request from the list
-                                              setDocumentRequests(prevRequests => {
-                                                return prevRequests.filter(req => req._id !== request._id);
-                                              });
-                                              
-                                              // Update the loan model to remove the condition
-                                              try {
-                                                console.log('Removing loan condition with ID:', request._id);
-                                                const loanId = selectedLoanId || request.loanId;
-                                                const conditionId = request._id;
-                                                
-                                                const removeResponse = await borrowerService.removeCondition(loanId, conditionId);
-                                                
-                                                if (removeResponse.data && removeResponse.data.status === 'success') {
-                                                  console.log('Successfully removed condition from loan model');
-                                                  
-                                                  // Also remove from the UI state immediately
-                                                  setDocumentRequests(prevRequests => {
-                                                    return prevRequests.filter(req => req._id !== request._id);
-                                                  });
-                                                } else {
-                                                  console.warn('Failed to remove condition from loan model:', removeResponse);
-                                                }
-                                              } catch (updateError) {
-                                                console.error('Error removing condition from loan model:', updateError);
-                                              }
-                                              
-                                              // Refresh the documents list
-                                              setRefreshTrigger(prev => prev + 1);
-                                            } else {
-                                              toast.error(response.message || 'Failed to upload document');
-                                            }
-                                          } catch (error) {
-                                            console.error('Error uploading document:', error);
-                                            toast.error('Failed to upload document');
-                                          } finally {
-                                            // Clean up the temporary file input
-                                            document.body.removeChild(fileInput);
-                                          }
-                                        };
-                                        
-                                        // Trigger the file input click
-                                        fileInput.click();
-                                      }}
-                                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                                    >
-                                      Upload Document
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {documentRequests.map(request => (
+                        <li key={request._id} className="py-4 px-4 sm:px-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-base font-medium text-gray-900">{request.title}</h4>
+                              <p className="mt-1 text-sm text-gray-500">{request.description}</p>
+                              <p className="mt-1 text-xs text-gray-500">Due: {new Date(request.dueDate).toLocaleDateString()} · Loan: {request.loanNumber}</p>
                             </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                            <div className="ml-4">
+                              <button
+                                onClick={() => {
+                                  // Set the selected loan to match this request's loan
+                                  if (request.loanId) setSelectedLoanId(request.loanId);
+                                  
+                                  // Create a dedicated file input for this document request
+                                  const fileInput = document.createElement('input');
+                                  fileInput.type = 'file';
+                                  fileInput.style.display = 'none';
+                                  document.body.appendChild(fileInput);
+                                  
+                                  // Handle file selection
+                                  fileInput.onchange = async (e) => {
+                                    handleFileUpload(e, request);
+                                  };
+                                  
+                                  // Trigger the file input click
+                                  fileInput.click();
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                              >
+                                Upload Document
+                              </button>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             )}

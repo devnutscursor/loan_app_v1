@@ -13,10 +13,36 @@ import DocumentRequestModal from './DocumentRequestModal';
  * Displays a checklist of required documents for a loan application
  * with status indicators and options for lenders to approve, reject, or request new documents.
  */
+// Function to check if a document has an update request based on loan conditions
+const hasDocumentCondition = (loanConditions, category, documentType) => {
+  if (!loanConditions || !Array.isArray(loanConditions) || loanConditions.length === 0) {
+    return false;
+  }
+  
+  // Check if there's a pending document condition matching this category/type
+  return loanConditions.some(condition => {
+    // Check if it's a document condition
+    if (condition.category !== 'Document') {
+      return false;
+    }
+    
+    // Match by title (contains documentType) or direct match of title to type
+    const titleMatches = condition.title.toLowerCase().includes(documentType.toLowerCase()) ||
+                         condition.title.toLowerCase() === documentType.toLowerCase();
+    
+    // If we have specific documentType field in condition, check that too
+    const typeMatches = condition.documentType ? 
+                        condition.documentType.toLowerCase() === documentType.toLowerCase() :
+                        false;
+    
+    return titleMatches || typeMatches;
+  });
+};
+
 const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processingDocId, setProcessingDocId] = useState(null);
+  const [processingDocId, setProcessingDocId] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestDetails, setRequestDetails] = useState({
     documentType: '',
@@ -25,7 +51,10 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     customReason: '',
     isUpdate: false
   });
-  
+  const [modalKey, setModalKey] = useState(Date.now());
+  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [loanConditions, setLoanConditions] = useState([]);
+
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return 'Not available';
@@ -53,12 +82,28 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
   
   // Process documents and map them to requirements
   const processDocuments = (docsList) => {
+    console.log('⚠️ Process Documents called with:', docsList?.length, 'documents');
+    console.log('📚 Current loan conditions:', loanConditions);
+    
     if (!loanId || !docsList || !docsList.length) {
-      setRequirements(standardDocumentRequirements.map(req => ({
-        ...req,
-        isSubmitted: false,
-        status: 'Not Submitted'
-      })));
+      console.log('⚠️ No documents found, setting default requirements');
+      
+      // Set default requirements without document mappings
+      const defaultRequirements = standardDocumentRequirements.map((req, index) => {
+        // Check if there's a pending document condition for this requirement
+        const hasCondition = hasDocumentCondition(loanConditions, req.category, req.documentType);
+        
+        return {
+          ...req,
+          id: `req-${index}`,
+          status: hasCondition ? 'Needs Correction' : 'Not Submitted',
+          isSubmitted: false,
+          requestedUpdate: hasCondition // Set based on condition existence
+        };
+      });
+      
+      console.log('Requirements with loan condition updates:', updatedRequirements);
+      setRequirements(updatedRequirements);
       setLoading(false);
       return;
     }
@@ -137,19 +182,93 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     setLoading(false);
   };
   
-  // Use effect to map requirements with documents when documents prop changes
+  // Function to fetch loan conditions
+  const fetchLoanConditions = async () => {
+    if (!loanId) return;
+    
+    console.log('📃 Fetching loan conditions on demand');
+    try {
+      console.log('🔄 Fetching loan conditions for', loanId);
+      const response = await lenderService.getLoan(loanId);
+      
+      if (response && response.data) {
+        const conditions = response.data.data.conditions || [];
+        console.log('🔄 Fetched loan conditions:', conditions.length);
+        setLoanConditions(conditions);
+        
+        // Force refresh of requirements when conditions change
+        // This ensures we update the UI based on the latest conditions
+        const reqsCopy = [...requirements];
+        const updatedReqs = reqsCopy.map(req => {
+          // Check if this document has a condition
+          const hasCondition = hasDocumentCondition(
+            conditions, 
+            req.category, 
+            req.documentType
+          );
+          
+          // Update the requestedUpdate flag if needed
+          if (req.requestedUpdate !== hasCondition) {
+            console.log(`${hasCondition ? '➕' : '➖'} Updating status for ${req.documentType}: requestedUpdate=${hasCondition}`);
+            return {
+              ...req,
+              requestedUpdate: hasCondition,
+              status: hasCondition ? 'Needs Correction' : req.status
+            };
+          }
+          return req;
+        });
+        
+        // Only update if something changed
+        const hasChanges = JSON.stringify(updatedReqs) !== JSON.stringify(requirements);
+        if (hasChanges) {
+          console.log('⚡ Detected changes in requirements based on conditions, updating UI');
+          
+          // Log which requirements changed for debugging
+          updatedReqs.forEach((req, i) => {
+            if (JSON.stringify(req) !== JSON.stringify(requirements[i])) {
+              console.log(`  Changed: ${req.documentType} (${req.category}) - requestedUpdate: ${req.requestedUpdate}`);
+            }
+          });
+          
+          setRequirements(updatedReqs);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching loan conditions:', error);
+    }
+  };
+  
+  // Add manual condition fetching on component mount
   useEffect(() => {
-    processDocuments(documents);
-  }, [loanId, documents]);
+    if (!loanId) return;
+    
+    console.log('🔄 Initial fetch of loan conditions');
+    
+    // Initial fetch only - no polling
+    fetchLoanConditions();
+    
+  }, [loanId]);
+  
+  // Use effect to map requirements with documents when loan ID changes or when refreshCounter changes
+  useEffect(() => {
+    if (loanId) {
+      console.log(`🔄 Updating requirements due to manual refresh (${refreshCounter})`);
+      processDocuments(documents);
+    }
+  }, [loanId, documents, refreshCounter]);
 
   // Open request document modal
   const openRequestModal = (documentType, category, isUpdate = false) => {
+    console.log(`⚠️ Opening request modal for ${documentType} in ${category}, isUpdate=${isUpdate}`);  
+    
     setRequestDetails({
       documentType,
       category,
+      isUpdate,
       reason: '',
       customReason: '',
-      isUpdate
+      message: ''
     });
     setShowRequestModal(true);
   };
@@ -287,12 +406,39 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     }
   };
 
+  // Helper function to set a document as requiring an update based on loan conditions
+  // This is immediately called after the API request creates a loan condition
+  const markDocumentForUpdate = (category, documentType) => {
+    // Update the requirements directly based on the condition we're about to create
+    // This gives immediate UI feedback before the next polling cycle
+    const reqsCopy = [...requirements];
+    const requirementIndex = reqsCopy.findIndex(req => 
+      req.category === category && req.documentType === documentType
+    );
+    
+    if (requirementIndex >= 0) {
+      reqsCopy[requirementIndex] = {
+        ...reqsCopy[requirementIndex],
+        requestedUpdate: true,
+        status: 'Needs Correction'
+      };
+      
+      console.log(`📌 Marking ${documentType} in ${category} as needing update`);
+      setRequirements(reqsCopy);
+      return true;
+    }
+    
+    return false;
+  };
+  
   // Handle document request
   const handleRequestDocument = async (e) => {
     // If event is passed, prevent default form submission
     if (e && e.preventDefault) {
       e.preventDefault();
     }
+    
+    console.log('⚠️ handleRequestDocument called with requestDetails:', JSON.stringify(requestDetails, null, 2));
     
     const { documentType, category, reason, customReason, message, isUpdate } = requestDetails;
     
@@ -371,6 +517,74 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           'Document request sent to borrower';
           
         toast.success(successMessage);
+        
+        // If this is an update request, manually update the document status in the UI
+        if (isUpdate) {
+          console.log('⚠️ This is an update request. Current requirements:', requirements);
+          
+          // The document condition is being created by the API call
+          // Mark it in our local state immediately for better user feedback
+          const updateSuccess = markDocumentForUpdate(category, documentType);
+          console.log(`📌 Update to local state ${updateSuccess ? 'succeeded' : 'failed'}`);
+          
+          // Force a re-render
+          setRequirements([...requirements]);
+          
+          // Re-fetch loan conditions right away to get the server-side changes
+          console.log('📃 Immediately refreshing loan conditions after document request');
+          lenderService.getLoan(loanId).then(response => {
+            if (response && response.data) {
+              const conditions = response.data.conditions || [];
+              console.log('💡 Updated loan conditions:', conditions.length, conditions);
+              
+              // DEBUG - Log all conditions to inspect their content
+              conditions.forEach((condition, index) => {
+                console.log(`Condition ${index + 1}:`, {
+                  title: condition.title,
+                  category: condition.category,
+                  documentType: condition.documentType || 'none',
+                  id: condition._id
+                });
+              });
+              
+              setLoanConditions(conditions);
+              
+              // Force immediate update to requirements based on new conditions
+              const reqsCopy = [...requirements];
+              const updatedReqs = reqsCopy.map(req => {
+                // Check if this document has a condition
+                const hasCondition = hasDocumentCondition(
+                  conditions, 
+                  req.category, 
+                  req.documentType
+                );
+                
+                // Log the matching result for debugging
+                console.log(`🔎 Document ${req.documentType} in ${req.category} has condition: ${hasCondition}`);
+                
+                return {
+                  ...req,
+                  requestedUpdate: hasCondition,
+                  status: hasCondition ? 'Needs Correction' : req.status
+                };
+              });
+              
+              console.log('📢 Setting requirements with updated condition status:', 
+                updatedReqs.map(r => ({ 
+                  type: r.documentType, 
+                  requestedUpdate: r.requestedUpdate 
+                }))
+              );
+              
+              setRequirements(updatedReqs);
+              
+              // Force a refresh of the document list
+              setRefreshCounter(prev => prev + 1);
+            }
+          }).catch(err => {
+            console.error('Error refreshing loan conditions:', err);
+          });
+        }
         
         // Refresh documents list
         if (refreshDocuments) {

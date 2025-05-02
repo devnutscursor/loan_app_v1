@@ -351,6 +351,10 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       if (response.success) {
         toast.success(`${requirement.title} document uploaded successfully`);
         
+        // No need to clear localStorage anymore - the uploaded document will
+        // automatically clear any document conditions on the server
+        console.log(`✅ Document uploaded successfully. Any update requests will be cleared automatically.`);
+        
         // Update the requirement status locally
         setRequirements(prevReqs => 
           prevReqs.map(req => 

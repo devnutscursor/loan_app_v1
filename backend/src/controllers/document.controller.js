@@ -813,7 +813,7 @@ exports.verifyDocument = async (req, res, next) => {
  */
 exports.requestDocument = async (req, res, next) => {
   try {
-    const { borrowerId, loanId, documentType, description, dueDate } = req.body;
+    const { borrowerId, loanId, documentType, category, description, dueDate, isUpdate } = req.body;
     
     // Validate required inputs
     if (!borrowerId || !loanId || !documentType) {
@@ -840,6 +840,29 @@ exports.requestDocument = async (req, res, next) => {
     
     if (!isPrimaryBorrower && !isCoBorrower) {
       return next(new ApiError('This borrower is not associated with the specified loan', 400));
+    }
+    
+    // If this is an update request, find and update existing document status
+    if (isUpdate === true) {
+      // Find the document by category and documentType
+      const existingDocument = await Document.findOne({
+        loan: loanId,
+        documentType: documentType,
+        category: category || { $exists: true }, // If category is provided, match it; otherwise, just check that category exists
+        borrower: borrowerId
+      });
+      
+      if (existingDocument) {
+        // Update the document status to indicate correction needed
+        existingDocument.status = 'Needs Correction';
+        existingDocument.reviewNotes = description || 'Please provide an updated version of this document';
+        existingDocument.reviewedBy = req.user._id;
+        existingDocument.reviewDate = new Date();
+        
+        await existingDocument.save();
+        
+        logger.info(`Document ${existingDocument._id} marked as 'Needs Correction' by ${req.user.role} ${req.user._id}`);
+      }
     }
     
     // Create a document request condition
