@@ -64,49 +64,12 @@ export const borrowerService = {
   getProfile: () => api.get('/borrower/profile'),
   updateProfile: (profileData) => api.patch('/borrower/profile', profileData),
   
-  // Document services for the app
-  uploadDocument: async (documentData, loanId, file) => {
-    try {
-      console.log('📤 Uploading document with data:', {
-        name: documentData.name,
-        documentType: documentData.documentType,
-        category: documentData.category,
-        requirementId: documentData.requirementId || 'not provided', 
-        description: documentData.description,
-        loanId
-      });
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('name', documentData.name);
-      formData.append('documentType', documentData.documentType);
-      formData.append('category', documentData.category);
-      formData.append('description', documentData.description || '');
-      
-      // Include requirementId if available for better matching
-      if (documentData.requirementId) {
-        formData.append('requirementId', documentData.requirementId);
-      }
-      
-      if (documentData.metadata) {
-        formData.append('metadata', JSON.stringify(documentData.metadata));
-      }
-      
-      // Add loan ID if available
-      if (loanId) {
-        formData.append('loan', loanId);
-      }
-      
-      return api.post('/borrower/documents', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      throw error;
-    }
-  },
+  // Documents
+  uploadDocument: (formData) => api.post('/borrower/documents', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
   getDocuments: () => api.get('/borrower/documents'),
   deleteDocument: (id) => api.delete(`/borrower/documents/${id}`),
   

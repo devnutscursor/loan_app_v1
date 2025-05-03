@@ -51,8 +51,6 @@ const documentSchema = new mongoose.Schema({
       'Insurance',
       'Disclosures',
       'Legal',
-      'Financial',
-      'Address',
       'Other'
     ],
     default: 'Other'
@@ -78,27 +76,14 @@ const documentSchema = new mongoose.Schema({
       'Loan Estimate',
       'Closing Disclosure',
       'Loan Application',
-      'Mortgage Statement',
-      'Property Taxes',
-      'Schedule C',
-      'Self Employed PL',
-      'Employment Verification',
-      'Proof of Address',
-      'Proof of Income',
-      'Homeowner Insurance',
-      'Retirement Account',
       'Other'
     ],
     default: 'Other'
   },
   status: {
     type: String,
-    enum: ['Pending Review', 'Approved', 'Rejected', 'Needs Correction', 'Not Submitted'],
+    enum: ['Pending Review', 'Approved', 'Rejected', 'Needs Correction'],
     default: 'Pending Review'
-  },
-  requirementId: {
-    type: String,
-    trim: true
   },
   reviewedBy: {
     type: mongoose.Schema.Types.ObjectId,

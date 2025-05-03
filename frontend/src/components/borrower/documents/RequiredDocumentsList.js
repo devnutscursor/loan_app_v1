@@ -60,7 +60,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Employment Verification',
       description: 'Letter from employer confirming employment status',
       category: 'Employment',
-      documentType: 'Employment Verification',
+      documentType: 'Employment Letter',
       required: true
     },
     {
@@ -68,7 +68,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Proof of Address',
       description: 'Utility bill, lease agreement, or bank statement',
       category: 'Address',
-      documentType: 'Proof of Address',
+      documentType: 'Utility Bill',
       required: true
     },
     {
@@ -76,7 +76,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Retirement account',
       description: 'If applicable - please submit the following: a) Most recent quarterly statement b) Terms & Conditions for hardship withdrawals and loans',
       category: 'Assets',
-      documentType: 'Retirement Account',
+      documentType: 'Retirement Account Statement',
       required: false
     },
     {
@@ -84,7 +84,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Mortgage Statement',
       description: 'Please upload a copy of your most recent monthly mortgage statement for all real estate owned',
       category: 'Property',
-      documentType: 'Mortgage Statement',
+      documentType: 'Other',
       required: false
     },
     {
@@ -92,7 +92,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Property Taxes (most recent full year)',
       description: 'Please upload the most recent full year property tax bills for all real estate owned',
       category: 'Property',
-      documentType: 'Property Taxes',
+      documentType: 'Other',
       required: false
     },
     {
@@ -100,18 +100,12 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       title: 'Homeowner\'s Insurance',
       description: 'Please upload a copy of your homeowner\'s insurance policy for all real estate owned',
       category: 'Insurance',
-      documentType: 'Homeowner Insurance',
+      documentType: 'Insurance Declaration',
       required: false
     }
   ];
   
-  // Effect hook to fetch requirements when loanId changes
-  useEffect(() => {
-    if (loanId) {
-      fetchRequirements();
-    }
-  }, [loanId]);
-  
+  // Fetch required documents and their statuses from the API
   // Effect to handle the selected document request
   useEffect(() => {
     if (selectedRequest) {
@@ -121,41 +115,48 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       const newRequirement = {
         id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
         title: selectedRequest.title || `${selectedRequest.documentType} Document Required`,
-        description: selectedRequest.description || 'Please upload the requested document',
-        category: selectedRequest.category,
-        documentType: selectedRequest.documentType,
+        description: selectedRequest.description || 'Please submit the requested document',
+        category: selectedRequest.category || 'Identity',
+        documentType: selectedRequest.documentType || 'Other',
+        isHighlighted: true,
+        isSubmitted: false,
+        status: 'Requested',
         required: true,
-        isRequestUpdate: true
+        requestId: selectedRequest.id // Store the original request ID
       };
       
-      // Add this requirement to our list if it's not already there
-      setRequirements(prevReqs => {
+      console.log('Created new requirement from request:', newRequirement);
+      
+      // Update our requirements list with the new requirement
+      setRequirements(prevRequirements => {
         // Check if we already have this requirement
-        const existingReq = prevReqs.find(req => 
-          req.category === newRequirement.category && 
-          req.documentType === newRequirement.documentType);
+        const existingIndex = prevRequirements.findIndex(req => 
+          (req.category === newRequirement.category && 
+          req.documentType === newRequirement.documentType) ||
+          (req.requestId && req.requestId === newRequirement.requestId));
         
-        if (existingReq) {
-          console.log('Requirement already exists, updating it');
-          // Update the existing requirement
-          return prevReqs.map(req => 
-            req.category === newRequirement.category && 
-            req.documentType === newRequirement.documentType
-              ? { ...req, ...newRequirement, isRequestUpdate: true }
-              : req
-          );
+        // If we have it, update it, otherwise add it
+        if (existingIndex >= 0) {
+          console.log('Updating existing requirement at index:', existingIndex);
+          const updatedRequirements = [...prevRequirements];
+          updatedRequirements[existingIndex] = {
+            ...updatedRequirements[existingIndex],
+            ...newRequirement,
+            isHighlighted: true,
+            isSubmitted: false,
+            status: 'Requested'
+          };
+          return updatedRequirements;
         } else {
-          console.log('Adding new requirement for document request');
-          // Add the new requirement
-          return [...prevReqs, newRequirement];
+          console.log('Adding new requirement to list');
+          return [...prevRequirements, newRequirement];
         }
       });
-      
-      // Automatically open file dialog for this requirement
-      const fileInputId = `fileInput-${selectedRequest.category}-${selectedRequest.documentType}`;
-      
-      // Use setTimeout to ensure DOM is ready
+
+      // Directly trigger the file input for this document if it exists
+      // This needs to be delayed slightly to ensure the DOM is updated
       setTimeout(() => {
+        const fileInputId = `fileInput-${selectedRequest.category}-${selectedRequest.documentType}`;
         const fileInput = document.getElementById(fileInputId);
         if (fileInput) {
           console.log(`Triggering file input ${fileInputId}`);
@@ -167,149 +168,160 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     }
   }, [selectedRequest]); // Only depend on selectedRequest
 
-  // Fetch documents and requirements for this loan
-  const fetchRequirements = async () => {
-    if (!loanId) {
-      console.error('Cannot fetch requirements: No loanId provided');
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      // Fetch documents already uploaded for this loan
-      const response = await DocumentService.getLoanDocuments(loanId);
-      
-      if (response && response.data) {
-        console.log('Fetched documents for loan', loanId, ':', response.data);
-        console.log('Document count from server:', response.data.length);
+  useEffect(() => {
+    const fetchRequirements = async () => {
+      setLoading(true);
+      try {
+        if (!loanId) {
+          // No loan selected, show standard requirements
+          setRequirements(standardRequirements);
+          setLoading(false);
+          return;
+        }
         
-        // Filter out any documents without proper data
-        const validDocuments = response.data.filter(doc => {
-          // Ensure document has essential properties
-          if (!doc || !doc._id || !doc.fileUrl) {
-            console.log('Filtering out invalid document:', doc);
-            return false;
+        // First, get any existing documents for this loan
+        const docsResponse = await DocumentService.getLoanDocuments(loanId);
+        console.log('Existing documents response:', docsResponse);
+        
+        let existingDocuments = [];
+        
+        // Extract the documents array from the response
+        if (docsResponse.success) {
+          if (docsResponse.data && docsResponse.data.data) {
+            // If the API returns a nested data structure
+            existingDocuments = docsResponse.data.data;
+          } else if (Array.isArray(docsResponse.data)) {
+            // If the API returns an array directly
+            existingDocuments = docsResponse.data;
           }
-          return true;
+          
+          console.log('Found existing documents:', existingDocuments);
+        } else {
+          console.warn('API returned unsuccessful response for documents:', docsResponse);
+        }
+        
+        // Check for document requirements from the API (future enhancement)
+        const reqResponse = await DocumentService.getDocumentRequirements(loanId);
+        let requirements = standardRequirements;
+        
+        // If API returns requirements, use them (future enhancement)
+        if (reqResponse.success && reqResponse.data && Array.isArray(reqResponse.data)) {
+          console.log('Got document requirements from API:', reqResponse.data);
+          // TODO: Use API requirements when implemented
+        }
+        
+        // If we have a selected request, filter out matching documents
+        if (selectedRequest) {
+          // Filter out documents that match the selected request - they should be re-uploaded
+          const filteredDocuments = existingDocuments.filter(doc => 
+            !(doc.category === selectedRequest.category && 
+              doc.documentType === selectedRequest.documentType));
+            
+          console.log('Filtered out requested document for re-upload', 
+            existingDocuments.length - filteredDocuments.length, 'documents removed');
+          
+          existingDocuments = filteredDocuments;
+        }
+        
+        // DEBUG - log all documents to check what's available
+        console.log('Documents to display:', {
+          count: existingDocuments.length,
+          documents: existingDocuments.map(d => ({
+            id: d._id,
+            name: d.name,
+            category: d.category,
+            documentType: d.documentType,
+            status: d.status
+          }))
         });
         
-        console.log('Valid document count after filtering:', validDocuments.length);
-        console.log('Valid documents:', validDocuments.map(d => ({
-          id: d._id,
-          name: d.name,
-          category: d.category,
-          documentType: d.documentType
-        })));
+        // Use the standard requirements as the base and update with document statuses
+        const updatedReqs = mapRequirementsWithStatus(requirements, existingDocuments);
+        setRequirements(updatedReqs);
+      } catch (error) {
+        console.error('Error fetching document data:', error);
+        toast.error('Failed to load documents');
         
-        // Apply standard requirements with only valid documents
-        const mappedRequirements = mapRequirementsWithStatus(standardRequirements, validDocuments);
-        
-        setRequirements(mappedRequirements);
-      } else {
-        console.log('No documents found, setting default requirements');
-        
-        // Set default requirements without document mappings
-        const defaultRequirements = standardRequirements.map(req => ({
-          ...req,
-          isSubmitted: false,
-          status: 'Not Submitted',
-          document: null
-        }));
-        
-        setRequirements(defaultRequirements);
+        // Fall back to standard requirements
+        setRequirements(standardRequirements);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      toast.error('Failed to load document requirements');
-      
-      // Set requirements to empty array on error
-      setRequirements([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    // Initialize document list by fetching requirements and documents
+    fetchRequirements();
+  }, [loanId, selectedRequest]); // Re-fetch when loan ID or selected request changes
   
   // Map requirements with status based on existing documents
   const mapRequirementsWithStatus = (requirements, existingDocs) => {
-    console.log('Mapping requirements with status. Found', existingDocs.length, 'actual documents');
+    console.log('Mapping requirements with existing docs:', { requirements, existingDocs });
     
     return requirements.map(req => {
-      // Check if this requirement has a matching document uploaded
-      const matchingDoc = existingDocs.find(doc => {
-        // Look for exact match by name/title first
-        if (doc.name && req.title && doc.name.toLowerCase() === req.title.toLowerCase()) {
-          console.log(`Found exact name match for ${req.title}:`, doc.name);
-          return true;
-        }
-
-        // Check each document carefully based on ID, names and types
-        const docName = (doc.name || '').toLowerCase();
-        const docCategory = (doc.category || '').toLowerCase();
-        const docType = (doc.documentType || '').toLowerCase();
-        
-        // Special case for Property Taxes document
-        if (req.id === 'taxes' && docName.includes('property tax')) {
-          console.log('Found Property Taxes document match:', doc.name);
-          return true;
-        }
-        
-        // Special case for Retirement Account document
-        if (req.id === 'retirement' && docName.includes('retirement')) {
-          console.log('Found Retirement Account document match:', doc.name);
-          return true;
-        }
-        
-        // For specific document types with known IDs
-        switch(req.id) {
-          case 'identification':
-            return docCategory === 'identity' || docType.includes('license') || docType.includes('passport');
-            
-          case 'taxes':
-            return docName.includes('property tax') || 
-                  (docCategory === 'property' && (docName.includes('tax') || docType.includes('tax')));
-            
-          case 'mortgage':
-            return docName.includes('mortgage') || docType.includes('mortgage');
-            
-          case 'retirement':
-            return docName.includes('retirement') || docType.includes('retirement') || 
-                  docType.includes('401') || docType.includes('ira');
-            
-          case 'bankStatements':
-            return docType.includes('bank') || docCategory.includes('financial');
-            
-          case 'insurance':
-            return docName.includes('insurance') || docType.includes('insurance');
-            
-          default:
-            // For other documents, need precise category/type match
-            const reqCategory = (req.category || '').toLowerCase();
-            const reqDocType = (req.documentType || '').toLowerCase();
-            
-            const categoryMatch = docCategory === reqCategory;
-            const typeMatch = docType === reqDocType || docType.includes(reqDocType) || reqDocType.includes(docType);
-            
-            // Check the document name too
-            const nameMatch = req.title && docName.includes(req.title.toLowerCase());
-            
-            return (categoryMatch && typeMatch) || nameMatch;
-        }
-      });
+      let matchingDoc = null;
       
-      console.log(`Requirement: ${req.title}, isSubmitted: ${!!matchingDoc}`);
+      // Ensure existingDocs is an array before processing
+      if (Array.isArray(existingDocs) && existingDocs.length > 0) {
+        // First try document type + category (most specific match)
+        matchingDoc = existingDocs.find(doc => 
+          (doc.documentType === req.documentType && doc.category === req.category) ||
+          // Also consider 'Other' documentType with category match
+          (doc.documentType === 'Other' && doc.category === req.category)
+        );
+        
+        if (matchingDoc) {
+          console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
+        }
+        
+        // If no match, try title match or name match
+        if (!matchingDoc) {
+          matchingDoc = existingDocs.find(doc => {
+            // Try to match by title or document name
+            const docNameLower = (doc.name || '').toLowerCase();
+            const reqTitleLower = (req.title || '').toLowerCase();
+            const docOriginalFileLower = (doc.originalFilename || '').toLowerCase();
+            
+            return (docNameLower.includes(reqTitleLower) || 
+                   reqTitleLower.includes(docNameLower) ||
+                   docOriginalFileLower.includes(reqTitleLower));
+          });
+          
+          if (matchingDoc) {
+            console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
+          }
+        }
+        
+        // Last resort - try various matching methods
+        if (!matchingDoc) {
+          // Check documentType match (even if category doesn't match)
+          matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
+          
+          if (matchingDoc) {
+            console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
+          } else {
+            // Final attempt: match by category only
+            matchingDoc = existingDocs.find(doc => doc.category === req.category);
+            
+            if (matchingDoc) {
+              console.log(`Found matching document for category ${req.category}:`, matchingDoc);
+            }
+          }
+        }
+      }
       
-      // Return requirement with matching document info if found
-      return {
+      // Create the updated requirement with status information
+      const updatedReq = {
         ...req,
-        isSubmitted: !!matchingDoc,
         status: matchingDoc ? matchingDoc.status : 'Not Submitted',
-        document: matchingDoc
+        documentId: matchingDoc ? matchingDoc._id : null,
+        isSubmitted: !!matchingDoc,
+        uploadedDate: matchingDoc ? new Date(matchingDoc.createdAt || Date.now()).toLocaleDateString() : null
       };
+      
+      return updatedReq;
     });
   };
-
+  
   // Handle file selection and upload
   const handleFileUpload = async (event, requirement) => {
     const file = event.target.files[0];
@@ -330,9 +342,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         'Investment Account Statement', 'Gift Letter', 'Credit Report', 
         'Purchase Agreement', 'Property Appraisal', 'Title Report', 
         'Insurance Declaration', 'Loan Estimate', 'Closing Disclosure', 
-        'Loan Application', 'Other', 'Mortgage Statement', 'Property Taxes',
-        'Employment Verification', 'Proof of Address', 'Homeowner Insurance',
-        'Retirement Account'
+        'Loan Application', 'Other'
       ];
       
       // Use requirement's category or default to 'Other' if invalid
@@ -349,13 +359,12 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         documentType = 'Other';
       }
       
-      // Create document data and include requirementId for better matching later
+      // Create document data
       const documentData = {
         name: requirement.title || file.name, // Use the requirement title for better matching
         documentType: documentType,
         category: category,
-        description: requirement.description,
-        requirementId: requirement.id // Add this to help with matching
+        description: requirement.description
       };
       
       console.log('Uploading document with data:', documentData);
@@ -385,10 +394,11 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
           )
         );
         
-        // Refresh the documents list
-        setTimeout(() => {
-          fetchRequirements();
-        }, 1000);
+        // Refresh the documents list to get updated status from server
+        // setTimeout(() => {
+        //   // Reload the page requirements
+        //   fetchRequirements();
+        // }, 1000);
         
         // Notify parent component
         if (onDocumentUploaded) {
@@ -451,10 +461,10 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
             // Create a temporary requirement if none exists
             const tempReq = {
               id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
-              title: selectedRequest.title || 'Requested Document',
-              category: selectedRequest.category,
-              documentType: selectedRequest.documentType,
-              description: selectedRequest.description || ''
+              title: selectedRequest.title || `${selectedRequest.documentType} Document Required`,
+              description: selectedRequest.description || 'Please submit requested document',
+              category: selectedRequest.category || 'Identity',
+              documentType: selectedRequest.documentType || 'Other',
             };
             handleFileUpload(e, tempReq);
           }
@@ -464,70 +474,76 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   };
   
   return (
-    <div className="bg-white rounded-md shadow-sm">
+    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+      {/* Hidden file inputs for direct document uploads */}
       {renderHiddenFileInputs()}
       
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Required Documents</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Please upload all required documents to complete your loan application
+      <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+        <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
+        <p className="mt-1 text-sm text-gray-600">
+          Please upload all documents to complete your loan application
         </p>
       </div>
       
-      <div>
-        {requirements.some(req => !req.isSubmitted) ? (
-          <div className="px-5 py-4">
-            <div className="space-y-4">
-              <ul role="list" className="space-y-4">
-                {requirements.filter(req => !req.isSubmitted).map((req) => (
-                  <li key={req.id} className="bg-white border border-gray-200 rounded-md overflow-hidden">
-                    <div className="p-4 sm:p-0">
-                      <div className="flex items-center p-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-5 w-5 text-gray-400">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <h3 className="ml-2 text-md font-medium text-gray-900 truncate">{req.title}</h3>
-                            {req.required && (
-                              <div className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Required
-                              </div>
-                            )}
-                          </div>
-                          <div className="mt-1">
-                            <p className="text-sm text-gray-500">{req.description}</p>
-                          </div>
+      {/* Pending Tasks */}
+      <div className="p-5">
+        {requirements.filter(req => !req.isSubmitted).length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h4 className="ml-3 text-md font-medium text-gray-900">Documents to Upload</h4>
+            </div>
+            
+            <div className="mt-2 border rounded-lg overflow-hidden">
+              <ul role="list" className="divide-y divide-gray-200">
+                {/* If there's a selected request, show it first and filter the rest */}
+                {requirements.filter(req => !req.isSubmitted)
+                  .sort((a, b) => {
+                    // Sort highlighted items to the top
+                    if (a.isHighlighted && !b.isHighlighted) return -1;
+                    if (!a.isHighlighted && b.isHighlighted) return 1;
+                    return 0;
+                  })
+                  .map((req) => (
+                  <li key={req.id} className={`py-2 ${req.isHighlighted ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''} hover:bg-gray-50 transition-colors duration-150`}>
+                    <div className="px-3 py-2">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 pt-1">
+                          <div className="h-5 w-5 border-2 border-gray-300 rounded-full"></div>
                         </div>
-                        <div className="ml-4 flex-shrink-0 sm:ml-6">
-                          <div>
-                            <label
+                        <div className="ml-3 flex-1">
+                          <div className="flex flex-wrap items-center justify-between">
+                            <h5 className="text-sm font-medium text-gray-900 mr-3">{req.title}</h5>
+                            <span className="mt-0.5 px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-full inline-flex items-center">
+                              Required
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500">{req.description}</p>
+                          <div className="mt-2">
+                            <label 
                               htmlFor={`file-upload-${req.id}`}
-                              className={`inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white 
-                                ${uploadingDocId === req.id ? 'bg-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'}
-                                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                              className={`inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm ${uploadingDocId === req.id ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'} text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150`}
                             >
-                              {uploadingDocId === req.id ? (
-                                <>
-                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                  Uploading...
-                                </>
-                              ) : (
-                                <>
-                                  <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                  Upload Document
-                                </>
-                              )}
+                              <svg className="-ml-0.5 mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                              {uploadingDocId === req.id ? 'Uploading...' : 'Upload Document'}
                             </label>
                             <input
                               id={`file-upload-${req.id}`}
+                              name={`file-upload-${req.id}`}
+                              type="file"
+                              className="sr-only"
+                              onChange={(e) => handleFileUpload(e, req)}
+                              disabled={uploadingDocId !== null}
+                            />
+                            {/* Hidden file input specifically for document requests by category/type */}
+                            <input
+                              id={`fileInput-${req.category}-${req.documentType}`}
                               type="file"
                               className="sr-only"
                               onChange={(e) => handleFileUpload(e, req)}
