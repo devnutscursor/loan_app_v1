@@ -179,7 +179,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     
     try {
       // Fetch documents already uploaded for this loan
-      const response = await DocumentService.getLoanDocuments(loanId);
+      const response = await DocumentService.getDocumentsByLoanId(loanId);
       
       if (response && response.data) {
         console.log('Fetched documents for loan', loanId, ':', response.data);

@@ -119,6 +119,17 @@ class DocumentService {
   }
   
   /**
+   * Get documents for a specific loan (alias for getLoanDocuments)
+   * @param {string} loanId - ID of the loan to get documents for
+   * @returns {Promise<Object>} Response with documents list
+   */
+  async getDocumentsByLoanId(loanId) {
+    console.log('Getting documents for loan:', loanId);
+    // This is an alias for getLoanDocuments to maintain compatibility
+    return this.getLoanDocuments(loanId);
+  }
+  
+  /**
    * Get all documents for the current user
    * @param {Object} filters - Optional filters for document type, status, etc.
    * @returns {Promise<Object>} Response with documents list
