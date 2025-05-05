@@ -43,7 +43,7 @@ const Documents = () => {
     let category = documentRequest.category;
     console.log('Category:', category);
     // if (category === 'Document') category = 'Identity';
-    if (!['Identity', 'Income', 'Address', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
+    if (!['Identity', 'Income', 'Address', 'Property', 'Employment', 'Insurance', 'Financial', 'Legal', 'Other'].includes(category)) {
       category = 'Other';
     }
     
@@ -66,7 +66,9 @@ const Documents = () => {
       name: documentRequest.title || file.name,
       documentType: documentType,
       category: category,
-      description: documentRequest.description || 'Document requested by lender'
+      description: documentRequest.description || 'Document requested by lender',
+      // Add status to ensure it shows as pending review
+      status: 'Pending Review'
     };
     
     console.log('Using validated document data:', documentData);
@@ -100,6 +102,15 @@ const Documents = () => {
           setDocumentRequests(prevRequests => {
             return prevRequests.filter(req => req._id !== documentRequest._id);
           });
+          
+          // Set the selected document request for the RequiredDocumentsList component
+          // This will trigger the component to update and move the document to completed section
+          setSelectedDocumentRequest({
+            ...documentRequest,
+            uploadedDocumentId: response.data._id, // Pass the uploaded document ID
+            status: 'Pending Review',
+            isCompleted: true
+          });
         } else {
           console.warn('Failed to remove condition from loan model:', removeResponse);
         }
@@ -112,6 +123,8 @@ const Documents = () => {
     } else {
       toast.error(response.message || 'Failed to upload document');
     }
+    
+    setIsUploading(false);
   };
 
   // Fetch user's loans on component mount
@@ -267,61 +280,107 @@ const Documents = () => {
             
             {/* Document Requests from Lender */}
             {documentRequests && documentRequests.length > 0 && (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-                <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+              <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-4 transition-all duration-300 hover:shadow-xl border border-gray-100">
+                <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-white">
+                  <h3 className="text-lg leading-6 font-semibold text-gray-900 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                    </svg>
                     Document Requests
                   </h3>
-                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  <p className="mt-0.5 max-w-2xl text-xs text-gray-500">
                     The following documents have been requested for your loan applications.
                   </p>
                 </div>
-                <div className="border-t border-gray-200">
+                <div>
                   {isLoadingRequests ? (
-                    <div className="flex justify-center items-center h-32">
-                      <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                    <div className="flex justify-center items-center h-24 bg-gray-50/50">
+                      <div className="flex flex-col items-center">
+                        <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p className="mt-1 text-xs text-gray-500">Loading requests...</p>
+                      </div>
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-200">
-                      {documentRequests.map(request => (
-                        <li key={request._id} className="py-4 px-4 sm:px-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-base font-medium text-gray-900">{request.title}</h4>
-                              <p className="mt-1 text-sm text-gray-500">{request.description}</p>
-                              <p className="mt-1 text-xs text-gray-500">Due: {new Date(request.dueDate).toLocaleDateString()} · Loan: {request.loanNumber}</p>
+                    <ul className="divide-y divide-gray-100">
+                      {documentRequests.map(request => {
+                        // Calculate if due date is soon (within 3 days)
+                        const dueDate = new Date(request.dueDate);
+                        const today = new Date();
+                        const diffTime = dueDate - today;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        const isDueSoon = diffDays <= 3 && diffDays >= 0;
+                        const isPastDue = diffDays < 0;
+                        
+                        return (
+                          <li key={request._id} className="transition-all duration-200 hover:bg-gray-50">
+                            <div className="py-2.5 px-4">
+                              <div className="sm:flex sm:items-start sm:justify-between">
+                                <div className="flex-1 min-w-0 pr-4">
+                                  <h4 className="text-base font-medium text-gray-900 flex items-center gap-2">
+                                    {request.title}
+                                    {isDueSoon && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Due Soon
+                                      </span>
+                                    )}
+                                    {isPastDue && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                        Past Due
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <p className="mt-1 text-xs text-gray-600">{request.description}</p>
+                                  <div className="mt-1 flex items-center text-xs text-gray-500 space-x-4">
+                                    <span className="flex items-center">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      Due: {new Date(request.dueDate).toLocaleDateString()}
+                                    </span>
+                                    <span className="flex items-center">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      Loan: {request.loanNumber}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-4 sm:mt-0">
+                                  <button
+                                    onClick={() => {
+                                      // Set the selected loan to match this request's loan
+                                      if (request.loanId) setSelectedLoanId(request.loanId);
+                                      
+                                      // Create a dedicated file input for this document request
+                                      const fileInput = document.createElement('input');
+                                      fileInput.type = 'file';
+                                      fileInput.style.display = 'none';
+                                      document.body.appendChild(fileInput);
+                                      
+                                      // Handle file selection
+                                      fileInput.onchange = async (e) => {
+                                        handleFileUpload(e, request);
+                                      };
+                                      
+                                      // Trigger the file input click
+                                      fileInput.click();
+                                    }}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-primary transform hover:-translate-y-0.5"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
+                                    </svg>
+                                    Upload Document
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                            <div className="ml-4">
-                              <button
-                                onClick={() => {
-                                  // Set the selected loan to match this request's loan
-                                  if (request.loanId) setSelectedLoanId(request.loanId);
-                                  
-                                  // Create a dedicated file input for this document request
-                                  const fileInput = document.createElement('input');
-                                  fileInput.type = 'file';
-                                  fileInput.style.display = 'none';
-                                  document.body.appendChild(fileInput);
-                                  
-                                  // Handle file selection
-                                  fileInput.onchange = async (e) => {
-                                    handleFileUpload(e, request);
-                                  };
-                                  
-                                  // Trigger the file input click
-                                  fileInput.click();
-                                }}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                              >
-                                Upload Document
-                              </button>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -329,7 +388,7 @@ const Documents = () => {
             )}
             
             {/* Required Documents Checklist */}
-            <div className="mb-6" id="upload-section">
+            <div className="mb-6 mt-6" id="upload-section">
               <RequiredDocumentsList 
                 loanId={selectedLoanId} 
                 onDocumentUploaded={() => {

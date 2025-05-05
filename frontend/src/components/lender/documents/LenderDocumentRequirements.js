@@ -332,22 +332,124 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
 
   // Open request document modal
   const openRequestModal = (documentType, category, title, isUpdate = true) => {
-    console.log(`⚠️ Opening request modal for ${documentType} in ${category}, isUpdate=${isUpdate}`);  
-    
     setRequestDetails({
       documentType,
       category,
       title,
-      isUpdate,
       reason: '',
       customReason: '',
-      message: ''
+      message: '',
+      isUpdate
     });
+    setModalKey(Date.now());
     setShowRequestModal(true);
+  };
+  
+  // Generate appropriate message based on document type and reason
+  const generateMessageForReason = (documentType, category, title, reason, customReason) => {
+    // Get the document description from standardDocumentRequirements
+    const findDocumentDetails = () => {
+      const docInfo = standardDocumentRequirements.find(doc => 
+        doc.documentType === documentType || doc.title === title);
+      return docInfo ? docInfo.description : '';
+    };
+    
+    // Get the specific document details
+    const docDetails = findDocumentDetails();
+    
+    // Special message for Proof of Address
+    if (documentType === 'Utility Bill' || title.includes('Proof of Address')) {
+      return `Please upload your Proof of Address. Acceptable documents include: Utility bill, lease agreement, or bank statement. ${getReasonText(reason, 'Proof of Address')}`;
+    }
+    
+    // Special message for Retirement Account
+    if (documentType === 'Retirement Statement' || title.includes('Retirement')) {
+      return `Please upload your Retirement Account documents. If applicable, please submit the following: a) Most recent quarterly statement by name b) Conditions for hardship withdrawal and loans. ${getReasonText(reason, 'Retirement account')}`;
+    }
+    
+    // Special message for Bank Statements
+    if (documentType === 'Bank Statement') {
+      return `Please upload your most recent consecutive two months of Bank Statements (all pages). Note: Very important that you submit ALL pages of each statement, even the last page that says "this page intentionally left blank". ${getReasonText(reason, 'Bank Statement')}`;
+    }
+    
+    // Special message for Mortgage Statement
+    if (documentType === 'Mortgage Statement') {
+      return `Please upload your most recent monthly mortgage statement for all real estate owned. ${getReasonText(reason, 'Mortgage Statement')}`;
+    }
+    
+    // Special message for Property Tax Bill
+    if (documentType === 'Property Tax Bill') {
+      return `Please upload the most recent full year property tax bills for all real estate owned. ${getReasonText(reason, 'Property Tax Bill')}`;
+    }
+    
+    // Special message for Homeowners Insurance
+    if (documentType === 'Homeowners Insurance') {
+      return `Please upload a copy of your homeowner's insurance policy for all real estate owned. ${getReasonText(reason, 'Homeowners Insurance')}`;
+    }
+    
+    // Special message for ID
+    if (documentType === 'Driver License' || category === 'Identity') {
+      return `Please upload a valid State issued ID, Driver's License or Passport. ${getReasonText(reason, 'Identification')}`;
+    }
+    
+    // Special message for Proof of Income
+    if (category === 'Income') {
+      if (documentType === 'Pay Stub') {
+        return `Please upload recent pay stubs, W-2, or tax returns as proof of income. ${getReasonText(reason, 'Proof of Income')}`;
+      } else if (documentType === 'Business Tax Return') {
+        return `Please upload Business tax returns, P&Ls and K-1s - Must be within past 2 years. ${getReasonText(reason, 'Self Employed P&L')}`;
+      } else if (documentType === 'Schedule C') {
+        return `Please upload YTD profit and loss, and balance sheet, signed and dated. ${getReasonText(reason, 'Schedule C')}`;
+      }
+    }
+    
+    // Special message for Employment Verification
+    if (documentType === 'Employment Letter') {
+      return `Please upload a letter from your employer confirming employment status. ${getReasonText(reason, 'Employment Verification')}`;
+    }
+    
+    // Helper function to get reason-specific text
+    function getReasonText(reason, docName) {
+      switch(reason) {
+        case 'incorrect':
+          return `The document you submitted is not valid or does not match our requirements.`;
+        case 'quality':
+          return `The document you provided is of low quality or unreadable. Please submit a clearer, higher resolution version.`;
+        case 'expired':
+          return `Your document appears to be expired. Please submit a current, valid version.`;
+        case 'incomplete':
+          return `The document you submitted is incomplete. Please provide the complete document with all required pages and information.`;
+        case 'wrong_type':
+          return `The document you submitted is not recognized as a valid ${docName}. Please ensure you're submitting the correct document type.`;
+        case 'custom':
+          return customReason || `Please update your document according to the lender's requirements.`;
+        default:
+          return '';
+      }
+    }
+    
+    // If no special case matched, use a generic message with the document description if available
+    if (docDetails) {
+      return `Please upload your ${documentType} document. ${docDetails} ${getReasonText(reason, documentType)}`;
+    }
+    
+    // Fallback message if no details found
+    return `Please upload your ${documentType} document. ${getReasonText(reason, documentType)}`;
   };
 
   // Close request document modal
   const closeRequestModal = () => {
+    // If this was an update request (not a new document request),
+    // make sure to restore the visibility of the Request Update button
+    if (requestDetails.isUpdate && requestDetails.category && requestDetails.documentType) {
+      const buttonId = `update-btn-${requestDetails.category}-${requestDetails.documentType}`;
+      const updateButton = document.getElementById(buttonId);
+      if (updateButton) {
+        updateButton.classList.remove('hidden');
+      }
+    }
+
+    // Reset modal state
     setShowRequestModal(false);
     setRequestDetails({
       documentType: '',
@@ -537,25 +639,15 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     try {
       console.log('📝 Request details:', requestDetails);
       
-      // Determine the reason text to include in the description
-      let reasonText = '';
-      if (reason === 'custom' && customReason) {
-        reasonText = customReason;
-      } else if (reason) {
-        const reasonMap = {
-          'incorrect': 'The document submitted is incorrect',
-          'quality': 'The document quality is too low or text is not readable',
-          'expired': 'The document is expired',
-          'incomplete': 'The document is incomplete or missing pages',
-          'wrong_type': 'This is not the type of document we requested'
-        };
-        reasonText = reasonMap[reason] || reason.replace('_', ' ');
+      // Generate an appropriate message based on the selected reason
+      let requestDescription;
+      if (isUpdate) {
+        // Use our message generator function with all relevant parameters
+        requestDescription = generateMessageForReason(documentType, category, title, reason, customReason);
+      } else {
+        // For new document requests, use the same generator but with an empty reason to get the full document details
+        requestDescription = generateMessageForReason(documentType, category, title, '', customReason);
       }
-      
-      // Use the provided message if available, or generate a default one
-      let requestDescription = message || (isUpdate
-        ? `Please resubmit your ${documentType} document. Reason: ${reasonText || 'Update required'}`
-        : `Please upload your ${documentType} document (${category})`);
       
       let response;
       try {
@@ -698,15 +790,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
               Review, approve, or request documents from the borrower
             </p>
           </div>
-          <button
-            onClick={handleRefreshDocuments}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh Documents
-          </button>
+          
         </div>
       </div>
       

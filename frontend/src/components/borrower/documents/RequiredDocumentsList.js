@@ -112,7 +112,33 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     if (selectedRequest) {
       console.log('Processing selected document request:', selectedRequest);
       
-      // Create a new requirement from the request
+      // Check if the selected request has been uploaded and needs to be moved to the completed section
+      if (selectedRequest.isCompleted && selectedRequest.uploadedDocumentId) {
+        console.log('Document uploaded from request section, moving to completed list:', selectedRequest);
+        
+        // Update existing documents with the newly uploaded document
+        setExistingDocuments(prevDocs => {
+          // Check if the document already exists in the list (to avoid duplicates)
+          const docExists = prevDocs.find(doc => doc._id === selectedRequest.uploadedDocumentId);
+          if (docExists) return prevDocs;
+          
+          // Add the new document to the list
+          return [...prevDocs, {
+            _id: selectedRequest.uploadedDocumentId,
+            name: selectedRequest.title,
+            category: selectedRequest.category,
+            documentType: selectedRequest.documentType,
+            status: selectedRequest.status || 'Pending Review',
+            createdAt: new Date().toISOString()
+          }];
+        });
+        
+        // Refresh the requirements list
+        fetchRequirements();
+        return;
+      }
+      
+      // Create a new requirement from the request for upload form
       const newRequirement = {
         id: `request-${selectedRequest.category}-${selectedRequest.documentType}`,
         title: selectedRequest.title || `${selectedRequest.documentType} Document Required`,
@@ -120,8 +146,8 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         category: selectedRequest.category || 'Identity',
         documentType: selectedRequest.documentType || 'Other',
         isHighlighted: true,
-        isSubmitted: false,
-        status: 'Requested',
+        isSubmitted: true,
+        status: 'Pending Review',
         required: true,
         requestId: selectedRequest.id // Store the original request ID
       };
@@ -144,8 +170,8 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
             ...updatedRequirements[existingIndex],
             ...newRequirement,
             isHighlighted: true,
-            isSubmitted: false,
-            status: 'Requested'
+            isSubmitted: true,
+            status: 'Pending Review'
           };
           return updatedRequirements;
         } else {
@@ -172,6 +198,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   useEffect(() => {
     console.log('Requirements updated:', requirements);
   }, [requirements]);
+
   useEffect(() => {
     const fetchRequirements = async () => {
       setLoading(true);
@@ -219,32 +246,32 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         }
         
         // If we have a selected request, filter out matching documents
-        if (selectedRequest) {
-          // Filter out documents that match the selected request - they should be re-uploaded
-          const filteredDocuments = docsList.filter(doc => 
-            !(doc.category === selectedRequest.category && 
-              doc.documentType === selectedRequest.documentType));
+        // if (selectedRequest) {
+        //   // Filter out documents that match the selected request - they should be re-uploaded
+        //   const filteredDocuments = docsList.filter(doc => 
+        //     !(doc.category === selectedRequest.category && 
+        //       doc.documentType === selectedRequest.documentType));
             
-          console.log('Filtered out requested document for re-upload', 
-            docsList.length - filteredDocuments.length, 'documents removed');
+        //   console.log('Filtered out requested document for re-upload', 
+        //     docsList.length - filteredDocuments.length, 'documents removed');
           
-          docsList = filteredDocuments;
+        //   docsList = filteredDocuments;
           
-          // Update the existing documents state with filtered list
-          setExistingDocuments(filteredDocuments);
-        }
+        //   // Update the existing documents state with filtered list
+        //   setExistingDocuments(filteredDocuments);
+        // }
         
         // DEBUG - log all documents to check what's available
-        console.log('Documents to display:', {
-          count: docsList.length,
-          documents: docsList.map(d => ({
-            id: d._id,
-            name: d.name,
-            category: d.category,
-            documentType: d.documentType,
-            status: d.status
-          }))
-        });
+        // console.log('Documents to display:', {
+        //   count: docsList.length,
+        //   documents: docsList.map(d => ({
+        //     id: d._id,
+        //     name: d.name,
+        //     category: d.category,
+        //     documentType: d.documentType,
+        //     status: d.status
+        //   }))
+        // });
         
         // Use the standard requirements as the base and update with document statuses
         const updatedReqs = mapRequirementsWithStatus(requirements, docsList);
@@ -512,15 +539,21 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   };
   
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100 ">
       {/* Hidden file inputs for direct document uploads */}
       {renderHiddenFileInputs()}
       
-      <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
-        <p className="mt-1 text-sm text-gray-600">
+      <div className="px-5 py-4 relative border-b overflow-hidden bg-gradient-to-r from-blue-900 via-indigo-800 to-blue-700">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,#4338ca,transparent_50%)]" />
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_80%,#1e40af,transparent_40%)]" />
+        <div className="absolute top-0 right-0 w-20 h-20 bg-blue-400 rounded-full opacity-20 blur-2xl" />
+        <div className="absolute bottom-0 left-10 w-24 h-24 bg-indigo-300 rounded-full opacity-10 blur-2xl" />
+        <div className="relative z-10">
+        <h3 className="text-lg font-semibold text-white">Required Documents</h3>
+        <p className="mt-1 text-sm text-blue-100/90">
           Please upload all documents to complete your loan application
         </p>
+        </div>
       </div>
       
       {/* Pending Tasks */}

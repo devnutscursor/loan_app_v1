@@ -33,8 +33,8 @@ const DocumentRequestModal = ({
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
                   {isUpdate 
-                    ? `Specify why the ${requestDetails.documentType} document needs to be updated.` 
-                    : `Request the borrower to submit their ${requestDetails.documentType} document.`}
+                    ? `Specify why the ${requestDetails.title} document needs to be updated.` 
+                    : `Request the borrower to submit their ${requestDetails.title} document.`}
                 </p>
               </div>
             </div>
@@ -47,7 +47,7 @@ const DocumentRequestModal = ({
             }}>
               {!isUpdate && (
                 <>
-                  <div className="mb-4">
+                  {/* <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="documentType">
                       Document Type
                     </label>
@@ -61,9 +61,9 @@ const DocumentRequestModal = ({
                       required
                       disabled={isUpdate}
                     />
-                  </div>
+                  </div> */}
                   
-                  <div className="mb-4">
+                  {/* <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="category">
                       Category
                     </label>
@@ -77,7 +77,7 @@ const DocumentRequestModal = ({
                       required
                       disabled={isUpdate}
                     />
-                  </div>
+                  </div> */}
                 </>
               )}
 
@@ -90,7 +90,72 @@ const DocumentRequestModal = ({
                     id="reason"
                     name="reason"
                     value={requestDetails.reason || ''}
-                    onChange={(e) => setRequestDetails({...requestDetails, reason: e.target.value})}
+                    onChange={(e) => {
+                      // When reason changes, update the message automatically based on reason
+                      const newReason = e.target.value;
+                      const { documentType, category, title, customReason } = requestDetails;
+                      let autoMessage = '';
+                      
+                      // Special handling for Proof of Address
+                      if (documentType === 'Utility Bill' || title.includes('Proof of Address')) {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload your Proof of Address. Acceptable documents include: Utility bill, lease agreement, or bank statement. ${reasonText}`;
+                      }
+                      // Special handling for Retirement account
+                      else if (documentType === 'Retirement Statement' || title.includes('Retirement')) {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload your Retirement Account documents. If applicable, please submit the following: a) Most recent quarterly statement by name b) Conditions for hardship withdrawal and loans. ${reasonText}`;
+                      }
+                      // Special handling for Bank Statements
+                      else if (documentType === 'Bank Statement') {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload your most recent consecutive two months of Bank Statements (all pages). Note: Very important that you submit ALL pages of each statement, even the last page that says "this page intentionally left blank". ${reasonText}`;
+                      }
+                      // Special handling for Mortgage Statement
+                      else if (documentType === 'Mortgage Statement') {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload your most recent monthly mortgage statement for all real estate owned. ${reasonText}`;
+                      }
+                      // Special handling for Property Tax Bill
+                      else if (documentType === 'Property Tax Bill') {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload the most recent full year property tax bills for all real estate owned. ${reasonText}`;
+                      }
+                      // Special handling for Homeowners Insurance
+                      else if (documentType === 'Homeowners Insurance') {
+                        const reasonText = getReasonText(newReason, documentType);
+                        autoMessage = `Please upload a copy of your homeowner's insurance policy for all real estate owned. ${reasonText}`;
+                      }
+                      // For other document types, use a standard message
+                      else {
+                        autoMessage = `Please update your ${documentType} document. ${getReasonText(newReason, documentType)}`;
+                      }
+                      
+                      // Update both reason and message
+                      setRequestDetails({
+                        ...requestDetails, 
+                        reason: newReason,
+                        message: autoMessage
+                      });
+                      
+                      // Helper function to get reason-specific text
+                      function getReasonText(reason, docType) {
+                        switch(reason) {
+                          case 'incorrect':
+                            return `The document you submitted is not valid or does not match our requirements.`;
+                          case 'quality':
+                            return `The document you provided is of low quality or unreadable. Please submit a clearer, higher resolution version.`;
+                          case 'expired':
+                            return `Your document appears to be expired. Please submit a current, valid version.`;
+                          case 'incomplete':
+                            return `The document you submitted is incomplete. Please provide the complete document with all required pages and information.`;
+                          case 'wrong_type':
+                            return `The document you submitted is not recognized as a valid ${docType}. Please ensure you're submitting the correct document type.`;
+                          default:
+                            return '';
+                        }
+                      }
+                    }}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                     required
                   >
@@ -100,7 +165,7 @@ const DocumentRequestModal = ({
                     <option value="expired">Document expired</option>
                     <option value="incomplete">Document incomplete</option>
                     <option value="wrong_type">Wrong document type</option>
-                    <option value="custom">Other (specify)</option>
+                    {/* <option value="custom">Other (specify)</option> */}
                   </select>
 
                   {requestDetails.reason === 'custom' && (
@@ -123,20 +188,20 @@ const DocumentRequestModal = ({
                 </div>
               )}
 
-              <div className="mb-4">
+              {/* <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="message">
-                  Message to Borrower
+                  Message to Borrower <span className="text-xs text-indigo-600 font-normal">(Auto-generated based on reason)</span>
                 </label>
                 <textarea
                   id="message"
                   value={requestDetails.message || ''}
-                  onChange={(e) => setRequestDetails({...requestDetails, message: e.target.value})}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  placeholder="Please explain what the borrower needs to provide..."
+                  readOnly
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-gray-50 focus:outline-none focus:shadow-outline"
+                  placeholder="Message will be automatically generated based on the selected reason..."
                   rows="4"
                   required
                 />
-              </div>
+              </div> */}
 
               <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                 <button

@@ -1223,7 +1223,7 @@ const LoanApplication = () => {
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout title="Apply for Loan">
         <div className="py-6">
-          <div className="mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto sm:px-6">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-semibold text-gray-900">Apply for a Loan</h1>
               

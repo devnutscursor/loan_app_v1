@@ -221,11 +221,11 @@ const LoanDetails = () => {
                 {loan.militaryService && (
                   <MilitaryServiceCard loan={loan} formatDate={formatDate} />
                 )}
-                <DocumentsCard 
+                {/* <DocumentsCard 
                   documents={loan.documents} 
                   formatDate={formatDate} 
                   handleRemoveDocument={handleRemoveDocument} 
-                />
+                /> */}
               </div>
             ) : (
               <div className="bg-white shadow rounded-lg p-6 text-center">

@@ -532,7 +532,9 @@ const borrowerDetailsSchema = new mongoose.Schema({
     city: String,
     state: String,
     zipCode: String,
-    monthlyIncome: Number
+    monthlyIncome: Number,
+    isSelfEmployed: String,
+    ownsMoreThan25Percent: String
   }]
 });
 

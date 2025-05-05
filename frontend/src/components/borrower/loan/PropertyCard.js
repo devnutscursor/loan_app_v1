@@ -39,9 +39,9 @@ const PropertyCard = ({ property, formatCurrency }) => {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Address</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Zip Code</p>
                   <p className="mt-1 text-sm font-semibold text-gray-900">
-                    {formatAddress(property.address, property.zipCode)}
+                    {property.zipCode}
                   </p>
                 </div>
               </div>
