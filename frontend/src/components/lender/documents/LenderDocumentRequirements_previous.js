@@ -14,7 +14,7 @@ import DocumentRequestModal from './DocumentRequestModal';
  * with status indicators and options for lenders to approve, reject, or request new documents.
  */
 // Function to check if a document has an update request based on loan conditions
-const hasDocumentCondition = (loanConditions, category, documentType, title) => {
+const hasDocumentCondition = (loanConditions, category, documentType) => {
   if (!loanConditions || !Array.isArray(loanConditions) || loanConditions.length === 0) {
     return false;
   }
@@ -22,28 +22,21 @@ const hasDocumentCondition = (loanConditions, category, documentType, title) => 
   // Check if there's a pending document condition matching this category/type
   return loanConditions.some(condition => {
     // Check if it's a document condition
-    if (condition.category !== category) {
+    if (condition.category !== 'Document') {
       return false;
     }
     
-    // Clean up the title by removing "Document Required" suffix for comparison
-  const cleanTitle = condition.title.toLowerCase().replace(' document required', '');
-  
-  // Check if the clean title matches the document type
-  const titleMatches = cleanTitle === title.toLowerCase() || 
-                       title.toLowerCase().includes(cleanTitle) ||
-                       cleanTitle.includes(title.toLowerCase());
-  
-  // If we have specific documentType field in condition, check that too
-  const typeMatches = condition.documentType ? 
-                      condition.documentType.toLowerCase() === documentType.toLowerCase() :
-                      false;
-  
-  // For debugging, log the matching process
-  console.log(`Comparing: "${cleanTitle}" with "${documentType.toLowerCase()}" - Match: ${titleMatches || typeMatches}`);
-  
-  return titleMatches || typeMatches;
-});
+    // Match by title (contains documentType) or direct match of title to type
+    const titleMatches = condition.title.toLowerCase().includes(documentType.toLowerCase()) ||
+                         condition.title.toLowerCase() === documentType.toLowerCase();
+    
+    // If we have specific documentType field in condition, check that too
+    const typeMatches = condition.documentType ? 
+                        condition.documentType.toLowerCase() === documentType.toLowerCase() :
+                        false;
+    
+    return titleMatches || typeMatches;
+  });
 };
 
 const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => {
@@ -54,7 +47,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
   const [requestDetails, setRequestDetails] = useState({
     documentType: '',
     category: '',
-    title: '',
     reason: '',
     customReason: '',
     isUpdate: false
@@ -114,16 +106,16 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
   
   // Process documents and map them to requirements
   const processDocuments = (docsList) => {
-    // console.log('⚠️ Process Documents called with:', docsList?.length, 'documents');
+    console.log('⚠️ Process Documents called with:', docsList?.length, 'documents');
     console.log('📚 Current loan conditions:', loanConditions);
     
     if (!loanId || !docsList || !docsList.length) {
-      // console.log('⚠️ No documents found, setting default requirements');
+      console.log('⚠️ No documents found, setting default requirements');
       
       // Set default requirements without document mappings
       const updatedReqs = standardDocumentRequirements.map((req, index) => {
         // Check if there's a pending document condition for this requirement
-        const hasCondition = hasDocumentCondition(loanConditions, req.category, req.documentType, req.title);
+        const hasCondition = hasDocumentCondition(loanConditions, req.category, req.documentType);
         
         return {
           ...req,
@@ -140,50 +132,50 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       return;
     }
     
-    // console.log('Processing documents:', docsList);
+    console.log('Processing documents:', docsList);
     
     // DETAILED DEBUG: Check for identification document specifically
-    // console.log('Looking for identification document...');
-    // const identificationDocs = docsList.filter(doc => 
-    //   (doc.category === 'Identity' || doc.documentType === 'Driver License' || 
-    //    (doc.name && doc.name.toLowerCase().includes('id')) || 
-    //    (doc.originalFilename && doc.originalFilename.toLowerCase().includes('id'))
-    //   )
-    // );
-    // console.log('Possible identification documents found:', identificationDocs);
+    console.log('Looking for identification document...');
+    const identificationDocs = docsList.filter(doc => 
+      (doc.category === 'Identity' || doc.documentType === 'Driver License' || 
+       (doc.name && doc.name.toLowerCase().includes('id')) || 
+       (doc.originalFilename && doc.originalFilename.toLowerCase().includes('id'))
+      )
+    );
+    console.log('Possible identification documents found:', identificationDocs);
     
     // Filter out duplicate documents based on original filename or name
     const uniqueDocuments = [];
     const docNames = new Set();
     
-    // docsList.forEach(doc => {
-    //   // If this document is flagged as a potential ID document, prioritize it
-    //   if (identificationDocs.some(idDoc => idDoc._id === doc._id)) {
-    //     console.log('Adding identification document with priority:', doc.name || doc.originalFilename);
-    //     uniqueDocuments.push(doc);
-    //     return;
-    //   }
+    docsList.forEach(doc => {
+      // If this document is flagged as a potential ID document, prioritize it
+      if (identificationDocs.some(idDoc => idDoc._id === doc._id)) {
+        console.log('Adding identification document with priority:', doc.name || doc.originalFilename);
+        uniqueDocuments.push(doc);
+        return;
+      }
       
-    //   const docName = doc.originalFilename || doc.name || '';
-    //   if (!docNames.has(docName) && docName) {
-    //     docNames.add(docName);
-    //     uniqueDocuments.push(doc);
-    //   }
-    // });
+      const docName = doc.originalFilename || doc.name || '';
+      if (!docNames.has(docName) && docName) {
+        docNames.add(docName);
+        uniqueDocuments.push(doc);
+      }
+    });
     
-    // console.log('Unique documents after processing:', uniqueDocuments);
+    console.log('Unique documents after processing:', uniqueDocuments);
     
     // DEBUG: Print exact properties we're matching against
-    // console.log('Standard requirements for matching:', standardDocumentRequirements.map(req => ({
-    //   id: req.id,
-    //   title: req.title,
-    //   category: req.category,
-    //   documentType: req.documentType
-    // })));
+    console.log('Standard requirements for matching:', standardDocumentRequirements.map(req => ({
+      id: req.id,
+      title: req.title,
+      category: req.category,
+      documentType: req.documentType
+    })));
     
     // Assign documents to requirements
-    const documentAssignments = assignDocumentsToRequirements(standardDocumentRequirements, docsList);
-    // console.log('Document assignments:', documentAssignments);
+    const documentAssignments = assignDocumentsToRequirements(standardDocumentRequirements, uniqueDocuments);
+    console.log('Document assignments:', documentAssignments);
     
     const updatedReqs = standardDocumentRequirements.map(req => {
       const assignedDoc = documentAssignments[req.id];
@@ -219,21 +211,17 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     // Force refresh of requirements when conditions change
         // This ensures we update the UI based on the latest conditions
         const reqsCopy = [...requirements];
-        console.log("conditions are", loanConditions);
         const updatedReqs = reqsCopy.map(req => {
           // Check if this document has a condition
           const hasCondition = hasDocumentCondition(
             loanConditions, 
             req.category, 
-            req.documentType,
-            req.title
+            req.documentType
           );
-
-          console.log('Has condition:', hasCondition);
           
           // Update the requestedUpdate flag if needed
           if (req.requestedUpdate !== hasCondition) {
-            // console.log(`${hasCondition ? '➕' : '➖'} Updating status for ${req.documentType}: requestedUpdate=${hasCondition}`);
+            console.log(`${hasCondition ? '➕' : '➖'} Updating status for ${req.documentType}: requestedUpdate=${hasCondition}`);
             return {
               ...req,
               requestedUpdate: hasCondition,
@@ -242,23 +230,21 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           }
           return req;
         });
-
-        console.log('Updated requirements:', updatedReqs);
         
         // Only update if something changed
-        // const hasChanges = JSON.stringify(updatedReqs) !== JSON.stringify(requirements);
-        // if (hasChanges) {
-          // console.log('⚡ Detected changes in requirements based on conditions, updating UI');
+        const hasChanges = JSON.stringify(updatedReqs) !== JSON.stringify(requirements);
+        if (hasChanges) {
+          console.log('⚡ Detected changes in requirements based on conditions, updating UI');
           
           // Log which requirements changed for debugging
-          // updatedReqs.forEach((req, i) => {
-          //   if (JSON.stringify(req) !== JSON.stringify(requirements[i])) {
-          //     console.log(`  Changed: ${req.documentType} (${req.category}) - requestedUpdate: ${req.requestedUpdate}`);
-          //   }
-          // });
+          updatedReqs.forEach((req, i) => {
+            if (JSON.stringify(req) !== JSON.stringify(requirements[i])) {
+              console.log(`  Changed: ${req.documentType} (${req.category}) - requestedUpdate: ${req.requestedUpdate}`);
+            }
+          });
           
           setRequirements(updatedReqs);
-        // }
+        }
   }, [loanConditions]);
   
 
@@ -331,13 +317,12 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
   }, [loanId, documents, refreshCounter]);
 
   // Open request document modal
-  const openRequestModal = (documentType, category, title, isUpdate = true) => {
+  const openRequestModal = (documentType, category, isUpdate = false) => {
     console.log(`⚠️ Opening request modal for ${documentType} in ${category}, isUpdate=${isUpdate}`);  
     
     setRequestDetails({
       documentType,
       category,
-      title,
       isUpdate,
       reason: '',
       customReason: '',
@@ -351,7 +336,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     setShowRequestModal(false);
     setRequestDetails({
       documentType: '',
-      title: '',
       category: '',
       reason: '',
       customReason: '',
@@ -524,7 +508,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     
     console.log('⚠️ handleRequestDocument called with requestDetails:', JSON.stringify(requestDetails, null, 2));
     
-    const { title, documentType, category, reason, customReason, message, isUpdate } = requestDetails;
+    const { documentType, category, reason, customReason, message, isUpdate } = requestDetails;
     
     if (!documentType || !category) {
       toast.error('Document type or category is missing');
@@ -563,7 +547,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         const hardcodedBorrowerId = "67fa2aa7f5010213147f8529";
         
         const requestData = { 
-          title,
           documentType, 
           category,
           loanId,
@@ -641,8 +624,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
                 const hasCondition = hasDocumentCondition(
                   conditions, 
                   req.category, 
-                  req.documentType,
-                  req.title
+                  req.documentType
                 );
                 
                 // Log the matching result for debugging

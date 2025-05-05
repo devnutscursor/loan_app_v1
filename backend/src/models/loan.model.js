@@ -162,14 +162,19 @@ const conditionSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  documentType: {
+    type: String,
+    trim: true
+  },
   category: {
     type: String,
     enum: [
-      'Document',
-      'Assets',
-      'Credit',
+      'Identity',
+      'Income',
+      'Address',
       'Property',
       'Employment',
+      'Financial',
       'Insurance',
       'Other'
     ],

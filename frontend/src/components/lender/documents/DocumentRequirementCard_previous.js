@@ -144,7 +144,7 @@ const DocumentRequirementCard = ({
                         onClick={() => {
                           // The parent component will handle creating the loan condition
                           // Just open the modal - no need for localStorage
-                          openRequestModal(req.documentType, req.category, req.title, true);
+                          openRequestModal(req.documentType, req.category, true);
                           
                           // Force hiding this button using DOM manipulation
                           document.getElementById(`update-btn-${req.category}-${req.documentType}`)?.classList.add('hidden');
@@ -182,7 +182,7 @@ const DocumentRequirementCard = ({
               /* Request document button - only for not submitted documents */
               <button
                 type="button" 
-                onClick={() => openRequestModal(req.documentType, req.category, req.title, false)}
+                onClick={() => openRequestModal(req.documentType, req.category, false)}
                 disabled={processingDocId === `${req.category}-${req.documentType}`}
                 className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >

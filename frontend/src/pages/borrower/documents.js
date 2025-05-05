@@ -28,6 +28,7 @@ const Documents = () => {
   
   // Handle file upload for document requests
   const handleFileUpload = async (event, documentRequest) => {
+    console.log('Uploading document request:', documentRequest);
     setIsUploading(true);
     const file = event.target.files[0];
     
@@ -40,13 +41,15 @@ const Documents = () => {
     // Get correct category and documentType
     // Handle the case where category might be 'Document' which is not valid
     let category = documentRequest.category;
-    if (category === 'Document') category = 'Identity';
-    if (!['Identity', 'Income', 'Assets', 'Credit', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
+    console.log('Category:', category);
+    // if (category === 'Document') category = 'Identity';
+    if (!['Identity', 'Income', 'Address', 'Property', 'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'].includes(category)) {
       category = 'Other';
     }
     
     // Make sure documentType is valid
     let documentType = documentRequest.documentType;
+    console.log('Document type:', documentType);
     if (!documentType || documentType === 'undefined') {
       // If the request title contains a hint about the document type
       if (documentRequest.title.toLowerCase().includes('driver') || documentRequest.title.toLowerCase().includes('license')) {

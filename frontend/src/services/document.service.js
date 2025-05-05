@@ -19,6 +19,7 @@ class DocumentService {
    */
   async uploadDocument(documentData, loanId, file) {
     try {
+      console.log('Document data:', documentData);
       // Create a FormData object to handle file upload
       const formData = new FormData();
       formData.append('file', file);

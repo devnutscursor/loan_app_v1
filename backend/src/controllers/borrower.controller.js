@@ -688,7 +688,7 @@ exports.getLoanConditions = async (req, res, next) => {
     
     // Get document-related conditions with 'Pending' status
     const documentRequests = allConditions.filter(
-      condition => condition.category === 'Document' && condition.status === 'Pending'
+      condition =>  condition.status === 'Pending'
     );
     
     res.status(200).json({

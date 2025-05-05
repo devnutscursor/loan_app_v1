@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs');
 const User = require('../models/user.model');
+const { title } = require('process');
 
 /**
  * Upload a document
@@ -813,7 +814,7 @@ exports.verifyDocument = async (req, res, next) => {
  */
 exports.requestDocument = async (req, res, next) => {
   try {
-    const { borrowerId, loanId, documentType, category, description, dueDate, isUpdate } = req.body;
+    const { borrowerId, loanId, title, documentType, category, description, dueDate, isUpdate } = req.body;
     
     // Validate required inputs
     if (!borrowerId || !loanId || !documentType) {
@@ -865,11 +866,13 @@ exports.requestDocument = async (req, res, next) => {
       }
     }
     
+    console.log('title', title);
     // Create a document request condition
     const newCondition = {
-      title: `${documentType} Document Required`,
-      description: description || `Please upload your ${documentType} document`,
-      category: 'Document',
+      title: `${title} Document Required`,
+      description: description || `Please upload your ${title} document`,
+      category: category,
+      documentType: documentType,
       status: 'Pending',
       assignedTo: borrower.user, // Assign to the borrower's user account
       dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days

@@ -12,6 +12,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingDocId, setUploadingDocId] = useState(null);
+  const [existingDocuments, setExistingDocuments] = useState([]);
 
   // Define the standard required documents for loan approval
   const standardRequirements = [
@@ -32,26 +33,26 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       required: true
     },
     {
-      id: 'income',
-      title: 'Self Employed K1\'s',
-      description: 'Business tax returns (K-1s) and K-1s - Most recently filed 2 years',
+      id: 'selfEmployedPL',
+      title: 'Self Employed P&L',
+      description: 'Business tax returns, P&Ls and K-1s - Must be within past 2 years',
       category: 'Income',
-      documentType: 'Tax Return',
+      documentType: 'Business Tax Return',
       required: true
     },
     {
-      id: 'business',
+      id: 'scheduleC',
       title: 'Schedule C or Corp/S-Corp/Partnership',
       description: 'YTD profit and loss, and balance sheet, signed and dated',
       category: 'Income',
-      documentType: 'Other',
+      documentType: 'Schedule C',
       required: true
     },
     {
-      id: 'bank',
+      id: 'bankStatements',
       title: 'Bank Statements',
-      description: 'Most recent consecutive two months (all pages). Note: Very important that you submit ALL pages of each statement... even the last page that is blank.',
-      category: 'Assets',
+      description: 'Most recent consecutive two months (all pages). Note: Very important that you submit ALL pages of each statement, even the last page that says "this page intentionally left blank"',
+      category: 'Financial',
       documentType: 'Bank Statement',
       required: true
     },
@@ -61,7 +62,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       description: 'Letter from employer confirming employment status',
       category: 'Employment',
       documentType: 'Employment Letter',
-      required: true
+      required: false
     },
     {
       id: 'addressVerification',
@@ -69,39 +70,39 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       description: 'Utility bill, lease agreement, or bank statement',
       category: 'Address',
       documentType: 'Utility Bill',
+      required: false
+    },
+    {
+      id: 'retirementAccount',
+      title: 'Retirement account',
+      description: 'If applicable, please submit the following: a) Most recent quarterly statement by name b) Conditions for hardship withdrawal and loans',
+      category: 'Financial',
+      documentType: 'Retirement Statement',
       required: true
     },
     {
-      id: 'retirement',
-      title: 'Retirement account',
-      description: 'If applicable - please submit the following: a) Most recent quarterly statement b) Terms & Conditions for hardship withdrawals and loans',
-      category: 'Assets',
-      documentType: 'Retirement Account Statement',
-      required: false
-    },
-    {
-      id: 'mortgage',
+      id: 'mortgageStatement',
       title: 'Mortgage Statement',
-      description: 'Please upload a copy of your most recent monthly mortgage statement for all real estate owned',
+      description: 'Please upload your most recent monthly mortgage statement for all real estate owned',
       category: 'Property',
-      documentType: 'Other',
-      required: false
+      documentType: 'Mortgage Statement',
+      required: true
     },
     {
-      id: 'taxes',
+      id: 'propertyTax',
       title: 'Property Taxes (most recent full year)',
       description: 'Please upload the most recent full year property tax bills for all real estate owned',
       category: 'Property',
-      documentType: 'Other',
-      required: false
+      documentType: 'Property Tax Bill',
+      required: true
     },
     {
-      id: 'insurance',
+      id: 'homeownersInsurance',
       title: 'Homeowner\'s Insurance',
       description: 'Please upload a copy of your homeowner\'s insurance policy for all real estate owned',
       category: 'Insurance',
-      documentType: 'Insurance Declaration',
-      required: false
+      documentType: 'Homeowners Insurance',
+      required: true
     }
   ];
   
@@ -169,12 +170,16 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   }, [selectedRequest]); // Only depend on selectedRequest
 
   useEffect(() => {
+    console.log('Requirements updated:', requirements);
+  }, [requirements]);
+  useEffect(() => {
     const fetchRequirements = async () => {
       setLoading(true);
       try {
         if (!loanId) {
           // No loan selected, show standard requirements
           setRequirements(standardRequirements);
+          setExistingDocuments([]);
           setLoading(false);
           return;
         }
@@ -183,23 +188,26 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         const docsResponse = await DocumentService.getLoanDocuments(loanId);
         console.log('Existing documents response:', docsResponse);
         
-        let existingDocuments = [];
+        let docsList = [];
         
         // Extract the documents array from the response
         if (docsResponse.success) {
           if (docsResponse.data && docsResponse.data.data) {
             // If the API returns a nested data structure
-            existingDocuments = docsResponse.data.data;
+            docsList = docsResponse.data.data;
           } else if (Array.isArray(docsResponse.data)) {
             // If the API returns an array directly
-            existingDocuments = docsResponse.data;
+            docsList = docsResponse.data;
           }
           
-          console.log('Found existing documents:', existingDocuments);
+          console.log('Found existing documents:', docsList);
         } else {
           console.warn('API returned unsuccessful response for documents:', docsResponse);
         }
         
+        // Save the existing documents to state for future reference
+        setExistingDocuments(docsList);
+
         // Check for document requirements from the API (future enhancement)
         const reqResponse = await DocumentService.getDocumentRequirements(loanId);
         let requirements = standardRequirements;
@@ -213,20 +221,23 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         // If we have a selected request, filter out matching documents
         if (selectedRequest) {
           // Filter out documents that match the selected request - they should be re-uploaded
-          const filteredDocuments = existingDocuments.filter(doc => 
+          const filteredDocuments = docsList.filter(doc => 
             !(doc.category === selectedRequest.category && 
               doc.documentType === selectedRequest.documentType));
             
           console.log('Filtered out requested document for re-upload', 
-            existingDocuments.length - filteredDocuments.length, 'documents removed');
+            docsList.length - filteredDocuments.length, 'documents removed');
           
-          existingDocuments = filteredDocuments;
+          docsList = filteredDocuments;
+          
+          // Update the existing documents state with filtered list
+          setExistingDocuments(filteredDocuments);
         }
         
         // DEBUG - log all documents to check what's available
         console.log('Documents to display:', {
-          count: existingDocuments.length,
-          documents: existingDocuments.map(d => ({
+          count: docsList.length,
+          documents: docsList.map(d => ({
             id: d._id,
             name: d.name,
             category: d.category,
@@ -236,7 +247,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         });
         
         // Use the standard requirements as the base and update with document statuses
-        const updatedReqs = mapRequirementsWithStatus(requirements, existingDocuments);
+        const updatedReqs = mapRequirementsWithStatus(requirements, docsList);
         setRequirements(updatedReqs);
       } catch (error) {
         console.error('Error fetching document data:', error);
@@ -255,7 +266,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   
   // Map requirements with status based on existing documents
   const mapRequirementsWithStatus = (requirements, existingDocs) => {
-    console.log('Mapping requirements with existing docs:', { requirements, existingDocs });
+    // console.log('Mapping requirements with existing docs:', { requirements, existingDocs });
     
     return requirements.map(req => {
       let matchingDoc = null;
@@ -264,51 +275,49 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       if (Array.isArray(existingDocs) && existingDocs.length > 0) {
         // First try document type + category (most specific match)
         matchingDoc = existingDocs.find(doc => 
-          (doc.documentType === req.documentType && doc.category === req.category) ||
-          // Also consider 'Other' documentType with category match
-          (doc.documentType === 'Other' && doc.category === req.category)
+          (doc.documentType === req.documentType && doc.category === req.category) 
         );
         
-        if (matchingDoc) {
-          console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
-        }
+        // if (matchingDoc) {
+        //   console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
+        // }
         
         // If no match, try title match or name match
-        if (!matchingDoc) {
-          matchingDoc = existingDocs.find(doc => {
-            // Try to match by title or document name
-            const docNameLower = (doc.name || '').toLowerCase();
-            const reqTitleLower = (req.title || '').toLowerCase();
-            const docOriginalFileLower = (doc.originalFilename || '').toLowerCase();
+        // if (!matchingDoc) {
+        //   matchingDoc = existingDocs.find(doc => {
+        //     // Try to match by title or document name
+        //     const docNameLower = (doc.name || '').toLowerCase();
+        //     const reqTitleLower = (req.title || '').toLowerCase();
+        //     const docOriginalFileLower = (doc.originalFilename || '').toLowerCase();
             
-            return (docNameLower.includes(reqTitleLower) || 
-                   reqTitleLower.includes(docNameLower) ||
-                   docOriginalFileLower.includes(reqTitleLower));
-          });
+        //     return (docNameLower.includes(reqTitleLower) || 
+        //            reqTitleLower.includes(docNameLower) ||
+        //            docOriginalFileLower.includes(reqTitleLower));
+        //   });
           
-          if (matchingDoc) {
-            console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
-          }
-        }
+        //   if (matchingDoc) {
+        //     console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
+        //   }
+        // }
         
-        // Last resort - try various matching methods
-        if (!matchingDoc) {
-          // Check documentType match (even if category doesn't match)
-          matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
+        // // Last resort - try various matching methods
+        // if (!matchingDoc) {
+        //   // Check documentType match (even if category doesn't match)
+        //   matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
           
-          if (matchingDoc) {
-            console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
-          } else {
-            // Final attempt: match by category only
-            matchingDoc = existingDocs.find(doc => doc.category === req.category);
+        //   if (matchingDoc) {
+        //     console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
+        //   } else {
+        //     // Final attempt: match by category only
+        //     matchingDoc = existingDocs.find(doc => doc.category === req.category);
             
-            if (matchingDoc) {
-              console.log(`Found matching document for category ${req.category}:`, matchingDoc);
-            }
-          }
-        }
+        //     if (matchingDoc) {
+        //       console.log(`Found matching document for category ${req.category}:`, matchingDoc);
+        //     }
+        //   }
+        // }
       }
-      
+      // console.log('Matching document:', matchingDoc);
       // Create the updated requirement with status information
       const updatedReq = {
         ...req,
@@ -317,6 +326,8 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         isSubmitted: !!matchingDoc,
         uploadedDate: matchingDoc ? new Date(matchingDoc.createdAt || Date.now()).toLocaleDateString() : null
       };
+
+      // console.log('Updated requirement:', updatedReq);
       
       return updatedReq;
     });
@@ -332,17 +343,15 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       // Ensure valid category and documentType values
       // The document model requires specific enum values
       const validCategories = [
-        'Identity', 'Income', 'Assets', 'Credit', 'Property', 
-        'Employment', 'Insurance', 'Disclosures', 'Legal', 'Other'
+        'Identity', 'Income', 'Address', 'Property', 
+        'Employment', 'Insurance', 'Financial', 'Other'
       ];
       
       const validDocTypes = [
-        'Driver License', 'Passport', 'Social Security Card', 'Pay Stub', 'W2', 
-        'Tax Return', 'Bank Statement', 'Retirement Account Statement', 
-        'Investment Account Statement', 'Gift Letter', 'Credit Report', 
-        'Purchase Agreement', 'Property Appraisal', 'Title Report', 
-        'Insurance Declaration', 'Loan Estimate', 'Closing Disclosure', 
-        'Loan Application', 'Other'
+        'Driver License', 'Passport', 'Social Security Card', 'Pay Stub', 'W2', 'Utility Bill',
+        'Business Tax Return', 'Schedule C', 'Employment Letter', 'Mortgage Statement', 
+        'Property Tax Bill', 'Homeowners Insurance', 'Bank Statement', 'Retirement Statement', 
+        'Other'
       ];
       
       // Use requirement's category or default to 'Other' if invalid
@@ -369,7 +378,32 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       
       console.log('Uploading document with data:', documentData);
       
-      // Upload the document
+      // Check if a document of the same type already exists
+      let existingDocumentId = null;
+      
+      // Look for an existing document with the same category and type in our requirements
+      const existingDoc = existingDocuments.find(doc => 
+        doc.category === category && doc.documentType === documentType
+      );
+      
+      if (existingDoc) {
+        existingDocumentId = existingDoc._id;
+        console.log(`Found existing document with same type: ${existingDocumentId}`);
+      }
+      
+      // If we have an existing document of this type, delete it first
+      if (existingDocumentId) {
+        try {
+          console.log(`Deleting existing document ${existingDocumentId} before uploading new one`);
+          await DocumentService.deleteDocument(existingDocumentId);
+          console.log(`Successfully deleted existing document ${existingDocumentId}`);
+        } catch (deleteError) {
+          console.error('Error deleting existing document:', deleteError);
+          // Continue with upload even if delete fails
+        }
+      }
+      
+      // Upload the new document
       const response = await DocumentService.uploadDocument(documentData, loanId, file);
       
       if (response.success) {
@@ -394,11 +428,15 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
           )
         );
         
-        // Refresh the documents list to get updated status from server
-        // setTimeout(() => {
-        //   // Reload the page requirements
-        //   fetchRequirements();
-        // }, 1000);
+        // Update the existingDocuments list to include the new document and remove the old one
+        if (existingDocumentId) {
+          setExistingDocuments(prev => [
+            ...prev.filter(doc => doc._id !== existingDocumentId),
+            response.data
+          ]);
+        } else {
+          setExistingDocuments(prev => [...prev, response.data]);
+        }
         
         // Notify parent component
         if (onDocumentUploaded) {
