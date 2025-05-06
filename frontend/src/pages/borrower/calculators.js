@@ -45,41 +45,7 @@ const FinancialCalculators = () => {
               </button>
             </div>
             
-            {/* Additional resources */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Additional Resources</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border border-gray-200 rounded-md p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Home Buying Guide</h3>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Learn about the home buying process from start to finish.
-                  </p>
-                  <a href="#" className="text-primary hover:text-primary-dark text-sm font-medium">
-                    Read the guide →
-                  </a>
-                </div>
-                
-                <div className="border border-gray-200 rounded-md p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Understanding Mortgage Terms</h3>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Decode common mortgage terminology and loan types.
-                  </p>
-                  <a href="#" className="text-primary hover:text-primary-dark text-sm font-medium">
-                    View glossary →
-                  </a>
-                </div>
-                
-                <div className="border border-gray-200 rounded-md p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Financial Planning Tips</h3>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Expert advice on preparing your finances for homeownership.
-                  </p>
-                  <a href="#" className="text-primary hover:text-primary-dark text-sm font-medium">
-                    See tips →
-                  </a>
-                </div>
-              </div>
-            </div>
+            
           </div>
         </div>
       </MainLayout>
