@@ -3,7 +3,7 @@ import { Edit } from 'lucide-react';
 import LoanParametersModal from './LoanParametersModal';
 import { fetchAPI } from '@/utils/api';
 
-const LoanQualificationCard = ({ loan, onUpdate }) => {
+const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loanPrograms, setLoanPrograms] = useState([]);
   const [loanRates, setLoanRates] = useState([]);
@@ -52,12 +52,67 @@ const LoanQualificationCard = ({ loan, onUpdate }) => {
     fetchProgramsAndRates();
   }, []);
 
-  // Calculate loan values whenever loan or selected program changes
+  // Fetch the latest loan data from the server periodically
   useEffect(() => {
+    // Initial calculation
     if (loan && selectedProgram) {
       calculateLoanValues();
     }
-  }, [loan, selectedProgram, loanRates]);
+    
+    // Only set up polling if explicitly enabled
+    if (!enablePolling) {
+      console.log('[DEBUG] Polling disabled for this component instance');
+      return; // Exit early - no polling
+    }
+    
+    // Set up polling to refresh loan data
+    const pollInterval = setInterval(async () => {
+      // Skip polling if modal is open to avoid excessive API calls
+      if (loan?._id && !isModalOpen) {
+        try {
+          console.log('[DEBUG] Polling for loan updates');
+          const response = await fetchAPI(`/loans/${loan._id}`);
+          
+          if (response.status === 'success' && response.data) {
+            // If we have loan parameters saved in the database, use them
+            if (response.data.loanParameters || response.data.loanCalculations) {
+              // Compare the data to see if it's actually changed before updating
+              const currentParamsStr = JSON.stringify(loan.loanParameters || {});
+              const newParamsStr = JSON.stringify(response.data.loanParameters || {});
+              const currentCalcsStr = JSON.stringify(loan.loanCalculations || {});
+              const newCalcsStr = JSON.stringify(response.data.loanCalculations || {});
+              
+              // Only update if the data has actually changed
+              if (currentParamsStr !== newParamsStr || currentCalcsStr !== newCalcsStr) {
+                console.log('[DEBUG] Detected changes in loan data, updating...');
+                
+                // Update the loan object with the latest data
+                const updatedLoan = {
+                  ...loan,
+                  loanParameters: response.data.loanParameters || {},
+                  loanCalculations: response.data.loanCalculations || {}
+                };
+                
+                // Calculate new values based on updated data
+                calculateLoanValues(updatedLoan);
+                
+                // If onUpdate is provided, call it with the updated loan
+                if (onUpdate) {
+                  onUpdate(updatedLoan);
+                }
+              } else {
+                console.log('[DEBUG] No changes detected in poll data, skipping update');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error polling for loan updates:', error);
+        }
+      }
+    }, 10000); // Poll every 10 seconds - increased to reduce API load
+    
+    return () => clearInterval(pollInterval); // Clean up on unmount
+  }, [loan?._id, selectedProgram, loanRates]);
 
   const getLoanAmount = () => {
     if (!loan?.loanDetails) return 0;
@@ -142,84 +197,229 @@ const LoanQualificationCard = ({ loan, onUpdate }) => {
     return (pmiRate.rate / 100 * loanAmount) / 12;
   };
 
-  const calculateLoanValues = () => {
+  const calculateLoanValues = (updatedLoan = null) => {
+    // Use updatedLoan if provided, otherwise use the loan from props
+    const currentLoan = updatedLoan || loan;
+    
+    // Check if we have saved loan parameters in the database
+    const hasStoredParams = !!(currentLoan?.loanParameters);
+    const hasStoredCalcs = !!(currentLoan?.loanCalculations);
+    
     // Get basic loan information
-    const loanAmount = getLoanAmount();
-    const interestRate = getInterestRate();
-    const loanTerm = selectedProgram?.loanTerm || 30;
+    let loanAmount;
+    if (hasStoredParams && currentLoan.loanParameters.loanAmount) {
+      loanAmount = parseFloat(currentLoan.loanParameters.loanAmount);
+    } else {
+      loanAmount = getLoanAmount();
+    }
+    
+    // Get interest rate from stored parameters or calculate it
+    let interestRate;
+    if (hasStoredParams && currentLoan.loanParameters.interestRate) {
+      interestRate = parseFloat(currentLoan.loanParameters.interestRate);
+    } else {
+      interestRate = getInterestRate();
+    }
+    
     const minDownPaymentPercent = getMinDownPaymentPercent();
     
-    // Calculate down payment amounts
-    let downPaymentPercent = 0;
-    let downPayment = 0;
-    
-    if (loan?.loanDetails?.downPayment) {
-      downPayment = loan.loanDetails.downPayment;
-      downPaymentPercent = (downPayment / loanAmount) * 100;
+    // Calculate down payment - use stored value if available
+    let downPaymentPercent;
+    if (hasStoredParams && currentLoan.loanParameters.downPaymentPercent) {
+      downPaymentPercent = parseFloat(currentLoan.loanParameters.downPaymentPercent);
     } else {
-      downPaymentPercent = minDownPaymentPercent;
-      downPayment = (loanAmount * downPaymentPercent) / 100;
+      downPaymentPercent = Math.max(minDownPaymentPercent, currentLoan?.loanDetails?.downPaymentPercent || 0);
     }
     
-    // Calculate Principal & Interest (P&I)
-    const monthlyRate = interestRate / 100 / 12;
-    const totalPayments = loanTerm * 12;
-    let principal = loanAmount - downPayment;
+    let downPayment; 
+    if (hasStoredParams && currentLoan.loanParameters.downPayment) {
+      downPayment = parseFloat(currentLoan.loanParameters.downPayment);
+    } else {
+      downPayment = (loanAmount * (downPaymentPercent / 100));
+    }
     
-    // Monthly payment formula: P*(r*(1+r)^n)/((1+r)^n-1)
+    // Get the loan term in years
+    const loanTermYears = hasStoredParams && currentLoan.loanParameters.loanTerm
+      ? parseFloat(currentLoan.loanParameters.loanTerm)
+      : (currentLoan?.loanDetails?.loanTerm || 30);
+    
+    // Calculate total months
+    const n = loanTermYears * 12; // Total number of months
+    
+    // If we have saved calculations, use those values instead of recalculating
+    if (hasStoredCalcs && Object.keys(currentLoan.loanCalculations).length > 0) {
+      const calcs = currentLoan.loanCalculations;
+      
+      // Update calculations state with stored values
+      setCalculations({
+        loanAmount,
+        downPayment,
+        downPaymentPercent,
+        monthlyPayment: parseFloat(calcs.monthlyPayment || 0),
+        dti: parseFloat(calcs.dti || 0),
+        principalAndInterest: parseFloat(calcs.principalAndInterest || 0),
+        taxes: parseFloat(calcs.taxes || 0),
+        insurance: parseFloat(calcs.insurance || 0),
+        mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
+        hoa: parseFloat(calcs.hoa || 0),
+        isQualified: calcs.isQualified === true || calcs.isQualified === 'true',
+        programName: calcs.programName || selectedProgram?.displayName || 'Conventional',
+        interestRate
+      });
+      
+      return; // Exit early since we used stored calculations
+    }
+    
+    // Otherwise, calculate all values
+    // Calculate principal and interest payment (P&I)
+    const r = interestRate / 100 / 12; // Monthly interest rate
+    
     let principalAndInterest = 0;
-    if (monthlyRate > 0 && totalPayments > 0 && principal > 0) {
-      principalAndInterest = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) / 
-        (Math.pow(1 + monthlyRate, totalPayments) - 1);
+    
+    if (r > 0) {
+      principalAndInterest = loanAmount * (1 - (downPaymentPercent / 100)) * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
     }
     
-    // Calculate taxes, insurance, and HOA
-    const taxes = loan?.loanDetails?.propertyTaxes || 0;
-    const insurance = loan?.loanDetails?.homeownersInsurance || 0;
-    const hoa = loan?.loanDetails?.hoaFees || 0;
+    // Get property taxes - use stored value if available
+    let monthlyPropertyTaxes;
+    if (hasStoredParams && currentLoan.loanParameters.propertyTaxes) {
+      const propertyTaxes = parseFloat(currentLoan.loanParameters.propertyTaxes);
+      const isPercent = currentLoan.loanParameters.propertyTaxesUnit === 'percent';
+      const isYearly = currentLoan.loanParameters.propertyTaxesFrequency === 'yearly';
+      
+      if (isPercent) {
+        // Convert percentage to dollar amount
+        const yearlyPropertyTaxes = loanAmount * (propertyTaxes / 100);
+        monthlyPropertyTaxes = isYearly ? yearlyPropertyTaxes / 12 : propertyTaxes;
+      } else {
+        // Already a dollar amount
+        monthlyPropertyTaxes = isYearly ? propertyTaxes / 12 : propertyTaxes;
+      }
+    } else {
+      // Use default calculation
+      const yearlyPropertyTaxes = loanAmount * 0.015; // 1.5% is typical
+      monthlyPropertyTaxes = yearlyPropertyTaxes / 12;
+    }
     
-    // Calculate mortgage insurance
-    const mortgageInsurance = calculateMortgageInsurance(principal, downPaymentPercent);
+    // Get homeowners insurance - use stored value if available
+    let monthlyHomeownersInsurance;
+    if (hasStoredParams && currentLoan.loanParameters.homeownersInsurance) {
+      const insurance = parseFloat(currentLoan.loanParameters.homeownersInsurance);
+      const isPercent = currentLoan.loanParameters.homeownersInsuranceUnit === 'percent';
+      const isYearly = currentLoan.loanParameters.homeownersInsuranceFrequency === 'yearly';
+      
+      if (isPercent) {
+        // Convert percentage to dollar amount
+        const yearlyInsurance = loanAmount * (insurance / 100);
+        monthlyHomeownersInsurance = isYearly ? yearlyInsurance / 12 : insurance;
+      } else {
+        // Already a dollar amount
+        monthlyHomeownersInsurance = isYearly ? insurance / 12 : insurance;
+      }
+    } else {
+      // Use default calculation
+      const yearlyHomeownersInsurance = loanAmount * 0.0035; // 0.35% is typical
+      monthlyHomeownersInsurance = yearlyHomeownersInsurance / 12;
+    }
+    
+    // Get HOA fees - use stored value if available
+    let monthlyHOA;
+    if (hasStoredParams && currentLoan.loanParameters.hoaFees) {
+      const hoaFees = parseFloat(currentLoan.loanParameters.hoaFees);
+      const isPercent = currentLoan.loanParameters.hoaFeesUnit === 'percent';
+      const isYearly = currentLoan.loanParameters.hoaFeesFrequency === 'yearly';
+      
+      if (isPercent) {
+        // Convert percentage to dollar amount
+        const yearlyHOA = loanAmount * (hoaFees / 100);
+        monthlyHOA = isYearly ? yearlyHOA / 12 : hoaFees;
+      } else {
+        // Already a dollar amount
+        monthlyHOA = isYearly ? hoaFees / 12 : hoaFees;
+      }
+    } else {
+      // Use property data or default to 0
+      monthlyHOA = currentLoan?.property?.hoaFees || 0;
+    }
+    
+    // Calculate mortgage insurance based on loan-to-value ratio
+    const mortgageInsurance = calculateMortgageInsurance(loanAmount, downPaymentPercent);
     
     // Calculate total monthly payment
-    const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoa;
+    const totalMonthlyPayment = principalAndInterest + monthlyPropertyTaxes + 
+      monthlyHomeownersInsurance + monthlyHOA + mortgageInsurance;
     
-    // Calculate DTI (Debt-to-Income ratio)
-    const totalDebts = getTotalDebts();
-    const totalIncome = getTotalIncome();
-    let dti = 0;
-    
-    if (totalIncome > 0) {
-      dti = ((totalDebts + monthlyPayment) / totalIncome) * 100;
+    // Calculate debt-to-income ratio (DTI)
+    // Use stored income/debt values if available or calculate them
+    let monthlyIncome, monthlyDebts;
+    if (hasStoredParams) {
+      monthlyIncome = currentLoan.loanParameters.monthlyIncome || (getTotalIncome() / 12);
+      monthlyDebts = currentLoan.loanParameters.monthlyDebt || getTotalDebts();
+    } else {
+      monthlyIncome = getTotalIncome() / 12;
+      monthlyDebts = getTotalDebts();
     }
     
-    // Check if loan qualifies based on DTI limit
+    const dti = monthlyIncome > 0 ? ((totalMonthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
+    
+    // Check if the borrower qualifies based on DTI limits
     const dtiLimit = selectedProgram?.restrictions?.dtiRestriction?.max || 43;
     const isQualified = dti <= dtiLimit;
     
-    setCalculations({
+    // Update calculations state
+    const newCalculations = {
       loanAmount,
       downPayment,
       downPaymentPercent,
-      monthlyPayment,
+      monthlyPayment: totalMonthlyPayment,
       dti,
       principalAndInterest,
-      taxes,
-      insurance,
+      taxes: monthlyPropertyTaxes,
+      insurance: monthlyHomeownersInsurance,
       mortgageInsurance,
-      hoa,
+      hoa: monthlyHOA,
       isQualified,
       programName: selectedProgram?.displayName || 'Conventional',
       interestRate
-    });
+    };
+    
+    console.log('[DEBUG] Setting new calculations:', newCalculations);
+    setCalculations(newCalculations);
   };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async () => {
     setIsModalOpen(false);
+    
+    // Fetch latest loan data after closing the modal
+    if (loan?._id) {
+      try {
+        console.log('[DEBUG] Fetching latest loan data after modal close');
+        const response = await fetchAPI(`/loans/${loan._id}`);
+        
+        if (response.status === 'success' && response.data) {
+          // Calculate new values based on the fetched data
+          const updatedLoan = {
+            ...loan,
+            loanParameters: response.data.loanParameters || {},
+            loanCalculations: response.data.loanCalculations || {}
+          };
+          
+          // Update calculations with the new data
+          calculateLoanValues(updatedLoan);
+          
+          // Call onUpdate with the updated loan
+          if (onUpdate) {
+            onUpdate(updatedLoan);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching loan data after modal close:', error);
+      }
+    }
   };
 
   const handleProgramChange = (programId) => {

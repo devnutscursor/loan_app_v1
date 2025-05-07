@@ -670,12 +670,17 @@ exports.updateLoan = async (req, res, next) => {
   try {
     const { id } = req.params;
     
+    // console.log('[DEBUG] Received update loan request for ID:', id);
+    // console.log('[DEBUG] Request body:', JSON.stringify(req.body, null, 2));
+    
     // Verification and permission checks
     const loan = await Loan.findById(id);
     
     if (!loan) {
       return next(new ApiError('Loan not found', 404));
     }
+    
+    // console.log('[DEBUG] Existing loan found:', loan._id);
     
     // Check permissions
     if (req.user.role === 'borrower') {
@@ -691,14 +696,15 @@ exports.updateLoan = async (req, res, next) => {
       }
       
       // Borrowers can only update certain fields
-      const allowedFields = ['property', 'loanDetails'];
+      // const allowedFields = ['property', 'loanDetails', 'loanParameters', 'loanCalculations'];
       
-      const updateData = {};
-      Object.keys(req.body).forEach(key => {
-        if (allowedFields.includes(key)) {
-          updateData[key] = req.body[key];
-        }
-      });
+      // const updateData = {};
+      // Object.keys(req.body).forEach(key => {
+      //   if (allowedFields.includes(key)) {
+      //     updateData[key] = req.body[key];
+      //   }
+      // });
+      const updateData = req.body;
       
       // Update the loan
       const updatedLoan = await Loan.findByIdAndUpdate(
@@ -722,18 +728,20 @@ exports.updateLoan = async (req, res, next) => {
     
     // Lenders and admins can update more fields
     if (req.user.role === 'lender' || req.user.role === 'admin') {
-      const allowedFields = [
-        'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
-        'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
-        'completionPercentage', 'assignedLoanOfficer'
-      ];
+      // const allowedFields = [
+      //   'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
+      //   'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
+      //   'completionPercentage', 'assignedLoanOfficer', 'loanParameters', 'loanCalculations'
+      // ];
       
-      const updateData = {};
-      Object.keys(req.body).forEach(key => {
-        if (allowedFields.includes(key)) {
-          updateData[key] = req.body[key];
-        }
-      });
+      // const updateData = {};
+      // Object.keys(req.body).forEach(key => {
+      //   if (allowedFields.includes(key)) {
+      //     updateData[key] = req.body[key];
+      //   }
+      // });
+
+      const updateData = req.body;
       
       // Update the loan
       const updatedLoan = await Loan.findByIdAndUpdate(
@@ -1576,6 +1584,77 @@ exports.getLoanTypes = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       data: loanTypes
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update loan parameters and calculations
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateLoanParameters = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { loanParameters, loanCalculations } = req.body;
+    
+    // Find the loan
+    const loan = await Loan.findById(id);
+    
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    // Check permissions
+    if (req.user.role === 'borrower') {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
+      
+      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isCoBottower = loan.coBorrowers && loan.coBorrowers.some(coBorrower => 
+        coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBottower) {
+        return next(new ApiError('You are not authorized to modify this loan', 403));
+      }
+    }
+    
+    // Update or create loan parameters if provided
+    if (loanParameters) {
+      loan.loanParameters = loan.loanParameters || {};
+      
+      // Update properties
+      Object.assign(loan.loanParameters, loanParameters);
+    }
+    
+    // Update or create loan calculations if provided
+    if (loanCalculations) {
+      loan.loanCalculations = loan.loanCalculations || {};
+      
+      // Update properties
+      Object.assign(loan.loanCalculations, loanCalculations);
+    }
+    
+    // Save the updated loan
+    await loan.save();
+    
+    // Log the update
+    logger.info(`Loan parameters updated for loan ${loan.loanNumber} by ${req.user.role} ${req.user._id}`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Loan parameters updated successfully',
+      data: {
+        loanParameters: loan.loanParameters,
+        loanCalculations: loan.loanCalculations
+      }
     });
   } catch (error) {
     next(error);

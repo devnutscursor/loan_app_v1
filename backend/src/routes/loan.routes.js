@@ -36,6 +36,9 @@ router.post('/:id/note', loanController.addNote);
 // Calculate loan metrics (DTI, LTV, etc.)
 router.get('/:id/metrics', loanController.calculateLoanMetrics);
 
+// Update loan parameters and calculations
+router.put('/:id/parameters', loanController.updateLoanParameters);
+
 // Loan drafts routes
 router.post('/draft', loanController.saveDraft);
 router.get('/draft/recent', loanController.getRecentDrafts);

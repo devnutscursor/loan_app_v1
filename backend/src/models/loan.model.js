@@ -251,6 +251,112 @@ const documentSchema = new mongoose.Schema({
   }
 });
 
+// Loan Parameters Schema
+const loanParametersSchema = new mongoose.Schema({
+  loanAmount: {
+    type: Number,
+    default: 0
+  },
+  downPayment: {
+    type: Number,
+    default: 0
+  },
+  downPaymentPercent: {
+    type: Number,
+    default: 0
+  },
+  propertyTaxes: {
+    type: Number,
+    default: 0
+  },
+  propertyTaxesUnit: {
+    type: String,
+    enum: ['dollar', 'percent'],
+    default: 'dollar'
+  },
+  propertyTaxesFrequency: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: 'yearly'
+  },
+  homeownersInsurance: {
+    type: Number,
+    default: 0
+  },
+  homeownersInsuranceUnit: {
+    type: String,
+    enum: ['dollar', 'percent'],
+    default: 'dollar'
+  },
+  homeownersInsuranceFrequency: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: 'yearly'
+  },
+  hoaFees: {
+    type: Number,
+    default: 0
+  },
+  hoaFeesUnit: {
+    type: String,
+    enum: ['dollar', 'percent'],
+    default: 'dollar'
+  },
+  hoaFeesFrequency: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: 'monthly'
+  },
+  interestRate: {
+    type: Number,
+    default: 0
+  },
+  loanTerm: {
+    type: Number,
+    default: 30
+  },
+  selectedProgramId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'LoanProgram'
+  }
+});
+
+// Loan Calculations Schema
+const loanCalculationsSchema = new mongoose.Schema({
+  principalAndInterest: {
+    type: Number,
+    default: 0
+  },
+  taxes: {
+    type: Number,
+    default: 0
+  },
+  insurance: {
+    type: Number,
+    default: 0
+  },
+  mortgageInsurance: {
+    type: Number,
+    default: 0
+  },
+  hoa: {
+    type: Number,
+    default: 0
+  },
+  monthlyPayment: {
+    type: Number,
+    default: 0
+  },
+  dti: {
+    type: Number,
+    default: 0
+  },
+  isQualified: {
+    type: Boolean,
+    default: false
+  }
+});
+
 // URLA Form 1003 Specific Schemas
 const assetSchema = new mongoose.Schema({
   assetType: {
@@ -564,6 +670,8 @@ const loanSchema = new mongoose.Schema({
   },
   property: propertySchema,
   loanDetails: loanDetailSchema,
+  loanParameters: loanParametersSchema,
+  loanCalculations: loanCalculationsSchema,
   status: {
     type: String,
     enum: [

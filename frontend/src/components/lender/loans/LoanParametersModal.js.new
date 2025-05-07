@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X } from 'lucide-react';
-import { fetchAPI } from '@/utils/api';
+import { useState, useEffect } from 'react';
+import { X, Save } from 'lucide-react';
 
 // Import utility functions
 import { 
@@ -28,7 +27,8 @@ const LoanParametersModal = ({
   loanRates,
   selectedProgram,
   calculations: initialCalculations,
-  onProgramChange
+  onProgramChange,
+  onUpdate
 }) => {
   const [localParams, setLocalParams] = useState({
     loanAmount: 0,
@@ -290,185 +290,22 @@ const LoanParametersModal = ({
     });
   };
 
-  // Fetch saved parameters and calculations on initial load
-  useEffect(() => {
-    if (loan?._id) {
-      fetchSavedParameters();
-    }
-  }, [loan?._id]);
-
-  // Fetch saved loan parameters from the server
-  const fetchSavedParameters = async () => {
-    try {
-      // Fetch the loan to check for saved parameters
-      const response = await fetchAPI(`/loans/${loan._id}`);
-      
-      if (response.status === 'success' && response.data) {
-        const loanData = response.data;
-        
-        // If we have saved parameters, use them to initialize the local state
-        if (loanData.loanParameters) {
-          // Set toggles based on saved unit types
-          const newToggleStates = {
-            propertyTaxes: { 
-              isPercent: loanData.loanParameters.propertyTaxesUnit === 'percent', 
-              isYearly: loanData.loanParameters.propertyTaxesFrequency === 'yearly' 
-            },
-            homeownersInsurance: { 
-              isPercent: loanData.loanParameters.homeownersInsuranceUnit === 'percent', 
-              isYearly: loanData.loanParameters.homeownersInsuranceFrequency === 'yearly' 
-            },
-            hoaFees: { 
-              isPercent: loanData.loanParameters.hoaFeesUnit === 'percent', 
-              isYearly: loanData.loanParameters.hoaFeesFrequency === 'yearly' 
-            }
-          };
-          setToggleStates(newToggleStates);
-
-          // Get the selected program ID from saved parameters or use current
-          const savedProgramId = loanData.loanParameters.selectedProgramId || '';
-          if (savedProgramId && loanPrograms.some(p => p._id === savedProgramId)) {
-            // Notify parent about program change
-            onProgramChange(savedProgramId);
-          }
-
-          // Set local parameters
-          setLocalParams(prev => ({
-            ...prev,
-            loanAmount: loanData.loanParameters.loanAmount || prev.loanAmount,
-            downPayment: loanData.loanParameters.downPayment || prev.downPayment,
-            downPaymentPercent: loanData.loanParameters.downPaymentPercent || prev.downPaymentPercent,
-            propertyTaxes: loanData.loanParameters.propertyTaxes || prev.propertyTaxes,
-            homeownersInsurance: loanData.loanParameters.homeownersInsurance || prev.homeownersInsurance,
-            hoaFees: loanData.loanParameters.hoaFees || prev.hoaFees,
-            selectedProgramId: savedProgramId || prev.selectedProgramId,
-            interestRate: loanData.loanParameters.interestRate || prev.interestRate,
-            loanTerm: loanData.loanParameters.loanTerm || prev.loanTerm
-          }));
-        }
-
-        // If we have saved calculations, use them
-        if (loanData.loanCalculations) {
-          setCalculations(prev => ({
-            ...prev,
-            principalAndInterest: loanData.loanCalculations.principalAndInterest || prev.principalAndInterest,
-            taxes: loanData.loanCalculations.taxes || prev.taxes,
-            insurance: loanData.loanCalculations.insurance || prev.insurance,
-            mortgageInsurance: loanData.loanCalculations.mortgageInsurance || prev.mortgageInsurance,
-            hoa: loanData.loanCalculations.hoa || prev.hoa,
-            monthlyPayment: loanData.loanCalculations.monthlyPayment || prev.monthlyPayment,
-            dti: loanData.loanCalculations.dti || prev.dti,
-            isQualified: loanData.loanCalculations.isQualified || prev.isQualified
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching saved parameters:', error);
-    }
-  };
-
-  // Auto-save changes to the loan when parameters or calculations change
-  // Store the last saved parameters to compare with current values
-  const [lastSavedParams, setLastSavedParams] = useState(null);
-  
-  const autoSaveChanges = useCallback(async () => {
-    try {
-      // Skip auto-save during initialization
-      if (!loan?._id || !localParams.loanAmount) return;
-      
-      // Check if there are actual changes since last save
-      if (lastSavedParams) {
-        // Deep comparison helper function to check if values are different
-        const isDifferent = (obj1, obj2, keys) => {
-          return keys.some(key => {
-            // Handle case when both are numbers - check if numeric difference is significant
-            if (typeof obj1[key] === 'number' && typeof obj2[key] === 'number') {
-              // Only consider changes larger than 0.01 (avoid floating point precision issues)
-              return Math.abs(obj1[key] - obj2[key]) > 0.01;
-            }
-            return obj1[key] !== obj2[key];
-          });
-        };
-        
-        // Get important parameter keys to compare
-        const paramKeys = ['loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm'];
-        const calcKeys = ['monthlyPayment', 'principalAndInterest', 'dti'];
-        
-        // Only save if important values have changed
-        const hasParamChanges = isDifferent(lastSavedParams.params, localParams, paramKeys);
-        const hasCalcChanges = isDifferent(lastSavedParams.calculations, calculations, calcKeys);
-        
-        // Skip save if nothing significant changed
-        if (!hasParamChanges && !hasCalcChanges) {
-          console.log('[DEBUG] Skipping auto-save - no significant changes detected');
-          return;
-        }
-        
-        console.log('[DEBUG] Changes detected - saving:', hasParamChanges ? 'parameter changes' : '', hasCalcChanges ? 'calculation changes' : '');
-      }
-      
-      // Prepare parameters data for saving
-      const loanParameters = {
+  // Handle saving changes to the loan
+  const handleSaveChanges = async () => {
+    // For this implementation, we'll just notify parent component of changes
+    if (onUpdate) {
+      onUpdate({
         loanAmount: localParams.loanAmount,
         downPayment: localParams.downPayment,
-        downPaymentPercent: localParams.downPaymentPercent,
         propertyTaxes: localParams.propertyTaxes,
-        propertyTaxesUnit: toggleStates.propertyTaxes.isPercent ? 'percent' : 'dollar',
-        propertyTaxesFrequency: toggleStates.propertyTaxes.isYearly ? 'yearly' : 'monthly',
         homeownersInsurance: localParams.homeownersInsurance,
-        homeownersInsuranceUnit: toggleStates.homeownersInsurance.isPercent ? 'percent' : 'dollar',
-        homeownersInsuranceFrequency: toggleStates.homeownersInsurance.isYearly ? 'yearly' : 'monthly',
         hoaFees: localParams.hoaFees,
-        hoaFeesUnit: toggleStates.hoaFees.isPercent ? 'percent' : 'dollar',
-        hoaFeesFrequency: toggleStates.hoaFees.isYearly ? 'yearly' : 'monthly',
-        interestRate: localParams.interestRate,
-        loanTerm: localParams.loanTerm,
-        selectedProgramId: localParams.selectedProgramId,
-        propertyType: localParams.propertyType,
-        propertyUse: localParams.propertyUse,
-        propertyValue: localParams.propertyValue,
-        creditScore: localParams.creditScore,
-        monthlyIncome: localParams.monthlyIncome,
-        monthlyDebt: localParams.monthlyDebt,
-        employmentStatus: localParams.employmentStatus
-      };
-      
-      console.log('[DEBUG] Preparing to save data. Parameters:', loanParameters);
-      console.log('[DEBUG] Calculations to save:', calculations);
-      
-      // Use updateLoan endpoint instead since the parameters endpoint is not working
-      // Don't stringify the body - the API utility expects raw objects
-      const response = await fetchAPI(`/loans/${loan._id}`, {
-        method: 'PUT',
-        body: {
-          loanParameters,
-          loanCalculations: calculations
-        }
+        selectedProgramId: localParams.selectedProgramId
       });
-      
-      console.log('[DEBUG] Server response:', response);
-      
-      // Store the parameters we just saved for future comparison
-      setLastSavedParams({
-        params: {...localParams},
-        calculations: {...calculations}
-      });
-      
-      console.log('Parameters and calculations auto-saved successfully');
-    } catch (error) {
-      console.error('[DEBUG] Error auto-saving parameters:', error);
     }
-  }, [loan?._id, localParams, calculations, toggleStates]);
-  
-  // Auto-save whenever parameters or calculations change
-  useEffect(() => {
-    // Add a debounce delay to prevent too many API calls
-    const debounceTimeout = setTimeout(() => {
-      autoSaveChanges();
-    }, 3000); // 3 second delay - increased to reduce API calls
-    
-    return () => clearTimeout(debounceTimeout);
-  }, [localParams, calculations, autoSaveChanges]);
+
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -520,12 +357,23 @@ const LoanParametersModal = ({
               />
           </div>
 
-          {/* Auto-save indicator */}
+          {/* Action buttons */}
           <div className="flex justify-end mt-8">
-            <div className="text-sm text-gray-500">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-              Changes are saved automatically
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 mr-3"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveChanges}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <Save className="w-4 h-4 mr-2 inline-block" />
+              Save Changes
+            </button>
           </div>
         </div>
       </div>

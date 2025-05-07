@@ -137,8 +137,9 @@ export default function LoanParameters() {
       
       if (response.status === 'success') {
         setSuccess(true);
+        // Show success message without redirecting
         setTimeout(() => {
-          router.push(`/lender/loans/${id}`);
+          setSuccess(false); // Just hide the success message after 2 seconds
         }, 2000);
       } else {
         setError('Failed to save loan parameters');
@@ -204,7 +205,11 @@ export default function LoanParameters() {
           <div className="mb-8">
             <LoanQualificationCard 
               loan={loan} 
-              onUpdate={handleSave}
+              enablePolling={false} // Explicitly disable polling on parameters page
+              onUpdate={(updatedLoan) => {
+                // Just update the loan state locally without triggering handleSave
+                setLoan(updatedLoan);
+              }}
             />
           </div>
         )}

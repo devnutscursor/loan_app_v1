@@ -244,11 +244,11 @@ export default function LoanProgramForm({
       />
       
       {/* Additional Settings Section */}
-      <AdditionalSettingsSection 
+      {/* <AdditionalSettingsSection 
         formData={formData} 
         onChange={handleFieldChange} 
         isLoading={isLoading} 
-      />
+      /> */}
 
       {/* Error display */}
       {(error || serverError) && (
