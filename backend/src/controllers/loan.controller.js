@@ -670,8 +670,8 @@ exports.updateLoan = async (req, res, next) => {
   try {
     const { id } = req.params;
     
-    // console.log('[DEBUG] Received update loan request for ID:', id);
-    // console.log('[DEBUG] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('[DEBUG] Received update loan request for ID:', id);
+    console.log('[DEBUG] Request body:', JSON.stringify(req.body, null, 2));
     
     // Verification and permission checks
     const loan = await Loan.findById(id);
@@ -680,7 +680,7 @@ exports.updateLoan = async (req, res, next) => {
       return next(new ApiError('Loan not found', 404));
     }
     
-    // console.log('[DEBUG] Existing loan found:', loan._id);
+    console.log('[DEBUG] Existing loan found:', loan._id);
     
     // Check permissions
     if (req.user.role === 'borrower') {
@@ -697,13 +697,6 @@ exports.updateLoan = async (req, res, next) => {
       
       // Borrowers can only update certain fields
       // const allowedFields = ['property', 'loanDetails', 'loanParameters', 'loanCalculations'];
-      
-      // const updateData = {};
-      // Object.keys(req.body).forEach(key => {
-      //   if (allowedFields.includes(key)) {
-      //     updateData[key] = req.body[key];
-      //   }
-      // });
       const updateData = req.body;
       
       // Update the loan
@@ -741,7 +734,45 @@ exports.updateLoan = async (req, res, next) => {
       //   }
       // });
 
-      const updateData = req.body;
+      
+      // Extract the data from the request body
+      const { loanParameters, programGuidelines, loanCalculations, ...otherData } = req.body;
+      
+      console.log('[DEBUG] Program guidelines received:', programGuidelines);
+
+      // Construct the update data object
+      const updateData = {
+        ...otherData
+      };
+      
+      // Handle loanParameters separately
+      if (loanParameters) {
+        updateData.loanParameters = loanParameters;
+      }
+      
+      // Handle loanCalculations separately
+      if (loanCalculations) {
+        updateData.loanCalculations = loanCalculations;
+      }
+      
+      // Simpler approach for programGuidelines - handle it together with loanParameters
+      if (programGuidelines) {
+        console.log('[DEBUG] Handling program guidelines...');
+        
+        // First, get existing loan parameters and program guidelines
+        // This way we can merge the new data with the existing data
+        const existingLoan = await Loan.findById(id);
+        
+        // Make sure loanParameters exists in updateData
+        if (!updateData.loanParameters) {
+          updateData.loanParameters = existingLoan.loanParameters || {};
+        }
+        
+        // CRITICAL: Directly set the programGuidelines in the loanParameters object
+        updateData.loanParameters.programGuidelines = programGuidelines;
+        
+        console.log('[DEBUG] Updated loanParameters with programGuidelines:', updateData.loanParameters);
+      }
       
       // Update the loan
       const updatedLoan = await Loan.findByIdAndUpdate(

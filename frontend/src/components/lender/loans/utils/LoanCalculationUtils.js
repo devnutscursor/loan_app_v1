@@ -154,3 +154,36 @@ export const calculateMortgageInsurance = (loanAmount, downPaymentPercent, selec
   // Calculate annual PMI amount and divide by 12 for monthly amount
   return (pmiRate.rate / 100 * loanAmount * (1 - (downPaymentPercent / 100))) / 12;
 };
+
+/**
+ * Calculate principal and interest monthly payment
+ * @param {number} loanAmount - The principal loan amount
+ * @param {number} interestRate - Annual interest rate as a percentage
+ * @param {number} term - Loan term in years
+ * @returns {number} - Monthly principal and interest payment
+ */
+export const calculatePrincipalAndInterest = (loanAmount, interestRate, term) => {
+  // Convert annual interest rate to monthly decimal rate
+  const monthlyRate = (interestRate / 100) / 12;
+  
+  // Convert years to months
+  const months = term * 12;
+  
+  // Special case: if interest rate is 0
+  if (interestRate === 0 || monthlyRate === 0) {
+    return loanAmount / months;
+  }
+  
+  // Calculate monthly payment using the mortgage formula
+  // M = P[r(1+r)^n]/[(1+r)^n-1]
+  // where M = monthly payment, P = principal, r = monthly interest rate, n = number of payments
+  
+  const numerator = monthlyRate * Math.pow(1 + monthlyRate, months);
+  const denominator = Math.pow(1 + monthlyRate, months) - 1;
+  
+  if (denominator === 0) {
+    return loanAmount / months;
+  }
+  
+  return loanAmount * (numerator / denominator);
+};

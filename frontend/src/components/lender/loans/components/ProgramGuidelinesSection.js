@@ -8,10 +8,44 @@ const ProgramGuidelinesSection = ({
   localParams,
   loanPrograms,
   selectedProgram,
-  handleInputChange,
+  handleInputChange: originalHandleInputChange,
   showFinanceFees,
-  setShowFinanceFees
+  setShowFinanceFees,
+  onProgramChange
 }) => {
+  // Wrap the input change handler to add debugging
+  const handleInputChange = (e) => {
+    console.log(`[DEBUG] Program guideline field changed: ${e.target.name} = ${e.target.value}`);
+    
+    // Special handling for program selection to load program-specific values
+    if (e.target.name === 'selectedProgramId') {
+      const newProgramId = e.target.value;
+      console.log(`[DEBUG] Program changed to: ${newProgramId}`);
+      
+      // Find the selected program data
+      const newProgram = loanPrograms.find(program => program._id === newProgramId);
+      
+      if (newProgram) {
+        // First pass the event to the program change handler if available
+        if (onProgramChange) {
+          console.log('[DEBUG] Calling onProgramChange with program ID:', newProgramId);
+          onProgramChange(e);
+        }
+        
+        // Also pass to the original handler to update parameters
+        originalHandleInputChange(e);
+        
+        // Log that we're loading program-specific guidelines
+        console.log(`[DEBUG] Loading program-specific guidelines for: ${newProgram.displayName}`);
+      } else {
+        // Just handle the normal change
+        originalHandleInputChange(e);
+      }
+    } else {
+      // For all other field changes, just pass through
+      originalHandleInputChange(e);
+    }
+  };
   return (
     <div>
       <h3 className="text-lg font-medium text-gray-900 mb-4">Program Guidelines</h3>
@@ -163,8 +197,8 @@ const ProgramGuidelinesSection = ({
                 <input
                   type="number"
                   name="upfrontMIP"
-                  value={selectedProgram?.fhaMortgageInsurance?.upfrontMIP || 1.75}
-                  readOnly
+                  value={localParams.upfrontMIP !== undefined ? localParams.upfrontMIP : (selectedProgram?.fhaMortgageInsurance?.upfrontMIP || 1.75)}
+                  onChange={handleInputChange}
                   className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-l-md bg-gray-50 h-10"
                 />
                 <span className="inline-flex items-center px-3 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md h-10">
@@ -182,8 +216,8 @@ const ProgramGuidelinesSection = ({
                 <input
                   type="number"
                   name="annualMIP"
-                  value={selectedProgram?.fhaMortgageInsurance?.annualMIP || 0.85}
-                  readOnly
+                  value={localParams.annualMIP !== undefined ? localParams.annualMIP : (selectedProgram?.fhaMortgageInsurance?.annualMIP || 0.85)}
+                  onChange={handleInputChange}
                   className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-l-md bg-gray-50 h-10"
                 />
                 <span className="inline-flex items-center px-3 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md h-10">
@@ -287,9 +321,10 @@ const ProgramGuidelinesSection = ({
                   <div className="relative">
                     <input
                       type="number"
-                      value={selectedProgram?.originationFees?.value || 0}
+                      name="originationFees"
+                      value={localParams.originationFees !== undefined ? localParams.originationFees : (selectedProgram?.originationFees?.value || 0)}
+                      onChange={handleInputChange}
                       className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
-                      readOnly
                       style={{ height: '38px' }}
                     />
                   </div>
@@ -351,9 +386,10 @@ const ProgramGuidelinesSection = ({
                   <div className="relative">
                     <input
                       type="number"
-                      value={selectedProgram?.closingCosts?.value || 0}
+                      name="closingCosts"
+                      value={localParams.closingCosts !== undefined ? localParams.closingCosts : (selectedProgram?.closingCosts?.value || 0)}
+                      onChange={handleInputChange}
                       className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
-                      readOnly
                       style={{ height: '38px' }}
                     />
                   </div>
@@ -415,9 +451,10 @@ const ProgramGuidelinesSection = ({
                   <div className="relative">
                     <input
                       type="number"
-                      value={selectedProgram?.otherFees?.value || 0}
+                      name="otherFees"
+                      value={localParams.otherFees !== undefined ? localParams.otherFees : (selectedProgram?.otherFees?.value || 0)}
+                      onChange={handleInputChange}
                       className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
-                      readOnly
                       style={{ height: '38px' }}
                     />
                   </div>

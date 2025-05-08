@@ -318,6 +318,24 @@ const loanParametersSchema = new mongoose.Schema({
   selectedProgramId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'LoanProgram'
+  },
+  
+  // ProgramGuidelines as a nested field within loanParameters
+  programGuidelines: {
+    type: Map,
+    of: {
+      dtiMax: Number,
+      downPaymentMin: Number,
+      downPaymentMax: Number,
+      loanAmountMin: Number,
+      loanAmountMax: Number,
+      upfrontMIP: Number,
+      annualMIP: Number,
+      originationFees: Number,
+      closingCosts: Number,
+      otherFees: Number
+    },
+    default: {}
   }
 });
 

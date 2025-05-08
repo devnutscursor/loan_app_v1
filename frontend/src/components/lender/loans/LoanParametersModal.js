@@ -1,16 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
-import { fetchAPI } from '@/utils/api';
-
-// Import utility functions
 import { 
   getLoanAmount as getInitialLoanAmount, 
   getInterestRate as getInitialInterestRate,
   getTotalIncome as calculateTotalIncome,
   getTotalDebts as calculateTotalDebts,
-  getTotalAssets as calculateTotalAssets,
-  formatCurrency,
-  calculateMortgageInsurance
+  getTotalAssets as calculateTotalAssets
 } from './utils/LoanCalculationUtils';
 
 // Import components
@@ -20,455 +15,45 @@ import FinancialSummaryCards from './components/FinancialSummaryCards';
 import LoanDetailsSection from './components/LoanDetailsSection';
 import ProgramGuidelinesSection from './components/ProgramGuidelinesSection';
 
-const LoanParametersModal = ({
-  isOpen,
-  onClose,
-  loan,
-  loanPrograms,
-  loanRates,
-  selectedProgram,
-  calculations: initialCalculations,
-  onProgramChange
+// Import refactored parameter components
+import AutoSaveHandler from './components/parameters/AutoSaveHandler';
+import DataLoader from './components/parameters/DataLoader';
+import ParametersProvider from './components/parameters/ParametersProvider';
+import ProgramGuidelinesManager from './components/parameters/ProgramGuidelinesManager';
+import { ProgramGuidelinesProvider } from './components/parameters/ProgramGuidelinesProvider';
+
+/**
+ * LoanParametersModal component - Refactored for better code organization
+ */
+const LoanParametersModal = ({ 
+  isOpen, 
+  onClose, 
+  loan, 
+  loanPrograms, 
+  loanRates, 
+  initialCalculations = {}, 
+  onParametersChange 
 }) => {
-  const [localParams, setLocalParams] = useState({
-    loanAmount: 0,
-    downPayment: 0,
-    downPaymentPercent: 0,
-    propertyTaxes: 0,
-    homeownersInsurance: 0,
-    hoaFees: 0,
-    income: 0,
-    debts: 0,
-    assets: 0,
-    selectedProgramId: '',
-    interestRate: 0,
-    loanTerm: 30
-  });
-  
-  // Toggle states for unit type ($ or %) and frequency (monthly or yearly)
-  const [toggleStates, setToggleStates] = useState({
-    propertyTaxes: { isPercent: false, isYearly: true },
-    homeownersInsurance: { isPercent: false, isYearly: true },
-    hoaFees: { isPercent: false, isYearly: false }
-  });
+  // State to track the selected program
+  const [selectedProgram, setSelectedProgram] = useState(
+    loanPrograms.find(p => p._id === loan?.loanParameters?.selectedProgramId) || loanPrograms[0]
+  );
 
   // State to track accordion visibility
   const [showFinanceFees, setShowFinanceFees] = useState(false);
 
-  const [calculations, setCalculations] = useState({
-    principalAndInterest: 0,
-    taxes: 0,
-    insurance: 0,
-    mortgageInsurance: 0,
-    hoa: 0,
-    monthlyPayment: 0,
-    dti: 0,
-    isQualified: false
-  });
-
-  // Initialize local state from props
-  useEffect(() => {
-    if (loan && selectedProgram) {
-      const totalIncome = calculateTotalIncome(loan.income);
-      const totalDebts = calculateTotalDebts(loan.debts);
-      const totalAssets = calculateTotalAssets(loan.assets);
-
-      setLocalParams({
-        loanAmount: getInitialLoanAmount(loan.loanDetails),
-        downPayment: loan.loanDetails?.downPayment || 0,
-        downPaymentPercent: initialCalculations.downPaymentPercent,
-        propertyTaxes: loan.loanDetails?.propertyTaxes || 0,
-        homeownersInsurance: loan.loanDetails?.homeownersInsurance || 0,
-        hoaFees: loan.loanDetails?.hoaFees || 0,
-        income: totalIncome,
-        debts: totalDebts,
-        assets: totalAssets,
-        selectedProgramId: selectedProgram._id,
-        interestRate: getInitialInterestRate(selectedProgram, loanRates),
-        loanTerm: selectedProgram.loanTerm || 30
-      });
-
-      setCalculations({
-        principalAndInterest: initialCalculations.principalAndInterest,
-        taxes: initialCalculations.taxes,
-        insurance: initialCalculations.insurance,
-        mortgageInsurance: initialCalculations.mortgageInsurance,
-        hoa: initialCalculations.hoa,
-        monthlyPayment: initialCalculations.monthlyPayment,
-        dti: initialCalculations.dti,
-        isQualified: initialCalculations.isQualified
-      });
-    }
-  }, [loan, selectedProgram, initialCalculations]);
-
-  // Recalculate when parameters change
-  useEffect(() => {
-    if (selectedProgram) {
-      recalculateValues();
-    }
-  }, [localParams]);
-
-  // Handle toggle changes for unit type ($ or %) and frequency (monthly or yearly)
-  const handleToggleChange = (field, toggleType) => {
-    setToggleStates(prev => {
-      const newState = {
-        ...prev,
-        [field]: {
-          ...prev[field],
-          [toggleType]: !prev[field][toggleType]
-        }
-      };
+  // Handle program change - this function is called both directly and via the input onChange
+  const handleProgramChange = (programIdOrEvent) => {
+    // Handle both direct calls with programId and event objects from dropdowns
+    const programId = typeof programIdOrEvent === 'object' ? 
+      programIdOrEvent.target.value : programIdOrEvent;
       
-      // Convert values when toggling between percentage and dollar
-      if (toggleType === 'isPercent') {
-        const isNowPercent = !prev[field].isPercent;
-        let newValue;
-        
-        if (isNowPercent) {
-          // Convert from dollar to percentage based on loan amount
-          newValue = (localParams[field] / localParams.loanAmount) * 100;
-        } else {
-          // Convert from percentage to dollar amount
-          newValue = (localParams[field] / 100) * localParams.loanAmount;
-        }
-        
-        setLocalParams(prevParams => ({
-          ...prevParams,
-          [field]: parseFloat(newValue.toFixed(2))
-        }));
-      }
-      
-      // Convert values when toggling between monthly and yearly
-      if (toggleType === 'isYearly') {
-        const isNowYearly = !prev[field].isYearly;
-        let newValue;
-        
-        if (isNowYearly) {
-          // Convert from monthly to yearly
-          newValue = localParams[field] * 12;
-        } else {
-          // Convert from yearly to monthly
-          newValue = localParams[field] / 12;
-        }
-        
-        setLocalParams(prevParams => ({
-          ...prevParams,
-          [field]: parseFloat(newValue.toFixed(2))
-        }));
-      }
-      
-      return newState;
-    });
-  };
-  
-  // Handle loan parameter changes
-  const handleInputChange = (e) => {
-    const { name, value, type } = e.target;
-    let numValue = type === 'number' ? parseFloat(value) : value;
-
-    if (type === 'number' && isNaN(numValue)) {
-      numValue = 0;
-    }
-
-    // Special handling for down payment which affects down payment percentage
-    if (name === 'downPayment') {
-      const downPaymentPercent = (numValue / localParams.loanAmount) * 100;
-      setLocalParams(prev => ({
-        ...prev,
-        downPayment: numValue,
-        downPaymentPercent: downPaymentPercent
-      }));
-    }
-    // Special handling for down payment percentage which affects down payment
-    else if (name === 'downPaymentPercent') {
-      const downPayment = (numValue / 100) * localParams.loanAmount;
-      setLocalParams(prev => ({
-        ...prev,
-        downPaymentPercent: numValue,
-        downPayment: downPayment
-      }));
-    }
-    // Handle program change
-    else if (name === 'selectedProgramId') {
-      const program = loanPrograms.find(p => p._id === value);
-      if (program) {
-        onProgramChange(value);
-
-        // Get new interest rate
-        const newRate = loanRates.find(rate => rate.programType === program.programType)?.rate || 7.0;
-
-        setLocalParams(prev => ({
-          ...prev,
-          selectedProgramId: value,
-          interestRate: newRate,
-          loanTerm: program.loanTerm || 30
-        }));
-      }
-    }
-    // All other regular inputs
-    else {
-      setLocalParams(prev => ({
-        ...prev,
-        [name]: numValue
-      }));
+    const program = loanPrograms.find(p => p._id === programId);
+    if (program) {
+      console.log('[DEBUG] Selected loan program:', program.displayName);
+      setSelectedProgram(program);
     }
   };
-
-  // Recalculate all values based on parameters
-  const recalculateValues = () => {
-    // Get the actual loan amount (minus down payment)
-    const principalAmount = localParams.loanAmount * (1 - (localParams.downPaymentPercent / 100));
-
-    // Calculate P&I
-    const monthlyRate = localParams.interestRate / 100 / 12;
-    const totalPayments = localParams.loanTerm * 12;
-
-    let principalAndInterest = 0;
-    if (monthlyRate > 0 && totalPayments > 0 && principalAmount > 0) {
-      principalAndInterest = principalAmount * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) /
-        (Math.pow(1 + monthlyRate, totalPayments) - 1);
-    }
-
-    // Get the monthly taxes, insurance, and HOA with appropriate conversions
-    let taxes = localParams.propertyTaxes || 0;
-    if (toggleStates.propertyTaxes.isPercent) {
-      // If property taxes are entered as a percentage, convert to a dollar amount
-      taxes = (taxes / 100) * localParams.loanAmount;
-    }
-    if (toggleStates.propertyTaxes.isYearly) {
-      // If property taxes are entered as yearly, convert to monthly
-      taxes = taxes / 12;
-    }
-
-    let insurance = localParams.homeownersInsurance || 0;
-    if (toggleStates.homeownersInsurance.isPercent) {
-      // If insurance is entered as a percentage, convert to a dollar amount
-      insurance = (insurance / 100) * localParams.loanAmount;
-    }
-    if (toggleStates.homeownersInsurance.isYearly) {
-      // If insurance is entered as yearly, convert to monthly
-      insurance = insurance / 12;
-    }
-
-    let hoa = localParams.hoaFees || 0;
-    if (toggleStates.hoaFees.isPercent) {
-      // If HOA fees are entered as a percentage, convert to a dollar amount
-      hoa = (hoa / 100) * localParams.loanAmount;
-    }
-    if (toggleStates.hoaFees.isYearly) {
-      // If HOA fees are entered as yearly, convert to monthly
-      hoa = hoa / 12;
-    }
-
-    // Calculate mortgage insurance
-    const mortgageInsurance = calculateMortgageInsurance(
-      localParams.loanAmount, 
-      localParams.downPaymentPercent,
-      selectedProgram
-    );
-
-    // Calculate total monthly payment
-    const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoa;
-
-    // Calculate DTI
-    const dti = localParams.income > 0 ?
-      ((localParams.debts + monthlyPayment) / localParams.income) * 100 : 0;
-
-    // Check if loan qualifies based on DTI limit
-    const dtiLimit = selectedProgram?.restrictions?.dtiRestriction?.max || 43;
-    const isQualified = dti <= dtiLimit;
-
-    setCalculations({
-      principalAndInterest,
-      taxes,
-      insurance,
-      mortgageInsurance,
-      hoa,
-      monthlyPayment,
-      dti,
-      isQualified
-    });
-  };
-
-  // Fetch saved parameters and calculations on initial load
-  useEffect(() => {
-    if (loan?._id) {
-      fetchSavedParameters();
-    }
-  }, [loan?._id]);
-
-  // Fetch saved loan parameters from the server
-  const fetchSavedParameters = async () => {
-    try {
-      // Fetch the loan to check for saved parameters
-      const response = await fetchAPI(`/loans/${loan._id}`);
-      
-      if (response.status === 'success' && response.data) {
-        const loanData = response.data;
-        
-        // If we have saved parameters, use them to initialize the local state
-        if (loanData.loanParameters) {
-          // Set toggles based on saved unit types
-          const newToggleStates = {
-            propertyTaxes: { 
-              isPercent: loanData.loanParameters.propertyTaxesUnit === 'percent', 
-              isYearly: loanData.loanParameters.propertyTaxesFrequency === 'yearly' 
-            },
-            homeownersInsurance: { 
-              isPercent: loanData.loanParameters.homeownersInsuranceUnit === 'percent', 
-              isYearly: loanData.loanParameters.homeownersInsuranceFrequency === 'yearly' 
-            },
-            hoaFees: { 
-              isPercent: loanData.loanParameters.hoaFeesUnit === 'percent', 
-              isYearly: loanData.loanParameters.hoaFeesFrequency === 'yearly' 
-            }
-          };
-          setToggleStates(newToggleStates);
-
-          // Get the selected program ID from saved parameters or use current
-          const savedProgramId = loanData.loanParameters.selectedProgramId || '';
-          if (savedProgramId && loanPrograms.some(p => p._id === savedProgramId)) {
-            // Notify parent about program change
-            onProgramChange(savedProgramId);
-          }
-
-          // Set local parameters
-          setLocalParams(prev => ({
-            ...prev,
-            loanAmount: loanData.loanParameters.loanAmount || prev.loanAmount,
-            downPayment: loanData.loanParameters.downPayment || prev.downPayment,
-            downPaymentPercent: loanData.loanParameters.downPaymentPercent || prev.downPaymentPercent,
-            propertyTaxes: loanData.loanParameters.propertyTaxes || prev.propertyTaxes,
-            homeownersInsurance: loanData.loanParameters.homeownersInsurance || prev.homeownersInsurance,
-            hoaFees: loanData.loanParameters.hoaFees || prev.hoaFees,
-            selectedProgramId: savedProgramId || prev.selectedProgramId,
-            interestRate: loanData.loanParameters.interestRate || prev.interestRate,
-            loanTerm: loanData.loanParameters.loanTerm || prev.loanTerm
-          }));
-        }
-
-        // If we have saved calculations, use them
-        if (loanData.loanCalculations) {
-          setCalculations(prev => ({
-            ...prev,
-            principalAndInterest: loanData.loanCalculations.principalAndInterest || prev.principalAndInterest,
-            taxes: loanData.loanCalculations.taxes || prev.taxes,
-            insurance: loanData.loanCalculations.insurance || prev.insurance,
-            mortgageInsurance: loanData.loanCalculations.mortgageInsurance || prev.mortgageInsurance,
-            hoa: loanData.loanCalculations.hoa || prev.hoa,
-            monthlyPayment: loanData.loanCalculations.monthlyPayment || prev.monthlyPayment,
-            dti: loanData.loanCalculations.dti || prev.dti,
-            isQualified: loanData.loanCalculations.isQualified || prev.isQualified
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching saved parameters:', error);
-    }
-  };
-
-  // Auto-save changes to the loan when parameters or calculations change
-  // Store the last saved parameters to compare with current values
-  const [lastSavedParams, setLastSavedParams] = useState(null);
-  
-  const autoSaveChanges = useCallback(async () => {
-    try {
-      // Skip auto-save during initialization
-      if (!loan?._id || !localParams.loanAmount) return;
-      
-      // Check if there are actual changes since last save
-      if (lastSavedParams) {
-        // Deep comparison helper function to check if values are different
-        const isDifferent = (obj1, obj2, keys) => {
-          return keys.some(key => {
-            // Handle case when both are numbers - check if numeric difference is significant
-            if (typeof obj1[key] === 'number' && typeof obj2[key] === 'number') {
-              // Only consider changes larger than 0.01 (avoid floating point precision issues)
-              return Math.abs(obj1[key] - obj2[key]) > 0.01;
-            }
-            return obj1[key] !== obj2[key];
-          });
-        };
-        
-        // Get important parameter keys to compare
-        const paramKeys = ['loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm'];
-        const calcKeys = ['monthlyPayment', 'principalAndInterest', 'dti'];
-        
-        // Only save if important values have changed
-        const hasParamChanges = isDifferent(lastSavedParams.params, localParams, paramKeys);
-        const hasCalcChanges = isDifferent(lastSavedParams.calculations, calculations, calcKeys);
-        
-        // Skip save if nothing significant changed
-        if (!hasParamChanges && !hasCalcChanges) {
-          console.log('[DEBUG] Skipping auto-save - no significant changes detected');
-          return;
-        }
-        
-        console.log('[DEBUG] Changes detected - saving:', hasParamChanges ? 'parameter changes' : '', hasCalcChanges ? 'calculation changes' : '');
-      }
-      
-      // Prepare parameters data for saving
-      const loanParameters = {
-        loanAmount: localParams.loanAmount,
-        downPayment: localParams.downPayment,
-        downPaymentPercent: localParams.downPaymentPercent,
-        propertyTaxes: localParams.propertyTaxes,
-        propertyTaxesUnit: toggleStates.propertyTaxes.isPercent ? 'percent' : 'dollar',
-        propertyTaxesFrequency: toggleStates.propertyTaxes.isYearly ? 'yearly' : 'monthly',
-        homeownersInsurance: localParams.homeownersInsurance,
-        homeownersInsuranceUnit: toggleStates.homeownersInsurance.isPercent ? 'percent' : 'dollar',
-        homeownersInsuranceFrequency: toggleStates.homeownersInsurance.isYearly ? 'yearly' : 'monthly',
-        hoaFees: localParams.hoaFees,
-        hoaFeesUnit: toggleStates.hoaFees.isPercent ? 'percent' : 'dollar',
-        hoaFeesFrequency: toggleStates.hoaFees.isYearly ? 'yearly' : 'monthly',
-        interestRate: localParams.interestRate,
-        loanTerm: localParams.loanTerm,
-        selectedProgramId: localParams.selectedProgramId,
-        propertyType: localParams.propertyType,
-        propertyUse: localParams.propertyUse,
-        propertyValue: localParams.propertyValue,
-        creditScore: localParams.creditScore,
-        monthlyIncome: localParams.monthlyIncome,
-        monthlyDebt: localParams.monthlyDebt,
-        employmentStatus: localParams.employmentStatus
-      };
-      
-      console.log('[DEBUG] Preparing to save data. Parameters:', loanParameters);
-      console.log('[DEBUG] Calculations to save:', calculations);
-      
-      // Use updateLoan endpoint instead since the parameters endpoint is not working
-      // Don't stringify the body - the API utility expects raw objects
-      const response = await fetchAPI(`/loans/${loan._id}`, {
-        method: 'PUT',
-        body: {
-          loanParameters,
-          loanCalculations: calculations
-        }
-      });
-      
-      console.log('[DEBUG] Server response:', response);
-      
-      // Store the parameters we just saved for future comparison
-      setLastSavedParams({
-        params: {...localParams},
-        calculations: {...calculations}
-      });
-      
-      console.log('Parameters and calculations auto-saved successfully');
-    } catch (error) {
-      console.error('[DEBUG] Error auto-saving parameters:', error);
-    }
-  }, [loan?._id, localParams, calculations, toggleStates]);
-  
-  // Auto-save whenever parameters or calculations change
-  useEffect(() => {
-    // Add a debounce delay to prevent too many API calls
-    const debounceTimeout = setTimeout(() => {
-      autoSaveChanges();
-    }, 3000); // 3 second delay - increased to reduce API calls
-    
-    return () => clearTimeout(debounceTimeout);
-  }, [localParams, calculations, autoSaveChanges]);
 
   if (!isOpen) return null;
 
@@ -486,47 +71,94 @@ const LoanParametersModal = ({
             </button>
           </div>
 
-          {/* Calculation Status Section */}
-          <CalculationStatusCard isQualified={calculations.isQualified} />
+          {/* Use ProgramGuidelinesProvider to share guidelines across components */}
+          <ProgramGuidelinesProvider loanPrograms={loanPrograms} initialGuidelines={loan?.loanParameters?.programGuidelines || {}}>
+            {/* Use ParametersProvider to manage state and calculations */}
+            <ParametersProvider
+              loan={loan}
+              selectedProgram={selectedProgram}
+              initialCalculations={initialCalculations}
+            >
+              {({ 
+                localParams, 
+                setLocalParams, 
+                toggleStates, 
+                setToggleStates, 
+                calculations, 
+                handleInputChange, 
+                handleToggleChange 
+              }) => (
+                <>
+                  {/* Handle loading data */}
+                  <DataLoader
+                    loan={loan}
+                    loanId={loan?._id}
+                    setLocalParams={setLocalParams}
+                    setToggleStates={setToggleStates}
+                    onProgramChange={handleProgramChange}
+                    selectedProgram={selectedProgram}
+                    loanPrograms={loanPrograms}
+                  />
 
-          {/* Payment Breakdown Section */}
-          <PaymentBreakdown calculations={calculations} />
+                  {/* Handle program-specific guidelines */}
+                  <ProgramGuidelinesManager
+                    localParams={localParams}
+                    setLocalParams={setLocalParams}
+                    selectedProgram={selectedProgram}
+                    loanPrograms={loanPrograms}
+                  />
 
-          {/* Income, Debts, and Assets Section */}
-          <FinancialSummaryCards 
-            income={localParams.income}
-            debts={localParams.debts}
-            assets={localParams.assets}
-          />
-          
-          {/* Two-column layout for Loan Details and Program Guidelines */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Loan Details Column */}
-              <LoanDetailsSection 
-                localParams={localParams}
-                toggleStates={toggleStates}
-                handleInputChange={handleInputChange}
-                handleToggleChange={handleToggleChange}
-              />
+                  {/* Auto-save changes */}
+                  <AutoSaveHandler
+                    loan={loan}
+                    localParams={localParams}
+                    calculations={calculations}
+                    toggleStates={toggleStates}
+                    selectedProgram={selectedProgram}
+                  />
 
-              {/* Program Guidelines Column */}
-              <ProgramGuidelinesSection 
-                localParams={localParams}
-                loanPrograms={loanPrograms}
-                selectedProgram={selectedProgram}
-                handleInputChange={handleInputChange}
-                showFinanceFees={showFinanceFees}
-                setShowFinanceFees={setShowFinanceFees}
-              />
-          </div>
+                  {/* Calculation Status Section */}
+                  <CalculationStatusCard isQualified={calculations.isQualified} />
 
-          {/* Auto-save indicator */}
-          <div className="flex justify-end mt-8">
-            <div className="text-sm text-gray-500">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-              Changes are saved automatically
-            </div>
-          </div>
+                  {/* Payment Breakdown Section */}
+                  <PaymentBreakdown calculations={calculations} />
+
+                  {/* Income, Debts, and Assets Section */}
+                  <FinancialSummaryCards 
+                    income={localParams.income}
+                    debts={localParams.debts}
+                    assets={localParams.assets}
+                  />
+                  
+                  {/* Two-column layout for Loan Details and Program Guidelines */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Loan Details Column */}
+                    <div>
+                      <LoanDetailsSection 
+                        localParams={localParams} 
+                        toggleStates={toggleStates}
+                        handleInputChange={handleInputChange}
+                        handleToggleChange={handleToggleChange}
+                      />
+                    </div>
+                    
+                    {/* Program Guidelines Column */}
+                    <div>
+                      <ProgramGuidelinesSection 
+                        localParams={localParams}
+                        loanPrograms={loanPrograms}
+                        selectedProgram={selectedProgram}
+                        handleInputChange={handleInputChange}
+                        showFinanceFees={showFinanceFees}
+                        setShowFinanceFees={setShowFinanceFees}
+                        onProgramChange={handleProgramChange}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </ParametersProvider>
+          </ProgramGuidelinesProvider>
         </div>
       </div>
     </div>
