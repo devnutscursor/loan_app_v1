@@ -197,10 +197,14 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     return (pmiRate.rate / 100 * loanAmount) / 12;
   };
 
+  useEffect(() => {
+    console.log("loanPrograms",loanPrograms);
+  }, [loanPrograms]);
+
   const calculateLoanValues = (updatedLoan = null) => {
     // Use updatedLoan if provided, otherwise use the loan from props
     const currentLoan = updatedLoan || loan;
-    
+    console.log("currentLoan",currentLoan);
     // Check if we have saved loan parameters in the database
     const hasStoredParams = !!(currentLoan?.loanParameters);
     const hasStoredCalcs = !!(currentLoan?.loanCalculations);
@@ -263,12 +267,14 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
         hoa: parseFloat(calcs.hoa || 0),
         isQualified: calcs.isQualified === true || calcs.isQualified === 'true',
-        programName: calcs.programName || selectedProgram?.displayName || 'Conventional',
+        programName: loanPrograms.find(program => program._id === currentLoan?.loanParameters?.selectedProgramId)?.displayName,
         interestRate
       });
       
       return; // Exit early since we used stored calculations
     }
+
+
     
     // Otherwise, calculate all values
     // Calculate principal and interest payment (P&I)

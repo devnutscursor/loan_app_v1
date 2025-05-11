@@ -11,9 +11,9 @@ const FinancialSummaryCards = ({ income, debts, assets }) => {
       <div className="bg-gray-50 p-4 rounded-md">
         <div className="flex justify-between items-center mb-2">
           <h4 className="font-medium text-gray-900">Income</h4>
-          <button className="text-blue-600 hover:text-blue-800">
+          {/* <button className="text-blue-600 hover:text-blue-800">
             <Edit className="w-4 h-4" />
-          </button>
+          </button> */}
         </div>
         <div className="text-xl font-semibold">{formatCurrency(income)} /Month</div>
       </div>
@@ -21,9 +21,9 @@ const FinancialSummaryCards = ({ income, debts, assets }) => {
       <div className="bg-gray-50 p-4 rounded-md">
         <div className="flex justify-between items-center mb-2">
           <h4 className="font-medium text-gray-900">Debts</h4>
-          <button className="text-blue-600 hover:text-blue-800">
+          {/* <button className="text-blue-600 hover:text-blue-800">
             <Edit className="w-4 h-4" />
-          </button>
+          </button> */}
         </div>
         <div className="text-xl font-semibold">{formatCurrency(debts)} /Month</div>
       </div>
@@ -31,9 +31,9 @@ const FinancialSummaryCards = ({ income, debts, assets }) => {
       <div className="bg-gray-50 p-4 rounded-md">
         <div className="flex justify-between items-center mb-2">
           <h4 className="font-medium text-gray-900">Assets</h4>
-          <button className="text-blue-600 hover:text-blue-800">
+          {/* <button className="text-blue-600 hover:text-blue-800">
             <Edit className="w-4 h-4" />
-          </button>
+          </button> */}
         </div>
         <div className="text-xl font-semibold">{formatCurrency(assets)}</div>
       </div>

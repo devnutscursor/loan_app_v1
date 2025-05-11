@@ -44,7 +44,11 @@ const ParametersProvider = ({
   const [toggleStates, setToggleStates] = useState({
     propertyTaxes: { isPercent: false, isYearly: true },
     homeownersInsurance: { isPercent: false, isYearly: true },
-    hoaFees: { isPercent: false, isYearly: false }
+    hoaFees: { isPercent: false, isYearly: false },
+    // Add toggle states for fee fields in Program Guidelines section with matching property names as in ProgramGuidelinesSection
+    originationFees: { isPercent: false, frequency: 'once' },
+    closingCosts: { isPercent: false, frequency: 'once' },
+    otherFees: { isPercent: false, frequency: 'once' }
   });
   
   // State for calculation results
@@ -59,34 +63,58 @@ const ParametersProvider = ({
     isQualified: false
   });
 
-  // Handle toggle changes for unit type ($ or %) and frequency (monthly or yearly)
-  const handleToggleChange = (field, toggleType) => {
+  // Handle toggle changes for unit type ($ or %) and frequency (monthly or yearly, once)
+  const handleToggleChange = (field, toggleType, newValue) => {
+    // Make sure the field exists in toggleStates before proceeding
+    if (!field || !toggleStates[field]) {
+      console.error(`[ERROR] Toggle field '${field}' is not initialized in toggleStates`);
+      return;
+    }
+
     setToggleStates(prev => {
-      const newState = {
-        ...prev,
-        [field]: {
-          ...prev[field],
-          [toggleType]: !prev[field][toggleType]
-        }
-      };
+      // Handle two different formats:
+      // 1. Two params: field, toggleType - traditional toggle (boolean flip)
+      // 2. Three params: field, toggleType, newValue - direct value set
       
-      // Convert values when toggling between percentage and dollar
-      if (toggleType === 'isPercent') {
-        const isNowPercent = !prev[field].isPercent;
-        let newValue;
+      let newState;
+      
+      if (newValue !== undefined) {
+        // Format 2: Set the toggle value directly
+        newState = {
+          ...prev,
+          [field]: {
+            ...prev[field],
+            [toggleType]: newValue
+          }
+        };
+      } else {
+        // Format 1: Toggle the boolean value
+        newState = {
+          ...prev,
+          [field]: {
+            ...prev[field],
+            [toggleType]: !prev[field][toggleType]
+          }
+        };
         
-        if (isNowPercent) {
-          // Convert from dollar to percentage based on loan amount
-          newValue = (localParams[field] / localParams.loanAmount) * 100;
-        } else {
-          // Convert from percentage to dollar amount
-          newValue = (localParams[field] / 100) * localParams.loanAmount;
+        // Convert values when toggling between percentage and dollar
+        if (toggleType === 'isPercent') {
+          const isNowPercent = !prev[field].isPercent;
+          let convertedValue;
+          
+          if (isNowPercent) {
+            // Convert from dollar to percentage based on loan amount
+            convertedValue = (localParams[field] / localParams.loanAmount) * 100;
+          } else {
+            // Convert from percentage to dollar amount
+            convertedValue = (localParams[field] / 100) * localParams.loanAmount;
+          }
+          
+          setLocalParams(prevParams => ({
+            ...prevParams,
+            [field]: parseFloat(convertedValue.toFixed(2))
+          }));
         }
-        
-        setLocalParams(prevParams => ({
-          ...prevParams,
-          [field]: parseFloat(newValue.toFixed(2))
-        }));
       }
       
       return newState;

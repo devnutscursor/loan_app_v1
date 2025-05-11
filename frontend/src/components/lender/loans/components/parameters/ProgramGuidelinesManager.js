@@ -9,7 +9,8 @@ const ProgramGuidelinesManager = ({
   localParams,
   setLocalParams,
   selectedProgram,
-  loanPrograms
+  loanPrograms,
+  loanRates = [] // Add loanRates as a prop with default empty array
 }) => {
   // Use the shared program guidelines context
   const { allProgramGuidelines, updateProgramGuidelines } = useAllProgramGuidelines();
@@ -66,11 +67,27 @@ const ProgramGuidelinesManager = ({
       otherFees: selectedProgram?.otherFees?.value || 0
     };
 
+    // Get interest rate for the selected program from loanRates
+    let interestRate = localParams.interestRate || 5.5; // Default if no match found
+    if (loanRates && loanRates.length > 0) {
+      const programRate = loanRates.find(rate => 
+        rate.programType === selectedProgram.programType
+      );
+      
+      if (programRate) {
+        console.log(`[DEBUG] Found interest rate ${programRate.rate}% for program type ${selectedProgram.programType}`);
+        interestRate = programRate.rate;
+      } else {
+        console.log(`[DEBUG] No matching interest rate found for program type ${selectedProgram.programType}`);
+      }
+    }
+
     // Only update if the program has actually changed to prevent loops
     if (localParams.selectedProgramId !== programId) {
       const newParams = {
         ...localParams,
         selectedProgramId: programId,
+        interestRate: interestRate, // Set the interest rate based on program
         dtiMax: programGuidelines.dtiMax,
         downPaymentMin: programGuidelines.downPaymentMin,
         downPaymentMax: programGuidelines.downPaymentMax,
@@ -85,6 +102,7 @@ const ProgramGuidelinesManager = ({
       
       // Force an immediate update of all parameters when program changes
       console.log('[DEBUG] Updating parameters with program guidelines for:', selectedProgram.displayName);
+      console.log('[DEBUG] Setting interest rate to:', interestRate, '% based on program type:', selectedProgram.programType);
       setLocalParams(newParams);
       
       // Update the ref to the current program ID to prevent future unnecessary updates

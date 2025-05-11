@@ -5,11 +5,11 @@ import { formatCurrency } from '../utils/LoanCalculationUtils';
 /**
  * Component for loan details section with input fields
  */
-const LoanDetailsSection = ({ 
-  localParams, 
-  toggleStates, 
-  handleInputChange, 
-  handleToggleChange 
+const LoanDetailsSection = ({
+  localParams,
+  toggleStates,
+  handleInputChange,
+  handleToggleChange
 }) => {
   return (
     <div>
@@ -20,16 +20,16 @@ const LoanDetailsSection = ({
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Purchase Price (Loan Amount: {formatCurrency(localParams.loanAmount * (1 - (localParams.downPaymentPercent / 100)))})
         </label>
-        <div className="flex">
-          <span className="inline-flex items-center px-3 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md h-10">
-            $
-          </span>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="text-gray-500 sm:text-sm">$</span>
+          </div>
           <input
             type="number"
             name="loanAmount"
             value={localParams.loanAmount}
             onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 pl-7 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
           />
         </div>
       </div>
@@ -40,29 +40,29 @@ const LoanDetailsSection = ({
           Down Payment
         </label>
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex">
-            <span className="inline-flex items-center px-3 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md h-10">
-              $
-            </span>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-500 sm:text-sm">$</span>
+            </div>
             <input
               type="number"
               name="downPayment"
               value={localParams.downPayment}
               onChange={handleInputChange}
-              className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+              className="focus:ring-primary focus:border-primary block w-full py-2 px-3  pl-7 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
             />
           </div>
-          <div className="flex">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-500 sm:text-sm">%</span>
+            </div>
             <input
               type="number"
               name="downPaymentPercent"
               value={localParams.downPaymentPercent.toFixed(3)}
               onChange={handleInputChange}
-              className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+              className="focus:ring-primary focus:border-primary block w-full py-2 px-3 pl-7 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
             />
-            <span className="inline-flex items-center px-3 bg-gray-200 border border-l-0 border-gray-300 rounded-r-md h-10">
-              %
-            </span>
           </div>
         </div>
       </div>
@@ -72,16 +72,16 @@ const LoanDetailsSection = ({
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Rate Adjustment
         </label>
-        <div className="flex">
-          <span className="inline-flex items-center px-3 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md h-10">
-            %
-          </span>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="text-gray-500 sm:text-sm">%</span>
+          </div>
           <input
             type="number"
             name="rateAdjustment"
             defaultValue="0.000"
             onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 pl-7 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
           />
         </div>
       </div>
@@ -89,20 +89,21 @@ const LoanDetailsSection = ({
       {/* Interest Rate */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Interest Rate
+          Interest Rate <span className="text-xs text-blue-600">(Set by selected loan program)</span>
         </label>
         <div className="flex">
-          <span className="inline-flex items-center px-3 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md h-10">
+          {/* <span className="inline-flex items-center px-3 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md h-10">
             %
-          </span>
+          </span> */}
           <input
             type="number"
             name="interestRate"
             value={localParams.interestRate}
-            onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+            disabled={true}
+            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-200 h-10 cursor-not-allowed"
           />
         </div>
+        <p className="text-xs text-gray-500 mt-1">This value is automatically updated based on the selected loan program.</p>
       </div>
 
       {/* Loan Term */}
@@ -134,43 +135,45 @@ const LoanDetailsSection = ({
           Property Taxes
         </label>
         <div className="flex items-center">
-          <div className="flex rounded-md">
-            {/* $ / % toggle */}
+          {/* % / $ toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('propertyTaxes', 'isPercent')}
-              className={`px-3 py-2 ${toggleStates.propertyTaxes.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors h-10`}
-            >
-              $
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleChange('propertyTaxes', 'isPercent')}
-              className={`px-3 py-2 ${!toggleStates.propertyTaxes.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors h-10`}
+              className={`px-3 w-12 ${!toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
+            <button
+              type="button"
+              onClick={() => handleToggleChange('propertyTaxes', 'isPercent')}
+              className={`px-3 w-12 ${toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              $
+            </button>
           </div>
+          {/* Input field */}
           <input
             type="number"
             name="propertyTaxes"
             value={localParams.propertyTaxes}
             onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-2"
+            className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
+          // style={{ width: '120px' }}
           />
-          {/* /mo / /yr toggle */}
-          <div className="flex rounded-md">
+          {/* /mo / /yr toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('propertyTaxes', 'isYearly')}
-              className={`px-3 py-2 text-sm ${!toggleStates.propertyTaxes.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${!toggleStates.propertyTaxes?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /mo
             </button>
             <button
               type="button"
               onClick={() => handleToggleChange('propertyTaxes', 'isYearly')}
-              className={`px-3 py-2 text-sm ${toggleStates.propertyTaxes.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${toggleStates.propertyTaxes?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /yr
             </button>
@@ -184,43 +187,45 @@ const LoanDetailsSection = ({
           Homeowners Insurance
         </label>
         <div className="flex items-center">
-          <div className="flex rounded-md">
-            {/* $ / % toggle */}
+          {/* % / $ toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('homeownersInsurance', 'isPercent')}
-              className={`px-3 py-2 ${toggleStates.homeownersInsurance.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors h-10`}
-            >
-              $
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleChange('homeownersInsurance', 'isPercent')}
-              className={`px-3 py-2 ${!toggleStates.homeownersInsurance.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors h-10`}
+              className={`px-3 w-12 ${!toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
+            <button
+              type="button"
+              onClick={() => handleToggleChange('homeownersInsurance', 'isPercent')}
+              className={`px-3 w-12 ${toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              $
+            </button>
           </div>
+          {/* Input field */}
           <input
             type="number"
             name="homeownersInsurance"
             value={localParams.homeownersInsurance}
             onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-2"
+            className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
+          // style={{ width: '80px' }}
           />
-          {/* /mo / /yr toggle */}
-          <div className="flex rounded-md">
+          {/* /mo / /yr toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('homeownersInsurance', 'isYearly')}
-              className={`px-3 py-2 text-sm ${!toggleStates.homeownersInsurance.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${!toggleStates.homeownersInsurance?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /mo
             </button>
             <button
               type="button"
               onClick={() => handleToggleChange('homeownersInsurance', 'isYearly')}
-              className={`px-3 py-2 text-sm ${toggleStates.homeownersInsurance.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${toggleStates.homeownersInsurance?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /yr
             </button>
@@ -234,43 +239,45 @@ const LoanDetailsSection = ({
           HOA Dues
         </label>
         <div className="flex items-center">
-          <div className="flex rounded-md">
-            {/* $ / % toggle */}
+          {/* % / $ toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('hoaFees', 'isPercent')}
-              className={`px-3 py-2 ${toggleStates.hoaFees.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors h-10`}
-            >
-              $
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleChange('hoaFees', 'isPercent')}
-              className={`px-3 py-2 ${!toggleStates.hoaFees.isPercent ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors h-10`}
+              className={`px-3 w-12 ${!toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
+            <button
+              type="button"
+              onClick={() => handleToggleChange('hoaFees', 'isPercent')}
+              className={`px-3 w-12 ${toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              $
+            </button>
           </div>
+          {/* Input field */}
           <input
             type="number"
             name="hoaFees"
             value={localParams.hoaFees}
             onChange={handleInputChange}
-            className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-2"
+            className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
+          // style={{ width: '80px' }}
           />
-          {/* /mo / /yr toggle */}
-          <div className="flex rounded-md">
+          {/* /mo / /yr toggle - styled to match the mortgage calculator */}
+          <div className="inline-flex rounded-md overflow-hidden bg-blue-500 h-10">
             <button
               type="button"
               onClick={() => handleToggleChange('hoaFees', 'isYearly')}
-              className={`px-3 py-2 text-sm ${!toggleStates.hoaFees.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-r-0 border-gray-300 rounded-l-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${!toggleStates.hoaFees?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /mo
             </button>
             <button
               type="button"
               onClick={() => handleToggleChange('hoaFees', 'isYearly')}
-              className={`px-3 py-2 text-sm ${toggleStates.hoaFees.isYearly ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} border border-l-0 border-gray-300 rounded-r-md hover:bg-opacity-80 transition-colors whitespace-nowrap h-10`}
+              className={`px-3 ${toggleStates.hoaFees?.isYearly ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               /yr
             </button>

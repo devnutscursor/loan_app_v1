@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader } from 'lucide-react';
 import { 
   getLoanAmount as getInitialLoanAmount, 
   getInterestRate as getInitialInterestRate,
@@ -41,6 +41,9 @@ const LoanParametersModal = ({
 
   // State to track accordion visibility
   const [showFinanceFees, setShowFinanceFees] = useState(false);
+  
+  // State to track loading state for API requests
+  const [isLoading, setIsLoading] = useState(false);
 
   // Handle program change - this function is called both directly and via the input onChange
   const handleProgramChange = (programIdOrEvent) => {
@@ -51,7 +54,23 @@ const LoanParametersModal = ({
     const program = loanPrograms.find(p => p._id === programId);
     if (program) {
       console.log('[DEBUG] Selected loan program:', program.displayName);
+      
+      // Update the selected program state
       setSelectedProgram(program);
+      
+      // Find the interest rate for this program from loanRates
+      if (loanRates && loanRates.length > 0) {
+        // Look up the rate by program type
+        const programRate = loanRates.find(rate => 
+          rate.programType === program.programType
+        );
+        
+        if (programRate) {
+          console.log(`[DEBUG] Found interest rate ${programRate.rate}% for program type ${program.programType}`);
+        } else {
+          console.log(`[DEBUG] No matching interest rate found for program type ${program.programType}`);
+        }
+      }
     }
   };
 
@@ -59,6 +78,15 @@ const LoanParametersModal = ({
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 flex justify-end">
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-white bg-opacity-70 z-50 flex items-center justify-center">
+          <div className="text-center p-5 bg-white rounded-lg shadow-md">
+            <Loader className="animate-spin h-10 w-10 mx-auto text-blue-600 mb-2" />
+            <p className="text-gray-700 font-medium">Loading parameters...</p>
+          </div>
+        </div>
+      )}
       <div className="w-full md:w-4/5 lg:w-3/4 h-full bg-white shadow-xl overflow-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -98,6 +126,8 @@ const LoanParametersModal = ({
                     onProgramChange={handleProgramChange}
                     selectedProgram={selectedProgram}
                     loanPrograms={loanPrograms}
+                    loanRates={loanRates}
+                    setIsLoading={setIsLoading}
                   />
 
                   {/* Handle program-specific guidelines */}
@@ -106,6 +136,7 @@ const LoanParametersModal = ({
                     setLocalParams={setLocalParams}
                     selectedProgram={selectedProgram}
                     loanPrograms={loanPrograms}
+                    loanRates={loanRates}
                   />
 
                   {/* Auto-save changes */}
@@ -115,6 +146,7 @@ const LoanParametersModal = ({
                     calculations={calculations}
                     toggleStates={toggleStates}
                     selectedProgram={selectedProgram}
+                    setIsLoading={setIsLoading}
                   />
 
                   {/* Calculation Status Section */}
@@ -149,6 +181,8 @@ const LoanParametersModal = ({
                         loanPrograms={loanPrograms}
                         selectedProgram={selectedProgram}
                         handleInputChange={handleInputChange}
+                        handleToggleChange={handleToggleChange}
+                        toggleStates={toggleStates}
                         showFinanceFees={showFinanceFees}
                         setShowFinanceFees={setShowFinanceFees}
                         onProgramChange={handleProgramChange}

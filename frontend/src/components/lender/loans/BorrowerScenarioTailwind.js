@@ -42,8 +42,11 @@ export default function BorrowerScenarioTailwind({ loanId, refreshTrigger }) {
         return;
       }
       
-      // Calculate qualification for the primary program
-      // This would normally check for a preferred program or use a default one
+      // Extract loan data including the loanParameters
+      const loanData = loanResponse.data?.data?.loan || loanResponse.data?.data || loanResponse.data;
+      const savedProgramId = loanData?.loanParameters?.selectedProgramId;
+      
+      // Calculate qualification for the program
       const availablePrograms = programs.length > 0 ? programs : await fetchDefaultPrograms();
       
       if (availablePrograms.length === 0) {
@@ -51,18 +54,31 @@ export default function BorrowerScenarioTailwind({ loanId, refreshTrigger }) {
         return;
       }
       
-      // Use the first program as default
-      const primaryProgram = availablePrograms[0];
+      // Use the saved program ID if it exists, otherwise use the first program as default
+      let programToUse;
       
-      const qualificationResponse = await fetchAPI(`/loan-programs/qualification/${loanId}/${primaryProgram._id}`);
+      if (savedProgramId) {
+        // Try to find the saved program in available programs
+        programToUse = availablePrograms.find(p => p._id === savedProgramId);
+        console.log('[DEBUG] Using saved program ID:', savedProgramId);
+      }
+      
+      // Fall back to first program if saved ID not found
+      if (!programToUse) {
+        programToUse = availablePrograms[0];
+        console.log('[DEBUG] Using first available program as fallback');
+      }
+      
+      const qualificationResponse = await fetchAPI(`/loan-programs/qualification/${loanId}/${programToUse._id}`);
       
       if (qualificationResponse.status === 'success') {
         setQualification(qualificationResponse.data);
-        setSelectedProgram(primaryProgram);
+        setSelectedProgram(programToUse);
       } else {
         setError('Failed to calculate qualification');
       }
     } catch (err) {
+      console.error('[ERROR] Failed to load loan details:', err);
       setError(err.message || 'Failed to load scenario details');
     } finally {
       setLoading(false);

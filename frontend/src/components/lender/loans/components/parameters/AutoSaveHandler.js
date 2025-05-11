@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchAPI } from '@/utils/api';
 import { useAllProgramGuidelines } from './ProgramGuidelinesProvider';
 
@@ -11,7 +11,8 @@ const AutoSaveHandler = ({
   localParams, 
   calculations, 
   toggleStates, 
-  selectedProgram
+  selectedProgram,
+  setIsLoading // Add loading state setter
 }) => {
   // Get access to all program guidelines
   const { allProgramGuidelines } = useAllProgramGuidelines();
@@ -21,7 +22,11 @@ const AutoSaveHandler = ({
   const autoSaveChanges = useCallback(async () => {
     try {
       // Skip auto-save during initialization
-      if (!loan?._id || !localParams.loanAmount) return;
+      if (!loan?._id || !localParams.loanAmount) {
+        // Make sure loading is turned off even if we skip auto-save
+        if (setIsLoading) setIsLoading(false);
+        return;
+      }
       
       // Check if there are actual changes since last save
       if (lastSavedParams) {
@@ -87,27 +92,53 @@ const AutoSaveHandler = ({
       // Get the current program ID
       const currentProgramId = localParams.selectedProgramId;
       
-      // Create program-specific guidelines for the current program to update in allProgramGuidelines
-      // These are the values from the UI for the currently selected program
-      const currentProgramGuidelines = {
-        // Program guidelines fields
-        dtiMax: localParams.dtiMax,
-        downPaymentMin: localParams.downPaymentMin,
-        downPaymentMax: localParams.downPaymentMax,
-        loanAmountMin: localParams.loanAmountMin,
-        loanAmountMax: localParams.loanAmountMax,
-        upfrontMIP: localParams.upfrontMIP,
-        annualMIP: localParams.annualMIP,
-        originationFees: localParams.originationFees,
-        closingCosts: localParams.closingCosts,
-        otherFees: localParams.otherFees
-      };
+      // Prepare program guidelines for saving - specifically for the selected program
+      let programGuidelines = {};
       
-      // Save all program guidelines, updating the current program's values
-      const programGuidelines = {
-        ...allProgramGuidelines,
-        [currentProgramId]: currentProgramGuidelines
-      };
+      if (selectedProgram?._id) {
+        const programId = selectedProgram._id;
+        programGuidelines = {
+          [programId]: {
+            dtiMax: localParams.dtiMax || 0,
+            downPaymentMin: localParams.downPaymentMin || 0,
+            downPaymentMax: localParams.downPaymentMax || 0,
+            loanAmountMin: localParams.loanAmountMin || 0,
+            loanAmountMax: localParams.loanAmountMax || 0,
+            upfrontMIP: localParams.upfrontMIP || 0,
+            annualMIP: localParams.annualMIP || 0,
+            
+            // Fee values with their unit and frequency settings
+            originationFees: localParams.originationFees || 0,
+            originationFeesUnit: toggleStates.originationFees?.isPercent ? 'percent' : 'dollar',
+            originationFeesFrequency: toggleStates.originationFees?.frequency || 'once',
+            
+            closingCosts: localParams.closingCosts || 0,
+            closingCostsUnit: toggleStates.closingCosts?.isPercent ? 'percent' : 'dollar',
+            closingCostsFrequency: toggleStates.closingCosts?.frequency || 'once',
+            
+            otherFees: localParams.otherFees || 0,
+            otherFeesUnit: toggleStates.otherFees?.isPercent ? 'percent' : 'dollar',
+            otherFeesFrequency: toggleStates.otherFees?.frequency || 'once'
+          }
+        };
+        
+        // Merge in any other program guidelines from state, ensuring they have unit and frequency fields
+        for (const [otherId, guidelines] of Object.entries(allProgramGuidelines)) {
+          if (otherId !== programId) {
+            // Make sure the other program has unit and frequency fields
+            programGuidelines[otherId] = {
+              ...guidelines,
+              // Add defaults for fee fields if they don't exist
+              originationFeesUnit: guidelines.originationFeesUnit || 'dollar',
+              originationFeesFrequency: guidelines.originationFeesFrequency || 'once',
+              closingCostsUnit: guidelines.closingCostsUnit || 'dollar',
+              closingCostsFrequency: guidelines.closingCostsFrequency || 'once',
+              otherFeesUnit: guidelines.otherFeesUnit || 'dollar',
+              otherFeesFrequency: guidelines.otherFeesFrequency || 'once'
+            };
+          }
+        }
+      }
       
       console.log('[DEBUG] Preparing to save data. Parameters:', loanParameters);
       console.log('[DEBUG] Program-specific guidelines:', programGuidelines);
@@ -134,18 +165,90 @@ const AutoSaveHandler = ({
       console.log('Parameters and calculations auto-saved successfully');
     } catch (error) {
       console.error('[DEBUG] Error auto-saving parameters:', error);
+    } finally {
+      // Set loading state to false when the PUT request completes
+      if (setIsLoading) setIsLoading(false);
+      
+      // Reset the saving flag so future saves can proceed
+      isSavingRef.current = false;
     }
-  }, [loan?._id, localParams, calculations, toggleStates]);
+  }, [loan?._id, localParams, calculations, toggleStates, setIsLoading]);
+  
+  // Track if we're currently in an auto-save operation
+  const isSavingRef = useRef(false);
+  
+  // Track typingTimer for debouncing user input
+  const typingTimerRef = useRef(null);
+  
+  // Function to check if there are actual changes compared to the last saved values
+  const hasChanges = useCallback(() => {
+    if (!lastSavedParams) return true; // First save
+    
+    // Deep comparison helper function to check if values are different
+    const isDifferent = (obj1, obj2, keys) => {
+      return keys.some(key => {
+        // Handle case when both are numbers - check if numeric difference is significant
+        if (typeof obj1[key] === 'number' && typeof obj2[key] === 'number') {
+          // Only consider changes larger than 0.01 (avoid floating point precision issues)
+          return Math.abs(obj1[key] - obj2[key]) > 0.01;
+        }
+        return obj1[key] !== obj2[key];
+      });
+    };
+    
+    // Get important parameter keys to compare
+    const paramKeys = [
+      'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm',
+      'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
+      'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
+    ];
+    const calcKeys = ['monthlyPayment', 'principalAndInterest', 'dti'];
+    
+    // Check if there are changes
+    const hasParamChanges = isDifferent(lastSavedParams.params, localParams, paramKeys);
+    const hasCalcChanges = isDifferent(lastSavedParams.calculations, calculations, calcKeys);
+    
+    return hasParamChanges || hasCalcChanges;
+  }, [lastSavedParams, localParams, calculations]);
   
   // Auto-save whenever parameters or calculations change
   useEffect(() => {
-    // Add a debounce delay to prevent too many API calls
-    const debounceTimeout = setTimeout(() => {
-      autoSaveChanges();
-    }, 3000); // 3 second delay - increased to reduce API calls
+    // Prevent auto-saving if we're missing required data
+    if (!loan?._id || !localParams.loanAmount) {
+      return;
+    }
     
-    return () => clearTimeout(debounceTimeout);
-  }, [localParams, calculations, autoSaveChanges]);
+    // Clear previous timer when values change
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    
+    // Set a new debounce timer - only after user stops typing
+    typingTimerRef.current = setTimeout(() => {
+      // Skip if nothing has changed or we're already saving
+      if (!hasChanges() || isSavingRef.current) {
+        return;
+      }
+      
+      // Show loading indicator once typing has stopped
+      if (setIsLoading) setIsLoading(true);
+      
+      // Set saving flag to prevent duplicate calls
+      isSavingRef.current = true;
+      
+      // Call the save function
+      autoSaveChanges();
+    }, 800); // Wait 800ms after user stops typing
+    
+    // Clean up the timer on unmount or when dependencies change
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+    };
+  }, [localParams, calculations, autoSaveChanges, hasChanges, loan?._id, setIsLoading]);
 
   return null; // This is a logic-only component, no UI
 };

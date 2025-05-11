@@ -331,9 +331,40 @@ const loanParametersSchema = new mongoose.Schema({
       loanAmountMax: Number,
       upfrontMIP: Number,
       annualMIP: Number,
+      // Fee fields with their values, unit types, and frequencies
       originationFees: Number,
+      originationFeesUnit: {
+        type: String,
+        enum: ['dollar', 'percent'],
+        default: 'dollar'
+      },
+      originationFeesFrequency: {
+        type: String,
+        enum: ['once', 'monthly', 'yearly'],
+        default: 'once'
+      },
       closingCosts: Number,
-      otherFees: Number
+      closingCostsUnit: {
+        type: String,
+        enum: ['dollar', 'percent'],
+        default: 'dollar'
+      },
+      closingCostsFrequency: {
+        type: String,
+        enum: ['once', 'monthly', 'yearly'],
+        default: 'once'
+      },
+      otherFees: Number,
+      otherFeesUnit: {
+        type: String,
+        enum: ['dollar', 'percent'],
+        default: 'dollar'
+      },
+      otherFeesFrequency: {
+        type: String,
+        enum: ['once', 'monthly', 'yearly'],
+        default: 'once'
+      }
     },
     default: {}
   }
