@@ -3,5 +3,5 @@
  */
 import { LoanQualificationCard } from './components/qualificationCard';
 
-// Re-export the component for backward compatibility
+// Re-export the component
 export default LoanQualificationCard;
