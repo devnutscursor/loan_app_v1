@@ -180,6 +180,14 @@ const loanProgramSchema = new mongoose.Schema({
     default: false
   },
   
+  // Lender association - This makes loan programs unique per lender
+  lender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lender',
+    required: true,
+    index: true
+  },
+  
   // System Fields
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

@@ -651,15 +651,37 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       
       let response;
       try {
-        // Hard-coded borrowerId for testing - this matches the primary borrower from memory
-        const hardcodedBorrowerId = "67fa2aa7f5010213147f8529";
+        // First fetch the loan data to get the borrower ID
+        console.log('Fetching loan data to get borrower ID...');
+        const loanResponse = await lenderService.getLoan(loanId);
+        
+        if (!loanResponse?.data?.data) {
+          console.error('Error: Could not fetch loan data');
+          toast.error('Unable to fetch loan details');
+          return;
+        }
+        
+        const loan = loanResponse.data.data;
+        console.log('Loan data fetched:', loan);
+        
+        // Get the borrower ID from the loan object
+        // Using the field name 'borrower' as per the updated schema
+        const borrowerId = loan?.borrower;
+        
+        if (!borrowerId) {
+          console.error('Error: No borrower ID found in loan', loan);
+          toast.error('Unable to determine the borrower for this loan. Please check loan details.');
+          return;
+        }
+        
+        console.log('Using borrower ID:', borrowerId);
         
         const requestData = { 
           title,
           documentType, 
           category,
           loanId,
-          borrowerId: hardcodedBorrowerId,
+          borrowerId,
           description: requestDescription,
           isUpdate: isUpdate,
           reason: reason,

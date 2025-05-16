@@ -478,7 +478,7 @@ exports.getBorrowerLoans = async (req, res, next) => {
     const status = req.query.status; // Optional status filter
     
     // Build query
-    const query = { primaryBorrower: borrower._id };
+    const query = { borrower: borrower._id, lender: borrower.lender };
     
     // Exclude draft loans unless specifically requested
     if (status) {
@@ -664,7 +664,7 @@ exports.getLoanConditions = async (req, res, next) => {
     // Find loans associated with this borrower (either as primary or co-borrower)
     const loans = await Loan.find({
       $or: [
-        { primaryBorrower: borrower._id },
+        { borrower: borrower._id },
         { coBorrowers: borrower._id }
       ]
     });

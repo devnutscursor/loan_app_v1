@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { ArrowLeft } from 'lucide-react';
-import { fetchAPI } from '@/utils/api';
 import LenderLayout from '@/components/layout/LenderLayout';
 import LoanProgramForm from '@/components/lender/programs/LoanProgramForm';
 import Head from 'next/head';
 import Link from 'next/link';
+import { LoanProgramService } from '@/services';
 
 export default function EditLoanProgram() {
   const router = useRouter();
@@ -28,13 +28,37 @@ export default function EditLoanProgram() {
   const fetchProgramData = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI(`/loan-programs/${id}`);
-      if (response.status === 'success') {
-        setProgram(response.data);
+      console.log('Fetching program data for ID:', id);
+      const response = await LoanProgramService.getProgram(id);
+      console.log('Program data response:', response);
+      
+      // Handle different response structures
+      if (response) {
+        // If response.data has status and data properties (nested API response)
+        if (response.data && response.data.status === 'success' && response.data.data) {
+          console.log('Setting program from nested data:', response.data.data);
+          setProgram(response.data.data);
+        } 
+        // If response.data is directly the program object (it has an _id)
+        else if (response.data && response.data._id) {
+          console.log('Setting program from direct data:', response.data);
+          setProgram(response.data);
+        }
+        // If response itself has status and data properties
+        else if (response.status === 'success' && response.data) {
+          console.log('Setting program from direct API response:', response.data);
+          setProgram(response.data);
+        }
+        else {
+          console.error('Unexpected program data structure:', response);
+          setError('Failed to load loan program: Unexpected data structure');
+        }
       } else {
-        setError('Failed to load loan program');
+        console.error('Empty response received');
+        setError('Failed to load loan program: Empty response');
       }
     } catch (err) {
+      console.error('Error fetching program data:', err);
       setError(err.message || 'Failed to load loan program');
     } finally {
       setLoading(false);
@@ -46,25 +70,68 @@ export default function EditLoanProgram() {
       setSaving(true);
       setError(null);
       
-      const url = isNewProgram ? '/loan-programs' : `/loan-programs/${id}`;
-      const method = isNewProgram ? 'POST' : 'PUT';
+      console.log('Saving loan program with data:', formData);
+      let response;
       
-      const response = await fetchAPI(url, {
-        method,
-        data: formData  // Changed from body: JSON.stringify(formData)
-      });
+      if (isNewProgram) {
+        response = await LoanProgramService.createProgram(formData);
+      } else {
+        response = await LoanProgramService.updateProgram(id, formData);
+      }
       
-      if (response.status === 'success') {
-        setSuccess(true);
-        
-        // For new programs, redirect to the edit page after creation
-        if (isNewProgram) {
-          router.push(`/lender/programs/${response.data._id}`);
+      console.log('Save response:', response);
+      
+      // Handle different response structures
+      if (response) {
+        if (response.data) {
+          // If response.data has status property (nested structure)
+          if (response.data.status === 'success') {
+            console.log('Program saved successfully (nested):', response.data);
+            setSuccess(true);
+            // For new programs, redirect to the edit page after creation
+            if (isNewProgram && response.data.data && response.data.data._id) {
+              router.push(`/lender/programs/${response.data.data._id}`);
+            }
+          } 
+          // If response.data is the saved program object (it has an _id)
+          else if (response.data._id) {
+            console.log('Program saved successfully (direct):', response.data);
+            setSuccess(true);
+            // For new programs, redirect to the edit page after creation
+            if (isNewProgram) {
+              router.push(`/lender/programs/${response.data._id}`);
+            }
+          }
+          // If response.data has some other structure
+          else {
+            console.error('Unexpected data structure in response:', response.data);
+            setError('Failed to save loan program: Unexpected response structure');
+          }
+        } 
+        // If response has status directly
+        else if (response.status === 'success') {
+          console.log('Program saved successfully (direct API response):', response);
+          setSuccess(true);
+          // For new programs, redirect to the edit page after creation
+          if (isNewProgram && response.data && response.data._id) {
+            router.push(`/lender/programs/${response.data._id}`);
+          }
+        }
+        // If response is a 204 No Content or similar success status
+        else if (response.status === 204 || response.status === 200) {
+          console.log('Program saved successfully (status code):', response.status);
+          setSuccess(true);
+        }
+        else {
+          console.error('Unrecognized response structure:', response);
+          setError('Failed to save loan program: Unrecognized response');
         }
       } else {
-        setError('Failed to save loan program');
+        console.error('Empty response received');
+        setError('Failed to save loan program: Empty response');
       }
     } catch (err) {
+      console.error('Error saving program:', err);
       setError(err.message || 'Failed to save loan program');
     } finally {
       setSaving(false);

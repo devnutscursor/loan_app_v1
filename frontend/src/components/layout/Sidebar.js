@@ -30,6 +30,7 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         { name: 'Loan Programs', href: '/lender/programs', icon: 'template' },
         { name: 'Conditions', href: '/lender/conditions', icon: 'check-circle' },
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
+        { name: 'Referral Links', href: '/lender/referrals', icon: 'link' },
         { name: 'Documents', href: '/lender/documents', icon: 'document-duplicate' },
         { name: 'Company', href: '/lender/company', icon: 'office-building' },
         { name: 'Settings', href: '/lender/settings', icon: 'cog' }
@@ -133,6 +134,12 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         return (
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+          </svg>
+        );
+      case 'link':
+        return (
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
         );
       default:

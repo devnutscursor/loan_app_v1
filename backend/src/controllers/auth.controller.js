@@ -4,6 +4,7 @@ const Lender = require('../models/lender.model');
 const ApiError = require('../utils/apiError');
 const { generateToken, generateRefreshToken } = require('../config/auth');
 const logger = require('../utils/logger');
+const mongoose = require('mongoose');
 
 /**
  * Register a new user
@@ -21,6 +22,11 @@ exports.register = async (req, res, next) => {
       return next(new ApiError('User already exists with this email', 400));
     }
 
+    // For regular registration, only allow lender and admin roles
+    if (role === 'borrower') {
+      return next(new ApiError('Borrowers should register through a lender link', 400));
+    }
+
     // Create new user
     const user = await User.create({
       firstName,
@@ -28,15 +34,11 @@ exports.register = async (req, res, next) => {
       email,
       password,
       phone,
-      role: role || 'borrower'
+      role: role || 'lender'
     });
 
-    // Create associated profile based on role
-    if (user.role === 'borrower') {
-      await Borrower.create({
-        user: user._id
-      });
-    } else if (user.role === 'lender') {
+    // Create lender profile
+    if (user.role === 'lender') {
       await Lender.create({
         user: user._id
       });
@@ -65,6 +67,98 @@ exports.register = async (req, res, next) => {
         refreshToken
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Register a new borrower linked to a lender
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.registerBorrower = async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, phone } = req.body;
+    const { lenderId } = req.query;
+
+    // Check if lender ID is provided
+    if (!lenderId) {
+      return next(new ApiError('Lender ID is required for borrower registration', 400));
+    }
+
+    // Validate lender ID format
+    if (!mongoose.Types.ObjectId.isValid(lenderId)) {
+      return next(new ApiError('Invalid lender ID format', 400));
+    }
+
+    // Check if the lender exists
+    const lender = await Lender.findById(lenderId);
+    if (!lender) {
+      return next(new ApiError('Lender not found', 404));
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ApiError('User already exists with this email', 400));
+    }
+
+    // Start a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Create new user with borrower role
+      const user = await User.create([{
+        firstName,
+        lastName,
+        email,
+        password,
+        phone,
+        role: 'borrower'
+      }], { session });
+
+      // Create borrower profile linked to the lender
+      await Borrower.create([{
+        user: user[0]._id,
+        lender: lenderId
+      }], { session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      // Generate tokens
+      const token = generateToken(user[0]);
+      const refreshToken = generateRefreshToken(user[0]);
+
+      // Log the borrower registration
+      logger.info(`New borrower registered: ${user[0].email} under lender ID: ${lenderId}`);
+
+      res.status(201).json({
+        status: 'success',
+        message: 'Borrower registered successfully',
+        data: {
+          user: {
+            id: user[0]._id,
+            firstName: user[0].firstName,
+            lastName: user[0].lastName,
+            email: user[0].email,
+            phone: user[0].phone,
+            role: user[0].role
+          },
+          lenderId,
+          token,
+          refreshToken
+        }
+      });
+    } catch (error) {
+      // Abort transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
     next(error);
   }

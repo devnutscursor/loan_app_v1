@@ -16,8 +16,27 @@ exports.createLoanProgram = async (req, res, next) => {
       return next(new ApiError('Only lenders and admins can create loan programs', 403));
     }
 
+    // If user is a lender, get their lender profile ID
+    let lenderId = null;
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      lenderId = lenderProfile._id;
+    } else if (req.body.lender) {
+      // If admin is creating a program for a specific lender
+      lenderId = req.body.lender;
+    } else {
+      return next(new ApiError('Lender ID is required', 400));
+    }
+
     const programData = {
       ...req.body,
+      lender: lenderId,
       createdBy: req.user._id
     };
 
@@ -42,7 +61,25 @@ exports.createLoanProgram = async (req, res, next) => {
  */
 exports.getAllLoanPrograms = async (req, res, next) => {
   try {
-    const loanPrograms = await LoanProgram.find();
+    // Build filter based on user role and query params
+    let filter = {};
+    
+    // If user is a lender, only show their programs
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      filter.lender = lenderProfile._id;
+    } else if (req.query.lender) {
+      // If admin is filtering by lender
+      filter.lender = req.query.lender;
+    }
+    
+    const loanPrograms = await LoanProgram.find(filter);
     
     res.status(200).json({
       status: 'success',
@@ -101,6 +138,20 @@ exports.updateLoanProgram = async (req, res, next) => {
       return next(new ApiError('Loan program not found', 404));
     }
     
+    // If user is a lender, ensure they own this program
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      if (loanProgram.lender.toString() !== lenderProfile._id.toString()) {
+        return next(new ApiError('You can only update your own loan programs', 403));
+      }
+    }
+    
     // Update the loan program
     const updatedLoanProgram = await LoanProgram.findByIdAndUpdate(
       id,
@@ -139,6 +190,20 @@ exports.deleteLoanProgram = async (req, res, next) => {
     
     if (!loanProgram) {
       return next(new ApiError('Loan program not found', 404));
+    }
+    
+    // If user is a lender, ensure they own this program
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      if (loanProgram.lender.toString() !== lenderProfile._id.toString()) {
+        return next(new ApiError('You can only delete your own loan programs', 403));
+      }
     }
     
     // Delete the loan program

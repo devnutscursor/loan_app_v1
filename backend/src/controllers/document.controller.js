@@ -43,7 +43,7 @@ exports.uploadDocument = async (req, res, next) => {
           return next(new ApiError('Borrower profile not found', 404));
         }
 
-        const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+        const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
         const isCoBorrower = loan.coBorrowers.some(coBorrower => 
           coBorrower.toString() === borrower._id.toString()
         );
@@ -132,7 +132,7 @@ exports.getAllDocuments = async (req, res, next) => {
           return next(new ApiError('Borrower profile not found', 404));
         }
 
-        const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+        const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
         const isCoBorrower = loan.coBorrowers.some(coBorrower => 
           coBorrower.toString() === borrower._id.toString()
         );
@@ -249,7 +249,7 @@ exports.getDocument = async (req, res, next) => {
       if (document.loan) {
         const loan = await Loan.findById(document.loan._id);
         if (loan) {
-          const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+          const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
           const isCoBorrower = loan.coBorrowers.some(coBorrower => 
             coBorrower.toString() === borrower._id.toString()
           );
@@ -305,7 +305,7 @@ exports.updateDocument = async (req, res, next) => {
       if (document.loan) {
         const loan = await Loan.findById(document.loan);
         if (loan) {
-          const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+          const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
           const isCoBorrower = loan.coBorrowers.some(coBorrower => 
             coBorrower.toString() === borrower._id.toString()
           );
@@ -468,7 +468,7 @@ exports.downloadDocument = async (req, res, next) => {
       if (document.loan) {
         const loan = await Loan.findById(document.loan);
         if (loan) {
-          const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+          const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
           const isCoBorrower = loan.coBorrowers.some(coBorrower => 
             coBorrower.toString() === borrower._id.toString()
           );
@@ -600,7 +600,7 @@ exports.getLoanDocuments = async (req, res, next) => {
         return next(new ApiError('Borrower profile not found', 404));
       }
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
       const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
@@ -682,7 +682,7 @@ exports.getDocumentRequirements = async (req, res, next) => {
         return next(new ApiError('Borrower profile not found', 404));
       }
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
       const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
@@ -834,7 +834,7 @@ exports.requestDocument = async (req, res, next) => {
     }
     
     // Check if borrower is associated with this loan
-    const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
+    const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
     const isCoBorrower = loan.coBorrowers.some(coBorrower => 
       coBorrower.toString() === borrower._id.toString()
     );

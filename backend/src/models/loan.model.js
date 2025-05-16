@@ -697,15 +697,16 @@ const loanSchema = new mongoose.Schema({
   loanNumber: {
     type: String,
     unique: true,
-    required: true
+    sparse: true // Allow multiple null values during creation
   },
-  applicationDate: {
-    type: Date,
-    default: Date.now
-  },
-  primaryBorrower: {
+  borrower: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Borrower',
+    required: true
+  },
+  lender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lender',
     required: true
   },
   borrowerDetails: borrowerDetailsSchema,

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { ArrowLeft, Save } from 'lucide-react';
-import { fetchAPI } from '@/utils/api';
 import LenderLayout from '@/components/layout/LenderLayout';
 import Head from 'next/head';
+import { LoanRateService } from '@/services';
 
 const PROGRAM_TYPES = [
   { id: 'conventional', name: 'Conventional' },
@@ -27,28 +27,72 @@ export default function ManageRates() {
   // Fetch rates on component mount
   useEffect(() => {
     fetchRates();
+    // Log the auth token to check if it's available
+    console.log('Rates page - Auth token present:', !!localStorage.getItem('token'));
   }, []);
 
   const fetchRates = async () => {
     try {
       setLoading(true);
-      const response = await fetchAPI('/loan-rates');
-      if (response.status === 'success') {
+      console.log('Fetching loan rates...');
+      // This will automatically filter rates by the current lender
+      const response = await LoanRateService.getAllRates();
+      console.log('Loan rates API response:', response);
+      
+      // Process the data based on the response structure
+      let ratesData = [];
+      
+      if (response) {
+        if (response.data) {
+          // If response.data has nested structure with status and data properties
+          if (response.data.status === 'success' && Array.isArray(response.data.data)) {
+            console.log('Setting rates from nested data:', response.data.data);
+            ratesData = response.data.data;
+          } 
+          // If response.data is directly an array
+          else if (Array.isArray(response.data)) {
+            console.log('Setting rates from data array:', response.data);
+            ratesData = response.data;
+          }
+          // If response.data has some other structure
+          else {
+            console.error('Unexpected data structure in response.data:', response.data);
+            setError('Failed to load rates: Unexpected data structure');
+            return;
+          }
+        } 
+        // If response itself is an array
+        else if (Array.isArray(response)) {
+          console.log('Setting rates from direct array response:', response);
+          ratesData = response;
+        }
+        // If response has status and data properties directly
+        else if (response.status === 'success' && Array.isArray(response.data)) {
+          console.log('Setting rates from direct API response:', response.data);
+          ratesData = response.data;
+        }
+        else {
+          console.error('Unrecognized response structure:', response);
+          setError('Failed to load rates: Unrecognized response structure');
+          return;
+        }
+        
         // Merge existing rates with fetched rates
         const updatedRates = [...rates];
         
-        response.data.forEach(fetchedRate => {
+        ratesData.forEach(fetchedRate => {
           const index = updatedRates.findIndex(r => r.programType === fetchedRate.programType);
           if (index !== -1) {
             updatedRates[index] = fetchedRate;
           }
         });
         
+        console.log('Updated rates:', updatedRates);
         setRates(updatedRates);
         
         // Set last updated date from the most recent rate
-        if (response.data.length > 0) {
-          const latestDate = response.data.reduce((latest, rate) => {
+        if (ratesData.length > 0) {
+          const latestDate = ratesData.reduce((latest, rate) => {
             const rateDate = new Date(rate.updatedAt);
             return rateDate > latest ? rateDate : latest;
           }, new Date(0));
@@ -56,9 +100,11 @@ export default function ManageRates() {
           setLastUpdated(latestDate);
         }
       } else {
-        setError('Failed to load rates');
+        console.error('Empty response received');
+        setError('Failed to load rates: Empty response');
       }
     } catch (err) {
+      console.error('Error fetching loan rates:', err);
       setError(err.message || 'Failed to load rates');
     } finally {
       setLoading(false);
@@ -89,12 +135,12 @@ export default function ManageRates() {
       setSaving(true);
       setError(null);
       
-      const response = await fetchAPI('/loan-rates', {
-        method: 'PUT',
-        data: { rates }  // Changed from body: JSON.stringify({ rates })
-      });
+      // Use the loan rate service to update rates
+      // This will automatically associate with the current lender
+      const response = await LoanRateService.updateRates(rates);
       
-      if (response.status === 'success') {
+      console.log('response: ', response);
+      if (response.data.status === 'success') {
         setSuccess(true);
         setLastUpdated(new Date());
       } else {

@@ -91,6 +91,8 @@ export default function LoanProgramForm({
   // Load program data if editing
   useEffect(() => {
     if (program && program._id) {
+      console.log('Loading program data into form:', program);
+      
       // Convert the old fee format to the new toggle-based structure
       const convertFeeFormat = (oldFee) => {
         if (!oldFee) return {
@@ -111,21 +113,60 @@ export default function LoanProgramForm({
         };
       };
       
-      setFormData({
-        ...formData,
-        ...program,
-        // Make sure all required nested objects exist
+      // Create a new object with default values and program values
+      const updatedFormData = {
+        // Start with default values
+        programName: program.programName || '',
+        displayName: program.displayName || '',
+        programType: program.programType || 'conventional',
+        isAvailableToBorrower: program.isAvailableToBorrower !== undefined ? program.isAvailableToBorrower : true,
+        isDefaultForIntegrations: program.isDefaultForIntegrations !== undefined ? program.isDefaultForIntegrations : false,
+        loanHelpText: program.loanHelpText || '',
+        preApprovalLetterTemplate: program.preApprovalLetterTemplate || 'standard',
+        rateAdjustment: program.rateAdjustment !== undefined ? program.rateAdjustment : 0,
+        loanTerm: program.loanTerm || 30,
+        
+        // Make sure all nested objects exist and use program values if available
         restrictions: {
-          ...formData.restrictions,
-          ...(program.restrictions || {})
+          dtiRestriction: {
+            max: program.restrictions?.dtiRestriction?.max !== undefined ? 
+              program.restrictions.dtiRestriction.max : 43
+          },
+          downPaymentRestriction: {
+            min: program.restrictions?.downPaymentRestriction?.min !== undefined ? 
+              program.restrictions.downPaymentRestriction.min : 3,
+            max: program.restrictions?.downPaymentRestriction?.max !== undefined ? 
+              program.restrictions.downPaymentRestriction.max : null
+          },
+          loanAmountRestriction: {
+            min: program.restrictions?.loanAmountRestriction?.min !== undefined ? 
+              program.restrictions.loanAmountRestriction.min : null,
+            max: program.restrictions?.loanAmountRestriction?.max !== undefined ? 
+              program.restrictions.loanAmountRestriction.max : null
+          }
         },
+        
+        // Use program values for mortgage insurance or defaults
+        privateMortgageInsurance: program.privateMortgageInsurance || formData.privateMortgageInsurance,
+        upfrontMortgageInsurance: program.upfrontMortgageInsurance !== undefined ? program.upfrontMortgageInsurance : 0,
+        mortgageInsurance: program.mortgageInsurance !== undefined ? program.mortgageInsurance : 0,
+        fmi: program.fmi !== undefined ? program.fmi : 0,
+        fundingFee: program.fundingFee !== undefined ? program.fundingFee : 0,
+        
         // Convert fee structures to new format
         originationFees: convertFeeFormat(program.originationFees),
         closingCosts: convertFeeFormat(program.closingCosts),
         otherFees: convertFeeFormat(program.otherFees),
-        // Ensure other objects exist
-        privateMortgageInsurance: program.privateMortgageInsurance || formData.privateMortgageInsurance
-      });
+        
+        // Additional settings
+        isAdjustableRateMortgage: program.isAdjustableRateMortgage !== undefined ? program.isAdjustableRateMortgage : false,
+        allowSubjectPropertyAddress: program.allowSubjectPropertyAddress !== undefined ? program.allowSubjectPropertyAddress : true,
+        allowPreApprovalLetter: program.allowPreApprovalLetter !== undefined ? program.allowPreApprovalLetter : true,
+        lockLoanData: program.lockLoanData !== undefined ? program.lockLoanData : false
+      };
+      
+      console.log('Updated form data:', updatedFormData);
+      setFormData(updatedFormData);
     }
   }, [program]);
 
@@ -180,6 +221,10 @@ export default function LoanProgramForm({
     
     return submissionData;
   };
+
+  useEffect(() => {
+    console.log('Program data:', program);
+  }, [program]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

@@ -1,9 +1,49 @@
 const Lender = require('../models/lender.model');
 const User = require('../models/user.model');
 const Loan = require('../models/loan.model');
+const Borrower = require('../models/borrower.model');
 const Company = require('../models/company.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
+
+/**
+ * Get public lender profile by ID (no authentication required)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getPublicLenderProfile = async (req, res, next) => {
+  try {
+    const lenderId = req.params.id;
+    
+    // Find lender profile and only return necessary public information
+    const lender = await Lender.findById(lenderId);
+    
+    if (!lender) {
+      return next(new ApiError('Lender profile not found', 404));
+    }
+    
+    // Get user info for the lender
+    const user = await User.findById(lender.user, 'firstName lastName profilePicture');
+    
+    // Return limited public profile information
+    const publicProfile = {
+      _id: lender._id,
+      title: lender.title,
+      biography: lender.biography,
+      specialties: lender.specialties,
+      yearsOfExperience: lender.yearsOfExperience,
+      user: user
+    };
+    
+    res.status(200).json({
+      status: 'success',
+      data: publicProfile
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * Create a lender profile
@@ -54,8 +94,7 @@ exports.createLender = async (req, res, next) => {
 exports.getLenderProfile = async (req, res, next) => {
   try {
     // Find lender profile based on user ID
-    const lender = await Lender.findOne({ user: req.user._id })
-      .populate('company', 'name logo website');
+    const lender = await Lender.findOne({ user: req.user._id });
     
     if (!lender) {
       return next(new ApiError('Lender profile not found', 404));
@@ -390,6 +429,118 @@ exports.updateLenderStatus = async (req, res, next) => {
       status: 'success',
       message: `Lender ${isActive ? 'activated' : 'deactivated'} successfully`,
       data: updatedLender
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get all borrowers associated with a lender
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderBorrowers = async (req, res, next) => {
+  try {
+    let lenderId;
+    
+    // Check if we're getting borrowers for the current user or a specific lender
+    if (req.params.lenderId) {
+      // For specific lender (admin or same lender check)
+      lenderId = req.params.lenderId;
+      
+      // If not admin, verify user is requesting their own borrowers
+      if (req.user.role !== 'admin') {
+        const userLender = await Lender.findOne({ user: req.user._id });
+        
+        if (!userLender || userLender._id.toString() !== lenderId) {
+          return next(new ApiError('You are not authorized to view these borrowers', 403));
+        }
+      }
+    } else {
+      // For current user
+      const lender = await Lender.findOne({ user: req.user._id });
+      
+      if (!lender) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      lenderId = lender._id;
+    }
+    
+    // Implement pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Get all borrowers associated with this lender
+    const borrowers = await Borrower.find({ lender: lenderId })
+      .populate('user', 'firstName lastName email phone profilePicture')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+    
+    // Get total count for pagination
+    const total = await Borrower.countDocuments({ lender: lenderId });
+    
+    res.status(200).json({
+      status: 'success',
+      results: borrowers.length,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit
+      },
+      data: borrowers
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get a specific borrower by ID for a lender
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderBorrowerById = async (req, res, next) => {
+  try {
+    const { lenderId, borrowerId } = req.params;
+    
+    // If not admin, verify user is requesting their own borrower
+    if (req.user.role !== 'admin') {
+      const userLender = await Lender.findOne({ user: req.user._id });
+      
+      if (!userLender || userLender._id.toString() !== lenderId) {
+        return next(new ApiError('You are not authorized to view this borrower', 403));
+      }
+    }
+    
+    // Get borrower details including loans
+    const borrower = await Borrower.findOne({ 
+      _id: borrowerId,
+      lender: lenderId
+    }).populate('user', 'firstName lastName email phone profilePicture');
+    
+    if (!borrower) {
+      return next(new ApiError('Borrower not found or not associated with this lender', 404));
+    }
+    
+    // Get loans associated with this borrower
+    const loans = await Loan.find({ borrower: borrowerId, lender: lenderId })
+      .select('loanDetails status createdAt')
+      .sort({ createdAt: -1 });
+    
+    // Return borrower with loans
+    res.status(200).json({
+      status: 'success',
+      data: {
+        borrower,
+        loans
+      }
     });
   } catch (error) {
     next(error);

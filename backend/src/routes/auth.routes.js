@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Public routes
 router.post('/register', authController.register);
+router.post('/register/borrower', authController.registerBorrower);
 router.post('/login', authController.login);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/forgot-password', authController.forgotPassword);

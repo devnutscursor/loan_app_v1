@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Loan = require('../models/loan.model');
 const Borrower = require('../models/borrower.model');
+const Lender = require('../models/lender.model');
 const User = require('../models/user.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
@@ -30,12 +31,12 @@ exports.removeDocument = async (req, res, next) => {
         return next(new ApiError('Borrower profile not found', 404));
       }
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to modify this loan', 403));
       }
     }
@@ -94,24 +95,64 @@ exports.createLoan = async (req, res, next) => {
     
     if (req.user.role === 'borrower') {
       // For borrower users, use their own profile
-      borrower = await Borrower.findOne({ user: req.user._id });
+      borrower = await Borrower.findOne({ user: req.user._id }).populate('lender');
       
       if (!borrower) {
         return next(new ApiError('Borrower profile not found', 404));
       }
       
-      primaryBorrowerId = borrower._id;
-    } else {
-      // For lender users, a primary borrower ID must be provided
-      if (!req.body.primaryBorrower) {
-        return next(new ApiError('Primary borrower ID is required', 400));
+      // Get the lender associated with this borrower
+      if (!borrower.lender) {
+        return next(new ApiError('No lender associated with this borrower', 400));
       }
-      primaryBorrowerId = req.body.primaryBorrower;
       
-      // Verify that the borrower exists
-      borrower = await Borrower.findById(primaryBorrowerId);
+      lenderId = borrower.lender._id;
+      borrowerId = borrower._id;
+    } else if (req.user.role === 'lender') {
+      // For lender users creating a loan
+      const lender = await Lender.findOne({ user: req.user._id });
+      
+      if (!lender) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      // A borrower ID must be provided
+      if (!req.body.borrower) {
+        return next(new ApiError('Borrower ID is required', 400));
+      }
+      
+      borrowerId = req.body.borrower;
+      
+      // Verify that the borrower exists and belongs to this lender
+      borrower = await Borrower.findById(borrowerId);
       if (!borrower) {
-        return next(new ApiError('Primary borrower not found', 404));
+        return next(new ApiError('Borrower not found', 404));
+      }
+      
+      // Check if this borrower belongs to the lender
+      if (!borrower.lender.equals(lender._id)) {
+        return next(new ApiError('You are not authorized to create loans for this borrower', 403));
+      }
+      
+      lenderId = lender._id;
+    } else {
+      // For admin users, both borrower and lender IDs must be provided
+      if (!req.body.borrower || !req.body.lender) {
+        return next(new ApiError('Both borrower and lender IDs are required', 400));
+      }
+      
+      borrowerId = req.body.borrower;
+      lenderId = req.body.lender;
+      
+      // Verify that both borrower and lender exist
+      borrower = await Borrower.findById(borrowerId);
+      if (!borrower) {
+        return next(new ApiError('Borrower not found', 404));
+      }
+      
+      const lender = await Lender.findById(lenderId);
+      if (!lender) {
+        return next(new ApiError('Lender not found', 404));
       }
     }
     
@@ -177,21 +218,6 @@ exports.createLoan = async (req, res, next) => {
     const demographics = parseJsonField('demographics');
     const coBorrowers = parseJsonField('coBorrowers') || [];
     const documents = req.files || [];
-    
-    // Debug logs to trace the data flow
-    logger.info(`[DEBUG] Raw borrowerDetails field type: ${typeof req.body.borrowerDetails}`);
-    if (typeof req.body.borrowerDetails === 'string') {
-      logger.info(`[DEBUG] Raw borrowerDetails length: ${req.body.borrowerDetails.length}`);
-      logger.info(`[DEBUG] Raw borrowerDetails sample: ${req.body.borrowerDetails.substring(0, 100)}...`);
-    }
-    logger.info(`[DEBUG] Parsed borrowerDetails: ${JSON.stringify(primaryBorrower)}`);
-    logger.info(`[DEBUG] Parsed borrowerDetails - firstName: ${primaryBorrower.firstName}`);
-    logger.info(`[DEBUG] Parsed borrowerDetails - dependents: ${JSON.stringify(primaryBorrower.dependents)}`);
-    logger.info(`[DEBUG] Parsed borrowerDetails - employers: ${JSON.stringify(primaryBorrower.employers)}`);
-    logger.info(`[DEBUG] Parsed borrowerDetails - previousAddresses: ${JSON.stringify(primaryBorrower.previousAddresses)}`);
-    
-    // Received borrower details
-    logger.info(`Received borrower details: ${JSON.stringify(primaryBorrower)}`);
     
     // Prepare property data
     const propertyData = {
@@ -271,7 +297,8 @@ exports.createLoan = async (req, res, next) => {
     
     // Create new loan document with all the updated form structure data
     const newLoan = new Loan({
-      primaryBorrower: primaryBorrowerId,
+      borrower: borrowerId, // Use the borrower ID we determined earlier
+      lender: lenderId,    // Use the lender ID we determined earlier
       // Store the borrower details directly in the loan document
       borrowerDetails: borrowerDetailsData, 
       coBorrowers: Array.isArray(coBorrowers) ? coBorrowers.map(cb => cb._id || cb) : [],
@@ -497,9 +524,11 @@ exports.getAllLoans = async (req, res, next) => {
     // Build query object based on filters
     const query = {};
     
+    console.log('[DEBUG] Request:', req);
+    
     // Add role-specific filters
     if (req.user.role === 'borrower') {
-      // For borrowers, get their ID from user reference
+      // For borrowers, get their ID and associated lender from user reference
       const borrower = await Borrower.findOne({ user: req.user._id });
       
       if (!borrower) {
@@ -507,15 +536,31 @@ exports.getAllLoans = async (req, res, next) => {
       }
       
       // Show only loans where they are primary or co-borrower
+      // and that are associated with their assigned lender
+      // Check both borrower and primaryBorrower fields to handle different schema versions
       query.$or = [
+        { borrower: borrower._id },
         { primaryBorrower: borrower._id },
         { coBorrowers: borrower._id }
       ];
+      
+      // Also filter by the lender assigned to this borrower
+      query.lender = borrower.lender;
       
       // Exclude drafts by default unless explicitly requested
       if (status !== 'draft') {
         query.isDraft = { $ne: true };
       }
+    } else if (req.user.role === 'lender') {
+      // For lenders, find their lender ID
+      const lender = await Lender.findOne({ user: req.user._id });
+      
+      if (!lender) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      // Show only loans associated with this lender
+      query.lender = lender._id;
     }
     
     // Add filters if provided
@@ -541,12 +586,13 @@ exports.getAllLoans = async (req, res, next) => {
     
     // Execute query with pagination
     const loans = await Loan.find(query)
-      .populate('primaryBorrower', 'firstName lastName email phone')
+      .populate('borrower', 'firstName lastName email phone')
       .populate('assignedLoanOfficer', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
     
+    console.log('[DEBUG] Loans:', loans);
     // Get total count for pagination
     const total = await Loan.countDocuments(query);
     
@@ -577,37 +623,76 @@ exports.getAllLoans = async (req, res, next) => {
 exports.getLoan = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    // Find the loan
-    const loan = await Loan.findById(id)
-      .populate('primaryBorrower')
-      .populate('coBorrowers')
-      .populate('assignedLoanOfficer', 'firstName lastName email phone');
-    
+
+    // First find the loan without populating to check permissions
+    const loan = await Loan.findById(id);
+
     if (!loan) {
       return next(new ApiError('Loan not found', 404));
     }
-    
-    // Check permissions
+
+    // Check permissions based on user role
     if (req.user.role === 'borrower') {
-      // Find the borrower profile
+      // Get the borrower profile
       const borrower = await Borrower.findOne({ user: req.user._id });
+
+      if (!borrower) {
+        return next(new ApiError('Borrower profile not found', 404));
+      }
       
-      // Check if this borrower is the primary or co-borrower on the loan
-      const isPrimaryBorrower = loan.primaryBorrower._id.toString() === borrower._id.toString();
-      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
-        coBorrower._id.toString() === borrower._id.toString()
-      );
+      // Check if this borrower is associated with this loan
+      const isBorrowerOfLoan = loan.borrower && loan.borrower.equals(borrower._id) || 
+        (loan.coBorrowers && loan.coBorrowers.some(coBorrower => coBorrower.equals(borrower._id)));
       
-      if (!isPrimaryBorrower && !isCoBorrower) {
+      // Check if the loan is associated with the borrower's lender
+      const isLoanFromBorrowersLender = loan.lender && loan.lender.equals(borrower.lender);
+      
+      if (!isBorrowerOfLoan || !isLoanFromBorrowersLender) {
+        return next(new ApiError('You are not authorized to view this loan', 403));
+      }
+    } else if (req.user.role === 'lender') {
+      // Get the lender profile
+      const lender = await Lender.findOne({ user: req.user._id });
+      
+      if (!lender) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      // Check if this lender is associated with this loan
+      const isLenderOfLoan = loan.lender && loan.lender.equals(lender._id);
+      
+      if (!isLenderOfLoan) {
         return next(new ApiError('You are not authorized to view this loan', 403));
       }
     }
-    // Lenders and admins can view any loan
+    
+    // After permission check, get the fully populated loan
+    const populatedLoan = await Loan.findById(id)
+      .populate('borrower')
+      .populate({
+        path: 'borrower',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName email phone'
+        }
+      })
+      .populate('lender')
+      .populate({
+        path: 'lender',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName email phone'
+        }
+      })
+      .populate('property')
+      .populate('coBorrowers')
+      .populate('milestones')
+      .populate('documents')
+      .populate('assignedLoanOfficer', 'firstName lastName email phone');
     
     res.status(200).json({
       status: 'success',
-      data: loan
+      data: populatedLoan
     });
   } catch (error) {
     next(error);
@@ -626,7 +711,8 @@ exports.getLoanByNumber = async (req, res, next) => {
     
     // Find the loan by loanNumber instead of _id
     const loan = await Loan.findOne({ loanNumber: number })
-      .populate('primaryBorrower')
+      // Use populate if the field exists in the document, otherwise it will be ignored
+      .populate('borrower')
       .populate('coBorrowers')
       .populate('assignedLoanOfficer', 'firstName lastName email phone');
     
@@ -640,7 +726,7 @@ exports.getLoanByNumber = async (req, res, next) => {
       const borrower = await Borrower.findOne({ user: req.user._id });
       
       // Check if this borrower is the primary or co-borrower on the loan
-      const isPrimaryBorrower = loan.primaryBorrower._id.toString() === borrower._id.toString();
+      const isPrimaryBorrower = loan.borrower._id.toString() === borrower._id.toString();
       const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower._id.toString() === borrower._id.toString()
       );
@@ -686,12 +772,12 @@ exports.updateLoan = async (req, res, next) => {
     if (req.user.role === 'borrower') {
       const borrower = await Borrower.findOne({ user: req.user._id });
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to update this loan', 403));
       }
       
@@ -823,12 +909,12 @@ exports.updateLoanByNumber = async (req, res, next) => {
     if (req.user.role === 'borrower') {
       const borrower = await Borrower.findOne({ user: req.user._id });
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to update this loan', 403));
       }
       
@@ -1224,12 +1310,12 @@ exports.removeCondition = async (req, res, next) => {
         return next(new ApiError('Borrower profile not found', 404));
       }
 
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to modify this loan', 403));
       }
     }
@@ -1287,12 +1373,12 @@ exports.addNote = async (req, res, next) => {
     if (req.user.role === 'borrower') {
       const borrower = await Borrower.findOne({ user: req.user._id });
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to add notes to this loan', 403));
       }
     }
@@ -1354,7 +1440,7 @@ exports.saveDraft = async (req, res, next) => {
       
       if (existingDraft) {
         // Verify ownership
-        if (existingDraft.primaryBorrower.toString() !== borrower._id.toString()) {
+        if (existingDraft.borrower.toString() !== borrower._id.toString()) {
           return next(new ApiError('You are not authorized to update this draft', 403));
         }
         
@@ -1388,7 +1474,7 @@ exports.saveDraft = async (req, res, next) => {
     // Create minimal data to satisfy required fields but with isDraft flag
     // We're using insertMany to bypass mongoose validation
     const draftDocument = {
-      primaryBorrower: borrower._id,
+      borrower: borrower._id,
       loanNumber: tempLoanNumber, // Temporary number for draft
       status: 'draft',
       processingStatus: 'Draft',
@@ -1489,10 +1575,13 @@ exports.getDraft = async (req, res, next) => {
       return next(new ApiError('Borrower profile not found', 404));
     }
     
-    // Get the draft
+    // Get the draft using $or to check both field names
     const draft = await Loan.findOne({
       _id: id,
-      primaryBorrower: borrower._id,
+      $or: [
+        { borrower: borrower._id },    // New schema field
+        { primaryBorrower: borrower._id }  // Old schema field
+      ],
       status: 'draft',
       isDraft: true
     });
@@ -1532,12 +1621,12 @@ exports.calculateLoanMetrics = async (req, res, next) => {
     if (req.user.role === 'borrower') {
       const borrower = await Borrower.findOne({ user: req.user._id });
       
-      const isPrimaryBorrower = loan.primaryBorrower._id.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower._id.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to access this loan', 403));
       }
     }
@@ -1558,13 +1647,13 @@ exports.calculateLoanMetrics = async (req, res, next) => {
     let dti = 0;
     let housingRatio = 0;
     
-    if (loan.primaryBorrower.financialInfo) {
-      const monthlyIncome = loan.primaryBorrower.financialInfo.monthlyIncome || 0;
+    if (loan.borrower.financialInfo) {
+      const monthlyIncome = loan.borrower.financialInfo.monthlyIncome || 0;
       if (monthlyIncome > 0) {
         housingRatio = (monthlyPayment / monthlyIncome) * 100;
         
         // Total debts including housing
-        const totalDebts = (loan.primaryBorrower.financialInfo.totalDebts || 0) + monthlyPayment;
+        const totalDebts = (loan.borrower.financialInfo.totalDebts || 0) + monthlyPayment;
         dti = (totalDebts / monthlyIncome) * 100;
       }
     }
@@ -1647,12 +1736,12 @@ exports.updateLoanParameters = async (req, res, next) => {
         return next(new ApiError('Borrower profile not found', 404));
       }
       
-      const isPrimaryBorrower = loan.primaryBorrower.toString() === borrower._id.toString();
-      const isCoBottower = loan.coBorrowers && loan.coBorrowers.some(coBorrower => 
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers && loan.coBorrowers.some(coBorrower => 
         coBorrower.toString() === borrower._id.toString()
       );
       
-      if (!isPrimaryBorrower && !isCoBottower) {
+      if (!isPrimaryBorrower && !isCoBorrower) {
         return next(new ApiError('You are not authorized to modify this loan', 403));
       }
     }

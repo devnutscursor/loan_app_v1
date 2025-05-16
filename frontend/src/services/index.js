@@ -7,6 +7,8 @@ import DocumentService from './document.service';
 import LoanService from './loan.service';
 import UserService from './user.service';
 import NotificationService from './notification.service';
+import LoanProgramService from './api/loanProgram.service';
+import LoanRateService from './api/loanRate.service';
 
 // Export all services
 export {
@@ -19,7 +21,9 @@ export {
   DocumentService,
   LoanService,
   UserService,
-  NotificationService
+  NotificationService,
+  LoanProgramService,
+  LoanRateService
 };
 
 // Export a default object with all services
@@ -32,5 +36,7 @@ export default {
   document: DocumentService,
   loan: LoanService,
   notification: NotificationService,
-  user: UserService
+  user: UserService,
+  loanProgram: LoanProgramService,
+  loanRate: LoanRateService
 };

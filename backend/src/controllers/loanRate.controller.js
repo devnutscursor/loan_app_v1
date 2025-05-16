@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const LoanRate = require('../models/loanRate.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
@@ -10,7 +11,25 @@ const logger = require('../utils/logger');
  */
 exports.getAllLoanRates = async (req, res, next) => {
   try {
-    const loanRates = await LoanRate.find().sort({ programType: 1 });
+    // Build filter based on user role and query params
+    let filter = {};
+    
+    // If user is a lender, only show their rates
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      filter.lender = lenderProfile._id;
+    } else if (req.query.lender) {
+      // If admin is filtering by lender
+      filter.lender = req.query.lender;
+    }
+    
+    const loanRates = await LoanRate.find(filter).sort({ programType: 1 });
     
     res.status(200).json({
       status: 'success',
@@ -35,6 +54,24 @@ exports.updateLoanRates = async (req, res, next) => {
       return next(new ApiError('Only lenders and admins can update loan rates', 403));
     }
     
+    // Get lender ID based on user role
+    let lenderId = null;
+    if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      lenderId = lenderProfile._id;
+    } else if (req.body.lender) {
+      // If admin is creating rates for a specific lender
+      lenderId = req.body.lender;
+    } else {
+      return next(new ApiError('Lender ID is required', 400));
+    }
+    
     const { rates } = req.body;
     
     if (!rates || !Array.isArray(rates)) {
@@ -52,8 +89,8 @@ exports.updateLoanRates = async (req, res, next) => {
         return next(new ApiError(`Invalid rate value for ${programType}`, 400));
       }
       
-      // Find and update or create new rate
-      const existingRate = await LoanRate.findOne({ programType });
+      // Find and update or create new rate for this lender and program type
+      const existingRate = await LoanRate.findOne({ programType, lender: lenderId });
       
       if (existingRate) {
         existingRate.rate = rate;
@@ -66,6 +103,7 @@ exports.updateLoanRates = async (req, res, next) => {
         const newRate = await LoanRate.create({
           programType,
           rate,
+          lender: lenderId,
           updatedBy: req.user._id
         });
         
@@ -94,7 +132,24 @@ exports.getLoanRateByType = async (req, res, next) => {
   try {
     const { type } = req.params;
     
-    const loanRate = await LoanRate.findOne({ programType: type });
+    // Get lender ID from query or from user role
+    let lenderId = null;
+    if (req.query.lender) {
+      lenderId = req.query.lender;
+    } else if (req.user.role === 'lender') {
+      const Lender = mongoose.model('Lender');
+      const lenderProfile = await Lender.findOne({ user: req.user._id });
+      
+      if (!lenderProfile) {
+        return next(new ApiError('Lender profile not found', 404));
+      }
+      
+      lenderId = lenderProfile._id;
+    } else {
+      return next(new ApiError('Lender ID is required as a query parameter', 400));
+    }
+    
+    const loanRate = await LoanRate.findOne({ programType: type, lender: lenderId });
     
     if (!loanRate) {
       return next(new ApiError(`Loan rate for program type ${type} not found`, 404));

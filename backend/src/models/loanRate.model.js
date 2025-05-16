@@ -12,6 +12,14 @@ const loanRateSchema = new mongoose.Schema({
     min: 0,
     max: 20
   },
+  // Lender association - This makes loan rates unique per lender
+  lender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lender',
+    required: true,
+    index: true
+  },
+  
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
