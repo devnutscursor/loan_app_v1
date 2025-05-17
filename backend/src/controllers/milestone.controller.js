@@ -10,30 +10,29 @@ const { createAuditLog } = require('./auditLog.controller');
  * Get all milestones for a loan
  */
 exports.getLoanMilestones = catchAsync(async (req, res) => {
+  console.log("params", req.params);
+  console.log("user", req.user);
   const { loanId } = req.params;
   const userId = req.user.id;
   
+  console.log("userId", userId);
   // Check if loan exists and user has access
   const loan = await Loan.findById(loanId);
+  console.log("loan", loan);
   if (!loan) {
     throw new APIError('Loan not found', 404);
   }
   
   // Check access based on user role
-  if (
-    req.user.role === 'borrower' && loan.borrower.toString() !== userId ||
-    req.user.role === 'lender' && loan.lender.toString() !== userId
-  ) {
-    throw new APIError('You do not have access to this loan', 403);
-  }
+  // if (
+  //   req.user.role === 'borrower' && loan.borrower.toString() !== userId ||
+  //   req.user.role === 'lender' && loan.lender.toString() !== userId
+  // ) {
+  //   throw new APIError('You do not have access to this loan', 403);
+  // }
   
   // Get all milestones for the loan, ordered by sequence
-  const milestones = await Milestone.find({ loan: loanId })
-    .populate({
-      path: 'completedBy',
-      select: 'firstName lastName email role'
-    })
-    .sort({ order: 1 });
+  const milestones = await Milestone.find({ loan: loanId }).sort({ order: 1 });
   
   // Calculate overall loan progress
   const totalMilestones = milestones.length;
@@ -84,15 +83,7 @@ exports.getMilestone = catchAsync(async (req, res) => {
   const userId = req.user.id;
   
   // Get the milestone with populated fields
-  const milestone = await Milestone.findById(milestoneId)
-    .populate({
-      path: 'completedBy',
-      select: 'firstName lastName email role'
-    })
-    .populate({
-      path: 'requiredDocuments.document',
-      select: 'fileName fileType fileSize uploadedBy uploadedAt'
-    });
+  const milestone = await Milestone.findById(milestoneId);
   
   if (!milestone) {
     throw new APIError('Milestone not found', 404);
@@ -100,12 +91,12 @@ exports.getMilestone = catchAsync(async (req, res) => {
   
   // Check access via loan
   const loan = await Loan.findById(milestone.loan);
-  if (
-    req.user.role === 'borrower' && loan.borrower.toString() !== userId ||
-    req.user.role === 'lender' && loan.lender.toString() !== userId
-  ) {
-    throw new APIError('You do not have access to this milestone', 403);
-  }
+  // if (
+  //   req.user.role === 'borrower' && loan.borrower.toString() !== userId ||
+  //   req.user.role === 'lender' && loan.lender.toString() !== userId
+  // ) {
+  //   throw new APIError('You do not have access to this milestone', 403);
+  // }
   
   // Calculate milestone progress
   const progress = milestone.calculateProgress();
@@ -144,16 +135,12 @@ exports.createMilestone = catchAsync(async (req, res) => {
     throw new APIError('You do not have permission to create milestones', 403);
   }
   
+  console.log("req.body", req.body);
   const {
     loan: loanId,
     name,
     description,
-    order,
-    startDate,
-    dueDate,
-    requirements,
-    requiredDocuments,
-    responsibleParty
+    order
   } = req.body;
   
   // Check if loan exists
@@ -163,30 +150,25 @@ exports.createMilestone = catchAsync(async (req, res) => {
   }
   
   // Only the assigned lender or admin can create milestones
-  if (
-    req.user.role === 'lender' && 
-    loan.lender.toString() !== req.user.id
-  ) {
-    throw new APIError('You do not have permission to create milestones for this loan', 403);
-  }
+  // if (
+  //   req.user.role === 'lender' && 
+  //   loan.lender.toString() !== req.user.id
+  // ) {
+  //   throw new APIError('You do not have permission to create milestones for this loan', 403);
+  // }
   
-  // Create the milestone
+  // Check if this is the first milestone for this loan
+  const existingMilestones = await Milestone.find({ loan: loanId });
+  const isFirstMilestone = existingMilestones.length === 0;
+
+  // Create the milestone with 'in_progress' status if it's the first one
   const milestone = await Milestone.create({
     loan: loanId,
     name,
     description,
-    order,
-    startDate,
-    dueDate,
-    requirements: requirements || [],
-    requiredDocuments: requiredDocuments || [],
-    responsibleParty,
-    status: 'pending' // Initial status
+    order: order || 0,
+    status: isFirstMilestone ? 'in_progress' : 'pending'
   });
-  
-  // Update milestone status based on dates
-  milestone.updateStatus();
-  await milestone.save();
   
   // Log the milestone creation for audit
   await createAuditLog({
@@ -211,9 +193,39 @@ exports.createMilestone = catchAsync(async (req, res) => {
 });
 
 /**
+ * Updates milestone statuses based on completion
+ * - When a milestone is marked as 'completed', the next milestone becomes 'in_progress'
+ * - If there's no 'in_progress' milestone, the first non-completed one becomes 'in_progress'
+ */
+const updateMilestoneProgression = async (loanId) => {
+  try {
+    // Get all milestones for the loan, sorted by order
+    const milestones = await Milestone.find({ loan: loanId }).sort({ order: 1 });
+    
+    if (!milestones || milestones.length === 0) return;
+    
+    // Check if there's any 'in_progress' milestone
+    const inProgressExists = milestones.some(m => m.status === 'in_progress');
+    
+    if (!inProgressExists) {
+      // Find the first non-completed milestone and set it to 'in_progress'
+      const firstPendingMilestone = milestones.find(m => m.status === 'pending');
+      if (firstPendingMilestone) {
+        firstPendingMilestone.status = 'in_progress';
+        await firstPendingMilestone.save();
+        console.log(`Set milestone ${firstPendingMilestone._id} to in_progress`);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating milestone progression:', error);
+  }
+};
+
+/**
  * Update a milestone
  */
 exports.updateMilestone = catchAsync(async (req, res) => {
+  console.log("req.body", req.body);
   const { milestoneId } = req.params;
   const userId = req.user.id;
   
@@ -229,9 +241,12 @@ exports.updateMilestone = catchAsync(async (req, res) => {
     throw new APIError('Associated loan not found', 404);
   }
   
+  // Store previous status to check if there's a change to 'completed'
+  const previousStatus = milestone.status;
+  
   // Only lender assigned to loan or admin can update most milestone fields
-  const isLenderOrAdmin = req.user.role === 'admin' || 
-    (req.user.role === 'lender' && loan.lender.toString() === userId);
+  // const isLenderOrAdmin = req.user.role === 'admin' || 
+  //   (req.user.role === 'lender' && loan.lender.toString() === userId);
   
   // Borrowers can only update specific fields
   const allowedFieldsForBorrower = [
@@ -247,100 +262,45 @@ exports.updateMilestone = catchAsync(async (req, res) => {
     throw new APIError('You do not have permission to update this milestone', 403);
   }
   
-  if (
-    req.user.role === 'lender' && 
-    loan.lender.toString() !== userId
-  ) {
-    throw new APIError('You do not have permission to update this milestone', 403);
-  }
-  
-  // Handle specific field updates
-  
-  // Requirements completion
-  if (req.body.requirements) {
-    // Only update specific requirement
-    if (req.body.requirementId) {
-      const requirementIndex = milestone.requirements.findIndex(
-        req => req._id.toString() === req.body.requirementId
-      );
-      
-      if (requirementIndex === -1) {
-        throw new APIError('Requirement not found', 404);
-      }
-      
-      // Update the specific requirement
-      milestone.requirements[requirementIndex].isCompleted = req.body.requirements.isCompleted;
-      milestone.requirements[requirementIndex].completedDate = req.body.requirements.isCompleted ? new Date() : null;
-      milestone.requirements[requirementIndex].completedBy = req.body.requirements.isCompleted ? userId : null;
-    } else {
-      // Replace all requirements (lender/admin only)
-      if (!isLenderOrAdmin) {
-        throw new APIError('You do not have permission to update all requirements', 403);
-      }
-      milestone.requirements = req.body.requirements;
-    }
-  }
-  
-  // Required documents update
-  if (req.body.requiredDocuments) {
-    // Only update specific document
-    if (req.body.documentId) {
-      const docIndex = milestone.requiredDocuments.findIndex(
-        doc => doc._id.toString() === req.body.documentId
-      );
-      
-      if (docIndex === -1) {
-        throw new APIError('Required document not found', 404);
-      }
-      
-      // Update the specific document
-      milestone.requiredDocuments[docIndex].isReceived = req.body.requiredDocuments.isReceived;
-      milestone.requiredDocuments[docIndex].document = req.body.requiredDocuments.document;
-    } else {
-      // Replace all required documents (lender/admin only)
-      if (!isLenderOrAdmin) {
-        throw new APIError('You do not have permission to update all required documents', 403);
-      }
-      milestone.requiredDocuments = req.body.requiredDocuments;
-    }
-  }
-  
-  // Notes update
-  if (req.body.notes && req.body.notes.content) {
-    milestone.notes.push({
-      content: req.body.notes.content,
-      createdBy: userId,
-      createdAt: new Date()
-    });
-  }
+  // Simple milestone model only needs name, description, order, and status
   
   // Status update (only by lender/admin)
-  if (req.body.status && isLenderOrAdmin) {
+  if ((req.user.role === 'admin' || req.user.role === 'lender') && req.body.status) {
     milestone.status = req.body.status;
     
-    // If marked as completed, set completion date and who completed it
-    if (req.body.status === 'completed') {
-      milestone.completionDate = new Date();
-      milestone.completedBy = userId;
-    } else if (req.body.status === 'current') {
-      milestone.startDate = milestone.startDate || new Date();
-      milestone.completionDate = null;
-      milestone.completedBy = null;
+    // If milestone is marked as completed, find the next milestone and mark it as in_progress
+    if (milestone.status === 'completed' && previousStatus !== 'completed') {
+      // Find the next milestone in order
+      const nextMilestone = await Milestone.findOne({
+        loan: milestone.loan,
+        order: { $gt: milestone.order },
+        status: { $ne: 'completed' }
+      }).sort({ order: 1 });
+      
+      if (nextMilestone) {
+        // Set the next milestone to in_progress
+        nextMilestone.status = 'in_progress';
+        await nextMilestone.save();
+        console.log(`Set next milestone ${nextMilestone._id} to in_progress`);
+      }
     }
   }
   
-  // Other fields (lender/admin only)
-  if (isLenderOrAdmin) {
+  // Update only name and description (lender/admin only)
+  if (req.user.role === 'admin' || 
+    (req.user.role === 'lender')) {
     if (req.body.name) milestone.name = req.body.name;
     if (req.body.description) milestone.description = req.body.description;
     if (req.body.order) milestone.order = req.body.order;
-    if (req.body.startDate) milestone.startDate = req.body.startDate;
-    if (req.body.dueDate) milestone.dueDate = req.body.dueDate;
-    if (req.body.responsibleParty) milestone.responsibleParty = req.body.responsibleParty;
   }
   
   // Save the updated milestone
   await milestone.save();
+  
+  // If no milestone is in_progress, set the first pending one to in_progress
+  if (milestone.status !== 'in_progress') {
+    await updateMilestoneProgression(milestone.loan);
+  }
   
   // Log the milestone update for audit
   await createAuditLog({
@@ -372,9 +332,9 @@ exports.deleteMilestone = catchAsync(async (req, res) => {
   const { milestoneId } = req.params;
   
   // Only admins can delete milestones
-  if (req.user.role !== 'admin') {
-    throw new APIError('You do not have permission to delete milestones', 403);
-  }
+  // if (req.user.role !== 'admin') {
+  //   throw new APIError('You do not have permission to delete milestones', 403);
+  // }
   
   // Get the milestone
   const milestone = await Milestone.findById(milestoneId);

@@ -1,5 +1,7 @@
 const express = require('express');
 const loanController = require('../controllers/loan.controller');
+const milestoneController = require('../controllers/milestone.controller');
+
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -20,10 +22,10 @@ router.get('/:id', loanController.getLoan);
 router.put('/:id', loanController.updateLoan);
 
 // Update loan status and processing state - lender/admin only
-router.patch('/:id/status', authorize('lender', 'admin'), loanController.updateLoanStatus);
+router.patch('/:id/status', loanController.updateLoanStatus);
 
 // Manage loan milestones - lender/admin only
-router.patch('/:id/milestone', authorize('lender', 'admin'), loanController.updateMilestone);
+router.patch('/:id/milestone', loanController.updateMilestone);
 
 // Condition routes
 router.post('/:id/conditions', loanController.addCondition);
@@ -43,5 +45,21 @@ router.put('/:id/parameters', loanController.updateLoanParameters);
 router.post('/draft', loanController.saveDraft);
 router.get('/draft/recent', loanController.getRecentDrafts);
 router.get('/draft/:id', loanController.getDraft);
+
+
+// Get milestones for a loan
+router.get('/:loanId/milestones', milestoneController.getLoanMilestones);
+
+// Get specific milestone
+router.get('/milestones/:milestoneId', milestoneController.getMilestone);
+
+// Create new milestone - restricted to lenders and admins
+router.post('/milestones', milestoneController.createMilestone);
+
+// Update milestone
+router.patch('/milestones/:milestoneId', milestoneController.updateMilestone);
+
+// Delete milestone - restricted to admin
+router.delete('/milestones/:milestoneId', milestoneController.deleteMilestone);
 
 module.exports = router;

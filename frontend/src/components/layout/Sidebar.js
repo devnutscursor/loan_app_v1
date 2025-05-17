@@ -15,6 +15,7 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         { name: 'Dashboard', href: '/borrower/dashboard', icon: 'home' },
         { name: 'My Loans', href: '/borrower/loans', icon: 'document-text' },
         { name: 'Apply for Loan', href: '/borrower/apply', icon: 'plus-circle' },
+        { name: 'Milestones', href: '/borrower/milestones', icon: 'flag' },
         { name: 'Calculators', href: '/borrower/calculators', icon: 'calculator' },
         { name: 'Documents', href: '/borrower/documents', icon: 'document-duplicate' },
         { name: 'Profile', href: '/borrower/profile', icon: 'user' },
@@ -140,6 +141,12 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         return (
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        );
+      case 'flag':
+        return (
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
           </svg>
         );
       default:

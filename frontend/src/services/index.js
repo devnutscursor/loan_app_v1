@@ -1,7 +1,7 @@
 import api, { handleResponse } from './api.service';
 import AnalyticsService from './analytics.service';
 import MessageService from './message.service';
-import MilestoneService from './milestone.service';
+import MilestoneService from './api/milestone.service';
 import AuditLogService from './auditLog.service';
 import DocumentService from './document.service';
 import LoanService from './loan.service';

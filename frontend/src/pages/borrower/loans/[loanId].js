@@ -16,6 +16,7 @@ import MilitaryServiceCard from '../../../components/borrower/loan/MilitaryServi
 import DocumentsCard from '../../../components/borrower/loan/DocumentsCard';
 import DemographicsCard from '../../../components/borrower/loan/DemographicsCard';
 import DeclarationsCard from '../../../components/borrower/loan/DeclarationsCard';
+import LoanMilestones from '../../../components/borrower/loan/LoanMilestones';
 
 const LoanDetails = () => {
   const router = useRouter();
@@ -226,6 +227,9 @@ const LoanDetails = () => {
                   formatDate={formatDate} 
                   handleRemoveDocument={handleRemoveDocument} 
                 /> */}
+                
+                {/* Loan Milestones */}
+                <LoanMilestones loanId={loanId} />
               </div>
             ) : (
               <div className="bg-white shadow rounded-lg p-6 text-center">

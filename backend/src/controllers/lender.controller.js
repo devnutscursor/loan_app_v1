@@ -202,7 +202,7 @@ exports.getLenderDashboard = async (req, res, next) => {
     const recentLoans = await Loan.find({ lender: lender._id })
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('primaryBorrower', 'firstName lastName')
+      .populate('borrower', 'firstName lastName')
       .select('loanNumber loanDetails.loanAmount status createdAt');
     
     res.status(200).json({

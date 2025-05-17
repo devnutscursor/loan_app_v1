@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
-import MilestoneManager from '../../components/common/milestones/MilestoneManager';
-import { borrowerService } from '../../services/api';
+import LoanMilestones from '../../components/borrower/loan/LoanMilestones';
+import { LoanService } from '../../services';
 
 /**
  * Milestones Page for Borrowers
@@ -26,36 +26,24 @@ const Milestones = () => {
     const fetchLoans = async () => {
       setIsLoading(true);
       try {
-        // In a real app, this would be an API call
-        // const response = await borrowerService.getLoans();
+        console.log('Fetching loans...');
+        const response = await LoanService.getLoans();
+        console.log('Loans response:', response);
         
-        // For demonstration, use mock data
-        const mockLoans = [
-          {
-            _id: '1',
-            purpose: 'Home Purchase',
-            propertyAddress: '123 Main St, Anytown, USA',
-            amount: 350000,
-            status: 'in progress',
-            createdAt: '2023-03-15T14:00:00Z',
-            nextStep: 'Document Collection'
-          },
-          {
-            _id: '2',
-            purpose: 'Refinance',
-            propertyAddress: '456 Oak Ave, Somewhere, USA',
-            amount: 280000,
-            status: 'pending approval',
-            createdAt: '2023-02-20T10:30:00Z',
-            nextStep: 'Underwriting'
+        if (response.success) {
+          // Extract loans from the nested structure in the API response
+          const userLoans = response.data?.data?.loans || [];
+          console.log(`Retrieved ${userLoans.length} loans`);
+          
+          setLoans(userLoans);
+          
+          // Select the first loan by default
+          if (userLoans.length > 0) {
+            setSelectedLoanId(userLoans[0]._id);
           }
-        ];
-        
-        setLoans(mockLoans);
-        
-        // Select the first loan by default
-        if (mockLoans.length > 0) {
-          setSelectedLoanId(mockLoans[0]._id);
+        } else {
+          console.error('Failed to fetch loans:', response?.message || 'Unknown error');
+          toast.error(response?.message || 'Failed to load your loans');
         }
       } catch (error) {
         console.error('Error fetching loans:', error);
@@ -132,7 +120,7 @@ const Milestones = () => {
                         >
                           {loans.map(loan => (
                             <option key={loan._id} value={loan._id}>
-                              {loan.purpose} - {loan.propertyAddress}
+                              {loan.loanDetails?.loanType} - {loan.loanNumber}
                             </option>
                           ))}
                         </select>
@@ -141,42 +129,11 @@ const Milestones = () => {
                   </div>
                 )}
                 
-                {/* Selected Loan Overview */}
-                {selectedLoan && (
-                  <div className="bg-white shadow-sm rounded-lg p-4 mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500">Loan Purpose</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{selectedLoan.purpose}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500">Loan Amount</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">
-                          ${selectedLoan.amount.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500">Application Date</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">
-                          {new Date(selectedLoan.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                      <div className="md:col-span-3">
-                        <h3 className="text-sm font-medium text-gray-500">Property Address</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{selectedLoan.propertyAddress}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 
-                {/* Milestone Manager Component */}
-                <MilestoneManager 
+                
+                {/* Loan Milestones Component */}
+                <LoanMilestones 
                   loanId={selectedLoanId} 
-                  userRole="borrower" 
                 />
                 
                 {/* Quick Actions */}

@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 /**
  * Milestone Schema
- * Represents loan application milestones and their statuses
+ * Simplified to only include name and description
  */
 const MilestoneSchema = new Schema(
   {
@@ -27,81 +27,9 @@ const MilestoneSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'current', 'completed', 'overdue', 'waiting'],
+      enum: ['pending', 'in_progress', 'completed'],
       default: 'pending',
-    },
-    startDate: {
-      type: Date,
-    },
-    completionDate: {
-      type: Date,
-    },
-    dueDate: {
-      type: Date,
-    },
-    completedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    requirements: [
-      {
-        description: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        isCompleted: {
-          type: Boolean,
-          default: false,
-        },
-        completedDate: {
-          type: Date,
-        },
-        completedBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      },
-    ],
-    requiredDocuments: [
-      {
-        documentType: {
-          type: String,
-          required: true,
-        },
-        isReceived: {
-          type: Boolean,
-          default: false,
-        },
-        document: {
-          type: Schema.Types.ObjectId,
-          ref: 'Document',
-        },
-      },
-    ],
-    notes: [
-      {
-        content: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        createdBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-          required: true,
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-    responsibleParty: {
-      type: String,
-      enum: ['borrower', 'lender', 'third_party'],
-      default: 'lender',
-    },
+    }
   },
   {
     timestamps: true,
@@ -113,46 +41,18 @@ MilestoneSchema.index({ loan: 1, order: 1 });
 MilestoneSchema.index({ loan: 1, status: 1 });
 
 /**
- * Calculate milestone progress percentage
+ * Calculate milestone progress percentage - simplified version
  */
 MilestoneSchema.methods.calculateProgress = function() {
-  let totalItems = 0;
-  let completedItems = 0;
-  
-  // Count requirements
-  if (this.requirements && this.requirements.length > 0) {
-    totalItems += this.requirements.length;
-    completedItems += this.requirements.filter(req => req.isCompleted).length;
-  }
-  
-  // Count documents
-  if (this.requiredDocuments && this.requiredDocuments.length > 0) {
-    totalItems += this.requiredDocuments.length;
-    completedItems += this.requiredDocuments.filter(doc => doc.isReceived).length;
-  }
-  
-  if (totalItems === 0) return 0;
-  return Math.round((completedItems / totalItems) * 100);
+  // With simplified model, milestone is either 0% or 100% based on status
+  return this.status === 'completed' ? 100 : 0;
 };
 
 /**
- * Update milestone status based on progress and dates
+ * Toggle milestone status between pending and completed
  */
-MilestoneSchema.methods.updateStatus = function() {
-  const now = new Date();
-  
-  if (this.completionDate) {
-    this.status = 'completed';
-  } else if (this.startDate && this.startDate <= now) {
-    if (this.dueDate && this.dueDate < now) {
-      this.status = 'overdue';
-    } else {
-      this.status = 'current';
-    }
-  } else if (this.startDate && this.startDate > now) {
-    this.status = 'pending';
-  }
-  
+MilestoneSchema.methods.toggleStatus = function() {
+  this.status = this.status === 'completed' ? 'pending' : 'completed';
   return this.status;
 };
 

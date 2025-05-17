@@ -24,6 +24,7 @@ import Demographics from '../../../components/forms/declarations/Demographics';
 import DocumentsCard from '../../../components/borrower/loan/DocumentsCard';
 import LenderDocumentRequirements from '../../../components/lender/documents/LenderDocumentRequirements';
 import BorrowerScenarioTailwind from '../../../components/lender/loans/BorrowerScenarioTailwind';
+import LoanMilestones from '../../../components/lender/loans/LoanMilestones';
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -70,6 +71,7 @@ const LoanDetails = () => {
     { id: 'financial', label: 'Financial Information', icon: '💰' },
     { id: 'additional', label: 'Additional Information', icon: '📋' },
     { id: 'documents', label: 'Documents', icon: '📎' },
+    { id: 'milestones', label: 'Milestones', icon: '🏆' },
   ];
 
   useEffect(() => {
@@ -221,7 +223,7 @@ const LoanDetails = () => {
     <ProtectedRoute allowedRoles={['lender']}>
       <MainLayout>
         <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="max-w-6xl mx-auto">
             <div className="flex items-center mb-4">
               <Link 
                 href="/lender/loans"
@@ -261,7 +263,7 @@ const LoanDetails = () => {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
+          <div className="max-w-5xl mx-auto mt-6">
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -676,6 +678,13 @@ const LoanDetails = () => {
                           }
                         }}
                       />
+                    </>
+                  )}
+                  
+                  {/* Milestones Tab */}
+                  {activeTab === 'milestones' && (
+                    <>
+                      <LoanMilestones loanId={id} />
                     </>
                   )}
                   
