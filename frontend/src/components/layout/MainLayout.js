@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 const MainLayout = ({ children, title = 'Loan Application System', noSidebarMargin = true }) => {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +70,13 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
     
     return true;
   };
+  
+  // Set collapsed sidebar for loan detail pages
+  useEffect(() => {
+    // Check if we're on a loan detail page
+    const isLoanDetailPage = router.pathname.match(/\/lender\/loans\/[^/]+$/);
+    setSidebarCollapsed(isLoanDetailPage ? true : false);
+  }, [router.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -92,6 +100,8 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
           <Sidebar 
             isOpen={sidebarOpen} 
             setIsOpen={setSidebarOpen} 
+            isCollapsed={sidebarCollapsed}
+            setIsCollapsed={setSidebarCollapsed}
             user={user} 
           />
         )}

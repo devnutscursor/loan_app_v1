@@ -213,8 +213,8 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   
   // Otherwise render the card with actual data
   return (
-    <div className="bg-white rounded-lg shadow-md p-5">
-      <h2 className="text-xl font-bold text-gray-800 mb-1">Loan Qualification</h2>
+    <div className="bg-white rounded-lg ">
+      {/* <h2 className="text-xl font-bold text-gray-800 mb-1">Loan Qualification</h2> */}
       <p className="text-sm text-gray-500 mb-4">Qualification status based on loan programs</p>
       
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">

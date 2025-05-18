@@ -53,17 +53,17 @@ export const authService = {
 export const borrowerService = {
   // Dashboard
   getDashboard: () => api.get('/borrower/dashboard'),
-  
+
   // Loans
   getLoans: (params) => api.get('/borrower/loans', { params }),
   getLoan: (id) => api.get(`/borrower/loans/${id}`),
   createLoan: (loanData) => api.post('/borrower/loans', loanData),
   updateLoan: (id, loanData) => api.patch(`/borrower/loans/${id}`, loanData),
-  
+
   // Profile
   getProfile: () => api.get('/borrower/profile'),
   updateProfile: (profileData) => api.patch('/borrower/profile', profileData),
-  
+
   // Documents
   uploadDocument: (formData) => api.post('/borrower/documents', formData, {
     headers: {
@@ -72,10 +72,10 @@ export const borrowerService = {
   }),
   getDocuments: () => api.get('/borrower/documents'),
   deleteDocument: (id) => api.delete(`/borrower/documents/${id}`),
-  
+
   // Loan Conditions (Document Requests)
   getActiveLoanConditions: () => api.get('/borrower/loan-conditions'),
-  
+
   // Remove a condition from a loan (used when a document is uploaded to fulfill a condition)
   removeCondition: (loanId, conditionId) => api.delete(`/loans/${loanId}/conditions/${conditionId}`),
 };
@@ -84,31 +84,61 @@ export const borrowerService = {
 export const lenderService = {
   // Dashboard
   getDashboard: () => api.get('/lenders/dashboard'),
-  
+
   // Applications
   getApplications: (params) => api.get('/loans', { params }),
   getApplication: (id) => api.get(`/loans/${id}`),
   updateApplicationStatus: (id, status, notes) => api.patch(`/loans/${id}/status`, { status, notes }),
-  
+  // In lenderService.js
+  // In lenderService
+getLoanParameters: async (loanId) => {
+  try {
+    // Use the same endpoint as in the parameters page
+    const response = await api.get(`/loans/${loanId}`);
+    
+    // Transform the response to match the format expected by your dashboard component
+    if (response && response.data) {
+      // Extract the qualification metrics from the loan data
+      const loanData = response.data;
+      
+      return {
+        data: {
+          dtiRatio: loanData.qualificationMetrics?.dtiRatio || 'N/A',
+          ltvRatio: loanData.qualificationMetrics?.ltvRatio || 'N/A',
+          qualified: loanData.qualificationStatus === 'qualified',
+          parameters: loanData.qualificationParameters?.map(param => ({
+            name: param.name,
+            value: param.value,
+            status: param.status
+          })) || []
+        }
+      };
+    }
+    return { data: null };
+  } catch (error) {
+    console.error('Error fetching loan parameters:', error);
+    throw error;
+  }
+},
   // Loans
   getLoans: (params) => api.get('/loans', { params }),
   getLoan: (id) => api.get(`/loans/${id}`),
   updateLoan: (id, loanData) => api.put(`/borrower/loans/by-number/${loanData.loanDetails?.loanNumber || loanData.loanNumber || id}`, loanData),
-  
+
   // Profile
   getProfile: () => api.get('/lender/profile'),
   updateProfile: (profileData) => api.patch('/lender/profile', profileData),
-  
+
   // Company
   getCompany: () => api.get('/lender/company'),
   updateCompany: (companyData) => api.patch('/lender/company', companyData),
-  
+
   // Borrowers
   getBorrowers: (params) => api.get('/lender/borrowers', { params }),
   getBorrower: (id) => api.get(`/lender/borrowers/${id}`),
   // Get loan documents
   getLoanDocuments: (loanId) => api.get(`/documents/loan/${loanId}`),
-  
+
   // Request borrower to re-upload a specific document
   requestDocument: (loanId, docData) => {
     console.log(`📡 Requesting document:`, { loanId, ...docData });
@@ -116,12 +146,12 @@ export const lenderService = {
     // The loanId should be part of the request body
     return api.post(`/documents/request`, { ...docData, loanId });
   },
-  
+
   // Approve a document - using mock function since backend endpoint is not implemented yet
   approveDocument: (loanId, docId) => {
     return api.put(`/documents/${docId}/approve`, { loanId });
   },
-  
+
   // Reject a document - using mock function since backend endpoint is not implemented yet
   rejectDocument: (loanId, docId) => {
     return api.put(`/documents/${docId}/reject`, { loanId });
@@ -132,17 +162,17 @@ export const lenderService = {
 export const adminService = {
   // Dashboard
   getDashboard: () => api.get('/admin/dashboard'),
-  
+
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
   getUser: (id) => api.get(`/admin/users/${id}`),
   updateUserStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { status }),
   updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
-  
+
   // Loans
   getLoans: (params) => api.get('/admin/loans', { params }),
   getLoan: (id) => api.get(`/admin/loans/${id}`),
-  
+
   // Companies
   getCompanies: (params) => api.get('/admin/companies', { params }),
   getCompany: (id) => api.get(`/admin/companies/${id}`),

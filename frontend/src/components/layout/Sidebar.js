@@ -3,13 +3,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 
-const Sidebar = ({ isOpen, setIsOpen, user }) => {
+const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
   const router = useRouter();
-  
+
   // Navigation items based on user role
   const getNavItems = () => {
     if (!user) return [];
-    
+
     if (user.role === 'borrower') {
       return [
         { name: 'Dashboard', href: '/borrower/dashboard', icon: 'home' },
@@ -22,7 +22,7 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         { name: 'Settings', href: '/borrower/settings', icon: 'cog' }
       ];
     }
-    
+
     if (user.role === 'lender') {
       return [
         { name: 'Dashboard', href: '/lender/dashboard', icon: 'home' },
@@ -37,7 +37,7 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         { name: 'Settings', href: '/lender/settings', icon: 'cog' }
       ];
     }
-    
+
     if (user.role === 'admin') {
       return [
         { name: 'Dashboard', href: '/admin/dashboard', icon: 'home' },
@@ -48,12 +48,12 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
         { name: 'Settings', href: '/admin/settings', icon: 'cog' }
       ];
     }
-    
+
     return [];
   };
-  
+
   const navItems = getNavItems();
-  
+
   // Icon mapping
   const renderIcon = (iconName) => {
     switch (iconName) {
@@ -157,69 +157,99 @@ const Sidebar = ({ isOpen, setIsOpen, user }) => {
   return (
     <>
       {/* Mobile sidebar backdrop */}
-      <div 
+      <div
         className={`${isOpen ? 'block' : 'hidden'} fixed inset-0 z-20 transition-opacity bg-gray-600 opacity-75 md:hidden`}
         onClick={() => setIsOpen(false)}
       />
-      
+
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto transition duration-300 transform bg-white shadow-md 
-        md:translate-x-0 md:static md:inset-0 md:overflow-y-auto
-        ${isOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}
-      `}>
-        <div className="flex items-center justify-center mt-8">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">LoanApp</span>
-            </Link>
+      <div 
+        className={`
+          fixed inset-y-0 left-0 z-50 overflow-y-auto transition-all duration-300 transform bg-white shadow-md 
+          md:translate-x-0 md:static md:inset-0 md:overflow-y-auto
+          ${isOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}
+          ${isCollapsed ? 'w-16 md:w-16 group hover:w-64' : 'w-64'}
+        `}
+        style={{ minWidth: isCollapsed ? '4rem' : '16rem' }}
+      >
+        <div className="flex justify-end mt-8 px-4">
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-2 rounded-full bg-primary-50 text-primary hover:bg-primary-100 focus:outline-none"
+              aria-label="Toggle sidebar width"
+            >
+              {isCollapsed ? (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
-        
+
         {/* User profile */}
         {user && (
-          <div className="flex flex-col items-center mt-6 px-4">
+          <div className={`flex ${isCollapsed ? 'flex-col' : 'flex-col'} items-center mt-6 px-4`}>
             <div className="relative">
               {user.profilePicture ? (
                 <Image
-                  className="h-12 w-12 rounded-full object-cover"
+                  className="h-10 w-10 rounded-full object-cover"
                   src={user.profilePicture}
                   alt="User Profile"
-                  width={48}
-                  height={48}
+                  width={40}
+                  height={40}
                 />
               ) : (
-                <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-lg">
+                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-lg">
                   {user.firstName && user.firstName[0]}
                   {user.lastName && user.lastName[0]}
                 </div>
               )}
             </div>
-            <h4 className="mt-2 font-semibold text-gray-800">
+            <h4 className={`mt-2 font-semibold text-gray-800 whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
               {user.firstName} {user.lastName}
             </h4>
-            <p className="text-sm tracking-wider text-gray-500 capitalize">{user.role}</p>
+            <p className={`text-sm tracking-wider text-gray-500 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
+              {user.role}
+            </p>
           </div>
         )}
-        
+
+
+
         {/* Navigation */}
-        <nav className="mt-10 px-6">
+        <nav className={`mt-10 ${isCollapsed ? 'px-2' : 'px-6'}`}>
           {navItems.map((item, index) => (
             <Link
               key={index}
               href={item.href}
               className={`
-                flex items-center px-4 py-3 mt-2 text-sm transition-colors duration-200 transform rounded-lg 
-                ${router.pathname === item.href
+                flex items-center ${isCollapsed ? 'justify-center group-hover:justify-start' : ''} px-4 py-3 mt-2 text-sm transition-colors duration-200 transform rounded-lg 
+                ${router.pathname === item.href || (router.pathname.startsWith(item.href + '/') && item.href !== '/')
                   ? 'bg-primary-50 text-primary'
                   : 'text-gray-600 hover:bg-gray-100'
                 }
+                relative
               `}
             >
-              <span className="text-gray-500">
+              <span className={`${isCollapsed ? 'text-center' : 'text-gray-500'}`}>
                 {renderIcon(item.icon)}
               </span>
-              <span className="mx-4 font-medium">{item.name}</span>
+              <span className={`mx-4 font-medium whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:inline' : 'inline'}`}>
+                {item.name}
+              </span>
+
+              {/* Tooltip for collapsed mode */}
+              {isCollapsed && (
+                <div className="absolute left-full ml-6 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-0 group-hover:invisible hover:opacity-100 hover:visible transition-opacity z-50">
+                  {item.name}
+                </div>
+              )}
             </Link>
           ))}
         </nav>
