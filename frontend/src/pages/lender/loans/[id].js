@@ -7,12 +7,12 @@ import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { lenderService } from '../../../services/api';
 import LoanDashboard from '../../../components/lender/loans/LoanDashboard';
 import { MessageCircle, StickyNote, Download } from 'lucide-react';
-import { 
-    BarChart2, 
-    User, 
-    FileText, 
-    Home, 
-    Wallet, 
+import {
+    BarChart2,
+    User,
+    FileText,
+    Home,
+    Wallet,
     ClipboardList, // or ClipboardCheck if you prefer
     Files,         // instead of FileStack
     Trophy         // or Flag if you prefer
@@ -56,6 +56,36 @@ const LoanDetails = () => {
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('dashboard'); // Change this line
+    // At the top of your component
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // Tabs where the bar should NOT show
+    const NO_SAVE_TABS = ['dashboard', 'documents', 'milestones'];
+
+    // Call this to cancel changes
+    const handleCancel = () => {
+        // Reset form fields to their original values
+        // You may need to refetch or reset state here
+        setHasUnsavedChanges(false);
+    };
+
+    // Save all changes to the loan
+    const saveLoan = async () => {
+        try {
+            setSaving(true);
+            await lenderService.updateLoan(id, loan);
+            toast.success('Loan details saved successfully');
+            setSaving(false);
+            setHasUnsavedChanges(false);
+        } catch (error) {
+            console.error('Error saving loan:', error);
+            toast.error('Failed to save loan details. Please try again.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+
 
     // Helper function to normalize loan data structure
     const normalizeData = (loanData) => {
@@ -211,7 +241,7 @@ const LoanDetails = () => {
     // Handle form field changes with better null checks
     const handleFieldChange = (section, field, value) => {
         console.log(`Updating ${section}.${field} with:`, value);
-
+        setHasUnsavedChanges(true);
         setLoan(prev => {
             // Make sure the section exists
             const sectionData = prev[section] || {};
@@ -248,19 +278,7 @@ const LoanDetails = () => {
         });
     };
 
-    // Save all changes to the loan
-    const saveLoan = async () => {
-        try {
-            setSaving(true);
-            await lenderService.updateLoan(id, loan);
-            toast.success('Loan details saved successfully');
-        } catch (error) {
-            console.error('Error saving loan:', error);
-            toast.error('Failed to save loan details. Please try again.');
-        } finally {
-            setSaving(false);
-        }
-    };
+
 
     return (
         <ProtectedRoute allowedRoles={['lender']}>
@@ -388,22 +406,22 @@ const LoanDetails = () => {
                                                 const isActive = activeTab === tab.id;
                                                 return (
                                                     <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
+                                                        key={tab.id}
+                                                        onClick={() => setActiveTab(tab.id)}
+                                                        className={`
               relative flex items-center py-3 px-4 rounded-lg text-sm font-medium
               transition-all duration-200 ease-in-out
               ${isActive
-                ? 'bg-gray-100 text-gray-800 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
+                                                                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
             `}
-          >
-            <span className={`mr-3 ${isActive ? 'opacity-100 scale-105' : 'opacity-70'}`}>
-              <tab.icon className="h-5 w-5" />
-            </span>
-            {tab.label}
-            {isActive && <span className="absolute right-2 w-1.5 h-8 bg-primary rounded-full"></span>}
-          </button>
+                                                    >
+                                                        <span className={`mr-3 ${isActive ? 'opacity-100 scale-105' : 'opacity-70'}`}>
+                                                            <tab.icon className="h-5 w-5" />
+                                                        </span>
+                                                        {tab.label}
+                                                        {isActive && <span className="absolute right-2 w-1.5 h-8 bg-primary rounded-full"></span>}
+                                                    </button>
                                                 );
                                             })}
                                         </nav>
@@ -792,7 +810,7 @@ const LoanDetails = () => {
                                         )}
 
                                         {/* Save Button - Always visible */}
-                                        <div className="sticky bottom-0 bg-white p-4 border-t border-gray-200 flex justify-end">
+                                        {/* <div className="sticky bottom-0 bg-white p-4 border-t border-gray-200 flex justify-end">
                                             <button
                                                 type="submit"
                                                 disabled={saving}
@@ -800,7 +818,7 @@ const LoanDetails = () => {
                                             >
                                                 {saving ? 'Saving Changes...' : 'Save All Changes'}
                                             </button>
-                                        </div>
+                                        </div> */}
                                     </form>
                                 </div>
                             </div>
@@ -823,7 +841,28 @@ const LoanDetails = () => {
                         )}
                     </div>
                 </div>
+
             </MainLayout>
+            {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
+                    <button
+                        type="button"
+                        className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
+                        onClick={handleCancel}
+                        disabled={saving}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-blue-600 text-sm text-white font-medium shadow-sm hover:bg-blue-700 transition"
+                        onClick={saveLoan}
+                        disabled={saving}
+                    >
+                        {saving ? 'Saving Changes...' : 'Save All Changes'}
+                    </button>
+                </div>
+            )}
         </ProtectedRoute>
     );
 };
