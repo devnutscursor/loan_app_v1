@@ -5,15 +5,18 @@ import Link from 'next/link';
 import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { lenderService } from '../../../services/api';
-import LoanQualificationCard from '@/components/lender/loans/LoanQualificationCard';
-import { User as UserIcon } from 'lucide-react';
-// import the icon (alias if you want to keep the old name)
-import { FileText as DocumentTextIcon } from 'lucide-react';
-import { Table as TableIcon } from 'lucide-react';
-// choose one and alias it to keep the old component name
-import { Copy as DocumentDuplicateIcon } from 'lucide-react';
-// or: import { Files as DocumentDuplicateIcon } from 'lucide-react';
-
+import LoanDashboard from '../../../components/lender/loans/LoanDashboard';
+import { MessageCircle, StickyNote, Download } from 'lucide-react';
+import { 
+    BarChart2, 
+    User, 
+    FileText, 
+    Home, 
+    Wallet, 
+    ClipboardList, // or ClipboardCheck if you prefer
+    Files,         // instead of FileStack
+    Trophy         // or Flag if you prefer
+} from 'lucide-react';
 // Form components for editing
 import PersonalDetails from '../../../components/forms/borrower/PersonalDetails';
 import ResidenceHistory from '../../../components/forms/borrower/ResidenceHistory';
@@ -73,16 +76,15 @@ const LoanDetails = () => {
 
     // Define tabs structure
     const tabs = [
-        { id: 'dashboard', label: 'Loan Dashboard', icon: '📊' }, // Add this new tab first
-        { id: 'borrower', label: 'Borrower Information', icon: '👤' },
-        { id: 'loan', label: 'Loan Details', icon: '📄' },
-        { id: 'property', label: 'Property Information', icon: '🏠' },
-        { id: 'financial', label: 'Financial Information', icon: '💰' },
-        { id: 'additional', label: 'Additional Information', icon: '📋' },
-        { id: 'documents', label: 'Documents', icon: '📎' },
-        { id: 'milestones', label: 'Milestones', icon: '🏆' },
+        { id: 'dashboard', label: 'Loan Dashboard', icon: BarChart2 },
+        { id: 'borrower', label: 'Borrower Information', icon: User },
+        { id: 'loan', label: 'Loan Details', icon: FileText },
+        { id: 'property', label: 'Property Information', icon: Home },
+        { id: 'financial', label: 'Financial Information', icon: Wallet },
+        { id: 'additional', label: 'Additional Information', icon: ClipboardList }, // or ClipboardCheck
+        { id: 'documents', label: 'Documents', icon: Files },
+        { id: 'milestones', label: 'Milestones', icon: Trophy }, // or Flag
     ];
-
 
     // Inside the LoanDetails component, add a new state for parameters data
     const [parametersData, setParametersData] = useState(null);
@@ -116,74 +118,73 @@ const LoanDetails = () => {
         }
     }, [id, activeTab]);
 
+    const fetchLoanDetails = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            console.log('Fetching loan details for ID:', id);
+
+            const response = await lenderService.getLoan(id);
+            console.log('Loan details response:', response);
+
+            if (response && (response.data || response.data?.data)) {
+                // Extract loan data, handling different response structures
+                // Based on the API structure in memory, data is nested under response.data.data
+                const loanData = response.data?.data?.loan || response.data?.data || response.data;
+                console.log('Loan details:', loanData);
+
+                // Ensure all required properties exist with defaults
+                const normalizedData = {
+                    borrowerDetails: loanData.borrowerDetails || {},
+                    loanDetails: loanData.loanDetails || {},
+                    property: loanData.property || {},
+                    income: loanData.income || {},
+                    assets: loanData.assets || [],
+                    debts: loanData.debts || [],
+                    propertiesOwned: loanData.propertiesOwned || [],
+                    declarations: loanData.declarations || {},
+                    demographics: loanData.demographics || {},
+                    militaryService: loanData.militaryService || {},
+                    ...loanData
+                };
+
+                // Add console logs to inspect data
+                console.log('Normalized data structure:', normalizedData);
+                console.log('Borrower details:', normalizedData.borrowerDetails);
+                console.log('Loan details:', normalizedData.loanDetails);
+
+                setLoan(normalizedData);
+
+                // Fetch documents separately since they are stored in a different collection
+                try {
+                    const docsResponse = await lenderService.getLoanDocuments(id);
+                    console.log('Documents response:', docsResponse);
+
+                    if (docsResponse && docsResponse.data) {
+                        // Extract documents, handling nested structure
+                        const docsData = docsResponse.data?.data || docsResponse.data;
+                        setDocuments(Array.isArray(docsData) ? docsData : []);
+                    }
+                } catch (docError) {
+                    console.error('Error fetching loan documents:', docError);
+                    // Don't fail the whole page load just because documents failed
+                }
+            } else {
+                console.warn('Failed to fetch loan details');
+                setError('Failed to load loan details');
+                toast.error('Failed to load loan details');
+            }
+        } catch (error) {
+            console.error('Error fetching loan details:', error);
+            setError('An error occurred while loading the loan details');
+            toast.error('Failed to load loan details. Please try again later.');
+        } finally {
+            setLoading(false);
+        }
+    };
     useEffect(() => {
         // Don't fetch until id is available
         if (!id) return;
-
-        const fetchLoanDetails = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                console.log('Fetching loan details for ID:', id);
-
-                const response = await lenderService.getLoan(id);
-                console.log('Loan details response:', response);
-
-                if (response && (response.data || response.data?.data)) {
-                    // Extract loan data, handling different response structures
-                    // Based on the API structure in memory, data is nested under response.data.data
-                    const loanData = response.data?.data?.loan || response.data?.data || response.data;
-                    console.log('Loan details:', loanData);
-
-                    // Ensure all required properties exist with defaults
-                    const normalizedData = {
-                        borrowerDetails: loanData.borrowerDetails || {},
-                        loanDetails: loanData.loanDetails || {},
-                        property: loanData.property || {},
-                        income: loanData.income || {},
-                        assets: loanData.assets || [],
-                        debts: loanData.debts || [],
-                        propertiesOwned: loanData.propertiesOwned || [],
-                        declarations: loanData.declarations || {},
-                        demographics: loanData.demographics || {},
-                        militaryService: loanData.militaryService || {},
-                        ...loanData
-                    };
-
-                    // Add console logs to inspect data
-                    console.log('Normalized data structure:', normalizedData);
-                    console.log('Borrower details:', normalizedData.borrowerDetails);
-                    console.log('Loan details:', normalizedData.loanDetails);
-
-                    setLoan(normalizedData);
-
-                    // Fetch documents separately since they are stored in a different collection
-                    try {
-                        const docsResponse = await lenderService.getLoanDocuments(id);
-                        console.log('Documents response:', docsResponse);
-
-                        if (docsResponse && docsResponse.data) {
-                            // Extract documents, handling nested structure
-                            const docsData = docsResponse.data?.data || docsResponse.data;
-                            setDocuments(Array.isArray(docsData) ? docsData : []);
-                        }
-                    } catch (docError) {
-                        console.error('Error fetching loan documents:', docError);
-                        // Don't fail the whole page load just because documents failed
-                    }
-                } else {
-                    console.warn('Failed to fetch loan details');
-                    setError('Failed to load loan details');
-                    toast.error('Failed to load loan details');
-                }
-            } catch (error) {
-                console.error('Error fetching loan details:', error);
-                setError('An error occurred while loading the loan details');
-                toast.error('Failed to load loan details. Please try again later.');
-            } finally {
-                setLoading(false);
-            }
-        };
 
         fetchLoanDetails();
     }, [id]);
@@ -264,43 +265,91 @@ const LoanDetails = () => {
     return (
         <ProtectedRoute allowedRoles={['lender']}>
             <MainLayout>
-                <div className="py-6">
+                <div className="">
                     <div className="max-w-7xl mx-auto">
-                        <div className="flex items-center mb-4">
+                        <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
                             <Link
                                 href="/lender/loans"
-                                className="text-primary hover:text-primary-dark flex items-center mr-3"
+                                className="group flex items-center px-2 py-1 rounded hover:bg-gray-100 transition"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-400 group-hover:text-primary transition"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        fillRule="evenodd"
+                                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                    />
                                 </svg>
-                                Back to Loans
+                                <span className="ml-1 text-sm font-medium text-gray-500 group-hover:text-primary transition">
+                                    Go Back
+                                </span>
                             </Link>
-                            <h1 className="text-2xl font-semibold text-gray-900">Loan Application Details</h1>
+                            <span className="block w-px h-5 bg-gray-200"></span>
+                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-none">
+                                Loan Application Details
+                            </h1>
                         </div>
 
-                        <div className="bg-white shadow overflow-hidden rounded-lg mb-6">
-                            <div className="flex items-center justify-between px-4 py-4 sm:px-6">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0 bg-primary rounded-md p-2">
-                                        <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M3 10H21M7 15H8M12 15H13M6 19H18C19.6569 19 21 17.6569 21 16V8C21 6.34315 19.6569 5 18 5H6C4.34315 5 3 6.34315 3 8V16C3 17.6569 4.34315 19 6 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </div>
-                                    <div className="ml-4">
-                                        <h2 className="text-lg font-medium text-gray-900">
-                                            Loan {loan?.loanNumber || ''}
-                                        </h2>
-                                        <p className="text-sm text-gray-500">
-                                            {loan?.loanDetails?.loanType || 'Loan'}
-                                        </p>
-                                    </div>
+                        <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex-shrink-0 bg-primary rounded-md p-2">
+                                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <rect x="4" y="3" width="16" height="18" rx="2" />
+                                        <path d="M8 7h8M8 11h4M8 15h8" />
+                                        <text x="16" y="17" fontSize="8" fill="currentColor">$</text>
+                                    </svg>
                                 </div>
-                                {loan?.status && (
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(loan.status)}`}>
-                                        {loan.status.replace(/_/g, ' ').toUpperCase()}
-                                    </span>
-                                )}
+                                <div className="ml-2 min-w-0">
+                                    <h2 className="text-lg font-semibold truncate text-gray-900">
+                                        Loan {loan?.loanNumber || ''}
+                                    </h2>
+                                    <p className="text-xs text-gray-500 truncate">
+                                        {loan?.loanDetails?.loanType || 'Loan'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    title="Add Note"
+                                    onClick={() => toast.info('Add note feature coming soon')}
+                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                                >
+                                    <StickyNote className="h-5 w-5" />
+                                </button>
+                                <button
+                                    title="Send Message"
+                                    onClick={() => toast.info('Send message feature coming soon')}
+                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                                >
+                                    <MessageCircle className="h-5 w-5" />
+                                </button>
+                                <button
+                                    title="Download 3.2/3.4 File"
+                                    onClick={() => toast.info('Download 3.2/3.4 file feature coming soon')}
+                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                                >
+                                    <Download className="h-5 w-5" />
+                                </button>
+                                <button
+                                    title="Download URLA"
+                                    onClick={() => toast.info('Download URLA PDF feature coming soon')}
+                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                                >
+                                    <FileText className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={() => toast.success('Pre-approval letter sent to borrower')}
+                                    className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow transition"
+                                >
+                                    <svg className="h-6 w-6" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2l4-4"></path>
+                                    </svg>
+                                    Send Pre-Approval Letter
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -339,22 +388,22 @@ const LoanDetails = () => {
                                                 const isActive = activeTab === tab.id;
                                                 return (
                                                     <button
-                                                        key={tab.id}
-                                                        onClick={() => setActiveTab(tab.id)}
-                                                        className={`
-                              relative flex items-center py-3 px-4 rounded-lg text-sm font-medium
-                              transition-all duration-200 ease-in-out
-                              ${isActive
-                                                                ? 'bg-gray-100 text-gray-800 shadow-sm'
-                                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
-                            `}
-                                                    >
-                                                        <span className={`flex items-center ${isActive ? 'scale-105' : ''}`}>
-                                                            <span className={`mr-3 text-base ${isActive ? 'opacity-100' : 'opacity-70'}`}>{tab.icon}</span>
-                                                            {tab.label}
-                                                        </span>
-                                                        {isActive && <span className="absolute right-2 w-1.5 h-8 bg-primary rounded-full"></span>}
-                                                    </button>
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`
+              relative flex items-center py-3 px-4 rounded-lg text-sm font-medium
+              transition-all duration-200 ease-in-out
+              ${isActive
+                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
+            `}
+          >
+            <span className={`mr-3 ${isActive ? 'opacity-100 scale-105' : 'opacity-70'}`}>
+              <tab.icon className="h-5 w-5" />
+            </span>
+            {tab.label}
+            {isActive && <span className="absolute right-2 w-1.5 h-8 bg-primary rounded-full"></span>}
+          </button>
                                                 );
                                             })}
                                         </nav>
@@ -366,287 +415,13 @@ const LoanDetails = () => {
                                         {/* Dashboard Tab */}
                                         {/* Dashboard Tab Content */}
                                         {activeTab === 'dashboard' && (
-                                            <div className="space-y-6">
-                                                {/* Dashboard Heading */}
-                                                <div className="flex justify-between items-center">
-                                                    <h2 className="text-xl font-semibold text-gray-900">Loan Dashboard</h2>
-                                                    {/* <div className="space-x-2">
-                                                        <button
-                                                            onClick={() => fetchLoanDetails()}
-                                                            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                                                        >
-                                                            <RefreshIcon className="h-4 w-4 mr-1" />
-                                                            Refresh
-                                                        </button>
-                                                    </div> */}
-                                                </div>
-
-                                                {/* Two Column Layout */}
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                                                    {/* Left Column */}
-                                                    <div className="space-y-4">
-                                                        {/* Loan Summary Card */}
-                                                        {/* <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Loan Summary</h3>
-                                                            </div>
-                                                            <div className="p-4 grid grid-cols-2 gap-3 text-sm">
-                                                                <div>
-                                                                    <p className="text-gray-500">Loan Amount</p>
-                                                                    <p className="font-medium">{formatCurrency(loan.loanAmount || 0)}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-gray-500">Interest Rate</p>
-                                                                    <p className="font-medium">{loan.interestRate ? `${loan.interestRate}%` : 'Not set'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-gray-500">Term</p>
-                                                                    <p className="font-medium">{loan.term ? `${loan.term} months` : 'Not set'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-gray-500">Monthly Payment</p>
-                                                                    <p className="font-medium">{loan.estimatedMonthlyPayment ? formatCurrency(loan.estimatedMonthlyPayment) : 'Not calculated'}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div> */}
-
-                                                        {/* Loan Status Card */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Loan Status</h3>
-                                                            </div>
-                                                            <div className="p-4">
-                                                                <div className="flex justify-between items-center mb-3">
-                                                                    <div>
-                                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(loan.status)}`}>
-                                                                            {loan.status?.toUpperCase() || 'UNKNOWN'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        Last updated: {loan.updatedAt ? new Date(loan.updatedAt).toLocaleDateString() : 'Unknown'}
-                                                                    </p>
-                                                                </div>
-
-                                                                <div className="space-y-2 text-sm">
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-500">Loan ID</span>
-                                                                        <span className="font-medium">{loan._id}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-500">Application Date</span>
-                                                                        <span className="font-medium">{loan.createdAt ? new Date(loan.createdAt).toLocaleDateString() : 'Unknown'}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-500">Loan Type</span>
-                                                                        <span className="font-medium">{loan.loanType || 'Not specified'}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Borrower Information Card */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Borrower Information</h3>
-                                                            </div>
-                                                            <div className="p-4 text-sm">
-                                                                <div className="flex items-center mb-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center mr-3">
-                                                                        <UserIcon className="h-5 w-5" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-medium">{loan.borrower?.name || 'Unknown'}</p>
-                                                                        <p className="text-gray-500">{loan.borrower?.email || 'No email'}</p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <div>
-                                                                        <p className="text-gray-500">Phone</p>
-                                                                        <p className="font-medium">{loan.borrower?.phone || 'Not provided'}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-gray-500">Credit Score</p>
-                                                                        <p className="font-medium">{loan.borrower?.creditScore || 'Not available'}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Export Buttons */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Export Options</h3>
-                                                            </div>
-                                                            <div className="p-4 flex flex-wrap gap-2">
-                                                                <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    <DocumentTextIcon className="h-4 w-4 mr-1" />
-                                                                    PDF
-                                                                </button>
-                                                                <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    <TableIcon className="h-4 w-4 mr-1" />
-                                                                    Excel
-                                                                </button>
-                                                                <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    <DocumentDuplicateIcon className="h-4 w-4 mr-1" />
-                                                                    Print
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right Column */}
-                                                    <div className="space-y-4">
-                                                        {/* Loan Qualification Card */}
-                                                        {loan && (
-                                                            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                                <div className="px-4 py-3 border-b border-gray-200">
-                                                                    <h3 className="text-base font-medium text-gray-900">Loan Qualification</h3>
-                                                                </div>
-                                                                <div className="p-4">
-                                                                    <LoanQualificationCard
-                                                                        loan={loan}
-                                                                        enablePolling={false}
-                                                                        onUpdate={(updatedLoan) => {
-                                                                            setLoan(updatedLoan);
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Documents Status */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Documents Status</h3>
-                                                            </div>
-                                                            <div className="p-4">
-                                                                <div className="space-y-2 text-sm">
-                                                                    {/* Required Documents */}
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-gray-600">Required Documents</span>
-                                                                        <span className="font-medium">
-                                                                            {loan.requiredDocuments?.length || 0} items
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Submitted Documents */}
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-gray-600">Submitted Documents</span>
-                                                                        <span className="font-medium">
-                                                                            {loan.submittedDocuments?.length || 0} items
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Approved Documents */}
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-gray-600">Approved Documents</span>
-                                                                        <span className="font-medium">
-                                                                            {loan.approvedDocuments?.length || 0} items
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Completion Rate */}
-                                                                    <div className="mt-3">
-                                                                        <div className="flex justify-between mb-1">
-                                                                            <span className="text-gray-600">Completion Rate</span>
-                                                                            <span className="font-medium">
-                                                                                {loan.documentCompletionRate || 0}%
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                            <div
-                                                                                className="bg-blue-600 h-2 rounded-full"
-                                                                                style={{ width: `${loan.documentCompletionRate || 0}%` }}
-                                                                            ></div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="mt-3 text-right">
-                                                                        <Link
-                                                                            href={`/lender/loans/${id}/documents`}
-                                                                            className="text-sm text-blue-600 hover:text-blue-800"
-                                                                        >
-                                                                            View All Documents →
-                                                                        </Link>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Timeline */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Loan Timeline</h3>
-                                                            </div>
-                                                            <div className="p-4">
-                                                                <div className="flow-root">
-                                                                    <ul className="-mb-8">
-                                                                        {(loan.timeline || []).slice(0, 3).map((item, index) => (
-                                                                            <li key={index}>
-                                                                                <div className="relative pb-5">
-                                                                                    {index < (loan.timeline || []).slice(0, 3).length - 1 ? (
-                                                                                        <span className="absolute top-4 left-3.5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                                                                                    ) : null}
-                                                                                    <div className="relative flex items-start space-x-3">
-                                                                                        <div className="relative">
-                                                                                            <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center ring-4 ring-white">
-                                                                                                <ClockIcon className="h-4 w-4 text-blue-600" />
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div className="min-w-0 flex-1">
-                                                                                            <div>
-                                                                                                <p className="font-medium text-sm">{item.title}</p>
-                                                                                                <p className="text-xs text-gray-500">
-                                                                                                    {item.date ? new Date(item.date).toLocaleDateString() : 'No date'}
-                                                                                                </p>
-                                                                                            </div>
-                                                                                            {item.description && (
-                                                                                                <p className="text-xs text-gray-500 mt-1">{item.description}</p>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                    {(loan.timeline || []).length > 3 && (
-                                                                        <div className="mt-2 text-right">
-                                                                            <Link
-                                                                                href={`/lender/loans/${id}/timeline`}
-                                                                                className="text-sm text-blue-600 hover:text-blue-800"
-                                                                            >
-                                                                                View Full Timeline →
-                                                                            </Link>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Action Buttons */}
-                                                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                            <div className="px-4 py-3 border-b border-gray-200">
-                                                                <h3 className="text-base font-medium text-gray-900">Quick Actions</h3>
-                                                            </div>
-                                                            <div className="p-4 grid grid-cols-2 gap-2 text-sm">
-                                                                <button className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
-                                                                    Update Status
-                                                                </button>
-                                                                <button className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    Send Message
-                                                                </button>
-                                                                <button className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    Schedule Meeting
-                                                                </button>
-                                                                <button className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
-                                                                    Add Note
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <LoanDashboard
+                                                loan={loan}
+                                                setLoan={setLoan}
+                                                fetchLoanDetails={fetchLoanDetails}
+                                                id={id}
+                                                documents={documents}
+                                            />
                                         )}
                                         {/* Loan Details Tab */}
                                         {activeTab === 'loan' && (
