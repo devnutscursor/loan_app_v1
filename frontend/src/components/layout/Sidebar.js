@@ -26,14 +26,16 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
     if (user.role === 'lender') {
       return [
         { name: 'Dashboard', href: '/lender/dashboard', icon: 'home' },
-        { name: 'Loan Applications', href: '/lender/applications', icon: 'clipboard-list' },
+        // { name: 'Loan Applications', href: '/lender/applications', icon: 'clipboard-list' },
         { name: 'Active Loans', href: '/lender/loans', icon: 'cash' },
         { name: 'Loan Programs', href: '/lender/programs', icon: 'template' },
-        { name: 'Conditions', href: '/lender/conditions', icon: 'check-circle' },
+        // { name: 'Conditions', href: '/lender/conditions', icon: 'check-circle' },
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
         { name: 'Referral Links', href: '/lender/referrals', icon: 'link' },
-        { name: 'Documents', href: '/lender/documents', icon: 'document-duplicate' },
-        { name: 'Company', href: '/lender/company', icon: 'office-building' },
+        { name: 'Profile', href: '/borrower/profile', icon: 'user' },
+        
+        // { name: 'Documents', href: '/lender/documents', icon: 'document-duplicate' },
+        // { name: 'Company', href: '/lender/company', icon: 'office-building' },
         { name: 'Settings', href: '/lender/settings', icon: 'cog' }
       ];
     }
@@ -146,7 +148,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
       case 'flag':
         return (
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
         );
       default:
@@ -165,31 +167,46 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
       {/* Sidebar */}
       <div 
         className={`
-          fixed inset-y-0 left-0 z-50 overflow-y-auto transition-all duration-300 transform bg-white shadow-md 
-          md:translate-x-0 md:static md:inset-0 md:overflow-y-auto
+          fixed inset-y-0 left-0 z-50 overflow-y-auto overflow-x-hidden transition-all duration-300 transform 
+          bg-gradient-to-b from-blue-800 to-blue-600 text-white shadow-lg
+          md:translate-x-0 md:static md:inset-0
+          pb-10
           ${isOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}
           ${isCollapsed ? 'w-16 md:w-16 group hover:w-64' : 'w-64'}
+          no-scrollbar
         `}
-        style={{ minWidth: isCollapsed ? '4rem' : '16rem' }}
+        style={{ 
+          minWidth: isCollapsed ? '4rem' : '16rem',
+          scrollbarWidth: 'none',  
+          msOverflowStyle: 'none'  
+        }}
       >
-        <div className="flex justify-end mt-8 px-4">
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-full bg-primary-50 text-primary hover:bg-primary-100 focus:outline-none"
-              aria-label="Toggle sidebar width"
-            >
-              {isCollapsed ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
-              )}
-            </button>
-          </div>
+        <style jsx>{`
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+        <div className="flex justify-between items-center px-4 py-4 border-b border-blue-600">
+          {!isCollapsed && (
+            <div className="text-lg font-semibold text-white">
+              
+            </div>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 rounded-md text-blue-200 hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-blue-700 focus:ring-white"
+            aria-label="Toggle sidebar width"
+          >
+            {isCollapsed ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* User profile */}
@@ -205,21 +222,20 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
                   height={40}
                 />
               ) : (
-                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-lg">
+                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-lg">
                   {user.firstName && user.firstName[0]}
                   {user.lastName && user.lastName[0]}
                 </div>
               )}
             </div>
-            <h4 className={`mt-2 font-semibold text-gray-800 whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
+            <h4 className={`mt-2 font-semibold text-white whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
               {user.firstName} {user.lastName}
             </h4>
-            <p className={`text-sm tracking-wider text-gray-500 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
+            <p className={`text-sm tracking-wider text-white-500 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
               {user.role}
             </p>
           </div>
         )}
-
 
 
         {/* Navigation */}
@@ -231,13 +247,13 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
               className={`
                 flex items-center ${isCollapsed ? 'justify-center group-hover:justify-start' : ''} px-4 py-3 mt-2 text-sm transition-colors duration-200 transform rounded-lg 
                 ${router.pathname === item.href || (router.pathname.startsWith(item.href + '/') && item.href !== '/')
-                  ? 'bg-primary-50 text-primary'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-blue-200 hover:bg-blue-600 hover:text-white'
                 }
                 relative
               `}
             >
-              <span className={`${isCollapsed ? 'text-center' : 'text-gray-500'}`}>
+              <span className={`${isCollapsed ? 'text-center' : 'text-blue-200'}`}>
                 {renderIcon(item.icon)}
               </span>
               <span className={`mx-4 font-medium whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:inline' : 'inline'}`}>
@@ -246,7 +262,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
 
               {/* Tooltip for collapsed mode */}
               {isCollapsed && (
-                <div className="absolute left-full ml-6 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-0 group-hover:invisible hover:opacity-100 hover:visible transition-opacity z-50">
+                <div className="absolute left-full ml-6 px-2 py-1 bg-blue-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   {item.name}
                 </div>
               )}

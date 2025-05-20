@@ -22,10 +22,11 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
         
         if (!token || !userData) {
           // Public routes that don't require authentication
-          const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/terms', '/privacy'];
+          const publicRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy'];
           
-          if (!publicRoutes.includes(router.pathname)) {
+          if (!publicRoutes.some(route => router.pathname.startsWith(route))) {
             router.push('/login');
+            return false;
           }
         } else {
           setUser(userData);
@@ -42,8 +43,10 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
             } else {
               router.push('/');
             }
+            return false;
           }
         }
+        return true;
       } catch (error) {
         console.error('Authentication check error:', error);
         localStorage.removeItem('token');
@@ -51,21 +54,27 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
         
         if (router.pathname !== '/login' && router.pathname !== '/register') {
           router.push('/login');
+          return false;
         }
+        return true;
       } finally {
         setLoading(false);
       }
     };
     
-    checkAuth();
-  }, [router.pathname]);
-  
+    // Only run auth check if the pathname changes
+    if (loading) {
+      const shouldRender = checkAuth();
+      if (!shouldRender) return;
+    }
+  }, [router.pathname, loading]);
+
   // Determine if sidebar should be shown
   const showSidebar = () => {
     if (!user) return false;
     
     // Public pages or auth pages don't need sidebar
-    const noSidebarRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/terms', '/privacy'];
+    const noSidebarRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy'];
     if (noSidebarRoutes.includes(router.pathname)) return false;
     
     return true;
@@ -78,6 +87,14 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
     setSidebarCollapsed(isLoanDetailPage ? true : false);
   }, [router.pathname]);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Head>
@@ -89,13 +106,7 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
       
       <Toaster position="top-right" />
       
-      <Navbar 
-        user={user} 
-        sidebarOpen={sidebarOpen} 
-        setSidebarOpen={setSidebarOpen} 
-      />
-      
-      <div className="flex flex-1">
+      <div className="flex h-screen overflow-hidden">
         {showSidebar() && (
           <Sidebar 
             isOpen={sidebarOpen} 
@@ -106,18 +117,20 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
           />
         )}
         
-        <main className={`flex-1 ${(showSidebar() && !noSidebarMargin) ? 'md:ml-64' : ''} transition-all duration-300 ease-in-out`}>
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {!loading && children}
-            </div>
-          </div>
-        </main>
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Navbar user={user} setSidebarOpen={setSidebarOpen} />
+          
+          {/* Main content */}
+          <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+            {children}
+          </main>
+          
+          <Footer />
+        </div>
       </div>
-      
-      <Footer />
     </div>
   );
 };
 
-export default MainLayout;
+export default React.memo(MainLayout);
