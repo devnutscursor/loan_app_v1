@@ -311,10 +311,10 @@ const loanParametersSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  loanTerm: {
-    type: Number,
-    default: 30
-  },
+  // loanTerm: {
+  //   type: Number,
+  //   default: 30
+  // },
   selectedProgramId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'LoanProgram'

@@ -1,74 +1,95 @@
-import { useState } from 'react';
-import { X, Loader } from 'lucide-react';
-import { 
-  getLoanAmount as getInitialLoanAmount, 
+import { useState, useRef } from "react";
+import { X, Loader } from "lucide-react";
+import {
+  getLoanAmount as getInitialLoanAmount,
   getInterestRate as getInitialInterestRate,
   getTotalIncome as calculateTotalIncome,
   getTotalDebts as calculateTotalDebts,
-  getTotalAssets as calculateTotalAssets
-} from './utils/LoanCalculationUtils';
+  getTotalAssets as calculateTotalAssets,
+} from "./utils/LoanCalculationUtils";
 
 // Import components
-import CalculationStatusCard from './components/CalculationStatusCard';
-import PaymentBreakdown from './components/PaymentBreakdown';
-import FinancialSummaryCards from './components/FinancialSummaryCards';
-import LoanDetailsSection from './components/LoanDetailsSection';
-import ProgramGuidelinesSection from './components/ProgramGuidelinesSection';
+import CalculationStatusCard from "./components/CalculationStatusCard";
+import PaymentBreakdown from "./components/PaymentBreakdown";
+import FinancialSummaryCards from "./components/FinancialSummaryCards";
+import LoanDetailsSection from "./components/LoanDetailsSection";
+import ProgramGuidelinesSection from "./components/ProgramGuidelinesSection";
 
 // Import refactored parameter components
-import AutoSaveHandler from './components/parameters/AutoSaveHandler';
-import DataLoader from './components/parameters/DataLoader';
-import ParametersProvider from './components/parameters/ParametersProvider';
-import ProgramGuidelinesManager from './components/parameters/ProgramGuidelinesManager';
-import { ProgramGuidelinesProvider } from './components/parameters/ProgramGuidelinesProvider';
+import AutoSaveHandler from "./components/parameters/AutoSaveHandler";
+import DataLoader from "./components/parameters/DataLoader";
+import ParametersProvider from "./components/parameters/ParametersProvider";
+import ProgramGuidelinesManager from "./components/parameters/ProgramGuidelinesManager";
+import { ProgramGuidelinesProvider } from "./components/parameters/ProgramGuidelinesProvider";
 
 /**
  * LoanParametersModal component - Refactored for better code organization
  */
-const LoanParametersModal = ({ 
-  isOpen, 
-  onClose, 
-  loan, 
-  loanPrograms, 
-  loanRates, 
-  initialCalculations = {}, 
-  onParametersChange 
+const LoanParametersModal = ({
+  isOpen,
+  onClose,
+  loan,
+  loanPrograms,
+  loanRates,
+  initialCalculations = {},
+  onParametersChange,
 }) => {
   // State to track the selected program
   const [selectedProgram, setSelectedProgram] = useState(
-    loanPrograms.find(p => p._id === loan?.loanParameters?.selectedProgramId) || loanPrograms[0]
+    loanPrograms.find(
+      (p) => p._id === loan?.loanParameters?.selectedProgramId
+    ) || loanPrograms[0]
   );
+
+  // Reference to store setLocalParams for use in handleProgramChange
+  const localParamsRef = useRef(null);
 
   // State to track accordion visibility
   const [showFinanceFees, setShowFinanceFees] = useState(false);
-  
+
   // State to track loading state for API requests
   const [isLoading, setIsLoading] = useState(false);
 
   // Handle program change - this function is called both directly and via the input onChange
   const handleProgramChange = (programIdOrEvent) => {
     // Handle both direct calls with programId and event objects from dropdowns
-    const programId = typeof programIdOrEvent === 'object' ? 
-      programIdOrEvent.target.value : programIdOrEvent;
-      
-    const program = loanPrograms.find(p => p._id === programId);
+    const programId =
+      typeof programIdOrEvent === "object"
+        ? programIdOrEvent.target.value
+        : programIdOrEvent;
+
+    const program = loanPrograms.find((p) => p._id === programId);
     if (program) {
-      console.log('[DEBUG] Selected loan program:', program.displayName);
-      
+      console.log("[DEBUG] Selected loan program:", program.displayName);
+      console.log("[DEBUG] Program loan term:", program.loanTerm);
+
       // Update the selected program state
       setSelectedProgram(program);
-      
+
+      // Update the loan term in local parameters
+      // if (localParamsRef.current) {  // Use the ref instead of direct reference
+      //   localParamsRef.current((prevParams) => ({
+      //     ...prevParams,
+      //     loanTerm: program.loanTerm || 30, // Use program's loanTerm or default to 30
+      //     selectedProgramId: program._id // Also ensure program ID is updated
+      //   }));
+      // }
+
       // Find the interest rate for this program from loanRates
       if (loanRates && loanRates.length > 0) {
         // Look up the rate by program type
-        const programRate = loanRates.find(rate => 
-          rate.programType === program.programType
+        const programRate = loanRates.find(
+          (rate) => rate.programType === program.programType
         );
-        
+
         if (programRate) {
-          console.log(`[DEBUG] Found interest rate ${programRate.rate}% for program type ${program.programType}`);
+          console.log(
+            `[DEBUG] Found interest rate ${programRate.rate}% for program type ${program.programType}`
+          );
         } else {
-          console.log(`[DEBUG] No matching interest rate found for program type ${program.programType}`);
+          console.log(
+            `[DEBUG] No matching interest rate found for program type ${program.programType}`
+          );
         }
       }
     }
@@ -100,97 +121,107 @@ const LoanParametersModal = ({
           </div>
 
           {/* Use ProgramGuidelinesProvider to share guidelines across components */}
-          <ProgramGuidelinesProvider loanPrograms={loanPrograms} initialGuidelines={loan?.loanParameters?.programGuidelines || {}}>
+          <ProgramGuidelinesProvider
+            loanPrograms={loanPrograms}
+            initialGuidelines={loan?.loanParameters?.programGuidelines || {}}
+          >
             {/* Use ParametersProvider to manage state and calculations */}
             <ParametersProvider
               loan={loan}
               selectedProgram={selectedProgram}
               initialCalculations={initialCalculations}
             >
-              {({ 
-                localParams, 
-                setLocalParams, 
-                toggleStates, 
-                setToggleStates, 
-                calculations, 
-                handleInputChange, 
-                handleToggleChange 
-              }) => (
-                <>
-                  {/* Handle loading data */}
-                  <DataLoader
-                    loan={loan}
-                    loanId={loan?._id}
-                    setLocalParams={setLocalParams}
-                    setToggleStates={setToggleStates}
-                    onProgramChange={handleProgramChange}
-                    selectedProgram={selectedProgram}
-                    loanPrograms={loanPrograms}
-                    loanRates={loanRates}
-                    setIsLoading={setIsLoading}
-                  />
+              {({
+                localParams,
+                setLocalParams,
+                toggleStates,
+                setToggleStates,
+                calculations,
+                handleInputChange,
+                handleToggleChange,
+              }) => {
+                // Store setLocalParams in ref for access in handleProgramChange
+                // localParamsRef.current = setLocalParams;
 
-                  {/* Handle program-specific guidelines */}
-                  <ProgramGuidelinesManager
-                    localParams={localParams}
-                    setLocalParams={setLocalParams}
-                    selectedProgram={selectedProgram}
-                    loanPrograms={loanPrograms}
-                    loanRates={loanRates}
-                  />
+                return (
+                  <>
+                    {/* Handle loading data */}
+                    <DataLoader
+                      loan={loan}
+                      loanId={loan?._id}
+                      setLocalParams={setLocalParams}
+                      setToggleStates={setToggleStates}
+                      onProgramChange={handleProgramChange}
+                      selectedProgram={selectedProgram}
+                      loanPrograms={loanPrograms}
+                      loanRates={loanRates}
+                      setIsLoading={setIsLoading}
+                    />
 
-                  {/* Auto-save changes */}
-                  <AutoSaveHandler
-                    loan={loan}
-                    localParams={localParams}
-                    calculations={calculations}
-                    toggleStates={toggleStates}
-                    selectedProgram={selectedProgram}
-                    setIsLoading={setIsLoading}
-                  />
+                    {/* Handle program-specific guidelines */}
+                    <ProgramGuidelinesManager
+                      localParams={localParams}
+                      setLocalParams={setLocalParams}
+                      selectedProgram={selectedProgram}
+                      loanPrograms={loanPrograms}
+                      loanRates={loanRates}
+                    />
 
-                  {/* Calculation Status Section */}
-                  <CalculationStatusCard isQualified={calculations.isQualified} />
+                    {/* Auto-save changes */}
+                    <AutoSaveHandler
+                      loan={loan}
+                      localParams={localParams}
+                      calculations={calculations}
+                      toggleStates={toggleStates}
+                      selectedProgram={selectedProgram}
+                      setIsLoading={setIsLoading}
+                    />
 
-                  {/* Payment Breakdown Section */}
-                  <PaymentBreakdown calculations={calculations} />
+                    {/* Calculation Status Section */}
+                    <CalculationStatusCard
+                      isQualified={calculations.isQualified}
+                    />
 
-                  {/* Income, Debts, and Assets Section */}
-                  <FinancialSummaryCards 
-                    income={localParams.income}
-                    debts={localParams.debts}
-                    assets={localParams.assets}
-                  />
-                  
-                  {/* Two-column layout for Loan Details and Program Guidelines */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Loan Details Column */}
-                    <div>
-                      <LoanDetailsSection 
-                        localParams={localParams} 
-                        toggleStates={toggleStates}
-                        handleInputChange={handleInputChange}
-                        handleToggleChange={handleToggleChange}
-                      />
+                    {/* Payment Breakdown Section */}
+                    <PaymentBreakdown calculations={calculations} />
+
+                    {/* Income, Debts, and Assets Section */}
+                    <FinancialSummaryCards
+                      income={localParams.income}
+                      debts={localParams.debts}
+                      assets={localParams.assets}
+                    />
+
+                    {/* Two-column layout for Loan Details and Program Guidelines */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Loan Details Column */}
+                      <div>
+                        <LoanDetailsSection
+                          localParams={localParams}
+                          toggleStates={toggleStates}
+                          handleInputChange={handleInputChange}
+                          handleToggleChange={handleToggleChange}
+                        />
+                      </div>
+
+                      {/* Program Guidelines Column */}
+                      <div>
+                        <ProgramGuidelinesSection
+                          localParams={localParams}
+                          loanPrograms={loanPrograms}
+                          selectedProgram={selectedProgram}
+                          handleInputChange={handleInputChange}
+                          handleToggleChange={handleToggleChange}
+                          toggleStates={toggleStates}
+                          showFinanceFees={showFinanceFees}
+                          setShowFinanceFees={setShowFinanceFees}
+                          onProgramChange={handleProgramChange}
+                        />
+                      </div>
                     </div>
-                    
-                    {/* Program Guidelines Column */}
-                    <div>
-                      <ProgramGuidelinesSection 
-                        localParams={localParams}
-                        loanPrograms={loanPrograms}
-                        selectedProgram={selectedProgram}
-                        handleInputChange={handleInputChange}
-                        handleToggleChange={handleToggleChange}
-                        toggleStates={toggleStates}
-                        showFinanceFees={showFinanceFees}
-                        setShowFinanceFees={setShowFinanceFees}
-                        onProgramChange={handleProgramChange}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+                  </>
+                );
+              }}
             </ParametersProvider>
           </ProgramGuidelinesProvider>
         </div>

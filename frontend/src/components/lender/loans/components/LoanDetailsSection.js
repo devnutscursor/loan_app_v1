@@ -11,6 +11,7 @@ const LoanDetailsSection = ({
   handleInputChange,
   handleToggleChange
 }) => {
+  console.log("[DEBUG] Local parameters:", localParams);
   return (
     <div>
       <h3 className="text-lg font-medium text-gray-900 mb-4">Loan Details</h3>
@@ -116,7 +117,8 @@ const LoanDetailsSection = ({
             name="loanTerm"
             value={localParams.loanTerm}
             readOnly
-            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-gray-50 h-10 appearance-none"
+            disabled={true}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-gray-50 h-10 appearance-none cursor-not-allowed"
           >
             <option value="30">30 Years</option>
             <option value="20">20 Years</option>

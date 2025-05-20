@@ -44,7 +44,7 @@ const AutoSaveHandler = ({
         
         // Get important parameter keys to compare
         const paramKeys = [
-          'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm',
+          'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate',
           'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
           'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
         ];
@@ -62,6 +62,8 @@ const AutoSaveHandler = ({
         
         console.log('[DEBUG] Changes detected - saving:', hasParamChanges ? 'parameter changes' : '', hasCalcChanges ? 'calculation changes' : '');
       }
+
+
       
       // Prepare parameters data for saving - these are loan-wide parameters, not program-specific
       const loanParameters = {
@@ -141,8 +143,8 @@ const AutoSaveHandler = ({
       }
       
       console.log('[DEBUG] Preparing to save data. Parameters:', loanParameters);
-      console.log('[DEBUG] Program-specific guidelines:', programGuidelines);
-      console.log('[DEBUG] Calculations to save:', calculations);
+      // console.log('[DEBUG] Program-specific guidelines:', programGuidelines);
+      // console.log('[DEBUG] Calculations to save:', calculations);
       
       // Use updateLoan endpoint
       const response = await fetchAPI(`/loans/${loan._id}`, {

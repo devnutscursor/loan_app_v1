@@ -1,6 +1,0 @@
-add a euro sign in timesheets
-add a comma instead of a dot in timesheets amount field
-select all button for timesheets
-date format for invoices
-total of hours and amount in overview of timesheets
-format of quantity/time

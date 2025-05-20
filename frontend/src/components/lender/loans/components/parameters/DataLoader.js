@@ -48,7 +48,8 @@ const DataLoader = ({
         // Set loading state to true when starting the request
         if (setIsLoading) setIsLoading(true);
         
-        console.log('[DEBUG] Fetching loan parameters for loan ID:', loanId);
+        // console.log('Selected program', selectedProgram);
+        // console.log('[DEBUG] Fetching loan parameters for loan ID:', loanId);
         
         const response = await fetchAPI(`/loans/${loanId}`, {
           method: 'GET'
@@ -93,16 +94,19 @@ const DataLoader = ({
           };
           setToggleStates(newToggleStates);
           
+          // console.log('Selected program id', loanData.loanParameters?.selectedProgramId);
           // Get the selected program ID (if exists) or use the first available program
           const savedProgramId = loanData.loanParameters?.selectedProgramId || 
             (loanPrograms.length > 0 ? loanPrograms[0]._id : '');
-          
+          // console.log('[DEBUG] Saved program ID:', savedProgramId);
           // The selected program will be either the one saved in the loan or the first program
           const selectedProgramObj = loanPrograms.find(p => p._id === savedProgramId) || loanPrograms[0];
+
+          // console.log('[DEBUG] Selected program:', selectedProgramObj);
           
           // Only set the program selection during the initial load
           if (!hasInitializedProgram && savedProgramId && loanPrograms.some(p => p._id === savedProgramId)) {
-            console.log('[DEBUG] Initial program selection:', savedProgramId);
+            // console.log('[DEBUG] Initial program selection:', savedProgramId);
             onProgramChange(savedProgramId);
             setHasInitializedProgram(true);
           }
@@ -135,11 +139,11 @@ const DataLoader = ({
                 frequency: currentProgramGuidelines.otherFeesFrequency || 'once'
               };
               
-              console.log('[DEBUG] Loaded fee toggle states from program guidelines:', {
-                origination: newToggleStates.originationFees,
-                closing: newToggleStates.closingCosts,
-                other: newToggleStates.otherFees
-              });
+              // console.log('[DEBUG] Loaded fee toggle states from program guidelines:', {
+              //   origination: newToggleStates.originationFees,
+              //   closing: newToggleStates.closingCosts,
+              //   other: newToggleStates.otherFees
+              // });
             }
             
             // Re-apply the updated toggle states
@@ -176,7 +180,7 @@ const DataLoader = ({
           const currentProgramId = loanData.loanParameters?.selectedProgramId || selectedProgramObj?._id;
           const programGuidelines = allGuidelines[currentProgramId] || {};
 
-          console.log('[DEBUG] Loading parameters for loan ID:', loanId);
+          // console.log('[DEBUG] Loading parameters for loan ID:', loanId);
           
           // Get the loan amount based on loan type
           let loanAmount = loanData.loanParameters?.loanAmount;
@@ -220,9 +224,9 @@ const DataLoader = ({
             interestRate = programRate?.rate || 5.5;
           }
           
-          // Get loan term from selected program or default
-          const loanTerm = loanData.loanParameters?.loanTerm || 
-                          selectedProgramObj?.loanTerm || 30;
+          // If we're changing the program, prioritize the program's loan term
+          // Otherwise use the saved loan term if available
+          let loanTerm = selectedProgram?.loanTerm || 30; // Default to 30 years
           
           // Set local parameters based on either loanParameters or other loan data
           setLocalParams(prev => ({
@@ -261,7 +265,7 @@ const DataLoader = ({
             otherFees: programGuidelines?.otherFees || selectedProgramObj?.otherFees?.value || 0
           }));
 
-          console.log('[DEBUG] Loan parameters loaded successfully');
+          // console.log('[DEBUG] Loan parameters loaded successfully');
         }
       } catch (error) {
         console.error('[DEBUG] Error fetching loan parameters:', error);

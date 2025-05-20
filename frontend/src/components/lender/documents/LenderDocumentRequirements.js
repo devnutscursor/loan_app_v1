@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { DocumentService } from '../../../services';
 import { lenderService } from '../../../services/api';
 import { standardDocumentRequirements } from '../../../data/documentRequirements';
 import { assignDocumentsToRequirements } from '../../../utils/documentMatching';
@@ -73,43 +72,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       month: 'short', 
       day: 'numeric' 
     });
-  };
-
-  // Function to manually refresh the document mappings
-  const handleRefreshDocuments = async () => {
-    if (!loanId) return;
-    
-    setLoading(true);
-    try {
-      console.log('🔄 Manually refreshing documents...');
-      
-      // Fetch fresh documents directly from the API
-      const freshDocumentsResponse = await DocumentService.getDocumentsByLoanId(loanId);
-      
-      if (freshDocumentsResponse && freshDocumentsResponse.data) {
-        console.log('✅ Fresh documents fetched from API:', freshDocumentsResponse.data.length);
-        
-        // Process the fresh documents
-        processDocuments(freshDocumentsResponse.data);
-        
-        // Also fetch fresh loan conditions
-        await fetchLoanConditions();
-        
-        toast.success('Documents refreshed successfully');
-      } else {
-        toast.error('Failed to refresh documents');
-      }
-      
-      // Still call refreshDocuments if available (for parent component updates)
-      if (typeof refreshDocuments === 'function') {
-        await refreshDocuments();
-      }
-    } catch (error) {
-      console.error('Error refreshing documents:', error);
-      toast.error('Failed to refresh documents');
-    } finally {
-      setLoading(false);
-    }
   };
   
   // Process documents and map them to requirements
@@ -299,31 +261,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     if (loanId && refreshCounter > 0) {
       console.log(`🔄 Updating requirements due to manual refresh (${refreshCounter})`);
       
-      // Define a function to refresh everything
-      const refreshAll = async () => {
-        setLoading(true);
-        try {
-          // Fetch fresh documents directly from the API
-          const freshDocumentsResponse = await DocumentService.getDocumentsByLoanId(loanId);
-          
-          if (freshDocumentsResponse && freshDocumentsResponse.data) {
-            console.log('✅ Fresh documents fetched from API on refresh:', freshDocumentsResponse.data.length);
-            
-            // Process the fresh documents
-            processDocuments(freshDocumentsResponse.data);
-            
-            // Also fetch fresh loan conditions
-            await fetchLoanConditions();
-          }
-        } catch (error) {
-          console.error('Error refreshing data:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
       
-      // Call the refresh function
-      refreshAll();
     } else if (loanId) {
       // Just process documents if it's the initial load
       processDocuments(documents);
@@ -503,17 +441,7 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           );
         });
         
-        // Force a refresh of the document data to update UI with server state
-        try {
-          const documents = await DocumentService.getDocumentsByLoanId(loanId);
-          if (documents && documents.data) {
-            console.log('✅ Fresh documents fetched after approval:', documents.data.length);
-            // Process the updated documents
-            processDocuments(documents.data);
-          }
-        } catch (error) {
-          console.error('Error fetching documents after approval:', error);
-        }
+        
         
         // Trigger a refresh of the document list
         setRefreshCounter(prev => prev + 1);
@@ -566,19 +494,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
             req.documentId === documentId ? { ...req, status: 'Rejected' } : req
           );
         });
-        
-        // Force a refresh of the document data to update UI with server state
-        try {
-          const documents = await DocumentService.getDocumentsByLoanId(loanId);
-          if (documents && documents.data) {
-            console.log('✅ Fresh documents fetched after rejection:', documents.data.length);
-            // Process the updated documents
-            processDocuments(documents.data);
-          }
-        } catch (error) {
-          console.error('Error fetching documents after rejection:', error);
-        }
-        
         // Trigger a refresh of the document list
         setRefreshCounter(prev => prev + 1);
       } else {
@@ -609,7 +524,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         status: 'Needs Correction'
       };
       
-      console.log(`📌 Marking ${documentType} in ${category} as needing update`);
       setRequirements(reqsCopy);
       return true;
     }
@@ -624,8 +538,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
       e.preventDefault();
     }
     
-    console.log('⚠️ handleRequestDocument called with requestDetails:', JSON.stringify(requestDetails, null, 2));
-    
     const { title, documentType, category, reason, customReason, message, isUpdate } = requestDetails;
     
     if (!documentType || !category) {
@@ -637,8 +549,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
     setProcessingDocId(requestId);
     
     try {
-      console.log('📝 Request details:', requestDetails);
-      
       // Generate an appropriate message based on the selected reason
       let requestDescription;
       if (isUpdate) {
@@ -662,10 +572,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         }
         
         const loan = loanResponse.data.data;
-        console.log('Loan data fetched:', loan);
-        
-        // Get the borrower ID from the loan object
-        // Using the field name 'borrower' as per the updated schema
         const borrowerId = loan?.borrower;
         
         if (!borrowerId) {
@@ -673,8 +579,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           toast.error('Unable to determine the borrower for this loan. Please check loan details.');
           return;
         }
-        
-        console.log('Using borrower ID:', borrowerId);
         
         const requestData = { 
           title,
@@ -688,18 +592,9 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           customReason: customReason
         };
         
-        console.log('📡 Sending document request data:', requestData);
         response = await lenderService.requestDocument(loanId, requestData);
       } catch (apiError) {
-        console.error('API error requesting document:', apiError);
-        console.error('API error details:', {
-          message: apiError.message,
-          status: apiError.response?.status,
-          statusText: apiError.response?.statusText,
-          data: apiError.response?.data,
-          url: apiError.config?.url,
-          method: apiError.config?.method
-        });
+        
         // Mock successful response for testing if API fails
         response = { success: true, message: 'Document requested (simulated)' };
       }
@@ -719,12 +614,8 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
         
         // If this is an update request, manually update the document status in the UI
         if (isUpdate) {
-          console.log('⚠️ This is an update request. Current requirements:', requirements);
-          
-          // The document condition is being created by the API call
           // Mark it in our local state immediately for better user feedback
           const updateSuccess = markDocumentForUpdate(category, documentType);
-          console.log(`📌 Update to local state ${updateSuccess ? 'succeeded' : 'failed'}`);
           
           // Force a re-render
           setRequirements([...requirements]);
@@ -734,18 +625,6 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
           lenderService.getLoan(loanId).then(response => {
             if (response && response.data) {
               const conditions = response.data.conditions || [];
-              console.log('💡 Updated loan conditions:', conditions.length, conditions);
-              
-              // DEBUG - Log all conditions to inspect their content
-              conditions.forEach((condition, index) => {
-                console.log(`Condition ${index + 1}:`, {
-                  title: condition.title,
-                  category: condition.category,
-                  documentType: condition.documentType || 'none',
-                  id: condition._id
-                });
-              });
-              
               setLoanConditions(conditions);
               
               // Force immediate update to requirements based on new conditions
@@ -758,23 +637,12 @@ const LenderDocumentRequirements = ({ loanId, documents, refreshDocuments }) => 
                   req.documentType,
                   req.title
                 );
-                
-                // Log the matching result for debugging
-                console.log(`🔎 Document ${req.documentType} in ${req.category} has condition: ${hasCondition}`);
-                
                 return {
                   ...req,
                   requestedUpdate: hasCondition,
                   status: hasCondition ? 'Needs Correction' : req.status
                 };
               });
-              
-              console.log('📢 Setting requirements with updated condition status:', 
-                updatedReqs.map(r => ({ 
-                  type: r.documentType, 
-                  requestedUpdate: r.requestedUpdate 
-                }))
-              );
               
               setRequirements(updatedReqs);
               

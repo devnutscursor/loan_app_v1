@@ -191,6 +191,7 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
     hoa: hoaFees || 0,
     isQualified: isQualified,
     programName: selectedProgram?.displayName || 'Conventional',
-    interestRate: defaultInterestRate
+    interestRate: defaultInterestRate,
+    loanTerm: selectedProgram?.loanTerm || 30,
   };
 };

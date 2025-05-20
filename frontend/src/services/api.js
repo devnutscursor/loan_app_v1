@@ -91,35 +91,35 @@ export const lenderService = {
   updateApplicationStatus: (id, status, notes) => api.patch(`/loans/${id}/status`, { status, notes }),
   // In lenderService.js
   // In lenderService
-getLoanParameters: async (loanId) => {
-  try {
-    // Use the same endpoint as in the parameters page
-    const response = await api.get(`/loans/${loanId}`);
-    
-    // Transform the response to match the format expected by your dashboard component
-    if (response && response.data) {
-      // Extract the qualification metrics from the loan data
-      const loanData = response.data;
-      
-      return {
-        data: {
-          dtiRatio: loanData.qualificationMetrics?.dtiRatio || 'N/A',
-          ltvRatio: loanData.qualificationMetrics?.ltvRatio || 'N/A',
-          qualified: loanData.qualificationStatus === 'qualified',
-          parameters: loanData.qualificationParameters?.map(param => ({
-            name: param.name,
-            value: param.value,
-            status: param.status
-          })) || []
-        }
-      };
+  getLoanParameters: async (loanId) => {
+    try {
+      // Use the same endpoint as in the parameters page
+      const response = await api.get(`/loans/${loanId}`);
+
+      // Transform the response to match the format expected by your dashboard component
+      if (response && response.data) {
+        // Extract the qualification metrics from the loan data
+        const loanData = response.data;
+
+        return {
+          data: {
+            dtiRatio: loanData.qualificationMetrics?.dtiRatio || 'N/A',
+            ltvRatio: loanData.qualificationMetrics?.ltvRatio || 'N/A',
+            qualified: loanData.qualificationStatus === 'qualified',
+            parameters: loanData.qualificationParameters?.map(param => ({
+              name: param.name,
+              value: param.value,
+              status: param.status
+            })) || []
+          }
+        };
+      }
+      return { data: null };
+    } catch (error) {
+      console.error('Error fetching loan parameters:', error);
+      throw error;
     }
-    return { data: null };
-  } catch (error) {
-    console.error('Error fetching loan parameters:', error);
-    throw error;
-  }
-},
+  },
   // Loans
   getLoans: (params) => api.get('/loans', { params }),
   getLoan: (id) => api.get(`/loans/${id}`),
