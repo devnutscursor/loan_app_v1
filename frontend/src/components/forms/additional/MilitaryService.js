@@ -99,7 +99,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Military Service</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Military Service</h2>
         <p className="text-gray-600 mb-4">
           Have you served in the United States Armed Forces?
         </p>
@@ -108,7 +108,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
 
       {/* Military Service Question */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">
           Have you served in the United States Armed Forces?
         </h3>
         
@@ -155,7 +155,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
         <div className="space-y-6">
           {/* Currently Serving */}
           <div>
-            <h3 className="text-md font-medium text-gray-700 mb-4">
+            <h3 className="text-xs font-medium text-gray-700 mb-4">
               ARE YOU CURRENTLY SERVING ON ACTIVE DUTY?
             </h3>
             
@@ -163,14 +163,14 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
               <select
                 value={currentlyServing ? "Yes" : "No"}
                 onChange={(e) => handleServiceChange('currentlyServing', e.target.value === "Yes")}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="No">No</option>
                 <option value="Yes">Yes</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="text-xs fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
@@ -180,14 +180,14 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
           {/* Expiration Date (shown if currently serving) */}
           {currentlyServing && (
             <div>
-              <h3 className="text-md font-medium text-gray-700 mb-4">
+              <h3 className="text-xs font-medium text-gray-700 mb-4">
                 What is your projected expiration date of service/tour?
               </h3>
               <input
                 type="date"
                 value={expirationDate}
                 onChange={(e) => handleServiceChange('expirationDate', e.target.value)}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -195,7 +195,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
 
           {/* Retired Status */}
           <div>
-            <h3 className="text-md font-medium text-gray-700 mb-4">
+            <h3 className="text-xs font-medium text-gray-700 mb-4">
               ARE YOU CURRENTLY RETIRED, DISCHARGED, OR SEPARATED FROM SERVICE?
             </h3>
             
@@ -203,14 +203,14 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
               <select
                 value={isRetired ? "Yes" : "No"}
                 onChange={(e) => handleServiceChange('isRetired', e.target.value === "Yes")}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="No">No</option>
                 <option value="Yes">Yes</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="text-xs fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
@@ -219,7 +219,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
 
           {/* Non-Activated Member */}
           <div>
-            <h3 className="text-md font-medium text-gray-700 mb-4">
+            <h3 className="text-xs font-medium text-gray-700 mb-4">
               WAS YOUR ONLY PERIOD OF SERVICE AS A NON-ACTIVATED MEMBER OF THE SERVE OR NATIONAL GUARD?
             </h3>
             
@@ -227,14 +227,14 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
               <select
                 value={isNonActivated ? "Yes" : "No"}
                 onChange={(e) => handleServiceChange('isNonActivated', e.target.value === "Yes")}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="No">No</option>
                 <option value="Yes">Yes</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="text-xs fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
@@ -243,7 +243,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
 
           {/* Surviving Spouse */}
           <div>
-            <h3 className="text-md font-medium text-gray-700 mb-4">
+            <h3 className="text-xs font-medium text-gray-700 mb-4">
               ARE YOU A SURVIVING SPOUSE?
             </h3>
             
@@ -251,14 +251,14 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
               <select
                 value={isSurvivingSpouse ? "Yes" : "No"}
                 onChange={(e) => handleServiceChange('isSurvivingSpouse', e.target.value === "Yes")}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="No">No</option>
                 <option value="Yes">Yes</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="text-xs fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>

@@ -13,6 +13,12 @@ import {
   // Add these icons
   CheckCircle,
   Calendar,
+  BadgePercent, // For Loan Qualification Card
+  Home,
+  Flag,
+  Users, // For Dependents section
+  Briefcase,
+  Pencil,
 } from "lucide-react";
 import LoanQualificationCard from "@/components/lender/loans/LoanQualificationCard";
 // Add milestone service import
@@ -218,61 +224,166 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
 
           {/* Loan Status Card */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h3 className="text-base font-medium text-gray-900">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
+              <h3 className="text-base font-medium text-gray-900 flex items-center">
+                <TableIcon className="h-4 w-4 text-blue-500 mr-2" />
                 Loan Status
               </h3>
+              <div>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
+                    loan?.status
+                  )}`}
+                >
+                  {loan?.status?.toUpperCase() || "UNKNOWN"}
+                </span>
+              </div>
             </div>
             <div className="p-4">
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                      loan?.status
-                    )}`}
-                  >
-                    {loan?.status?.toUpperCase() || "UNKNOWN"}
-                  </span>
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 text-xs">Loan Number</span>
+                    <span className="font-medium text-xs">
+                      {loan?.loanNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 text-xs">Loan Type</span>
+                    <span className="font-medium text-xs">
+                      {loan?.loanDetails?.loanType || "Not specified"}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500">
-                  Last updated:{" "}
-                  {loan?.updatedAt
-                    ? new Date(loan.updatedAt).toLocaleDateString()
-                    : "Unknown"}
-                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 text-xs">Approval Type</span>
+                    <span className="font-medium text-xs">
+                      {loan?.approvalType || "Not specified"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 text-xs">
+                      Application Date
+                    </span>
+                    <span className="font-medium text-xs">
+                      {loan?.createdAt
+                        ? new Date(loan.createdAt).toLocaleDateString()
+                        : "Unknown"}
+                    </span>
+                  </div>
+                  {/* <div className="flex justify-between">
+                    <span className="text-gray-500">Last Updated</span>
+                    <span className="font-medium">
+                      {loan?.updatedAt
+                        ? new Date(loan.updatedAt).toLocaleDateString()
+                        : "Unknown"}
+                    </span>
+                  </div> */}
+                </div>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Loan ID</span>
-                  <span className="font-medium">{loan?._id}</span>
+              {/* Property Information Section - with improved spacing */}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center mb-3">
+                  <Home className="h-3.5 w-3.5 text-gray-400 mr-1.5" />
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Property Information
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Application Date</span>
-                  <span className="font-medium">
-                    {loan?.createdAt
-                      ? new Date(loan.createdAt).toLocaleDateString()
-                      : "Unknown"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Loan Type</span>
-                  <span className="font-medium">
-                    {loan?.loanDetails?.loanType || "Not specified"}
-                  </span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Property Type
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.property?.propertyType || "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Property Value
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.property?.propertyValue
+                          ? currencyFormatter.format(
+                              loan.property.propertyValue
+                            )
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">Occupancy</span>
+                      <span className="font-medium text-xs">
+                        {loan?.property?.occupancyType || "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">Year Built</span>
+                      <span className="font-medium text-xs">
+                        {loan?.property?.yearBuilt || "Not specified"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Completion Progress */}
+              {/* <div className="mt-4 pt-3 border-t border-gray-100">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Application Progress
+                  </div>
+                  <div className="text-xs font-medium">
+                    {loan?.completionPercentage || 0}%
+                  </div>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{ width: `${loan?.completionPercentage || 0}%` }}
+                  ></div>
+                </div>
+              </div> */}
             </div>
           </div>
 
           {/* Borrower Information Card */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h3 className="text-base font-medium text-gray-900">
+            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-base font-medium text-gray-900 flex items-center">
+                <UserIcon className="h-4 w-4 text-blue-500 mr-2" />
                 Borrower Information
               </h3>
+              <Link
+                href={`/lender/loans/${id}?tab=borrower`}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                View All
+                <svg
+                  className="ml-1 h-4 w-4 rotate-[315deg]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </Link>
             </div>
-            <div className="p-4 text-sm">
+            <div className="p-4">
+              {/* Borrower Header with Avatar */}
               <div className="flex items-center mb-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center mr-3">
                   <UserIcon className="h-5 w-5" />
@@ -282,34 +393,443 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                     {loan?.borrowerDetails?.firstName
                       ? `${loan.borrowerDetails.firstName} ${
                           loan.borrowerDetails.middleName || ""
-                        } ${loan.borrowerDetails.lastName || ""}`
+                        } ${loan.borrowerDetails.lastName || ""} ${
+                          loan.borrowerDetails.suffix || ""
+                        }`
                       : "Unknown"}
                   </p>
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 text-xs">
                     {loan?.borrowerDetails?.email || "No email"}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-gray-500">Phone</p>
-                  <p className="font-medium">
-                    {loan?.borrowerDetails?.phoneNumber || "Not provided"}
-                  </p>
+              {/* Personal Information Section */}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center mb-3">
+                  <UserIcon className="h-3.5 w-3.5 text-gray-400 mr-1.5" />
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Personal Information
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-500">SSN</p>
-                  <p className="font-medium">
-                    {loan?.borrowerDetails?.ssn || "Not available"}
-                  </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Date of Birth
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.dateOfBirth
+                          ? new Date(
+                              loan.borrowerDetails.dateOfBirth
+                            ).toLocaleDateString()
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Marital Status
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.maritalStatus ||
+                          "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">Phone</span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.phone || "Not provided"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">SSN</span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.ssn || "Not available"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">Citizenship</span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.citizenship || "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        First-Time Buyer
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.declarations?.firstTimeBuyer ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Address Information Section */}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center mb-3">
+                  <Home className="h-3.5 w-3.5 text-gray-400 mr-1.5" />
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Current Address
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-y-1.5 mb-2">
+                  <div className="text-sm">
+                    <div className="text-xs">
+                      <span className="font-medium text-gray-900">
+                        {loan?.borrowerDetails?.currentAddress?.streetAddress ||
+                          ""}{" "}
+                        {loan?.borrowerDetails?.currentAddress?.aptSteNum || ""}
+                      </span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-gray-700">
+                        {loan?.borrowerDetails?.currentAddress?.city || ""},{" "}
+                        {loan?.borrowerDetails?.currentAddress?.state || ""}{" "}
+                        {loan?.borrowerDetails?.currentAddress?.zipCode || ""}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Time at Address
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.currentAddress
+                          ?.yearsAtAddress || 0}{" "}
+                        years,{" "}
+                        {loan?.borrowerDetails?.currentAddress
+                          ?.monthsAtAddress || 0}{" "}
+                        months
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employment Information Section */}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center mb-3">
+                  <Briefcase className="h-3.5 w-3.5 text-gray-400 mr-1.5" />
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Employment & Income
+                  </div>
+                </div>
+
+                {/* Display Employer info if available */}
+                {loan?.borrowerDetails?.employers &&
+                  loan.borrowerDetails.employers.length > 0 && (
+                    <div className="mb-2">
+                      <div className="text-xs font-medium">
+                        {loan.borrowerDetails.employers[0].companyName || ""}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-2">
+                        {loan.borrowerDetails.employers[0].jobTitle || ""} •{" "}
+                        {loan.borrowerDetails.employers[0].employmentStatus ||
+                          ""}
+                      </div>
+                    </div>
+                  )}
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Monthly Income
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.income?.baseIncome
+                          ? currencyFormatter.format(loan.income.baseIncome)
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Total Monthly Income
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.financialCalculations?.totalIncome
+                          ? currencyFormatter.format(
+                              loan.financialCalculations.totalIncome
+                            )
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Total Monthly Debts
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.financialCalculations?.totalDebts
+                          ? currencyFormatter.format(
+                              loan.financialCalculations.totalDebts
+                            )
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 text-xs">
+                        Years in Profession
+                      </span>
+                      <span className="font-medium text-xs">
+                        {loan?.borrowerDetails?.employers &&
+                        loan.borrowerDetails.employers.length > 0
+                          ? `${
+                              loan.borrowerDetails.employers[0]
+                                .yearsInProfession || 0
+                            } years, ${
+                              loan.borrowerDetails.employers[0]
+                                .monthsInProfession || 0
+                            } months`
+                          : "Not specified"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dependents Section (if any) */}
+              {loan?.borrowerDetails?.dependents &&
+                loan.borrowerDetails.dependents.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center mb-3">
+                      <Users className="h-3.5 w-3.5 text-gray-400 mr-1.5" />
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dependents: {loan.borrowerDetails.dependents.length}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {loan.borrowerDetails.dependents.map((dep, idx) => (
+                        <span key={dep._id} className="inline-block mr-3">
+                          {dep.name} ({dep.age})
+                          {idx < loan.borrowerDetails.dependents.length - 1
+                            ? ","
+                            : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+        </div>
+        {/* Right Column */}
+        <div className="space-y-4">
+          {/* Loan Qualification Card */}
+          {loan && (
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200">
+                <h3 className="text-base font-medium text-gray-900 flex items-center">
+                  <BadgePercent className="h-4 w-4 text-blue-500 mr-2" />
+                  Loan Qualification Scenario
+                </h3>
+              </div>
+              <div>
+                <LoanQualificationCard
+                  loan={loan}
+                  enablePolling={false}
+                  onUpdate={(updatedLoan) => {
+                    setLoan(updatedLoan);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {/* Milestones Progress Card */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-base font-medium text-gray-900 flex items-center">
+                <Flag className="h-4 w-4 text-blue-500 mr-2" />
+                Milestones Progress
+              </h3>
+              <Link
+                href={`/lender/loans/${id}?tab=milestones`}
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              >
+                <span>View All</span>
+                <svg
+                  className="h-4 w-4 -rotate-45" /* -45° = 315° */
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </Link>
+            </div>
+            <div className="p-4">
+              {loadingMilestones ? (
+                <div className="space-y-4">
+    {/* Skeleton for milestone stats */}
+    <div className="flex justify-between items-center">
+      <div className="flex items-center">
+        <div className="w-14 h-7 bg-gray-200 rounded animate-pulse mr-2"></div>
+        <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="flex items-center">
+        <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </div>
+
+    {/* Skeleton for progress bar */}
+    <div className="mt-3">
+      <div className="w-full bg-gray-200 rounded-full h-2 mt-2"></div>
+    </div>
+
+    {/* Skeleton for milestone cards */}
+    <div className="mt-4">
+      <div className="flex flex-wrap gap-3">
+        <div className="flex flex-grow basis-0 min-w-[45%] bg-gray-100 rounded-md p-2">
+          <div className="h-4 w-4 bg-gray-200 rounded-full mr-2 flex-shrink-0 mt-0.5 animate-pulse"></div>
+          <div className="overflow-hidden w-full">
+            <div className="h-3 bg-gray-200 rounded w-20 mb-1.5 animate-pulse"></div>
+            <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+          </div>
+        </div>
+        <div className="flex flex-grow basis-0 min-w-[45%] bg-gray-100 rounded-md p-2">
+          <div className="h-4 w-4 bg-gray-200 rounded-full mr-2 flex-shrink-0 mt-0.5 animate-pulse"></div>
+          <div className="overflow-hidden w-full">
+            <div className="h-3 bg-gray-200 rounded w-16 mb-1.5 animate-pulse"></div>
+            <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+              ) : milestoneError ? (
+                <div className="text-center text-xs text-red-500 py-2">
+                  {milestoneError}
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="text-xl font-bold text-blue-600 mr-2">
+                        {milestoneStats.completed}/{milestoneStats.total}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Milestones Completed
+                      </p>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                      <span className="text-xs font-medium">
+                        {Math.round(milestoneStats.percent)}% Complete
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${milestoneStats.percent}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {milestones.length > 0 && (
+                    <div className="mt-4">
+                      {(() => {
+                        // Find the latest completed milestone
+                        const completedMilestones = milestones.filter(
+                          (m) => m.status === "completed"
+                        );
+                        const latestCompleted =
+                          completedMilestones.length > 0
+                            ? [...completedMilestones].sort((a, b) => {
+                                return (
+                                  new Date(b.updatedAt || b.createdAt) -
+                                  new Date(a.updatedAt || a.createdAt)
+                                );
+                              })[0]
+                            : null;
+
+                        // Find the latest in-progress milestone
+                        const inProgressMilestones = milestones.filter(
+                          (m) => m.status !== "completed"
+                        );
+                        const latestInProgress =
+                          inProgressMilestones.length > 0
+                            ? [...inProgressMilestones].sort((a, b) => {
+                                return (
+                                  new Date(b.updatedAt || b.createdAt) -
+                                  new Date(a.updatedAt || a.createdAt)
+                                );
+                              })[0]
+                            : null;
+
+                        if (!latestCompleted && !latestInProgress) {
+                          return (
+                            <div className="text-xs text-gray-500">
+                              No milestones in progress
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="flex flex-wrap gap-3">
+                            {latestCompleted && (
+                              <div className="flex flex-grow basis-0 min-w-[45%] bg-green-50 rounded-md p-2">
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                                <div className="overflow-hidden">
+                                  <div className="text-green-700 text-xs font-medium">
+                                    Last completed:
+                                  </div>
+                                  <div className="text-green-700 text-xs truncate">
+                                    {latestCompleted.name}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {latestInProgress && (
+                              <div className="flex flex-grow basis-0 min-w-[45%] bg-blue-50 rounded-md p-2">
+                                <Calendar className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
+                                <div className="overflow-hidden">
+                                  <div className="text-blue-700 text-xs font-medium">
+                                    In progress:
+                                  </div>
+                                  <div className="text-blue-700 text-xs truncate">
+                                    {latestInProgress.name}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
           {/* Documents Status */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-50">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-base font-medium text-gray-900 flex items-center">
                 <FileText className="h-4 w-4 text-blue-500 mr-2" />
                 Documents Status
@@ -370,19 +890,19 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                     <div className="flex-1 grid grid-cols-2 gap-2">
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
                         <div className="text-xs text-gray-500">Required</div>
-                        <div className="font-semibold">
+                        <div className="text-xs font-semibold">
                           {documentStats.required}
                         </div>
                       </div>
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
                         <div className="text-xs text-gray-500">Submitted</div>
-                        <div className="font-semibold">
+                        <div className="text-xs font-semibold">
                           {documentStats.submitted}
                         </div>
                       </div>
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
                         <div className="text-xs text-gray-500">Approved</div>
-                        <div className="font-semibold">
+                        <div className="text-xs font-semibold">
                           {documentStats.approved}
                         </div>
                       </div>
@@ -396,7 +916,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                         }`}
                       >
                         <div className="text-xs text-gray-500">Progress</div>
-                        <div className="font-semibold flex items-center">
+                        <div className="text-xs font-semibold flex items-center">
                           <span>
                             {documentStats.submitted}/{documentStats.required}
                           </span>
@@ -412,7 +932,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                   <div className="mt-4 text-right">
                     <Link
                       href={`/lender/loans/${id}?tab=documents`}
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                      className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 transition-colors"
                     >
                       View All Documents
                       <svg
@@ -431,156 +951,6 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                     </Link>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Right Column */}
-        <div className="space-y-4">
-          {/* Loan Qualification Card */}
-          {loan && (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200">
-                <h3 className="text-base font-medium text-gray-900">
-                  Loan Qualification
-                </h3>
-              </div>
-              <div className="p-4">
-                <LoanQualificationCard
-                  loan={loan}
-                  enablePolling={false}
-                  onUpdate={(updatedLoan) => {
-                    setLoan(updatedLoan);
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Milestones Progress */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-base font-medium text-gray-900">
-                Milestones Progress
-              </h3>
-              <Link
-                href={`/lender/loans/${id}?tab=milestones`}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                View All
-              </Link>
-            </div>
-            <div className="p-4">
-              {loadingMilestones ? (
-                <div className="flex justify-center items-center h-16">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                </div>
-              ) : milestoneError ? (
-                <div className="text-center text-sm text-red-500 py-2">
-                  {milestoneError}
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="text-xl font-bold text-blue-600 mr-2">
-                        {milestoneStats.completed}/{milestoneStats.total}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Milestones Completed
-                      </p>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                      <span>
-                        {Math.round(milestoneStats.percent)}% Complete
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${milestoneStats.percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {milestones.length > 0 && (
-                    <div className="mt-4 text-sm">
-                      {(() => {
-                        // Find the latest completed milestone
-                        const completedMilestones = milestones.filter(
-                          (m) => m.status === "completed"
-                        );
-                        const latestCompleted =
-                          completedMilestones.length > 0
-                            ? [...completedMilestones].sort((a, b) => {
-                                return (
-                                  new Date(b.updatedAt || b.createdAt) -
-                                  new Date(a.updatedAt || a.createdAt)
-                                );
-                              })[0]
-                            : null;
-
-                        // Find the latest in-progress milestone
-                        const inProgressMilestones = milestones.filter(
-                          (m) => m.status !== "completed"
-                        );
-                        const latestInProgress =
-                          inProgressMilestones.length > 0
-                            ? [...inProgressMilestones].sort((a, b) => {
-                                return (
-                                  new Date(b.updatedAt || b.createdAt) -
-                                  new Date(a.updatedAt || a.createdAt)
-                                );
-                              })[0]
-                            : null;
-
-                        if (!latestCompleted && !latestInProgress) {
-                          return (
-                            <div className="mt-1 text-gray-500">
-                              No milestones in progress
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div className="flex flex-wrap gap-3">
-                            {latestCompleted && (
-                              <div className="flex flex-grow basis-0 min-w-[45%] bg-green-50 rounded-md p-2">
-                                <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-1" />
-                                <div className="overflow-hidden">
-                                  <div className="text-green-700 font-medium">
-                                    Last completed:
-                                  </div>
-                                  <div className="text-green-700 truncate text-sm">
-                                    {latestCompleted.name}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {latestInProgress && (
-                              <div className="flex flex-grow basis-0 min-w-[45%] bg-blue-50 rounded-md p-2">
-                                <Calendar className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0 mt-1" />
-                                <div className="overflow-hidden">
-                                  <div className="text-blue-700 font-medium">
-                                    In progress:
-                                  </div>
-                                  <div className="text-blue-700 truncate">
-                                    {latestInProgress.name}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </>
               )}
             </div>
           </div>

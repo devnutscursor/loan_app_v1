@@ -133,7 +133,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Where does asad live?</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where does asad live?</h2>
         <p className="text-gray-600 mb-4">
           Please tell us a little about your current home.
         </p>
@@ -142,7 +142,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
 
       {/* Current Address */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-4">Current Address</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Current Address</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label htmlFor="streetAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
@@ -154,7 +154,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               name="streetAddress"
               value={streetAddress}
               onChange={handleCurrentAddressChange}
-              className={`w-full border ${errors['currentAddress.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`text-xs w-full border ${errors['currentAddress.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
             />
             {errors['currentAddress.streetAddress'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.streetAddress']}</p>
@@ -171,7 +171,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               name="aptSteNum"
               value={aptSteNum}
               onChange={handleCurrentAddressChange}
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -185,7 +185,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               name="city"
               value={city}
               onChange={handleCurrentAddressChange}
-              className={`w-full border ${errors['currentAddress.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`text-xs w-full border ${errors['currentAddress.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
             />
             {errors['currentAddress.city'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.city']}</p>
@@ -204,7 +204,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
                 name="state"
                 value={state}
                 onChange={handleCurrentAddressChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select State</option>
                 <option value="AL">Alabama</option>
@@ -233,7 +233,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               name="zipCode"
               value={zipCode}
               onChange={handleCurrentAddressChange}
-              className={`w-full border ${errors['currentAddress.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`text-xs w-full border ${errors['currentAddress.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
             />
             {errors['currentAddress.zipCode'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.zipCode']}</p>
@@ -252,7 +252,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
                 name="ownershipStatus"
                 value={ownershipStatus}
                 onChange={handleCurrentAddressChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select</option>
                 <option value="own">Own</option>
@@ -281,7 +281,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               value={yearsAtAddress}
               onChange={handleCurrentAddressChange}
               min="0"
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -297,7 +297,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               onChange={handleCurrentAddressChange}
               min="0"
               max="11"
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -305,7 +305,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
 
       {/* Mailing Address */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-4">Mailing Address</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Mailing Address</h3>
         
         <div className="mb-4">
           <label className="inline-flex items-center">
@@ -313,7 +313,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
               type="checkbox"
               checked={sameAsCurrentAddress}
               onChange={handleSameAsCurrentAddress}
-              className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              className="text-xs rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
             <span className="ml-2 text-gray-700">Same as Current Address</span>
           </label>

@@ -12,7 +12,7 @@ const AutoSaveHandler = ({
   calculations, 
   toggleStates, 
   selectedProgram,
-  setIsLoading // Add loading state setter
+  updateLoadingState // Add loading state setter
 }) => {
   // Get access to all program guidelines
   const { allProgramGuidelines } = useAllProgramGuidelines();
@@ -24,7 +24,7 @@ const AutoSaveHandler = ({
       // Skip auto-save during initialization
       if (!loan?._id || !localParams.loanAmount) {
         // Make sure loading is turned off even if we skip auto-save
-        if (setIsLoading) setIsLoading(false);
+        // if (setIsLoading) setIsLoading(false);
         return;
       }
       
@@ -145,6 +145,8 @@ const AutoSaveHandler = ({
       console.log('[DEBUG] Preparing to save data. Parameters:', loanParameters);
       // console.log('[DEBUG] Program-specific guidelines:', programGuidelines);
       // console.log('[DEBUG] Calculations to save:', calculations);
+      // Show saving indicator
+      updateLoadingState('isSaving', true);
       
       // Use updateLoan endpoint
       const response = await fetchAPI(`/loans/${loan._id}`, {
@@ -163,18 +165,21 @@ const AutoSaveHandler = ({
         params: {...localParams},
         calculations: {...calculations}
       });
-      
+      // Indicate save is complete
+      setTimeout(() => {
+        updateLoadingState('isSaving', false);
+      }, 800);
       console.log('Parameters and calculations auto-saved successfully');
     } catch (error) {
+      updateLoadingState('isSaving', false);
       console.error('[DEBUG] Error auto-saving parameters:', error);
     } finally {
-      // Set loading state to false when the PUT request completes
-      if (setIsLoading) setIsLoading(false);
+      updateLoadingState('isSaving', false);
       
       // Reset the saving flag so future saves can proceed
       isSavingRef.current = false;
     }
-  }, [loan?._id, localParams, calculations, toggleStates, setIsLoading]);
+  }, [loan?._id, localParams, calculations, toggleStates, updateLoadingState]);
   
   // Track if we're currently in an auto-save operation
   const isSavingRef = useRef(false);
@@ -234,7 +239,7 @@ const AutoSaveHandler = ({
       }
       
       // Show loading indicator once typing has stopped
-      if (setIsLoading) setIsLoading(true);
+      // if (setIsLoading) setIsLoading(true);
       
       // Set saving flag to prevent duplicate calls
       isSavingRef.current = true;
@@ -250,7 +255,7 @@ const AutoSaveHandler = ({
         typingTimerRef.current = null;
       }
     };
-  }, [localParams, calculations, autoSaveChanges, hasChanges, loan?._id, setIsLoading]);
+  }, [localParams, calculations, autoSaveChanges, hasChanges, loan?._id]);
 
   return null; // This is a logic-only component, no UI
 };

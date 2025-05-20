@@ -132,7 +132,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Property Information</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Property Information</h2>
         <p className="text-gray-600 mb-4">
           Help us gather some details about the home you would like to buy.
         </p>
@@ -205,7 +205,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">$</span>
+                <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
                 type="text"
@@ -213,7 +213,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                 name="contractPurchasePrice"
                 value={contractPurchasePrice || ''}
                 onChange={handleChange}
-                className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -229,7 +229,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
               name="zipCode"
               value={zipCode || ''}
               onChange={handleChange}
-              className={`w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
             {errors['propertyInfo.zipCode'] && (
@@ -251,7 +251,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
             name="zipCode"
             value={zipCode || ''}
             onChange={handleChange}
-            className={`w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+            className={`text-xs w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
             style={{ '--focus-ring-color': theme.colors.primary }}
           />
           {errors['propertyInfo.zipCode'] && (
@@ -278,7 +278,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                     name="isMixedUse"
                     value={isMixedUse || ''}
                     onChange={handleChange}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                   >
                     <option value="">Select</option>
@@ -303,7 +303,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                     name="isManufactured"
                     value={isManufactured || ''}
                     onChange={handleChange}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                   >
                     <option value="">Select</option>
@@ -331,7 +331,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                   min="1"
                   value={numberOfUnits || ''}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 />
               </div>
@@ -348,7 +348,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                   max="2099"
                   value={yearBuilt || ''}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 />
               </div>
@@ -367,7 +367,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                     name="proposedRentalIncome"
                     value={proposedRentalIncome || ''}
                     onChange={handleChange}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                   />
                 </div>
@@ -388,7 +388,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                 name="occupancyType"
                 value={occupancyType || ''}
                 onChange={handleChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>
@@ -419,7 +419,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                 name="propertyType"
                 value={propertyType || ''}
                 onChange={handleChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>

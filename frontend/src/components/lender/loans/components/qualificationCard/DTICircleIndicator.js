@@ -34,10 +34,6 @@ const DTICircleIndicator = ({ dti, downPaymentPercent, isQualified }) => {
           <span className="text-xs text-gray-500">DTI</span>
         </div>
       </div>
-      <div className="mt-2 text-center">
-        <div className="text-gray-500 text-sm">Down Payment</div>
-        <div className="font-medium">{downPaymentPercent.toFixed(1)}%</div>
-      </div>
     </div>
   );
 };

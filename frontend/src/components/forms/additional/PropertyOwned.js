@@ -197,7 +197,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Property Ownership</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Property Ownership</h2>
         <p className="text-gray-600 mb-4">
           Please indicate if you own any real estate and provide details below. Also, list your current primary housing expenses.
         </p>
@@ -257,7 +257,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       {/* Real Estate Owned section (shown if ownsProperty is true) */}
       {ownsProperty && (
         <div className="mt-8">
-          <h3 className="text-lg font-medium text-gray-800 border-b border-gray-300 pb-2 mb-6">
+          <h3 className="text-sm font-medium text-gray-800 border-b border-gray-300 pb-2 mb-6">
             Real Estate Owned Details
           </h3>
 
@@ -267,14 +267,14 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
 
           {localProperties.map((property, index) => (
             <div key={property.id} className="mb-8 p-4 border border-gray-200 rounded-md relative shadow-sm">
-              <h4 className="text-md font-semibold text-gray-700 mb-4">Property #{index + 1}</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-4">Property #{index + 1}</h4>
 
               {/* Remove Property Button */}
               {localProperties.length > 0 && ( // Show remove button only if there are properties
                 <button
                   type="button"
                   onClick={() => removeProperty(property.id)}
-                  className="absolute top-2 right-2 text-red-500 hover:text-red-700 focus:outline-none"
+                  className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700 focus:outline-none"
                   title="Remove this property"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -294,7 +294,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     type="text"
                     value={property.propertyAddress?.streetAddress || ''}
                     onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.streetAddress', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     // style={{ '--focus-ring-color': theme.colors.primary }} // Use Tailwind focus classes instead if possible
                     placeholder="e.g., 123 Main St"
                   />
@@ -309,7 +309,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     type="text"
                     value={property.propertyAddress?.apt || ''}
                     onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.apt', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="e.g., Unit 5B"
                   />
                 </div>
@@ -323,7 +323,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                       type="text"
                       value={property.propertyAddress?.city || ''}
                       onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.city', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       placeholder="e.g., Anytown"
                     />
                   </div>
@@ -334,7 +334,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     <select
                       value={property.propertyAddress?.state || ''}
                       onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.state', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
+                      className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
                     >
                       <option value="">Select State</option>
                       {/* Add all US states and territories */}
@@ -352,7 +352,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                       inputMode="numeric" // Helps mobile keyboards
                       value={property.propertyAddress?.zipCode || ''}
                       onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.zipCode', e.target.value.replace(/[^0-9]/g, ''))}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       placeholder="e.g., 90210"
                       maxLength={5}
                     />
@@ -394,7 +394,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                         inputMode="decimal"
                         value={property.presentMarketValue || ''}
                         onChange={(e) => handlePropertyChange(property.id, 'presentMarketValue', formatCurrency(e.target.value))}
-                        className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         placeholder="e.g., 300000"
                       />
                     </div>
@@ -410,7 +410,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                         inputMode="decimal"
                         value={property.monthlyCosts || ''}
                         onChange={(e) => handlePropertyChange(property.id, 'monthlyCosts', formatCurrency(e.target.value))}
-                        className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         placeholder="e.g., 450"
                       />
                     </div>
@@ -428,7 +428,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                         inputMode="decimal"
                         value={property.grossRentalIncome || ''}
                         onChange={(e) => handlePropertyChange(property.id, 'grossRentalIncome', formatCurrency(e.target.value))}
-                        className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         placeholder="0"
                       />
                     </div>
@@ -444,7 +444,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                         inputMode="decimal"
                         value={property.netRentalIncome || ''}
                         onChange={(e) => handlePropertyChange(property.id, 'netRentalIncome', formatCurrency(e.target.value))}
-                        className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         placeholder="0"
                       />
                     </div>
@@ -458,7 +458,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     <select
                       value={property.statusOfProperty || ''}
                       onChange={(e) => handlePropertyChange(property.id, 'statusOfProperty', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
+                      className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
                     >
                       <option value="">Select Status</option>
                       <option value="sold">Sold</option>
@@ -474,7 +474,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     <select
                       value={property.intendedOccupancy || ''}
                       onChange={(e) => handlePropertyChange(property.id, 'intendedOccupancy', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
+                      className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
                     >
                       <option value="">Select Occupancy</option>
                       <option value="primaryResidence">Primary Residence</option>
@@ -497,7 +497,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                           inputMode="decimal"
                           value={property.grossRentalIncome || ''}
                           onChange={(e) => handlePropertyChange(property.id, 'grossRentalIncome', formatCurrency(e.target.value))}
-                          className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                           placeholder="e.g., 1500"
                         />
                       </div>
@@ -511,7 +511,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                           inputMode="decimal"
                           value={property.netRentalIncome || ''}
                           onChange={(e) => handlePropertyChange(property.id, 'netRentalIncome', formatCurrency(e.target.value))}
-                          className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                           placeholder="e.g., 1000"
                         />
                       </div>
@@ -531,7 +531,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                   <select
                     value={getHasLoanValue(property.hasLoan)} // Use helper to map boolean/null to string
                     onChange={(e) => handlePropertyChange(property.id, 'hasLoan', e.target.value)}
-                    className="w-full md:w-1/2 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
+                    className="text-xs w-full md:w-1/2 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-white"
                   >
                     <option value="">Select...</option>
                     <option value="yes">Yes</option>
@@ -552,7 +552,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                           inputMode="decimal"
                           value={property.monthlyPayment || ''}
                           onChange={(e) => handlePropertyChange(property.id, 'monthlyPayment', formatCurrency(e.target.value))}
-                          className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                           placeholder="e.g., 1200"
                         />
                       </div>
@@ -569,7 +569,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                           inputMode="decimal"
                           value={property.unpaidBalance || ''}
                           onChange={(e) => handlePropertyChange(property.id, 'unpaidBalance', formatCurrency(e.target.value))}
-                          className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                           placeholder="e.g., 150000"
                         />
                       </div>
@@ -588,6 +588,20 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
             <button
               type="button"
               onClick={addProperty}
+              style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0.25rem 0.5rem',  // Reduced padding
+                          borderWidth: '1px',
+                          borderColor: theme.colors.primary,
+                          borderRadius: '0.25rem',  // Slightly smaller border radius
+                          fontSize: '0.75rem',  // Smaller font size
+                          lineHeight: '1rem',  // Tighter line height
+                          fontWeight: '500',
+                          color: theme.colors.primary,
+                          backgroundColor: 'white',
+                          transition: 'all 150ms ease-in-out',
+                        }}
               className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md border border-indigo-300 hover:bg-indigo-50"
             //   style={{ color: theme.colors.primary }} // Use classes or inline style
             >
@@ -621,7 +635,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                   inputMode="decimal"
                   value={propertyOwned.rent || ''}
                   onChange={(e) => handleHousingExpenseChange('rent', formatCurrency(e.target.value))}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   placeholder="0"
                 />
               </div>
@@ -640,7 +654,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.rent || ''}
                     onChange={(e) => handleHousingExpenseChange('rent', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -658,7 +672,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.firstMortgage || ''}
                     onChange={(e) => handleHousingExpenseChange('firstMortgage', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -676,7 +690,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.otherFinancing || ''}
                     onChange={(e) => handleHousingExpenseChange('otherFinancing', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -694,7 +708,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.hazardInsurance || ''}
                     onChange={(e) => handleHousingExpenseChange('hazardInsurance', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -712,7 +726,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.realEstateTaxes || ''}
                     onChange={(e) => handleHousingExpenseChange('realEstateTaxes', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -730,7 +744,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.mortgageInsurance || ''}
                     onChange={(e) => handleHousingExpenseChange('mortgageInsurance', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -748,7 +762,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.hoaDues || ''}
                     onChange={(e) => handleHousingExpenseChange('hoaDues', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>
@@ -766,7 +780,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     inputMode="decimal"
                     value={propertyOwned.otherHousingExpenses || ''}
                     onChange={(e) => handleHousingExpenseChange('otherHousingExpenses', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     placeholder="0"
                   />
                 </div>

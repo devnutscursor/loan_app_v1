@@ -8,6 +8,15 @@ import {
   getTotalAssets as calculateTotalAssets,
 } from "./utils/LoanCalculationUtils";
 
+import {
+  CalculationStatusSkeleton,
+  PaymentBreakdownSkeleton,
+  FinancialSummarySkeleton,
+  LoanDetailsSkeleton,
+  ProgramGuidelinesSkeleton,
+  SavingIndicator,
+} from "./components/skeletons/ParameterSkeletons";
+
 // Import components
 import CalculationStatusCard from "./components/CalculationStatusCard";
 import PaymentBreakdown from "./components/PaymentBreakdown";
@@ -47,8 +56,20 @@ const LoanParametersModal = ({
   // State to track accordion visibility
   const [showFinanceFees, setShowFinanceFees] = useState(false);
 
-  // State to track loading state for API requests
-  const [isLoading, setIsLoading] = useState(false);
+  // Replace single loading state with more granular states
+  const [loadingStates, setLoadingStates] = useState({
+    isLoadingDetails: true,
+    isLoadingCalculations: true,
+    isSaving: false,
+  });
+
+  // Update loading state setter function
+  const updateLoadingState = (key, value) => {
+    setLoadingStates((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   // Handle program change - this function is called both directly and via the input onChange
   const handleProgramChange = (programIdOrEvent) => {
@@ -100,19 +121,24 @@ const LoanParametersModal = ({
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 flex justify-end">
       {/* Loading overlay */}
-      {isLoading && (
+      {/* {isLoading && (
         <div className="fixed inset-0 bg-white bg-opacity-70 z-50 flex items-center justify-center">
           <div className="text-center p-5 bg-white rounded-lg shadow-md">
             <Loader className="animate-spin h-10 w-10 mx-auto text-blue-600 mb-2" />
             <p className="text-gray-700 font-medium">Loading parameters...</p>
           </div>
         </div>
-      )}
+      )} */}
       <div className="w-full md:w-4/5 lg:w-3/4 h-full bg-white shadow-xl overflow-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Loan Parameters</h2>
-            <button
+            <h2 className="text-xl text-gray-900">
+  <span className="font-bold">Loan Configuration</span> 
+  <span className="text-base font-normal text-gray-600 ml-2">
+    (Used to establish buyer qualification and pre-approval letters)
+  </span>
+</h2>
+<button
               onClick={onClose}
               className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
             >
@@ -130,6 +156,7 @@ const LoanParametersModal = ({
               loan={loan}
               selectedProgram={selectedProgram}
               initialCalculations={initialCalculations}
+              loadingStates={loadingStates}
             >
               {({
                 localParams,
@@ -139,6 +166,7 @@ const LoanParametersModal = ({
                 calculations,
                 handleInputChange,
                 handleToggleChange,
+                loadingStates
               }) => {
                 // Store setLocalParams in ref for access in handleProgramChange
                 // localParamsRef.current = setLocalParams;
@@ -155,7 +183,8 @@ const LoanParametersModal = ({
                       selectedProgram={selectedProgram}
                       loanPrograms={loanPrograms}
                       loanRates={loanRates}
-                      setIsLoading={setIsLoading}
+                      loadingStates={loadingStates}
+                      updateLoadingState={updateLoadingState}
                     />
 
                     {/* Handle program-specific guidelines */}
@@ -174,49 +203,72 @@ const LoanParametersModal = ({
                       calculations={calculations}
                       toggleStates={toggleStates}
                       selectedProgram={selectedProgram}
-                      setIsLoading={setIsLoading}
+                      updateLoadingState={updateLoadingState}
                     />
+
+                    {/* Show saving indicator when needed */}
+                    {loadingStates.isSaving && <SavingIndicator />}
 
                     {/* Calculation Status Section */}
-                    <CalculationStatusCard
-                      isQualified={calculations.isQualified}
-                    />
+                    {loadingStates.isLoadingCalculations ? (
+                      <CalculationStatusSkeleton />
+                    ) : (
+                      <CalculationStatusCard
+                        isQualified={calculations.isQualified}
+                      />
+                    )}
 
                     {/* Payment Breakdown Section */}
-                    <PaymentBreakdown calculations={calculations} />
+                    {loadingStates.isLoadingCalculations ? (
+                      <PaymentBreakdownSkeleton />
+                    ) : (
+                      <PaymentBreakdown calculations={calculations} />
+                    )}
 
-                    {/* Income, Debts, and Assets Section */}
-                    <FinancialSummaryCards
-                      income={localParams.income}
-                      debts={localParams.debts}
-                      assets={localParams.assets}
-                    />
+                    {/* Financial Summary Cards */}
+                    {loadingStates.isLoadingDetails ? (
+                      <FinancialSummarySkeleton />
+                    ) : (
+                      <FinancialSummaryCards
+                        income={localParams.income}
+                        debts={localParams.debts}
+                        assets={localParams.assets}
+                      />
+                    )}
 
                     {/* Two-column layout for Loan Details and Program Guidelines */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {/* Loan Details Column */}
                       <div>
-                        <LoanDetailsSection
-                          localParams={localParams}
-                          toggleStates={toggleStates}
-                          handleInputChange={handleInputChange}
-                          handleToggleChange={handleToggleChange}
-                        />
+                        {loadingStates.isLoadingDetails ? (
+                          <LoanDetailsSkeleton />
+                        ) : (
+                          <LoanDetailsSection
+                            localParams={localParams}
+                            toggleStates={toggleStates}
+                            handleInputChange={handleInputChange}
+                            handleToggleChange={handleToggleChange}
+                          />
+                        )}
                       </div>
 
                       {/* Program Guidelines Column */}
                       <div>
-                        <ProgramGuidelinesSection
-                          localParams={localParams}
-                          loanPrograms={loanPrograms}
-                          selectedProgram={selectedProgram}
-                          handleInputChange={handleInputChange}
-                          handleToggleChange={handleToggleChange}
-                          toggleStates={toggleStates}
-                          showFinanceFees={showFinanceFees}
-                          setShowFinanceFees={setShowFinanceFees}
-                          onProgramChange={handleProgramChange}
-                        />
+                        {loadingStates.isLoadingDetails ? (
+                          <ProgramGuidelinesSkeleton />
+                        ) : (
+                          <ProgramGuidelinesSection
+                            localParams={localParams}
+                            loanPrograms={loanPrograms}
+                            selectedProgram={selectedProgram}
+                            handleInputChange={handleInputChange}
+                            handleToggleChange={handleToggleChange}
+                            toggleStates={toggleStates}
+                            showFinanceFees={showFinanceFees}
+                            setShowFinanceFees={setShowFinanceFees}
+                            onProgramChange={handleProgramChange}
+                          />
+                        )}
                       </div>
                     </div>
                   </>

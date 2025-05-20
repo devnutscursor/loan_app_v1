@@ -16,12 +16,12 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
   // Local state for immediate UI updates
   const [localDebts, setLocalDebts] = useState(debts);
   const [localExpenses, setLocalExpenses] = useState(expenses);
-  
+
   // Update local state when props change
   useEffect(() => {
     setLocalDebts(debts);
   }, [debts]);
-  
+
   useEffect(() => {
     setLocalExpenses(expenses);
   }, [expenses]);
@@ -56,7 +56,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
       return debt;
     });
     setLocalDebts(updatedLocalDebts);
-    
+
     // Update parent component - use original debts as base
     const updatedDebts = debts.map(debt => {
       if (debt.id === id) {
@@ -72,7 +72,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     // Update local state for immediate feedback
     const updatedLocalDebts = localDebts.filter(debt => debt.id !== id);
     setLocalDebts(updatedLocalDebts);
-    
+
     // Update parent component - use original debts as base
     const updatedDebts = debts.filter(debt => debt.id !== id);
     onChange('debts', updatedDebts);
@@ -101,7 +101,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
       return expense;
     });
     setLocalExpenses(updatedLocalExpenses);
-    
+
     // Update parent component - use original expenses as base
     const updatedExpenses = expenses.map(expense => {
       if (expense.id === id) {
@@ -117,7 +117,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     // Update local state for immediate feedback
     const updatedLocalExpenses = localExpenses.filter(expense => expense.id !== id);
     setLocalExpenses(updatedLocalExpenses);
-    
+
     // Update parent component - use original expenses as base
     const updatedExpenses = expenses.filter(expense => expense.id !== id);
     onChange('expenses', updatedExpenses);
@@ -132,7 +132,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Help us learn a little bit more about your debts.</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Help us learn a little bit more about your debts.</h2>
         <p className="text-gray-600 mb-4">
           Keep in mind, we will need to pull credit regardless, but taking care of this now will help us qualify you more quickly.
         </p>
@@ -141,7 +141,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
 
       {/* Manually Enter Debts */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Manually Enter Debts
         </h3>
 
@@ -150,7 +150,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
             <button
               type="button"
               onClick={() => removeDebt(debt.id)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this debt"
             >
               <div className="flex items-center">
@@ -170,7 +170,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                   type="text"
                   value={debt.creditor || ''}
                   onChange={(e) => handleDebtChange(debt.id, 'creditor', e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="Creditor Name"
                 />
@@ -188,7 +188,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                     type="text"
                     value={debt.monthlyPayment || ''}
                     onChange={(e) => handleDebtChange(debt.id, 'monthlyPayment', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -203,13 +203,13 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                    <span className="text-gray-500 text-xs">$</span>
                   </div>
                   <input
                     type="text"
                     value={debt.balance || ''}
                     onChange={(e) => handleDebtChange(debt.id, 'balance', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -246,12 +246,12 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '0.5rem 0.75rem',
+            padding: '0.25rem 0.5rem',  // Reduced padding
             borderWidth: '1px',
             borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
+            borderRadius: '0.25rem',  // Slightly smaller border radius
+            fontSize: '0.75rem',  // Smaller font size
+            lineHeight: '1rem',  // Tighter line height
             fontWeight: '500',
             color: theme.colors.primary,
             backgroundColor: 'white',
@@ -268,7 +268,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
 
       {/* Monthly Expenses */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Monthly Expenses
         </h3>
 
@@ -297,7 +297,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                   <select
                     value={expense.type || ''}
                     onChange={(e) => handleExpenseChange(expense.id, 'type', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Type</option>
                     <option value="childSupport">Child Support</option>
@@ -320,13 +320,13 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                    <span className="text-gray-500 text-xs">$</span>
                   </div>
                   <input
                     type="text"
                     value={expense.amount || ''}
                     onChange={(e) => handleExpenseChange(expense.id, 'amount', formatCurrency(e.target.value))}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -342,12 +342,12 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '0.5rem 0.75rem',
+            padding: '0.25rem 0.5rem',  // Reduced padding
             borderWidth: '1px',
             borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
+            borderRadius: '0.25rem',  // Slightly smaller border radius
+            fontSize: '0.75rem',  // Smaller font size
+            lineHeight: '1rem',  // Tighter line height
             fontWeight: '500',
             color: theme.colors.primary,
             backgroundColor: 'white',

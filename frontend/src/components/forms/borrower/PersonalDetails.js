@@ -29,7 +29,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
   // Handle form field changes - update local state and pass to parent
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Update local state for immediate feedback
     switch (name) {
       case 'firstName':
@@ -65,14 +65,14 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
       default:
         break;
     }
-    
+
     // DEBUG: Log personal details changes
     // console.log(`PersonalDetails - Field ${name} changed to:`, value);
-    
+
     // Pass to parent component
     onChange(e);
   };
-  
+
   // Helper function for dependent field changes
   const handleChangeDependentField = (index, field, value) => {
     // console.log(`PersonalDetails - Dependent #${index} field ${field} changed to:`, value);
@@ -109,7 +109,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Personal Details</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Personal Details</h2>
         <p className="text-gray-600 mb-4">
           Fill out as much information as you can. If you aren't sure, leave it blank and we will follow up with you.
         </p>
@@ -118,7 +118,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
 
       {/* Personal Information */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-4">Personal</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Personal</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1">
             <label htmlFor="firstName" className="block text-xs uppercase font-medium text-gray-500 mb-1">
@@ -130,7 +130,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="firstName"
               value={firstName}
               onChange={handleChange}
-              className={`w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
             {errors.firstName && (
@@ -148,7 +148,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="middleName"
               value={middleName}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+              className={`text-xs w-full border ${errors.middleName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
           </div>
@@ -163,7 +163,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="lastName"
               value={lastName}
               onChange={handleChange}
-              className={`w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
             {errors.lastName && (
@@ -181,7 +181,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="suffix"
               value={suffix}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+              className={`text-xs w-full border ${errors.suffix ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
               placeholder="Suffix"
             />
@@ -199,7 +199,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
                 name="maritalStatus"
                 value={maritalStatus}
                 onChange={handleChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={`text-xs appearance-none w-full border ${errors.maritalStatus ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               >
                 <option value="">Select</option>
                 <option value="married">Married</option>
@@ -227,7 +227,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="dateOfBirth"
               value={dateOfBirth}
               onChange={handleChange}
-              className={`w-full border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`text-xs w-full border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               placeholder="mm/dd/yyyy"
             />
             {errors.dateOfBirth && (
@@ -245,7 +245,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="ssn"
               value={ssn}
               onChange={handleChange}
-              className={`w-full border ${errors.ssn ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors.ssn ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
               placeholder="e.g. 555-55-55"
             />
@@ -264,7 +264,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
                 name="citizenship"
                 value={citizenship}
                 onChange={handleChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={`text-xs appearance-none w-full border ${errors.citizenship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               >
                 <option value="">Select</option>
                 <option value="usCitizen">U.S. Citizen</option>
@@ -286,7 +286,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
 
       {/* Contact Information */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-4">Contact</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Contact</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="email" className="block text-xs uppercase font-medium text-gray-500 mb-1">
@@ -298,7 +298,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="email"
               value={email}
               onChange={handleChange}
-              className={`w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
             {errors.email && (
@@ -316,7 +316,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="phone"
               value={phone}
               onChange={handleChange}
-              className={`w-full border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
               placeholder="+3 (020) 020-3201"
             />
@@ -329,8 +329,8 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
 
       {/* Dependents */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-4">Dependents</h3>
-        
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Dependents</h3>
+
         {borrower?.dependents && borrower?.dependents?.length > 0 && (
           <div className="space-y-4 mb-4">
             {borrower?.dependents?.map((dependent, index) => (
@@ -343,11 +343,11 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
                     type="text"
                     value={dependent.name || ''}
                     onChange={(e) => handleChangeDependentField(index, 'name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ '--focus-ring-color': theme.colors.primary }}
+                    className={`text-xs w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                    style={{ '--focus-ring-color': theme.colors.primary }}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
                     Age
@@ -356,11 +356,11 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
                     type="text"
                     value={dependent.age || ''}
                     onChange={(e) => handleChangeDependentField(index, 'age', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ '--focus-ring-color': theme.colors.primary }}
+                    className={`text-xs w-full border ${errors.age ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                    style={{ '--focus-ring-color': theme.colors.primary }}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
                     Relationship
@@ -370,7 +370,7 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
                       type="text"
                       value={dependent.relationship || ''}
                       onChange={(e) => handleChangeDependentField(index, 'relationship', e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      className={`text-xs flex-1 border ${errors.relationship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                       style={{ '--focus-ring-color': theme.colors.primary }}
                     />
                     <button
@@ -388,30 +388,32 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
             ))}
           </div>
         )}
-        
+
         <button
           type="button"
-          onClick={() => {
-            // console.log('PersonalDetails - Adding new dependent');
-            addDependent();
-          }}
+          onClick={() => addDependent()}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '0.5rem 0.75rem',
+            padding: '0.25rem 0.5rem',  // Reduced padding
             borderWidth: '1px',
             borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
+            borderRadius: '0.25rem',  // Slightly smaller border radius
+            fontSize: '0.75rem',  // Smaller font size
+            lineHeight: '1rem',  // Tighter line height
             fontWeight: '500',
             color: theme.colors.primary,
             backgroundColor: 'white',
             transition: 'all 150ms ease-in-out',
           }}
-          className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
+          className="focus:outline-none focus:ring-1 focus:ring-offset-1 hover:bg-gray-50"  // Smaller focus ring
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="-ml-0.5 mr-1 h-4 w-4"  // Smaller icon
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Add Dependent

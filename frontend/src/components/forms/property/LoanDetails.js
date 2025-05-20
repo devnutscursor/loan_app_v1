@@ -186,7 +186,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Loan Details</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Loan Details</h2>
         <p className="text-gray-600 mb-4">
           If you can, tell us a little about the loan you are applying for.
         </p>
@@ -204,7 +204,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
             name="loanType"
             value={loanType}
             onChange={handleChange}
-            className={`appearance-none w-full border ${errors['loanInfo.loanType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+            className={`text-xs appearance-none w-full border ${errors['loanInfo.loanType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
             style={{ '--focus-ring-color': theme.colors.primary }}
           >
             <option value="">Select</option>
@@ -227,7 +227,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       {/* Purchase Details */}
       {loanType === 'Purchase' && (
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-lg font-medium text-gray-700 mb-4">Purchase Details</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Purchase Details</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -244,7 +244,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="purchasePrice"
                   value={formatCurrency(purchasePrice || '')}
                   onChange={handleCurrencyChange}
-                  className={`pl-7 w-full border ${errors['loanInfo.purchasePrice'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.purchasePrice'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -268,7 +268,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="downPayment"
                   value={formatCurrency(downPayment || '')}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.downPayment'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -281,7 +281,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       {/* Refinance Details */}
       {loanType === 'Refinance' && (
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-lg font-medium text-gray-700 mb-4">Refinance Details</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Refinance Details</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -294,7 +294,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                 name="yearAcquired"
                 value={yearAcquired}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className={`text-xs w-full border ${errors['loanInfo.yearAcquired'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 min="1900"
                 max={new Date().getFullYear()}
@@ -315,7 +315,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="currentLoanBalance"
                   value={formatCurrency(currentLoanBalance)}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.currentLoanBalance'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -336,7 +336,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="requestedLoanAmount"
                   value={formatCurrency(requestedLoanAmount || '')}
                   onChange={handleCurrencyChange}
-                  className={`pl-7 w-full border ${errors['loanInfo.requestedLoanAmount'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.requestedLoanAmount'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -356,7 +356,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="refinanceType"
                   value={refinanceType || ''}
                   onChange={handleChange}
-                  className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs appearance-none w-full border ${errors['loanInfo.refinanceType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select</option>
@@ -378,7 +378,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       {/* Construction Details */}
       {loanType === 'Construction' && (
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-lg font-medium text-gray-700 mb-4">Construction Details</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Construction Details</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -387,7 +387,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">$</span>
+                  <span className="text-gray-500 text-xs">$</span>
                 </div>
                 <input
                   type="text"
@@ -395,7 +395,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="loanAmount"
                   value={formatCurrency(loanAmount || '')}
                   onChange={handleCurrencyChange}
-                  className={`pl-7 w-full border ${errors['loanInfo.loanAmount'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.loanAmount'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -415,7 +415,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                 name="yearLotAcquired"
                 value={yearLotAcquired}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className={`text-xs w-full border ${errors['loanInfo.yearLotAcquired'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 min="1900"
                 max={new Date().getFullYear()}
@@ -436,7 +436,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="originalCost"
                   value={formatCurrency(originalCost || '')}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.originalCost'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -457,7 +457,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="existingLoans"
                   value={formatCurrency(existingLoans || '')}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.existingLoans'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -478,7 +478,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="presentValueOfLot"
                   value={formatCurrency(presentValueOfLot || '')}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.presentValueOfLot'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -499,7 +499,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                   name="costOfImprovements"
                   value={formatCurrency(costOfImprovements || '')}
                   onChange={handleCurrencyChange}
-                  className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.costOfImprovements'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                   placeholder="0.00"
                 />
@@ -517,7 +517,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
                 name="constructionType"
                 value={constructionType || ''}
                 onChange={handleChange}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className={`text-xs appearance-none w-full border ${errors['loanInfo.constructionType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>

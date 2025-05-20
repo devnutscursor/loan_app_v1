@@ -75,7 +75,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Demographics</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Demographics</h2>
         <p className="text-gray-600 mb-4">
           This section asks about your ethnicity, sex, and race.
         </p>
@@ -95,7 +95,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
             <select
               value={localDemographics.ethnicity}
               onChange={(e) => handleChange('ethnicity', e.target.value)}
-              className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select Ethnicity</option>
               <option value="hispanic">Hispanic or Latino</option>
@@ -122,7 +122,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
                 <select
                   value={localDemographics.origin}
                   onChange={(e) => handleChange('origin', e.target.value)}
-                  className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">Select Origin</option>
                   <option value="mexican">Mexican</option>
@@ -167,7 +167,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
             <select
               value={localDemographics.gender}
               onChange={(e) => handleChange('gender', e.target.value)}
-              className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select Gender</option>
               <option value="female">Female</option>
@@ -192,7 +192,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
             <select
               value={localDemographics.race}
               onChange={(e) => handleChange('race', e.target.value)}
-              className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select Race</option>
               <option value="american-indian">American Indian or Alaska Native</option>
@@ -238,7 +238,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
               <select
                 value={localDemographics.asianOrigin}
                 onChange={(e) => handleChange('asianOrigin', e.target.value)}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select Origin</option>
                 <option value="asian-indian">Asian Indian</option>
@@ -269,7 +269,7 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
               <select
                 value={localDemographics.pacificIslanderOrigin}
                 onChange={(e) => handleChange('pacificIslanderOrigin', e.target.value)}
-                className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select Origin</option>
                 <option value="native-hawaiian">Native Hawaiian</option>

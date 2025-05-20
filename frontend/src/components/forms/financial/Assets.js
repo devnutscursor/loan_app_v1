@@ -298,7 +298,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Assets</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Assets</h2>
         <p className="text-gray-600 mb-4">
           We need to better understand your financial situation. Please enter any assets belonging to you below.
         </p>
@@ -307,7 +307,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Checking and Savings Accounts */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Checking and Savings Accounts
         </h3>
 
@@ -335,7 +335,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                 type="text"
                 value={account.bankName || ''}
                 onChange={(e) => handleAccountChange(account.id, 'bankName', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ focusRing: theme.colors.primary }}
                 placeholder="Bank of America"
               />
@@ -354,7 +354,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={account.value || ''}
                     onChange={(e) => handleAccountChange(account.id, 'value', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -369,7 +369,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                   <select
                     value={account.accountType || 'Checking'}
                     onChange={(e) => handleAccountChange(account.id, 'accountType', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="Checking">Checking</option>
                     <option value="Savings">Savings</option>
@@ -391,19 +391,19 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           type="button"
           onClick={addAccount}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.5rem',  // Reduced padding
+                      borderWidth: '1px',
+                      borderColor: theme.colors.primary,
+                      borderRadius: '0.25rem',  // Slightly smaller border radius
+                      fontSize: '0.75rem',  // Smaller font size
+                      lineHeight: '1rem',  // Tighter line height
+                      fontWeight: '500',
+                      color: theme.colors.primary,
+                      backgroundColor: 'white',
+                      transition: 'all 150ms ease-in-out',
+                    }}
           className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -415,7 +415,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Stocks and Bonds */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Stocks and Bonds
         </h3>
 
@@ -424,7 +424,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
             <button
               type="button"
               onClick={() => removeStock(stock.id)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this stock or bond"
             >
               <div className="flex items-center">
@@ -444,7 +444,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                   type="text"
                   value={stock.description || ''}
                   onChange={(e) => handleStockChange(stock.id, 'description', e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ focusRing: theme.colors.primary }}
                   placeholder="Tesla Stock"
                 />
@@ -456,13 +456,13 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                    <span className="text-gray-500 text-xs">$</span>
                   </div>
                   <input
                     type="text"
                     value={stock.value || ''}
                     onChange={(e) => handleStockChange(stock.id, 'value', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -476,19 +476,19 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           type="button"
           onClick={addStockOrBond}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.5rem',  // Reduced padding
+                      borderWidth: '1px',
+                      borderColor: theme.colors.primary,
+                      borderRadius: '0.25rem',  // Slightly smaller border radius
+                      fontSize: '0.75rem',  // Smaller font size
+                      lineHeight: '1rem',  // Tighter line height
+                      fontWeight: '500',
+                      color: theme.colors.primary,
+                      backgroundColor: 'white',
+                      transition: 'all 150ms ease-in-out',
+                    }}
           className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -500,7 +500,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Gifts and Grants */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Gifts and Grants
         </h3>
 
@@ -509,7 +509,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
             <button
               type="button"
               onClick={() => removeGift(gift.id)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this gift or grant"
             >
               <div className="flex items-center">
@@ -529,7 +529,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                   <select
                     value={gift.assetType || 'Cash Gift'}
                     onChange={(e) => handleGiftChange(gift.id, 'assetType', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="Cash Gift">Cash Gift</option>
                     <option value="Grant">Grant</option>
@@ -552,7 +552,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                   <select
                     value={gift.source || 'Relative'}
                     onChange={(e) => handleGiftChange(gift.id, 'source', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="Relative">Relative</option>
                     <option value="Friend">Friend</option>
@@ -581,7 +581,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={gift.value || ''}
                     onChange={(e) => handleGiftChange(gift.id, 'value', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -607,19 +607,19 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           type="button"
           onClick={addGiftOrGrant}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.5rem',  // Reduced padding
+                      borderWidth: '1px',
+                      borderColor: theme.colors.primary,
+                      borderRadius: '0.25rem',  // Slightly smaller border radius
+                      fontSize: '0.75rem',  // Smaller font size
+                      lineHeight: '1rem',  // Tighter line height
+                      fontWeight: '500',
+                      color: theme.colors.primary,
+                      backgroundColor: 'white',
+                      transition: 'all 150ms ease-in-out',
+                    }}
           className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -631,25 +631,13 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Miscellaneous Assets */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Miscellaneous Assets
         </h3>
 
         {localAssets.miscellaneous ? (
           <div className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <button
-              type="button"
-              onClick={removeMiscAssets}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-              aria-label="Remove miscellaneous assets"
-            >
-              <div className="flex items-center">
-                <span className="text-xs mr-1">Remove</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </button>
+            
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -664,7 +652,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={localAssets.miscellaneous.earnestMoney || ''}
                     onChange={(e) => handleMiscChange('earnestMoney', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -683,7 +671,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={localAssets.miscellaneous.lifeInsurance || ''}
                     onChange={(e) => handleMiscChange('lifeInsurance', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -704,7 +692,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={localAssets.miscellaneous.vestedInterestInRetirement || ''}
                     onChange={(e) => handleMiscChange('vestedInterestInRetirement', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -723,7 +711,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={localAssets.miscellaneous.otherAssets || ''}
                     onChange={(e) => handleMiscChange('otherAssets', e.target.value)}
-                    className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -738,12 +726,12 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              padding: '0.5rem 0.75rem',
+              padding: '0.25rem 0.5rem',  // Reduced padding
               borderWidth: '1px',
               borderColor: theme.colors.primary,
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              lineHeight: '1.25rem',
+              borderRadius: '0.25rem',  // Slightly smaller border radius
+              fontSize: '0.75rem',  // Smaller font size
+              lineHeight: '1rem',  // Tighter line height
               fontWeight: '500',
               color: theme.colors.primary,
               backgroundColor: 'white',

@@ -14,7 +14,7 @@ import theme from '../../../styles/theme';
 const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
   // Local state for immediate UI updates
   const [localIncome, setLocalIncome] = useState(income);
-  
+
   // Update local state when props change
   useEffect(() => {
     setLocalIncome(income);
@@ -31,7 +31,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       ...localIncome,
       [field]: value
     });
-    
+
     // Update parent component - use original income prop as base
     onChange({
       ...income,
@@ -47,7 +47,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       type: '',
       amount: ''
     };
-    
+
     // Update local state for immediate feedback
     const localOtherIncome = [...(localIncome.otherIncome || [])];
     localOtherIncome.push(newItem);
@@ -55,7 +55,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       ...localIncome,
       otherIncome: localOtherIncome
     });
-    
+
     // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome.push(newItem);
@@ -77,7 +77,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       ...localIncome,
       otherIncome: localOtherIncome
     });
-    
+
     // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome[index] = {
@@ -99,7 +99,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
       ...localIncome,
       otherIncome: localOtherIncome
     });
-    
+
     // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
     otherIncome.splice(index, 1);
@@ -118,7 +118,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Let's collect some information about your income.</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Let's collect some information about your income.</h2>
         <p className="text-gray-600 mb-4">
           How much does {getBorrowerFirstName()} make at their job?
         </p>
@@ -127,7 +127,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Primary Income */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-xs font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Income (Monthly)
         </h3>
 
@@ -143,7 +143,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
               type="text"
               value={localIncome.baseIncome || ''}
               onChange={(e) => handleIncomeChange('baseIncome', formatCurrency(e.target.value))}
-              className={`pl-7 w-full border ${errors['income.baseIncome'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs pl-7 w-full border ${errors['income.baseIncome'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
               placeholder="0.00"
             />
@@ -166,7 +166,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                 type="text"
                 value={localIncome.overtime || ''}
                 onChange={(e) => handleIncomeChange('overtime', formatCurrency(e.target.value))}
-                className={`pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
               />
@@ -185,7 +185,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                 type="text"
                 value={localIncome.commissions || ''}
                 onChange={(e) => handleIncomeChange('commissions', formatCurrency(e.target.value))}
-                className={`pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
               />
@@ -204,7 +204,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                 type="text"
                 value={localIncome.bonuses || ''}
                 onChange={(e) => handleIncomeChange('bonuses', formatCurrency(e.target.value))}
-                className={`pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
               />
@@ -223,7 +223,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                 type="text"
                 value={income.militaryEntitlements || ''}
                 onChange={(e) => handleIncomeChange('militaryEntitlements', formatCurrency(e.target.value))}
-                className={`pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
               />
@@ -234,7 +234,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
 
       {/* Other Income */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Other Income (Monthly)
         </h3>
 
@@ -243,7 +243,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
             <button
               type="button"
               onClick={() => removeOtherIncome(index)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
               aria-label="Remove this income"
             >
               <div className="flex items-center">
@@ -295,7 +295,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                     type="text"
                     value={item.amount || ''}
                     onChange={(e) => handleOtherIncomeChange(index, 'amount', formatCurrency(e.target.value))}
-                    className={`pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                    className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
                   />
@@ -311,18 +311,18 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '0.5rem 0.75rem',
+            padding: '0.25rem 0.5rem',  // Reduced padding
             borderWidth: '1px',
             borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
+            borderRadius: '0.25rem',  // Slightly smaller border radius
+            fontSize: '0.75rem',  // Smaller font size
+            lineHeight: '1rem',  // Tighter line height
             fontWeight: '500',
             color: theme.colors.primary,
             backgroundColor: 'white',
             transition: 'all 150ms ease-in-out',
           }}
-          className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
+          className="text-xs focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />

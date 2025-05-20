@@ -12,6 +12,7 @@ const ParametersProvider = ({
   loan,
   selectedProgram,
   initialCalculations,
+  loadingStates,
   children
 }) => {
   // Initialize loan parameter state
@@ -350,7 +351,8 @@ const ParametersProvider = ({
     setCalculations,
     handleInputChange,
     handleToggleChange,
-    recalculateValues
+    recalculateValues,
+    loadingStates
   });
 };
 

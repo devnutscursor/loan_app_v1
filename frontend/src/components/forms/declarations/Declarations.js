@@ -117,7 +117,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
           <button
             type="button"
             onClick={() => handleChange(field, true)}
-            className={`flex items-center justify-center px-4 py-2 border ${
+            className={`text-xs flex items-center justify-center px-4 py-2 border ${
               localDeclarations[field] === true
                 ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
                 : 'border-gray-300 text-gray-700'
@@ -128,7 +128,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
           <button
             type="button"
             onClick={() => handleChange(field, false)}
-            className={`flex items-center justify-center px-4 py-2 border ${
+            className={`text-xs flex items-center justify-center px-4 py-2 border ${
               localDeclarations[field] === false
                 ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
                 : 'border-gray-300 text-gray-700'
@@ -151,7 +151,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
           <select
             value={localDeclarations[field]}
             onChange={(e) => handleChange(field, e.target.value)}
-            className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">--Select--</option>
             {options.map(option => (
@@ -159,12 +159,12 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
             ))}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+            <svg className="text-xs fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
               <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
             </svg>
           </div>
         </div>
-        {errors[field] && <p className="mt-1 text-sm text-red-600">{errors[field]}</p>}
+        {errors[field] && <p className="mt-1 text-xs text-red-600">{errors[field]}</p>}
       </div>
     );
   };
@@ -172,7 +172,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Declarations</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Declarations</h2>
         <p className="text-gray-600 mb-4">
           Almost done! We just need a few more details about your property, your funding, and your past financial history.
         </p>
@@ -180,7 +180,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
       </div>
 
       <div>
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4">
           Declarations about the Property and your Money for the Loan
         </h3>
 
@@ -227,7 +227,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
                 type="text"
                 value={localDeclarations.borrowingMoneyAmount}
                 onChange={(e) => handleChange('borrowingMoneyAmount', e.target.value)}
-                className="pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="0.00"
               />
             </div>
@@ -243,7 +243,7 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
         {/* Will this property be subject to a lien? */}
         {renderToggle('propertySubjectToLien', 'Will this property be subject to a lien that could take priority over the first mortgage lien, such as a clean energy lien paid through your property taxes (e.g., the Property Assessed Clean Energy Program)?')}
 
-        <h3 className="text-md font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4 mt-8">
+        <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2 mb-4 mt-8">
           Declarations about your Finances
         </h3>
 

@@ -16,6 +16,8 @@ export const standardDocumentRequirements = [
     documentType: 'Pay Stub',
     required: true
   },
+  
+  
   {
     id: 'selfEmployedPL',
     title: 'Self Employed P&L',

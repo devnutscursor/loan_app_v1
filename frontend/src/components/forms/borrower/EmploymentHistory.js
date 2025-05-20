@@ -100,7 +100,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Where does asad work?</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where does asad work?</h2>
         <p className="text-gray-600 mb-4">
           Tell us a little more about asad and what they do for a living.
         </p>
@@ -109,7 +109,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
 
       {borrower?.employers && borrower?.employers?.map((employer, index) => (
         <div key={index} className="mb-8 pb-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-700 mb-4">Employer {index + 1}</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Employer {index + 1}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -120,7 +120,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.companyName || ''}
                 onChange={(e) => handleEmployerChange(index, 'companyName', e.target.value)}
-                className={`w-full border ${errors[`employers[${index}].companyName`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs w-full border ${errors[`employers[${index}].companyName`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
               {errors[`employers[${index}].companyName`] && (
@@ -136,7 +136,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="tel"
                 value={employer.companyPhone || ''}
                 onChange={(e) => handleEmployerChange(index, 'companyPhone', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -151,7 +151,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.jobTitle || ''}
                 onChange={(e) => handleEmployerChange(index, 'jobTitle', e.target.value)}
-                className={`w-full border ${errors[`employers[${index}].jobTitle`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs w-full border ${errors[`employers[${index}].jobTitle`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
               {errors[`employers[${index}].jobTitle`] && (
@@ -167,7 +167,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 <select
                   value={employer.employmentStatus || ''}
                   onChange={(e) => handleEmployerChange(index, 'employmentStatus', e.target.value)}
-                  className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select</option>
@@ -195,7 +195,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 <select
                   value={employer.isSelfEmployed || ''}
                   onChange={(e) => handleEmployerChange(index, 'isSelfEmployed', e.target.value)}
-                  className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select</option>
@@ -219,7 +219,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                   <select
                     value={employer.ownsMoreThan25Percent || ''}
                     onChange={(e) => handleEmployerChange(index, 'ownsMoreThan25Percent', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                   >
                     <option value="">Select</option>
@@ -246,7 +246,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 value={employer.startDate || ''}
                 onChange={(e) => handleEmployerChange(index, 'startDate', e.target.value)}
                 placeholder="mm/dd/yyyy"
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -260,7 +260,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 min="0"
                 value={employer.yearsInProfession || ''}
                 onChange={(e) => handleEmployerChange(index, 'yearsInProfession', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -275,13 +275,13 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 max="11"
                 value={employer.monthsInProfession || ''}
                 onChange={(e) => handleEmployerChange(index, 'monthsInProfession', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
           </div>
           
-          <h4 className="text-md font-medium text-gray-700 mt-4 mb-2">Employer Address</h4>
+          <h4 className="text-sm font-medium text-gray-700 mt-4 mb-2">Employer Address</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
@@ -292,7 +292,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.streetAddress || ''}
                 onChange={(e) => handleEmployerChange(index, 'streetAddress', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -305,7 +305,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.aptSteNum || ''}
                 onChange={(e) => handleEmployerChange(index, 'aptSteNum', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -318,7 +318,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.city || ''}
                 onChange={(e) => handleEmployerChange(index, 'city', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -333,7 +333,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 <select
                   value={employer.state || ''}
                   onChange={(e) => handleEmployerChange(index, 'state', e.target.value)}
-                  className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select State</option>
@@ -358,7 +358,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
                 type="text"
                 value={employer.zipCode || ''}
                 onChange={(e) => handleEmployerChange(index, 'zipCode', e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
@@ -369,7 +369,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
               <button
                 type="button"
                 onClick={() => removeEmployer(index)}
-                className="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="text-xs inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': 'rgb(220, 38, 38)' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -387,19 +387,19 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
           type="button"
           onClick={addEmployer}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.5rem 0.75rem',
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.5rem',  // Reduced padding
+                      borderWidth: '1px',
+                      borderColor: theme.colors.primary,
+                      borderRadius: '0.25rem',  // Slightly smaller border radius
+                      fontSize: '0.75rem',  // Smaller font size
+                      lineHeight: '1rem',  // Tighter line height
+                      fontWeight: '500',
+                      color: theme.colors.primary,
+                      backgroundColor: 'white',
+                      transition: 'all 150ms ease-in-out',
+                    }}
           className="focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-gray-50"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
