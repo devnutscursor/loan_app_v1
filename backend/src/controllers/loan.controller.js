@@ -594,6 +594,57 @@ exports.createLoan = async (req, res, next) => {
   }
 };
 
+// ... existing imports and functions ...
+
+/**
+ * @desc    Get all loans for a specific borrower
+ * @route   GET /api/loans/borrower/:borrowerId
+ * @access  Private
+ */
+exports.getBorrowerLoans = async (req, res, next) => {
+  try {
+    // Only the lender who owns the loan or admin can access
+    if (req.user.role !== 'admin' && req.user.role !== 'lender') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this resource'
+      });
+    }
+    console.log("req.user", req.user);
+    console.log("req.params", req.params);
+
+    const { borrowerId } = req.params;
+    const { page = 1, limit = 10, sortBy = 'createdAt', order = 'desc' } = req.query;
+
+    const query = {
+      borrower: borrowerId,
+      ...(req.user.role === 'lender')
+    };
+
+    const loans = await Loan.find(query)
+      .populate('borrower', 'firstName lastName email')
+      .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    console.log("loans", loans);
+
+    const count = await Loan.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count: loans.length,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      data: loans
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * Get all loans with filtering and pagination
  * @param {Object} req - Express request object

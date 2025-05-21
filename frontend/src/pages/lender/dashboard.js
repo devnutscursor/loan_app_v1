@@ -4,35 +4,64 @@ import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MainLayout from '../../components/layout/MainLayout';
+import { 
+  BarChart3, 
+  Users, 
+  DollarSign, 
+  FileText, 
+  ChevronRight, 
+  Calendar,
+  Clock,
+  CheckCircle, 
+  AlertTriangle,
+  Briefcase,
+  Home,
+  TrendingUp,
+  BadgeDollarSign,
+  ClipboardList,
+  ArrowRightCircle,
+  User,
+  LineChart
+} from 'lucide-react';
 
-// Card Component
-const StatCard = ({ title, value, icon, colorClass, percentChange }) => (
-  <div className="bg-white overflow-hidden shadow rounded-lg">
-    <div className="p-5">
+// Component for quick action buttons
+const QuickActionButton = ({ icon: Icon, label, onClick, bgColor }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 ${bgColor} hover:shadow-md hover:scale-105`}
+  >
+    <Icon className="h-7 w-7 text-white mb-2" />
+    <span className="text-xs font-medium text-white text-center">{label}</span>
+  </button>
+);
+
+// Component for stat cards
+const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass }) => (
+  <div className={`rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md ${bgClass}`}>
+    <div className="px-4 py-5 sm:p-6">
       <div className="flex items-center">
-        <div className={`flex-shrink-0 rounded-md p-3 ${colorClass}`}>
-          {icon}
+        <div className="flex-shrink-0 bg-white bg-opacity-20 rounded-full p-3">
+          <Icon className="h-6 w-6 text-white" />
         </div>
         <div className="ml-5 w-0 flex-1">
           <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+            <dt className="text-sm font-medium text-white text-opacity-80 truncate">{title}</dt>
             <dd className="flex items-baseline">
-              <div className="text-2xl font-semibold text-gray-900">{value}</div>
-              {percentChange && (
-                <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                  percentChange >= 0 ? 'text-green-600' : 'text-red-600'
+              <div className="text-2xl font-semibold text-white">{value}</div>
+              {trend && (
+                <div className={`ml-2 flex items-baseline text-xs font-medium ${
+                  trendValue >= 0 ? 'text-green-100' : 'text-red-100'
                 }`}>
-                  {percentChange >= 0 ? (
-                    <svg className="self-center flex-shrink-0 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  {trendValue >= 0 ? (
+                    <svg className="self-center flex-shrink-0 h-4 w-4 text-green-100" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
                   ) : (
-                    <svg className="self-center flex-shrink-0 h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <svg className="self-center flex-shrink-0 h-4 w-4 text-red-100" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}
-                  <span className="sr-only">{percentChange >= 0 ? 'Increased' : 'Decreased'} by</span>
-                  {Math.abs(percentChange)}%
+                  <span>{Math.abs(trendValue)}%</span>
                 </div>
               )}
             </dd>
@@ -43,73 +72,163 @@ const StatCard = ({ title, value, icon, colorClass, percentChange }) => (
   </div>
 );
 
-// Application Card Component
-const ApplicationCard = ({ application, onView }) => {
+// Progress component
+const ProgressItem = ({ label, value, maxValue, color }) => {
+  const percentage = Math.min(100, Math.max(0, (value / maxValue) * 100));
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between mb-1">
+        <span className="text-xs font-medium text-gray-600">{label}</span>
+        <span className="text-xs font-medium text-gray-800">{value}/{maxValue}</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className={`h-2 rounded-full ${color}`} 
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
+
+// Activity item component
+const ActivityItem = ({ icon: Icon, title, time, status, statusColor }) => (
+  <li className="py-3">
+    <div className="flex items-center space-x-4">
+      <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
+        <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
+        <p className="text-xs text-gray-500">{time}</p>
+      </div>
+      <div>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor} ${statusColor.replace('bg-', 'text-')}`}>
+          {status}
+        </span>
+      </div>
+    </div>
+  </li>
+);
+
+// Recent loan card component
+const LoanCard = ({ loan, onView }) => {
   const formatCurrency = (amount) => {
+    if (!amount) return "$0";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2
+      maximumFractionDigits: 0
     }).format(amount);
   };
   
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    if (!dateString) return "N/A";
+    const options = { month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
   
+  // Status styling
+  const getStatusStyle = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'approved': return "bg-green-100 text-green-800";
+      case 'pending': return "bg-yellow-100 text-yellow-800";
+      case 'rejected': return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-md">
-      <div className="px-4 py-5 sm:px-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            {application.purpose}
-          </h3>
-          <span className={`px-2 py-1 text-xs rounded-full ${
-            application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-            application.status === 'approved' ? 'bg-green-100 text-green-800' :
-            application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+    <div className="bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200">
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center space-x-3">
+            <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium">
+              {loan.borrowerDetails?.firstName?.charAt(0) || "B"}
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">{loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}</h4>
+              <p className="text-xs text-gray-500">{loan.loanDetails?.loanType || "Loan"}</p>
+            </div>
+          </div>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
+            {loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
           </span>
         </div>
-      </div>
-      <div className="border-t border-gray-200">
-        <dl>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Borrower</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {application.borrower.firstName} {application.borrower.lastName}
-            </dd>
+        
+        <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+          <div>
+            <p className="text-gray-500 mb-1">Amount</p>
+            <p className="font-semibold text-gray-900">{formatCurrency(loan.loanDetails?.loanAmount)}</p>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Amount</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formatCurrency(application.amount)}
-            </dd>
+          <div>
+            <p className="text-gray-500 mb-1">Program</p>
+            <p className="font-semibold text-gray-900">{loan.loanDetails?.programType || "N/A"}</p>
           </div>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Term</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {application.term} months
-            </dd>
+          <div>
+            <p className="text-gray-500 mb-1">Applied</p>
+            <p className="font-semibold text-gray-900">{formatDate(loan.createdAt)}</p>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Application Date</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formatDate(application.createdAt)}
-            </dd>
-          </div>
-        </dl>
-      </div>
-      <div className="bg-white px-4 py-4 flex items-center justify-end border-t border-gray-200">
+        </div>
+        
         <button
-          onClick={() => onView(application._id)}
-          className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          onClick={() => onView(loan._id)}
+          className="w-full mt-2 flex items-center justify-center py-1.5 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
         >
           View Details
+          <ChevronRight className="ml-1 h-3 w-3" />
         </button>
+      </div>
+    </div>
+  );
+};
+
+// Borrower item component
+const BorrowerItem = ({ borrower, borrowerLoans }) => {
+  return (
+    <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors">
+      <div className="flex items-center space-x-3">
+        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+          <span className="text-sm font-medium">
+            {borrower.user?.firstName?.charAt(0)}{borrower.user?.lastName?.charAt(0)}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">
+            {borrower.user?.firstName} {borrower.user?.lastName}
+          </p>
+          <p className="text-xs text-gray-500 truncate">{borrower.user?.email}</p>
+        </div>
+      </div>
+      <div className="flex items-center">
+        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+          {borrowerLoans[borrower._id] || 0} loans
+        </span>
+        <Link href={`/lender/loans?borrowerId=${borrower._id}`} className="ml-2 text-gray-500 hover:text-blue-700">
+          <ArrowRightCircle className="h-4 w-4" />
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+// Program item component
+const ProgramItem = ({ program }) => {
+  return (
+    <div className="flex items-center justify-between py-2.5">
+      <div className="flex items-center">
+        <div className={`h-2.5 w-2.5 rounded-full mr-2 ${program.isAvailableToBorrower ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+        <span className="text-sm text-gray-900 font-medium">
+          {program.displayName || program.programName}
+        </span>
+      </div>
+      <div className="text-xs text-gray-500">
+        {program.programType && (
+          <span className="capitalize">{program.programType}</span>
+        )}
+        {program.loanTerm && (
+          <span> · {program.loanTerm}yr</span>
+        )}
       </div>
     </div>
   );
@@ -124,12 +243,16 @@ const LenderDashboard = () => {
     pendingApplications: 0,
     totalAmount: 0,
     percentChanges: {
-      loans: 0,
-      applications: 0,
-      amount: 0
+      loans: 5,
+      applications: 12,
+      amount: 8
     }
   });
-  const [recentApplications, setRecentApplications] = useState([]);
+  const [recentLoans, setRecentLoans] = useState([]);
+  const [recentBorrowers, setRecentBorrowers] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [borrowerLoans, setBorrowerLoans] = useState({});
+  const [activities, setActivities] = useState([]);
   
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -143,14 +266,84 @@ const LenderDashboard = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
-        // Fetch recent applications
-        const applicationsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loans?limit=5`,
+        // Fetch loans
+        const loansResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loans?limit=3&sort=-createdAt`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Fetch borrowers
+        const borrowersResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers?limit=5`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Fetch loan programs
+        const programsResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs?limit=5`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
-        setStats(statsResponse.data.data);
-        setRecentApplications(applicationsResponse.data.data);
+        // Process responses
+        setStats(statsResponse.data.data || {});
+        
+        const loansData = loansResponse.data.data?.loans || [];
+        setRecentLoans(loansData);
+
+        const borrowersData = borrowersResponse.data.data || [];
+        setRecentBorrowers(borrowersData);
+
+        const programsData = programsResponse.data.data || [];
+        setPrograms(programsData);
+
+        // Generate borrower loans count
+        const loansMap = {};
+        for (const borrower of borrowersData) {
+          try {
+            const response = await axios.get(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers/${borrower._id}/loans`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            loansMap[borrower._id] = response.data?.data?.length || 0;
+          } catch (error) {
+            console.error(`Error fetching loans for borrower ${borrower._id}:`, error);
+            loansMap[borrower._id] = 0;
+          }
+        }
+        setBorrowerLoans(loansMap);
+
+        // Sample activities (in a real app, fetch these from backend)
+        setActivities([
+          { 
+            icon: FileText, 
+            title: 'New loan application submitted',
+            time: '2 hours ago',
+            status: 'New',
+            statusColor: 'bg-blue-500'
+          },
+          { 
+            icon: CheckCircle, 
+            title: 'Loan #12345 approved',
+            time: '5 hours ago',
+            status: 'Completed',
+            statusColor: 'bg-green-500'
+          },
+          { 
+            icon: Clock, 
+            title: 'Document verification pending',
+            time: 'Yesterday',
+            status: 'Pending',
+            statusColor: 'bg-yellow-500'
+          },
+          { 
+            icon: AlertTriangle, 
+            title: 'Credit check failed',
+            time: '2 days ago',
+            status: 'Failed',
+            statusColor: 'bg-red-500'
+          },
+        ]);
+        
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast.error('Failed to load dashboard data');
@@ -162,169 +355,279 @@ const LenderDashboard = () => {
     fetchDashboardData();
   }, []);
   
-  const handleViewApplication = (applicationId) => {
-    router.push(`/lender/applications/${applicationId}`);
+  const handleViewLoan = (loanId) => {
+    router.push(`/lender/loans/${loanId}`);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    }).format(amount || 0);
   };
   
   return (
     <MainLayout title="Lender Dashboard">
       <div className="py-6">
-        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-8">
+        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Lender Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Overview of loan applications and lending statistics
+              Welcome back! Here's an overview of your lending activity
             </p>
+          </div>
+          
+          <div className="flex space-x-3">
+            <Link href="/lender/loans/create"
+              className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+              New Loan
+            </Link>
+            <Link href="/lender/borrowers" 
+              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              View All Borrowers
+            </Link>
           </div>
         </div>
         
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-4 mb-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-36 bg-gray-100 rounded-xl animate-pulse"></div>
+            ))}
           </div>
         ) : (
           <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            {/* Main Grid Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* Stats Cards */}
               <StatCard 
                 title="Total Loans" 
-                value={stats.totalLoans} 
-                colorClass="bg-blue-100 text-blue-600"
-                percentChange={stats.percentChanges?.loans}
-                icon={
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                }
+                value={stats?.totalLoans || 0} 
+                icon={Briefcase} 
+                trend={true}
+                trendValue={stats?.percentChanges?.loans || 0}
+                bgClass="bg-gradient-to-br from-blue-600 to-blue-800"
               />
               <StatCard 
                 title="Approved Loans" 
-                value={stats.approvedLoans} 
-                colorClass="bg-green-100 text-green-600"
-                icon={
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
+                value={stats?.approvedLoans || 0} 
+                icon={CheckCircle}
+                trend={false}
+                bgClass="bg-gradient-to-br from-green-600 to-green-800"
               />
               <StatCard 
                 title="Pending Applications" 
-                value={stats.pendingApplications} 
-                colorClass="bg-yellow-100 text-yellow-600"
-                percentChange={stats.percentChanges?.applications}
-                icon={
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
+                value={stats?.pendingApplications || 0} 
+                icon={Clock}
+                trend={true}
+                trendValue={stats?.percentChanges?.applications || 0} 
+                bgClass="bg-gradient-to-br from-yellow-500 to-yellow-700"
               />
               <StatCard 
-                title="Total Amount" 
-                value={new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD',
-                  minimumFractionDigits: 0
-                }).format(stats.totalAmount)} 
-                colorClass="bg-purple-100 text-purple-600"
-                percentChange={stats.percentChanges?.amount}
-                icon={
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
+                title="Total Volume" 
+                value={formatCurrency(stats?.totalAmount)} 
+                icon={BadgeDollarSign}
+                trend={true}
+                trendValue={stats?.percentChanges?.amount || 0}
+                bgClass="bg-gradient-to-br from-indigo-600 to-indigo-800"
               />
             </div>
-            
-            {/* Main Content */}
-            <div className="grid grid-cols-1 gap-8">
-              {/* Recent Applications */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-medium text-gray-900">Recent Applications</h2>
-                  <Link href="/lender/applications" className="text-sm font-medium text-primary hover:text-primary-dark">
-                    View all
+
+            {/* Quick Actions Row */}
+            {/* <div className="mb-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-3">Quick Actions</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                <QuickActionButton 
+                  icon={FileText} 
+                  label="New Loan Application" 
+                  onClick={() => router.push('/lender/loans/create')}
+                  bgColor="bg-gradient-to-r from-blue-600 to-blue-800" 
+                />
+                <QuickActionButton 
+                  icon={User} 
+                  label="Add Borrower" 
+                  onClick={() => router.push('/lender/borrowers')}
+                  bgColor="bg-gradient-to-r from-green-600 to-green-800" 
+                />
+                <QuickActionButton 
+                  icon={ClipboardList} 
+                  label="Loan Programs" 
+                  onClick={() => router.push('/lender/programs')}
+                  bgColor="bg-gradient-to-r from-purple-600 to-purple-800" 
+                />
+                <QuickActionButton 
+                  icon={LineChart} 
+                  label="Manage Rates" 
+                  onClick={() => router.push('/lender/programs/rates')}
+                  bgColor="bg-gradient-to-r from-indigo-600 to-indigo-800" 
+                />
+                <QuickActionButton 
+                  icon={DollarSign} 
+                  label="Pre-approval Letters" 
+                  onClick={() => toast.info('Pre-approval letters feature coming soon!')}
+                  bgColor="bg-gradient-to-r from-orange-500 to-orange-700" 
+                />
+              </div>
+            </div> */}
+
+            {/* Main Content 3-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Recent Loans Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-medium text-gray-900">Recent Loan Applications</h2>
+                  <Link href="/lender/loans" className="text-sm font-medium text-blue-700 hover:text-blue-900 flex items-center">
+                    View All <ChevronRight className="ml-1 h-4 w-4" />
                   </Link>
                 </div>
-                
-                {recentApplications.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentApplications.map((application) => (
-                      <ApplicationCard
-                        key={application._id}
-                        application={application}
-                        onView={handleViewApplication}
+
+                {recentLoans.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {recentLoans.map((loan) => (
+                      <LoanCard
+                        key={loan._id}
+                        loan={loan}
+                        onView={handleViewLoan}
                       />
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white shadow rounded-lg p-6 text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No applications</h3>
-                    <p className="mt-1 text-sm text-gray-500">No recent loan applications to review.</p>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg">
+                    <FileText className="mx-auto h-8 w-8 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No recent applications</h3>
+                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new loan application</p>
+                    <Link href="/lender/loans/create" className="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                      New Loan
+                    </Link>
+                  </div>
+                )}
+
+                {/* Performance Metrics */}
+                {recentLoans.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-gray-900">Processing Performance</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <ProgressItem 
+                          label="Pending Verifications" 
+                          value={4} 
+                          maxValue={10} 
+                          color="bg-yellow-500" 
+                        />
+                        <ProgressItem 
+                          label="Document Reviews" 
+                          value={7} 
+                          maxValue={12} 
+                          color="bg-blue-500" 
+                        />
+                        <ProgressItem 
+                          label="Loan Approvals" 
+                          value={12} 
+                          maxValue={15} 
+                          color="bg-green-500" 
+                        />
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-xs font-medium text-gray-600 mb-2">Approval Rate</h4>
+                        <div className="flex items-end space-x-1">
+                          <div className="text-2xl font-bold text-gray-900">78%</div>
+                          <div className="pb-1 text-xs text-green-600 font-medium">+5%</div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Based on last 30 days</p>
+                        
+                        <h4 className="text-xs font-medium text-gray-600 mb-2 mt-4">Avg. Processing Time</h4>
+                        <div className="flex items-end space-x-1">
+                          <div className="text-2xl font-bold text-gray-900">3.2</div>
+                          <div className="pb-1 text-md font-medium text-gray-500">days</div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">From application to approval</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              
-              {/* Quick Access */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Access</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <Link href="/lender/applications" className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                    <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-md bg-primary text-white">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
+
+              {/* Right Column: Borrowers, Programs and Activity */}
+              <div className="space-y-6">
+                {/* Borrowers Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Recent Borrowers</h2>
+                    <Link href="/lender/borrowers" className="text-sm font-medium text-blue-700 hover:text-blue-900 flex items-center">
+                      All <ChevronRight className="ml-0.5 h-4 w-4" />
+                    </Link>
+                  </div>
+
+                  {recentBorrowers.length > 0 ? (
+                    <div className="space-y-1">
+                      {recentBorrowers.slice(0, 4).map((borrower) => (
+                        <BorrowerItem 
+                          key={borrower._id} 
+                          borrower={borrower} 
+                          borrowerLoans={borrowerLoans} 
+                        />
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="absolute inset-0" aria-hidden="true"></span>
-                      <p className="text-sm font-medium text-gray-900">Applications</p>
-                      <p className="text-sm text-gray-500 truncate">Review loan applications</p>
+                  ) : (
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <Users className="mx-auto h-6 w-6 text-gray-400" />
+                      <h3 className="mt-1 text-sm font-medium text-gray-900">No borrowers yet</h3>
+                      <p className="mt-1 text-xs text-gray-500">Add your first borrower</p>
                     </div>
-                  </Link>
-                  
-                  <Link href="/lender/loans" className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                    <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-md bg-green-500 text-white">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
+                  )}
+                </div>
+
+                {/* Recent Activity Timeline */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                  </div>
+
+                  {activities.length > 0 ? (
+                    <ul className="divide-y divide-gray-100">
+                      {activities.map((activity, index) => (
+                        <ActivityItem
+                          key={index}
+                          icon={activity.icon}
+                          title={activity.title}
+                          time={activity.time}
+                          status={activity.status}
+                          statusColor={activity.statusColor}
+                        />
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">No recent activity</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="absolute inset-0" aria-hidden="true"></span>
-                      <p className="text-sm font-medium text-gray-900">Active Loans</p>
-                      <p className="text-sm text-gray-500 truncate">Manage active loans</p>
+                  )}
+                </div>
+
+                {/* Loan Programs */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Active Programs</h2>
+                    <Link href="/lender/programs" className="text-sm font-medium text-blue-700 hover:text-blue-900 flex items-center">
+                      Manage <ChevronRight className="ml-0.5 h-4 w-4" />
+                    </Link>
+                  </div>
+
+                  {programs.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {programs.slice(0, 5).map((program) => (
+                        <ProgramItem key={program._id} program={program} />
+                      ))}
                     </div>
-                  </Link>
-                  
-                  <Link href="/lender/borrowers" className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                    <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-md bg-yellow-500 text-white">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
+                  ) : (
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <Home className="mx-auto h-6 w-6 text-gray-400" />
+                      <h3 className="mt-1 text-sm font-medium text-gray-900">No programs</h3>
+                      <p className="mt-1 text-xs text-gray-500">Create your first loan program</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="absolute inset-0" aria-hidden="true"></span>
-                      <p className="text-sm font-medium text-gray-900">Borrowers</p>
-                      <p className="text-sm text-gray-500 truncate">View borrower profiles</p>
-                    </div>
-                  </Link>
-                  
-                  <Link href="/lender/company" className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                    <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-md bg-purple-500 text-white">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="absolute inset-0" aria-hidden="true"></span>
-                      <p className="text-sm font-medium text-gray-900">Company</p>
-                      <p className="text-sm text-gray-500 truncate">Manage company profile</p>
-                    </div>
-                  </Link>
+                  )}
                 </div>
               </div>
             </div>

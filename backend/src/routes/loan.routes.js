@@ -15,6 +15,11 @@ router.post('/', loanController.createLoan);
 // Get all loans with filters and pagination
 router.get('/', loanController.getAllLoans);
 
+router.get(
+    '/borrower/:borrowerId',
+    loanController.getBorrowerLoans
+  );
+
 // Get a specific loan by ID
 router.get('/:id', loanController.getLoan);
 

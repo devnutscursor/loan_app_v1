@@ -607,7 +607,7 @@ const LoanDetails = () => {
 
                   <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex-shrink-0 bg-primary rounded-md p-2">
+                      <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-blue-800 rounded-md p-2">
                         <svg
                           className="h-6 w-6 text-white"
                           fill="none"
@@ -671,22 +671,20 @@ const LoanDetails = () => {
                         <FileText className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() =>
-                          toast.success("Pre-approval letter sent to borrower")
-                        }
-                        className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow transition"
+                        onClick={() => toast.success("Pre-approval letter sent to borrower")}
+                        className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
                       >
                         <svg
-                          className="h-6 w-6"
+                          className="h-5 w-5"
                           fill="none"
-                          stroke="white"
+                          stroke="currentColor"
                           strokeWidth={2}
                           viewBox="0 0 24 24"
                         >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M9 12l2 2l4-4"
+                            d="M9 12l2 2 4-4"
                           ></path>
                         </svg>
                         Send Pre-Approval Letter
@@ -714,25 +712,22 @@ const LoanDetails = () => {
                                 className={`
     relative w-full flex items-center justify-between py-3 px-4 rounded-lg text-sm font-medium
     transform transition-all duration-300 ease-in-out
-    ${
-      isActive
-        ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
-        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
-    }
+    ${isActive
+                                    ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
+                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
+                                  }
   `}
                               >
                                 <div className="flex items-center">
                                   <span
-                                    className={`mr-3 transition-all duration-300 ${
-                                      isActive
-                                        ? "text-blue-600 opacity-100 scale-110"
+                                    className={`mr-3 transition-all duration-300 ${isActive
+                                        ? "text-blue-700 opacity-100 scale-110"
                                         : "opacity-70 group-hover:opacity-90"
-                                    }`}
+                                      }`}
                                   >
                                     <tab.icon
-                                      className={`h-5 w-5 ${
-                                        isActive ? "drop-shadow-sm" : ""
-                                      }`}
+                                      className={`h-5 w-5 ${isActive ? "drop-shadow-sm" : ""
+                                        }`}
                                     />
                                   </span>
                                   <span
@@ -755,8 +750,8 @@ const LoanDetails = () => {
 
                                 {/* Active indicator with enhanced styling */}
                                 {isActive && (
-                                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-blue-500 rounded-full shadow-sm animate-pulse-subtle"></span>
-                                )}
+  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
+)}
                               </button>
 
                               {/* Display sub-tabs when Application is expanded */}
@@ -784,37 +779,34 @@ const LoanDetails = () => {
                                         className={`
             relative w-full flex items-center py-2.5 px-4 rounded-lg text-sm font-medium
             transform transition-all duration-300 ease-in-out
-            ${
-              isSubActive
-                ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
-            }
+            ${isSubActive
+                                            ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
+                                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
+                                          }
           `}
                                       >
                                         <span
                                           className={`
               mr-3 transition-all duration-300 ease-in-out
-              ${
-                isSubActive
-                  ? "text-blue-600 opacity-100 scale-110"
-                  : "opacity-70"
-              }
+              ${isSubActive
+                                              ? "text-blue-700 opacity-100 scale-110"
+                                              : "opacity-70"
+                                            }
             `}
                                         >
                                           <subTab.icon className="h-4 w-4" />
                                         </span>
                                         <span
-                                          className={`text-xs transition-colors duration-300 ${
-                                            isSubActive
+                                          className={`text-xs transition-colors duration-300 ${isSubActive
                                               ? "font-medium text-gray-900 "
                                               : ""
-                                          }`}
+                                            }`}
                                         >
                                           {subTab.label}
                                         </span>
                                         {isSubActive && (
-                                          <span className="absolute right-2 w-1 h-6 bg-blue-500 rounded-full shadow-sm"></span>
-                                        )}
+  <span className="absolute right-2 w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
+)}
                                       </button>
                                     );
                                   })}
@@ -1424,7 +1416,7 @@ const LoanDetails = () => {
           </button>
           <button
             type="button"
-            className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-blue-600 text-sm text-white font-medium shadow-sm hover:bg-blue-700 transition"
+            className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
             onClick={saveLoan}
             disabled={saving}
           >

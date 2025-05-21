@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Plus, Edit, Trash2, ArrowLeft } from 'lucide-react';
-import LenderLayout from '@/components/layout/LenderLayout';
-import Head from 'next/head';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import MainLayout from '@/components/layout/MainLayout';
 import { LoanProgramService } from '@/services';
+import { Plus, Edit, Trash2, ArrowLeft, Search, X, DollarSign } from 'lucide-react';
+// ... existing imports ...
 
 export default function LoanPrograms() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function LoanPrograms() {
   // Fetch programs on component mount
   useEffect(() => {
     fetchLoanPrograms();
-    
+
     // Log the auth token to check if it's available
     console.log('Auth token present:', !!localStorage.getItem('token'));
   }, []);
@@ -29,7 +30,7 @@ export default function LoanPrograms() {
       console.log('Fetching loan programs...');
       const response = await LoanProgramService.getAllPrograms();
       console.log('API Response:', response);
-      
+
       // Handle different response structures
       if (response) {
         // Check if response has data property (axios structure)
@@ -38,7 +39,7 @@ export default function LoanPrograms() {
           if (response.data.status === 'success' && Array.isArray(response.data.data)) {
             console.log('Setting programs from nested data:', response.data.data);
             setPrograms(response.data.data);
-          } 
+          }
           // If response.data is directly an array
           else if (Array.isArray(response.data)) {
             console.log('Setting programs from data array:', response.data);
@@ -49,7 +50,7 @@ export default function LoanPrograms() {
             console.error('Unexpected data structure in response.data:', response.data);
             setError('Failed to load loan programs: Unexpected data structure');
           }
-        } 
+        }
         // If response itself is an array
         else if (Array.isArray(response)) {
           console.log('Setting programs from direct array response:', response);
@@ -94,7 +95,7 @@ export default function LoanPrograms() {
 
     try {
       const response = await LoanProgramService.deleteProgram(programToDelete._id);
-      
+
       if (response.status === 'success' || response.status === 204) {
         setSuccessMessage('Loan program deleted successfully');
         setSuccess(true);
@@ -120,91 +121,170 @@ export default function LoanPrograms() {
   };
 
   return (
-    <LenderLayout>
-      <Head>
-        <title>Loan Programs | Lender Dashboard</title>
-      </Head>
-      <div className="mb-8">
-        <div className="flex items-center mb-6">
-          <button 
-            className="flex items-center px-4 py-2 mr-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" 
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </button>
-          <h1 className="text-2xl font-bold flex-grow text-gray-900">
-            Loan Programs
-          </h1>
-          <button 
-            className="px-4 py-2 mr-4 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500" 
-            onClick={navigateToRates}
-          >
-            Manage Rates
-          </button>
-          <button 
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" 
-            onClick={handleCreateProgram}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Program
-          </button>
+    <ProtectedRoute allowedRoles={['lender']}>
+      <MainLayout>
+        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+            <h1 className="text-3xl font-bold text-gray-900">Loan Programs</h1>
+            <p className="mt-2 text-gray-600">Manage your loan programs and their configurations</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={navigateToRates}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Manage Rates
+            </button>
+            <button
+              onClick={handleCreateProgram}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Program
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center my-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        {/* Add search and filter section */}
+        {/* <div className="bg-white shadow-sm rounded-lg p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Search programs..."
+              />
+            </div>
+            <select
+              className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              defaultValue="all"
+            >
+              <option value="all">All Types</option>
+              <option value="conventional">Conventional</option>
+              <option value="fha">FHA</option>
+              <option value="va">VA</option>
+              <option value="usda">USDA</option>
+            </select>
           </div>
+        </div> */}
+
+        {/* Update the table section */}
+        {loading ? (
+          <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {[...Array(6)].map((_, i) => (
+                    <th key={i} className="px-6 py-3 text-left">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {[...Array(5)].map((_, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50">
+                    {[...Array(6)].map((_, cellIndex) => (
+                      <td key={cellIndex} className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md">
-            {error}
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <XCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Display Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan Term</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available to Borrower</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Program Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Display Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Program Type
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loan Term
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Available to Borrower
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {programs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="6" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         No loan programs found. Click "New Program" to create one.
                       </td>
                     </tr>
                   ) : (
                     programs.map((program) => (
                       <tr key={program._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{program.programName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{program.displayName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {program.programName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {program.displayName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                           {program.programType}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{program.loanTerm} years</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{program.isAvailableToBorrower ? 'Yes' : 'No'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button 
-                            onClick={() => handleEditProgram(program._id)} 
-                            className="text-blue-600 hover:text-blue-900 mr-3 focus:outline-none"
-                            aria-label="Edit program"
-                          >
-                            <Edit className="h-5 w-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteClick(program)} 
-                            className="text-red-600 hover:text-red-900 focus:outline-none"
-                            aria-label="Delete program"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {program.loanTerm} years
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${program.isAvailableToBorrower
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                            }`}>
+                            {program.isAvailableToBorrower ? 'Yes' : 'No'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => handleEditProgram(program._id)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Edit program"
+                            >
+                              <Edit className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(program)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete program"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -222,7 +302,7 @@ export default function LoanPrograms() {
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             {/* Background overlay */}
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setDeleteDialog(false)}></div>
-            
+
             {/* Modal panel */}
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -276,7 +356,7 @@ export default function LoanPrograms() {
                 )}
               </div>
               <div className="ml-3">
-                <p className={`text-sm font-medium ${success ? 'text-green-800' : 'text-red-800'}`}>  
+                <p className={`text-sm font-medium ${success ? 'text-green-800' : 'text-red-800'}`}>
                   {success ? successMessage : error}
                 </p>
               </div>
@@ -297,6 +377,7 @@ export default function LoanPrograms() {
           </div>
         </div>
       )}
-    </LenderLayout>
+    </MainLayout>
+    </ProtectedRoute>
   );
 }

@@ -183,7 +183,7 @@ if (loading && milestones.length === 0) {
               setEditingMilestone(null);
               setShowForm(true);
             }}
-            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none"
           >
             <Plus className="mr-1 h-4 w-4" />
             Add Milestone

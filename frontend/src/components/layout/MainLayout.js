@@ -106,7 +106,7 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
       
       <Toaster position="top-right" />
       
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen overflow-y-auto">
         {showSidebar() && (
           <Sidebar 
             isOpen={sidebarOpen} 

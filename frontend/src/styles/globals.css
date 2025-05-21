@@ -164,3 +164,14 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 2s ease-in-out infinite;
 }
+
+.bg-gradient-blue {
+  background: linear-gradient(to right, #2563eb, #1d4ed8);
+}
+
+.text-gradient-blue {
+  background: linear-gradient(to right, #2563eb, #1d4ed8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

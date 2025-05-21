@@ -124,7 +124,16 @@ export const lenderService = {
   getLoans: (params) => api.get('/loans', { params }),
   getLoan: (id) => api.get(`/loans/${id}`),
   updateLoan: (id, loanData) => api.put(`/borrower/loans/by-number/${loanData.loanDetails?.loanNumber || loanData.loanNumber || id}`, loanData),
-
+  getBorrowerLoans: async (borrowerId, params = {}) => {
+    try {
+      const response = await api.get(`/loans/borrower/${borrowerId}`, { params });
+      console.log('response.data', response);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching borrower loans:', error);
+      throw error;
+    }
+  },
   // Profile
   getProfile: () => api.get('/lender/profile'),
   updateProfile: (profileData) => api.patch('/lender/profile', profileData),
