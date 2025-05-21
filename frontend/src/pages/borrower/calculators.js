@@ -33,13 +33,14 @@ const FinancialCalculators = () => {
             
             {/* Call to action */}
             <div className="bg-primary-50 rounded-lg shadow-sm p-6 mb-8">
-              <h2 className="text-lg font-medium text-primary mb-2">Ready to apply for a loan?</h2>
+              <h2 className="text-lg font-medium text-blue-700 mb-2">Ready to apply for a loan?</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Use our simple application process to get started with your home loan journey.
               </p>
               <button
                 onClick={() => router.push('/borrower/apply')}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white 
+bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 Apply Now
               </button>

@@ -125,9 +125,6 @@ const BorrowerLoanMilestones = ({ loanId }) => {
           <span className="mr-2">🏆</span>
           Loan Milestones
         </h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">
-          Track the progress of your loan application through these milestones
-        </p>
       </div>
       
       {/* Overall Progress */}
@@ -135,7 +132,7 @@ const BorrowerLoanMilestones = ({ loanId }) => {
         <h4 className="text-base font-medium text-gray-900 mb-2">Overall Progress</h4>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div 
-            className="bg-primary h-2.5 rounded-full" 
+            className="bg-gradient-to-r from-blue-600 to-blue-800  h-2.5 rounded-full" 
             style={{ width: `${calculateProgress(milestones)}%` }}
           ></div>
         </div>
@@ -145,9 +142,46 @@ const BorrowerLoanMilestones = ({ loanId }) => {
       {/* Milestones List */}
       <div className="px-4 py-5 sm:p-6">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+          <div className="relative">
+      {/* Skeleton vertical timeline line */}
+      <div className="absolute top-0 left-4 h-full w-0.5 bg-gray-200 z-0"></div>
+      
+      {/* Skeleton Milestones */}
+      <div className="space-y-4 relative z-10">
+        {[1, 2, 3, 4, 5].map((_, index) => (
+          <div key={index} className="relative animate-pulse">
+            <div className="flex items-start">
+              {/* Skeleton status icon */}
+              <div className="flex-shrink-0 z-10">
+                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center"></div>
+              </div>
+              
+              {/* Skeleton milestone card */}
+              <div className="ml-6 flex-1">
+                <div className="rounded-lg shadow-sm overflow-hidden border-l-4 border-l-gray-200 bg-white">
+                  <div className="py-2 px-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="h-5 w-32 bg-gray-200 rounded"></div>
+                      <div className="h-4 w-20 bg-gray-200 rounded-full"></div>
+                    </div>
+                    
+                    <div className="h-3 w-full bg-gray-200 rounded mt-2"></div>
+                    <div className="h-3 w-2/3 bg-gray-200 rounded mt-1"></div>
+                  </div>
+                  
+                  {/* Skeleton completed date - show on random items for realism */}
+                  {index % 2 === 0 && (
+                    <div className="bg-gray-50 px-3 py-1 border-t border-gray-100">
+                      <div className="h-3 w-32 bg-gray-200 rounded"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
+    </div>
         ) : error ? (
           <div className="text-center py-8">
             <svg

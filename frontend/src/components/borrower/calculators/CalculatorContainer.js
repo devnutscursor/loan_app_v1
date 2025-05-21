@@ -43,7 +43,7 @@ const CalculatorContainer = () => {
               onClick={() => setActiveCalculator(calculator.id)}
               className={`inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm focus:outline-none ${
                 activeCalculator === calculator.id
-                  ? 'border-primary text-primary'
+                  ? 'border-blue-700 text-blue-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               } whitespace-nowrap mx-4 first:ml-0`}
             >

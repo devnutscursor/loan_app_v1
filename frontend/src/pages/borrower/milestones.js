@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import LoanMilestones from '../../components/borrower/loan/LoanMilestones';
@@ -64,6 +66,65 @@ const Milestones = () => {
   // Find the selected loan object
   const selectedLoan = loans.find(loan => loan._id === selectedLoanId);
 
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <>
+      {/* Header Skeleton already exists in the main layout */}
+      
+      {/* Loan Selection Skeleton */}
+      <div className="bg-white shadow-sm rounded-lg p-4 mb-6 animate-pulse">
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <div className="h-5 w-24 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded"></div>
+          </div>
+          <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none w-full sm:w-1/3">
+            <div className="h-10 w-full bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Milestones Skeleton */}
+      <div className="bg-white shadow-sm rounded-lg p-6 animate-pulse">
+        <div className="h-6 w-48 bg-gray-200 rounded mb-4"></div>
+        
+        {/* Timeline Skeleton */}
+        <div className="pt-6">
+          <div className="flow-root">
+            <ul className="-mb-8">
+              {[1, 2, 3, 4, 5].map((_, index) => (
+                <li key={index}>
+                  <div className="relative pb-8">
+                    {index !== 4 && (
+                      <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    )}
+                    <div className="relative flex items-start space-x-3">
+                      <div>
+                        <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center"></div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="h-5 w-40 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-4 w-64 bg-gray-200 rounded mb-1"></div>
+                        <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      {/* Quick Actions Skeleton */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((index) => (
+          <div key={index} className={`h-12 rounded-md animate-pulse ${index === 0 ? 'bg-gradient-to-r from-blue-200 to-blue-300' : 'bg-gray-200'}`}></div>
+        ))}
+      </div>
+    </>
+  );
+
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout>
@@ -77,9 +138,7 @@ const Milestones = () => {
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
             {isLoading ? (
-              <div className="w-full flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
+              <LoadingSkeleton />
             ) : loans.length === 0 ? (
               <div className="bg-white shadow rounded-lg p-6 text-center">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,15 +197,13 @@ const Milestones = () => {
                 
                 {/* Quick Actions */}
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <a 
+                  <Link 
                     href="/borrower/documents" 
-                    className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
+                    <FileText className="w-5 h-5 mr-2" />
                     Manage Documents
-                  </a>
+                  </Link>
                   <a 
                     href="/borrower/messages" 
                     className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
