@@ -365,7 +365,7 @@ const DocumentRequirementCard = ({
                 disabled={
                   processingDocId === `${req.category}-${req.documentType}`
                 }
-                className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {processingDocId === `${req.category}-${req.documentType}` ? (
                   <svg

@@ -67,14 +67,55 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
     }
     
     if (isComplete) {
-      // Use white color for check icon if tab is active, otherwise green
-      const iconColorClass = activeTab === tabName ? 'text-white' : 'text-green-500';
-      
-      return (
-        <svg className={`h-5 w-5 ${iconColorClass}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        </svg>
-      );
+      // Use white color for check icon if tab is active, otherwise primary color
+      if (activeTab === tabName) {
+        // Keep white for active tab
+        return (
+          <svg
+            className="h-5 w-5 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        );
+      } else {
+        // Use primary color for completed but inactive tabs
+        return (
+          <svg
+            className="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+          >
+            {/* Define the gradient */}
+            <defs>
+              <linearGradient
+                id="checkIconGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
+                <stop offset="0%" stopColor={theme.colors.blue600} />
+                <stop offset="100%" stopColor={theme.colors.blue800} />
+              </linearGradient>
+            </defs>
+
+            {/* Use the gradient in the path */}
+            <path
+              fillRule="evenodd"
+              fill="url(#checkIconGradient)"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        );
+      }
     }
     return null;
   };
@@ -145,7 +186,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
         <button
           type="button"
           className={getTabClass('assets')}
-          style={activeTab === 'assets' ? { backgroundColor: theme.colors.primary } : {}}
+          style={activeTab === 'assets' ? { background: theme.gradients.primary } : {}}
           onClick={() => handleTabChange('assets')}
         >
           <div className="flex items-center">
@@ -156,7 +197,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
         <button
           type="button"
           className={getTabClass('income')}
-          style={activeTab === 'income' ? { backgroundColor: theme.colors.primary } : {}}
+          style={activeTab === 'income' ? { background: theme.gradients.primary } : {}}
           onClick={() => handleTabChange('income')}
         >
           <div className="flex items-center">
@@ -167,7 +208,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
         <button
           type="button"
           className={getTabClass('debts')}
-          style={activeTab === 'debts' ? { backgroundColor: theme.colors.primary } : {}}
+          style={activeTab === 'debts' ? { background: theme.gradients.primary } : {}}
           onClick={() => handleTabChange('debts')}
         >
           <div className="flex items-center">
@@ -214,7 +255,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           <button 
             type="button"
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 hover:opacity-90"
-            style={{ backgroundColor: theme.colors.primary, '--focus-ring-color': theme.colors.primary }}
+            style={{ background: theme.gradients.primary, '--focus-ring-color': theme.colors.primary }}
             onClick={() => {
               if (validateTab('assets')) {
                 setActiveTab('income');
@@ -229,7 +270,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           <button 
             type="button"
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 hover:opacity-90"
-            style={{ backgroundColor: theme.colors.primary, '--focus-ring-color': theme.colors.primary }}
+            style={{ background: theme.gradients.primary, '--focus-ring-color': theme.colors.primary }}
             onClick={() => {
               if (validateTab('income')) {
                 setActiveTab('debts');
@@ -245,7 +286,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
             type="button"
             onClick={() => validateTab(activeTab) && nextStep()}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 hover:opacity-90"
-            style={{ backgroundColor: theme.colors.primary, '--focus-ring-color': theme.colors.primary }}
+            style={{ background: theme.gradients.primary, '--focus-ring-color': theme.colors.primary }}
           >
             Next Step
           </button>

@@ -6,6 +6,7 @@ import DocumentManager from "../../components/borrower/documents/DocumentManager
 import RequiredDocumentsList from "../../components/borrower/documents/RequiredDocumentsList";
 import { LoanService, DocumentService } from "../../services";
 import { borrowerService } from "../../services/api";
+import { useRouter } from "next/router"; // Add router import
 
 /**
  * Documents Component
@@ -13,6 +14,9 @@ import { borrowerService } from "../../services/api";
  * Main documents page for borrowers to upload and manage loan documents.
  */
 const Documents = () => {
+  const router = useRouter(); // Add router
+  const { loanId: urlLoanId } = router.query; // Extract loanId from URL
+  
   // State for selected loan to associate documents with
   const [loans, setLoans] = useState([]);
   const [selectedLoanId, setSelectedLoanId] = useState("");
@@ -173,6 +177,16 @@ const Documents = () => {
           const loansData = response.data?.data?.loans || [];
           console.log("Loaded loans:", loansData.length);
           setLoans(loansData);
+          // Check if we have a loanId from URL query params
+          if (urlLoanId && loansData.some(loan => loan._id === urlLoanId)) {
+            console.log(`Setting selected loan from URL: ${urlLoanId}`);
+            setSelectedLoanId(urlLoanId);
+          }
+          // If no valid loanId in URL or it doesn't match any loans, use first loan as default
+          else if (loansData.length > 0 && !selectedLoanId) {
+            console.log(`Setting first loan as default: ${loansData[0]._id}`);
+            setSelectedLoanId(loansData[0]._id);
+          }
         } else {
           console.log("Setting empty loans array - API call unsuccessful");
           setLoans([]);
@@ -206,7 +220,7 @@ const Documents = () => {
     };
 
     fetchLoans();
-  }, []);
+  }, [urlLoanId]); // Re-fetch when URL changes
 
   // Fetch document requests from loan conditions
   useEffect(() => {
@@ -236,6 +250,14 @@ const Documents = () => {
 
     fetchDocumentRequests();
   }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+
+  // Handle loan selection change with URL update
+  const handleLoanSelection = (loanId) => {
+    setSelectedLoanId(loanId);
+    
+    // Update the URL to reflect the selected loan (shallow routing)
+    router.push(`/borrower/documents?loanId=${loanId}`, undefined, { shallow: true });
+  };
 
   return (
     <ProtectedRoute allowedRoles={["borrower"]}>
@@ -297,7 +319,7 @@ const Documents = () => {
                       return (
                         <div
                           key={loan._id || `loan-${Math.random()}`}
-                          onClick={() => setSelectedLoanId(loan._id)}
+                          onClick={() => handleLoanSelection(loan._id)}
                           className={`cursor-pointer p-3 rounded-md hover:bg-blue-50 transition-colors duration-150 ${
                             selectedLoanId === loan._id
                               ? "bg-blue-50 ring-2 ring-blue-500 ring-offset-1"

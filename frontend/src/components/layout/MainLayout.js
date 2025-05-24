@@ -9,10 +9,25 @@ import { Toaster } from 'react-hot-toast';
 const MainLayout = ({ children, title = 'Loan Application System', noSidebarMargin = true }) => {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Try to get the saved sidebar state from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      console.log('Saved sidebar state:', JSON.parse(saved));
+      return saved !== null ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+    // Save sidebar state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+    }
+  }, [isSidebarCollapsed]);
   // Check if user is logged in
   useEffect(() => {
     const checkAuth = () => {
@@ -80,12 +95,28 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
     return true;
   };
   
-  // Set collapsed sidebar for loan detail pages
-  useEffect(() => {
-    // Check if we're on a loan detail page
+ // Track whether sidebar has been manually toggled
+const [manuallyToggled, setManuallyToggled] = useState(false);
+
+// Set collapsed sidebar for loan detail pages ONLY on initial load of those pages
+useEffect(() => {
+  // Only auto-collapse if user hasn't manually toggled
+  if (!manuallyToggled) {
     const isLoanDetailPage = router.pathname.match(/\/lender\/loans\/[^/]+$/);
-    setSidebarCollapsed(isLoanDetailPage ? true : false);
-  }, [router.pathname]);
+    const isBorrowerLoanDetailPage = router.pathname.match(/\/borrower\/loans\/[^/]+$/);
+    
+    if (isLoanDetailPage || isBorrowerLoanDetailPage) {
+      setIsSidebarCollapsed(true);
+    }
+    // We no longer auto-expand on other pages
+  }
+}, [router.pathname, manuallyToggled]);
+
+// Modify how we pass the setIsCollapsed function
+const handleToggleSidebar = () => {
+  setManuallyToggled(true);
+  setIsSidebarCollapsed(prev => !prev);
+};
 
   if (loading) {
     return (
@@ -109,12 +140,12 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
       <div className="flex min-h-screen overflow-y-auto">
         {showSidebar() && (
           <Sidebar 
-            isOpen={sidebarOpen} 
-            setIsOpen={setSidebarOpen} 
-            isCollapsed={sidebarCollapsed}
-            setIsCollapsed={setSidebarCollapsed}
-            user={user} 
-          />
+  isOpen={sidebarOpen} 
+  setIsOpen={setSidebarOpen} 
+  isCollapsed={isSidebarCollapsed}
+  setIsCollapsed={handleToggleSidebar} // Use custom handler
+  user={user} 
+/>
         )}
         
         {/* Main content area */}

@@ -17,7 +17,7 @@ const BorrowerInfoCard = ({ borrowerDetails }) => {
   const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''}`.trim();
   
   return (
-    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100 my-6">
+    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
       <div className="px-6 py-5 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b border-purple-100">
         <div className="flex items-center">
           <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

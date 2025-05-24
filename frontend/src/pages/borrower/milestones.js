@@ -6,6 +6,7 @@ import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import LoanMilestones from '../../components/borrower/loan/LoanMilestones';
 import { LoanService } from '../../services';
+import { useRouter } from 'next/router'; // Add this import
 
 /**
  * Milestones Page for Borrowers
@@ -14,6 +15,9 @@ import { LoanService } from '../../services';
  * progress through a visual milestone timeline and detailed milestone information.
  */
 const Milestones = () => {
+  const router = useRouter(); // Add router
+  const { loanId: urlLoanId } = router.query; // Extract loanId from URL
+  
   // State for loans
   const [loans, setLoans] = useState([]);
   
@@ -39,8 +43,14 @@ const Milestones = () => {
           
           setLoans(userLoans);
           
-          // Select the first loan by default
-          if (userLoans.length > 0) {
+          // Check if we have a loanId from URL and if it exists in our loans
+          if (urlLoanId && userLoans.some(loan => loan._id === urlLoanId)) {
+            console.log(`Setting selected loan from URL: ${urlLoanId}`);
+            setSelectedLoanId(urlLoanId);
+          } 
+          // If no valid loanId in URL or it doesn't match any loans, select the first loan
+          else if (userLoans.length > 0) {
+            console.log(`Setting first loan as default: ${userLoans[0]._id}`);
             setSelectedLoanId(userLoans[0]._id);
           }
         } else {
@@ -56,11 +66,12 @@ const Milestones = () => {
     };
 
     fetchLoans();
-  }, []);
+  }, [urlLoanId]);
 
   // Handle loan selection change
   const handleLoanChange = (e) => {
     setSelectedLoanId(e.target.value);
+    router.push(`/borrower/milestones?loanId=${e.target.value}`, undefined, { shallow: true });
   };
 
   // Find the selected loan object

@@ -308,27 +308,6 @@ const LoanDetails = () => {
     fetchLoanDetails();
   }, [id]);
 
-  // Add this effect near your other useEffect hooks
-  // useEffect(() => {
-  //   if (!router.isReady || !id) return;
-
-  //   // Check if there's a tab in the URL query
-  //   const tabFromUrl = router.query.tab;
-
-  //   // Check if this is a valid tab
-  //   const isValidTab = tabs.some((tab) => tab.id === tabFromUrl);
-
-  //   if (isValidTab) {
-  //     // Set active tab based on URL query
-  //     setActiveTab(tabFromUrl);
-  //   } else if (!tabFromUrl) {
-  //     // If no tab is specified, use default tab and update URL
-  //     router.push(`/lender/loans/${id}?tab=dashboard`, undefined, {
-  //       shallow: true,
-  //     });
-  //   }
-  // }, [router.isReady, router.query, id]);
-
   const handleRemoveDocument = async (documentId) => {
     // Document removal is only for borrowers, but we can show a message here
     toast.info("Only borrowers can remove documents");
@@ -671,7 +650,9 @@ const LoanDetails = () => {
                         <FileText className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => toast.success("Pre-approval letter sent to borrower")}
+                        onClick={() =>
+                          toast.success("Pre-approval letter sent to borrower")
+                        }
                         className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
                       >
                         <svg
@@ -710,24 +691,27 @@ const LoanDetails = () => {
                               <button
                                 onClick={() => handleTabClick(tab.id)}
                                 className={`
-    relative w-full flex items-center justify-between py-3 px-4 rounded-lg text-sm font-medium
-    transform transition-all duration-300 ease-in-out
-    ${isActive
+                                relative w-full flex items-center justify-between py-3 px-4 rounded-lg text-sm font-medium
+                                transform transition-all duration-300 ease-in-out
+                                ${
+                                  isActive
                                     ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
                                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
-                                  }
-  `}
+                                }
+                              `}
                               >
                                 <div className="flex items-center">
                                   <span
-                                    className={`mr-3 transition-all duration-300 ${isActive
+                                    className={`mr-3 transition-all duration-300 ${
+                                      isActive
                                         ? "text-blue-700 opacity-100 scale-110"
                                         : "opacity-70 group-hover:opacity-90"
-                                      }`}
+                                    }`}
                                   >
                                     <tab.icon
-                                      className={`h-5 w-5 ${isActive ? "drop-shadow-sm" : ""
-                                        }`}
+                                      className={`h-5 w-5 ${
+                                        isActive ? "drop-shadow-sm" : ""
+                                      }`}
                                     />
                                   </span>
                                   <span
@@ -750,18 +734,22 @@ const LoanDetails = () => {
 
                                 {/* Active indicator with enhanced styling */}
                                 {isActive && (
-  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
-)}
+                                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
+                                )}
                               </button>
 
                               {/* Display sub-tabs when Application is expanded */}
                               {tab.id === "application" && (
                                 <div
                                   className={`
-      pl-4 mt-2 space-y-1.5 overflow-hidden
-      transition-[max-height,opacity,transform] duration-300 ease-in-out
-      ${isApplicationExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}
-    `}
+                                  pl-4 mt-2 space-y-1.5 overflow-hidden
+                                  transition-[max-height,opacity,transform] duration-300 ease-in-out
+                                  ${
+                                    isApplicationExpanded
+                                      ? "max-h-96 opacity-100"
+                                      : "max-h-0 opacity-0"
+                                  }
+                                `}
                                 >
                                   {applicationSubTabs.map((subTab) => {
                                     const isSubActive = activeTab === subTab.id;
@@ -777,36 +765,39 @@ const LoanDetails = () => {
                                           setActiveTab(subTab.id);
                                         }}
                                         className={`
-            relative w-full flex items-center py-2.5 px-4 rounded-lg text-sm font-medium
-            transform transition-all duration-300 ease-in-out
-            ${isSubActive
-                                            ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
-                                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
+                                          relative w-full flex items-center py-2.5 px-4 rounded-lg text-sm font-medium
+                                          transform transition-all duration-300 ease-in-out
+                                          ${
+                                            isSubActive
+                                              ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
+                                              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
                                           }
-          `}
+                                        `}
                                       >
                                         <span
                                           className={`
-              mr-3 transition-all duration-300 ease-in-out
-              ${isSubActive
-                                              ? "text-blue-700 opacity-100 scale-110"
-                                              : "opacity-70"
+                                            mr-3 transition-all duration-300 ease-in-out
+                                            ${
+                                              isSubActive
+                                                ? "text-blue-700 opacity-100 scale-110"
+                                                : "opacity-70"
                                             }
-            `}
+                                          `}
                                         >
                                           <subTab.icon className="h-4 w-4" />
                                         </span>
                                         <span
-                                          className={`text-xs transition-colors duration-300 ${isSubActive
+                                          className={`text-xs transition-colors duration-300 ${
+                                            isSubActive
                                               ? "font-medium text-gray-900 "
                                               : ""
-                                            }`}
+                                          }`}
                                         >
                                           {subTab.label}
                                         </span>
                                         {isSubActive && (
-  <span className="absolute right-2 w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
-)}
+                                          <span className="absolute right-2 w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
+                                        )}
                                       </button>
                                     );
                                   })}

@@ -21,7 +21,7 @@ const MilitaryServiceCard = ({ loan, formatDate }) => {
   };
   
   return (
-    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100 my-6">
+    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
       <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200">
         <div className="flex items-center">
           <svg className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

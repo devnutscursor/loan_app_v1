@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropertyInformation from './PropertyInformation';
 import LoanDetails from './LoanDetails';
 
+import theme from "../../../styles/theme";
 /**
  * PropertyStep Component
  * Manages the two sub-sections of the Property & Loan Details step with tab navigation
@@ -71,14 +72,55 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
     }
     
     if (isComplete) {
-      // Use white color for check icon if tab is active, otherwise green
-      const iconColorClass = activeTab === tabName ? 'text-white' : 'text-green-500';
-      
-      return (
-        <svg className={`h-5 w-5 ${iconColorClass}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        </svg>
-      );
+      // Use white color for check icon if tab is active, otherwise primary color
+      if (activeTab === tabName) {
+        // Keep white for active tab
+        return (
+          <svg
+            className="h-5 w-5 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        );
+      } else {
+        // Use primary color for completed but inactive tabs
+        return (
+          <svg
+            className="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+          >
+            {/* Define the gradient */}
+            <defs>
+              <linearGradient
+                id="checkIconGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
+                <stop offset="0%" stopColor={theme.colors.blue600} />
+                <stop offset="100%" stopColor={theme.colors.blue800} />
+              </linearGradient>
+            </defs>
+
+            {/* Use the gradient in the path */}
+            <path
+              fillRule="evenodd"
+              fill="url(#checkIconGradient)"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        );
+      }
     }
     
     return null;
@@ -137,6 +179,11 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
           type="button"
           className={getTabClass('propertyInformation')}
           onClick={() => setActiveTab('propertyInformation')}
+          style={
+            activeTab === "propertyInformation"
+              ? { background: theme.gradients.primary }
+              : {}
+          }
         >
           <div className="flex items-center">
             <span>Property Information</span>
@@ -148,6 +195,11 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
           type="button"
           className={getTabClass('loanDetails')}
           onClick={() => setActiveTab('loanDetails')}
+          style={
+            activeTab === "loanDetails"
+              ? { background: theme.gradients.primary }
+              : {}
+          }
         >
           <div className="flex items-center">
             <span>Loan Details</span>
@@ -184,7 +236,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
         {activeTab !== 'loanDetails' ? (
           <button
             type="button"
-            className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
               // Validate property info before proceeding
               if (!validatePropertyInfo()) {
@@ -199,7 +251,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
         ) : (
           <button
             type="button"
-            className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
               // Ensure loanInfo exists and has required fields before proceeding to next step
               if (!loanInfo?.loanType) {

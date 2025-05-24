@@ -20,7 +20,7 @@ const DocumentsCard = ({ documents, formatDate, handleRemoveDocument, isLenderVi
   }
   
   return (
-    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100 my-6">
+    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
       <div className="px-6 py-5 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100">
         <div className="flex items-center">
           <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

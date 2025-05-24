@@ -9,7 +9,7 @@ const FinancialInfoCard = ({ loan, formatCurrency }) => {
   if (!loan) return null;
   
   return (
-    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100 my-6">
+    <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
       <div className="px-6 py-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100">
         <div className="flex items-center">
           <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

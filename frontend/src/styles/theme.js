@@ -14,6 +14,13 @@ const colors = {
   primaryHover: '#2563eb', // blue-600
   primaryFocus: '#3b82f6', // blue-500
 
+  
+// Gradient colors
+  blue600: '#2563eb',
+  blue700: '#1d4ed8',
+  blue800: '#1e40af',
+  blue900: '#1e3a8a',
+
   // Secondary colors
   secondary: '#64748b', // slate-500
   secondaryLight: '#94a3b8', // slate-400
@@ -41,6 +48,12 @@ const colors = {
   gray700: '#374151',
   gray800: '#1f2937',
   gray900: '#111827',
+};
+
+// New gradients object
+const gradients = {
+  primary: 'linear-gradient(to right, #2563eb, #1e40af)', // blue-600 to blue-800
+  primaryHover: 'linear-gradient(to right, #1d4ed8, #1e3a8a)', // blue-700 to blue-900
 };
 
 // Typography
@@ -170,7 +183,15 @@ const theme = {
   spacing,
   borderRadius,
   shadow,
-  buttons,
+  gradients,
+  buttons: {
+    ...buttons,
+    primary: {
+      ...buttons.primary,
+      background: gradients.primary, // Use gradient for buttons
+      hoverBackground: gradients.primaryHover,
+    },
+  },
   forms,
   stepNavigator,
 };

@@ -65,8 +65,8 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
           
           // Add status-specific styles
           if (status === 'completed') {
-            circleStyles.backgroundColor = theme.colors.primary;
-            circleStyles.borderColor = theme.colors.primary;
+            circleStyles.background = theme.gradients.primary;
+            circleStyles.borderColor = theme.colors.white;
             circleStyles.color = theme.colors.white;
             circleStyles.cursor = 'pointer';
           } else if (status === 'active') {

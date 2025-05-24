@@ -4,8 +4,11 @@ import Link from 'next/link';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../components/layout/MainLayout';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
+  const { login } = useAuth();
+  
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
