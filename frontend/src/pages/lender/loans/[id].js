@@ -39,6 +39,7 @@ import DocumentsCard from "../../../components/borrower/loan/DocumentsCard";
 import LenderDocumentRequirements from "../../../components/lender/documents/LenderDocumentRequirements";
 import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerScenarioTailwind";
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
+import { PDFDocument } from 'pdf-lib';
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -51,6 +52,99 @@ const formatDate = (dateString) =>
     month: "long",
     day: "numeric",
   });
+
+
+
+
+  
+
+
+  
+
+  export async function generateURLAPdf(borrowerDetails) {
+    const formUrl = '/forms/URLA.pdf';
+    const existingPdfBytes = await fetch(formUrl).then(res => res.arrayBuffer());
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const form = pdfDoc.getForm();
+  
+    const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''} ${borrowerDetails.suffix || ''}`.trim();
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Borrower_s_Name[0]').setText(fullName);
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Email[0]').setText(borrowerDetails.email || '');
+  
+    const phone = (borrowerDetails.phone || '').replace(/\D/g, '').padEnd(10, '0');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH1[0]').setText(phone.slice(0, 3));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH2[0]').setText(phone.slice(3, 6));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH3[0]').setText(phone.slice(6, 10));
+  
+    const dob = new Date(borrowerDetails.dateOfBirth);
+    if (!isNaN(dob)) {
+      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_1[0]').setText(String(dob.getMonth() + 1).padStart(2, '0'));
+      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_2[0]').setText(String(dob.getDate()).padStart(2, '0'));
+      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_3[0]').setText(String(dob.getFullYear()));
+    }
+  
+
+    //form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]')
+  //.setText(borrowerDetails.ssn || '');
+
+
+    const stateMap = {
+      'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+      'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'District of Columbia': 'DC',
+      'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL',
+      'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
+      'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN',
+      'Mississippi': 'MS', 'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+      'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+      'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR',
+      'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD',
+      'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA',
+      'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
+    };
+  
+    const current = borrowerDetails.primaryAddress || {};
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_St[0]').setText(current.addressLine1 || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Unit[0]').setText(current.addressLine2 || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_City[0]').setText(current.city || '');
+    const dropdown = form.getDropdown('topmostSubform[0].Page1[0]._1a_Address_State[0]');
+    const stateAbbrev = stateMap[current.state] || current.state || '';
+    if (dropdown.getOptions().includes(stateAbbrev)) {
+      dropdown.select(stateAbbrev);
+    }
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Zip[0]').setText(current.zipCode || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Country[0]').setText(current.country || 'US');
+    form.getTextField('topmostSubform[0].Page1[0].housing_current[0].rent[0]._1a_Address_Rent[0]').setText(current.ownershipStatus === 'Rent' ? 'Yes' : 'No');
+  
+    const former = (borrowerDetails.previousAddresses || [])[0] || {};
+    form.getTextField('topmostSubform[0].Page1[0]._1a_FormerAddress_St[0]').setText(former.addressLine1 || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Unit[0]').setText(former.addressLine2 || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_City[0]').setText(former.city || '');
+    form.getDropdown('topmostSubform[0].Page1[0]._1a_Former_Address_State[0]').select(stateMap[former.state] || former.state || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Zip[0]').setText(former.zipCode || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Country[0]').setText(former.country || 'US');
+    form.getTextField('topmostSubform[0].Page1[0].housing_former[0].former_rent[0]._1a_Former_Address_Rent[0]').setText(former.ownershipStatus === 'Rent' ? 'Yes' : 'No');
+  
+    const mailing = borrowerDetails.mailingAddress || {};
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_St[0]').setText(mailing.addressLine1 || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Unit[0]').setText(mailing.addressLine2 || '');
+  
+// Dependents count and their ages
+const dependents = borrowerDetails.dependents || [];
+form.getTextField('topmostSubform[0].Page1[0]._1a_Dependents[0]').setText(dependents.length.toString());
+form.getTextField('topmostSubform[0].Page1[0]._1a_Dependent_Age[0]').setText(dependents.map(d => d.age).join(', '));
+
+
+    const pdfBytes = await pdfDoc.save();
+    return pdfBytes;
+  }
+
+
+  
+
+  
+  
+  
+  
 
 const LoanDetails = () => {
   const router = useRouter();
@@ -373,6 +467,17 @@ const LoanDetails = () => {
     });
   };
 
+  const handleDownloadURLA = async () => {
+    const pdfBytes = await generateURLAPdf(loan.borrowerDetails);
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `URLA_${loan.loanNumber || loan._id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
       <MainLayout>
@@ -642,9 +747,7 @@ const LoanDetails = () => {
                       </button>
                       <button
                         title="Download URLA"
-                        onClick={() =>
-                          toast.info("Download URLA PDF feature coming soon")
-                        }
+                        onClick={handleDownloadURLA}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <FileText className="h-5 w-5" />

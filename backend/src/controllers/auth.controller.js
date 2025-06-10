@@ -105,64 +105,57 @@ exports.registerBorrower = async (req, res, next) => {
       return next(new ApiError('User already exists with this email', 400));
     }
 
-    // Start a transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Create user
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      role: 'borrower'
+    });
 
     try {
-      // Create new user with borrower role
-      const user = await User.create([{
-        firstName,
-        lastName,
-        email,
-        password,
-        phone,
-        role: 'borrower'
-      }], { session });
-
-      // Create borrower profile linked to the lender
-      await Borrower.create([{
-        user: user[0]._id,
+      // Create borrower linked to lender
+      await Borrower.create({
+        user: user._id,
         lender: lenderId
-      }], { session });
-
-      await session.commitTransaction();
-      session.endSession();
-
-      // Generate tokens
-      const token = generateToken(user[0]);
-      const refreshToken = generateRefreshToken(user[0]);
-
-      // Log the borrower registration
-      logger.info(`New borrower registered: ${user[0].email} under lender ID: ${lenderId}`);
-
-      res.status(201).json({
-        status: 'success',
-        message: 'Borrower registered successfully',
-        data: {
-          user: {
-            id: user[0]._id,
-            firstName: user[0].firstName,
-            lastName: user[0].lastName,
-            email: user[0].email,
-            phone: user[0].phone,
-            role: user[0].role
-          },
-          lenderId,
-          token,
-          refreshToken
-        }
       });
-    } catch (error) {
-      // Abort transaction on error
-      await session.abortTransaction();
-      session.endSession();
-      throw error;
+    } catch (borrowerError) {
+      // Roll back user if borrower creation fails
+      await User.findByIdAndDelete(user._id);
+      throw borrowerError;
     }
+
+    // Generate tokens
+    const token = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Log borrower registration
+    logger.info(`New borrower registered: ${user.email} under lender ID: ${lenderId}`);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Borrower registered successfully',
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role
+        },
+        lenderId,
+        token,
+        refreshToken
+      }
+    });
   } catch (error) {
     next(error);
   }
 };
+
 
 /**
  * Login a user
