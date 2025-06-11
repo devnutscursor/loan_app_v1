@@ -39,7 +39,7 @@ import DocumentsCard from "../../../components/borrower/loan/DocumentsCard";
 import LenderDocumentRequirements from "../../../components/lender/documents/LenderDocumentRequirements";
 import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerScenarioTailwind";
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument } from "pdf-lib";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -53,98 +53,437 @@ const formatDate = (dateString) =>
     day: "numeric",
   });
 
+export async function generateURLAPdf(borrowerDetails,assets,income,debts,propertiesOwned,loanDetails,property,declarations,demographics) {
+  const formUrl = '/forms/URLA.pdf';
+  const existingPdfBytes = await fetch(formUrl).then(res => res.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const form = pdfDoc.getForm();
 
-
-
-  
-
-
-  
-
-  export async function generateURLAPdf(borrowerDetails) {
-    const formUrl = '/forms/URLA.pdf';
-    const existingPdfBytes = await fetch(formUrl).then(res => res.arrayBuffer());
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    const form = pdfDoc.getForm();
-  
-    const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''} ${borrowerDetails.suffix || ''}`.trim();
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Borrower_s_Name[0]').setText(fullName);
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Email[0]').setText(borrowerDetails.email || '');
-  
-    const phone = (borrowerDetails.phone || '').replace(/\D/g, '').padEnd(10, '0');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH1[0]').setText(phone.slice(0, 3));
-    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH2[0]').setText(phone.slice(3, 6));
-    form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH3[0]').setText(phone.slice(6, 10));
-  
+  // --- Personal Info ---
+  const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''} ${borrowerDetails.suffix || ''}`.trim();
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Borrower_s_Name[0]').setText(fullName);
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Email[0]').setText(borrowerDetails.email || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Dependents[0]').setText((borrowerDetails.dependents?.length || 0).toString());
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Dependent_Age[0]').setText((borrowerDetails.dependents || []).map(d => d.age).join(', '));
+  form.getTextField('topmostSubform[0].Page1[0].credit[0].joint[0]._1a_Initials[0]').setText((borrowerDetails.suffix || ''));
+  // Date of Birth
+  if (borrowerDetails.dateOfBirth) {
     const dob = new Date(borrowerDetails.dateOfBirth);
-    if (!isNaN(dob)) {
-      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_1[0]').setText(String(dob.getMonth() + 1).padStart(2, '0'));
-      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_2[0]').setText(String(dob.getDate()).padStart(2, '0'));
-      form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_3[0]').setText(String(dob.getFullYear()));
-    }
-  
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_1[0]').setText(String(dob.getMonth() + 1).padStart(2, '0'));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_2[0]').setText(String(dob.getDate()).padStart(2, '0'));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_3[0]').setText(String(dob.getFullYear()));
+  }
+  // Phone
+  const phone = (borrowerDetails.phone || '').replace(/\D/g, '').padEnd(10, '0');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH1[0]').setText(phone.slice(0, 3));
+  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH2[0]').setText(phone.slice(3, 6));
+  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH3[0]').setText(phone.slice(6, 10));
+  // SSN
+  //if (form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]')) {
+    //form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]').setText(borrowerDetails.ssn || '');
+  //}
 
-    //form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]')
-  //.setText(borrowerDetails.ssn || '');
+  // --- Current Address ---
+  const curr = borrowerDetails.currentAddress || {};
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_St[0]').setText(curr.streetAddress || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_City[0]').setText(curr.city || '');
+  if (curr.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Address_State[0]').select(curr.state);
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Zip[0]').setText(curr.zipCode || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Country[0]').setText(borrowerDetails.citizenship);
+
+  const yearsAtAddress = borrowerDetails?.currentAddress?.yearsAtAddress || 0;
+ // Check if the user has been at the current address for less than 2 years
+ if (yearsAtAddress < 2) {
+  // Mark the checkbox for "Does Not Apply" for the former address
+  form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').check();
+} else {
+  // Uncheck the "Does Not Apply" checkbox if the user has been at the current address for 2 or more years
+  form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').uncheck();
+}
+
+  // --- Previous Address (first one) ---
+  const prev = (borrowerDetails.previousAddresses || [])[0] || {};
+  form.getTextField('topmostSubform[0].Page1[0]._1a_FormerAddress_St[0]').setText(prev.streetAddress || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Unit[0]').setText(prev.aptSteNum || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_City[0]').setText(prev.city || '');
+  if (prev.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Former_Address_State[0]').select(prev.state);
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Zip[0]').setText(prev.zipCode || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Country[0]').setText(borrowerDetails.citizenship);
+
+   // --- Mailing Address ---
+   const mail = borrowerDetails.mailingAddress || {};
+   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_St[0]').setText(mail.streetAddress || '');
+   //form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Unit[0]').setText(mail.aptSteNum || '');
+   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_City[0]').setText(mail.city || '');
+   if (mail.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Mail_Address_State[0]').select(mail.state);
+   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Zip[0]').setText(mail.zipCode || '');
+   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Country[0]').setText(borrowerDetails.citizenship);
+ 
+ 
+
+  // --- Employer (first one) ---
+  const emp = (borrowerDetails.employers || [])[0] || {};
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Employer[0]').setText(emp.companyName || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE1[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(0, 3));
+  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE2[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(3, 6));
+  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE3[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(6, 10));
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Position[0]').setText(emp.jobTitle || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Month[0]').setText(emp.startDate ? String(new Date(emp.startDate).getMonth() + 1).padStart(2, '0') : '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Day[0]').setText(emp.startDate ? String(new Date(emp.startDate).getDate()).padStart(2, '0') : '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Year[0]').setText(emp.startDate ? String(new Date(emp.startDate).getFullYear()) : '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_City[0]').setText(emp.city || '');
+  if (emp.state) form.getDropdown('topmostSubform[0].Page1[0]._1b_State[0]').select(emp.state);
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Zip[0]').setText(emp.zipCode || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Country[0]').setText(borrowerDetails.citizenship);
+  form.getTextField('topmostSubform[0].Page1[0]._1b_Address[0]').setText(emp.streetAddress || '');
+
+  // --- Employer (second) or Does Not Apply ---
+  const employers = borrowerDetails.employers || [];
+  if (employers.length === 1) {
+    // Only one employer, check Does Not Apply for employer 2
+    form.getCheckBox('topmostSubform[0].Page2[0]._1c_Does_Not_Apply[0]').check();
+  } else if (employers.length > 1) {
+    // Fill employer 2 fields (index 1)
+    const emp2 = employers[1];
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Employer[0]').setText(emp2.companyName || '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE1[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(0, 3));
+    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE2[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(3, 6));
+    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE3[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(6, 10));
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Position[0]').setText(emp2.jobTitle || '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Month[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getMonth() + 1).padStart(2, '0') : '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Day[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getDate()).padStart(2, '0') : '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Year[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getFullYear()) : '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_City[0]').setText(emp2.city || '');
+    if (emp2.state) form.getDropdown('topmostSubform[0].Page2[0]._1c_State[0]').select(emp2.state);
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Zip[0]').setText(emp2.zipCode || '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Country[0]').setText(borrowerDetails.citizenship);
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Address[0]').setText(emp2.streetAddress || '');
+  }
+
+  // check doesnot apply box in  1d  portion in our form as it is not applicable for us
+form.getCheckBox('topmostSubform[0].Page2[0]._1d_Does_Not_Apply[0]').check();
 
 
-    const stateMap = {
-      'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
-      'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'District of Columbia': 'DC',
-      'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL',
-      'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
-      'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN',
-      'Mississippi': 'MS', 'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
-      'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
-      'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR',
-      'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD',
-      'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA',
-      'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
-    };
-  
-    const current = borrowerDetails.primaryAddress || {};
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_St[0]').setText(current.addressLine1 || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Unit[0]').setText(current.addressLine2 || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_City[0]').setText(current.city || '');
-    const dropdown = form.getDropdown('topmostSubform[0].Page1[0]._1a_Address_State[0]');
-    const stateAbbrev = stateMap[current.state] || current.state || '';
-    if (dropdown.getOptions().includes(stateAbbrev)) {
-      dropdown.select(stateAbbrev);
-    }
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Zip[0]').setText(current.zipCode || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Country[0]').setText(current.country || 'US');
-    form.getTextField('topmostSubform[0].Page1[0].housing_current[0].rent[0]._1a_Address_Rent[0]').setText(current.ownershipStatus === 'Rent' ? 'Yes' : 'No');
-  
-    const former = (borrowerDetails.previousAddresses || [])[0] || {};
-    form.getTextField('topmostSubform[0].Page1[0]._1a_FormerAddress_St[0]').setText(former.addressLine1 || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Unit[0]').setText(former.addressLine2 || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_City[0]').setText(former.city || '');
-    form.getDropdown('topmostSubform[0].Page1[0]._1a_Former_Address_State[0]').select(stateMap[former.state] || former.state || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Zip[0]').setText(former.zipCode || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Country[0]').setText(former.country || 'US');
-    form.getTextField('topmostSubform[0].Page1[0].housing_former[0].former_rent[0]._1a_Former_Address_Rent[0]').setText(former.ownershipStatus === 'Rent' ? 'Yes' : 'No');
-  
-    const mailing = borrowerDetails.mailingAddress || {};
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_St[0]').setText(mailing.addressLine1 || '');
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Unit[0]').setText(mailing.addressLine2 || '');
-  
-// Dependents count and their ages
-const dependents = borrowerDetails.dependents || [];
-form.getTextField('topmostSubform[0].Page1[0]._1a_Dependents[0]').setText(dependents.length.toString());
-form.getTextField('topmostSubform[0].Page1[0]._1a_Dependent_Age[0]').setText(dependents.map(d => d.age).join(', '));
+  // --- Income (Other Monthly Income Table) ---
+  if (income) {
+    // 1) Monthly income (baseIncome + bonuses + commissions + militaryEntitlements)
+    const monthlyIncome =
+      (parseFloat(income.baseIncome) || 0) +
+      (parseFloat(income.bonuses) || 0) +
+      (parseFloat(income.commissions) || 0) +
+      (parseFloat(income.militaryEntitlements) || 0);
+    // 2) otherIncome (sum of all otherIncome amounts)
+    const otherIncome = (income.otherIncome || []).reduce((sum, oi) => sum + (parseFloat(oi.amount) || 0), 0);
+    // 3) overtime
+    const overtime = parseFloat(income.overtime) || 0;
 
-
-    const pdfBytes = await pdfDoc.save();
-    return pdfBytes;
+    // Row 1: monthlyIncome
+    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R1[0]._1e_Income_Other_Sources1[0]').select('monthlyIncome');
+    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R1[0]._1e_Other_Monthly_Income1[0]').setText(monthlyIncome ? String(monthlyIncome) : '');
+    // Row 2: otherIncome
+    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R2[0]._1e_Income_Other_Sources2[0]').select('otherIncome');
+    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R2[0]._1e_Other_Monthly_Income2[0]').setText(income.otherIncome[0].amount ? String(income.otherIncome[0].amount) : '');
+    // Row 3: overtime
+    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R3[0]._1e_Income_Other_Sources3[0]').select('overtime');
+    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R3[0]._1e_Other_Monthly_Income3[0]').setText(income.overtime ? String(income.overtime) : '');
+    // Total Other Monthly Income
+    let totalOther = 0;
+    totalOther += parseFloat(monthlyIncome) || 0;
+    totalOther += parseFloat(income.otherIncome) || 0;
+    totalOther += parseFloat(income.overtime) || 0;
+    (income.otherIncome || []).forEach(oi => {
+      totalOther += parseFloat(oi.amount) || 0;
+    });
+    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R4[0]._1e_Total_Other_Monthly_Income[0]').setText(totalOther ? String(totalOther) : '');
+    // You can now use monthlyIncome, otherIncome, and overtime variables for any additional PDF fields as needed
   }
 
 
+
+
+  // --- Assets (Checking/Savings, Gifts/Grants, Stocks/Bonds, Miscellaneous) ---
+if (assets) {
+  const assetRows = [];
+  // Checking & Savings
+  (assets.checkingAndSavings || []).forEach(a => {
+    assetRows.push({
+      type: a.accountType || 'Checking',
+      financial: a.bankName || '',
+      account: a.accountNumber || '',
+      value: a.value || ''
+    });
+  });
+  // Gifts & Grants
+  (assets.giftsAndGrants || []).forEach(a => {
+    assetRows.push({
+      type: a.assetType || 'Gift',
+      financial: a.source || '',
+      account: '',
+      value: a.value || ''
+    });
+  });
+  // Stocks & Bonds
+  (assets.stocksAndBonds || []).forEach(a => {
+    assetRows.push({
+      type: 'Bonds',
+      financial: '',
+      account: a.description || '',
+      value: a.value || ''
+    });
+  });
+  // Miscellaneous (map each as a separate row)
+  const misc = assets.miscellaneous || {};
+  if (misc.earnestMoney) assetRows.push({ type: 'Earnest Money', financial: '', account: '', value: misc.earnestMoney });
+  if (misc.lifeInsurance) assetRows.push({ type: 'Life Insurance', financial: '', account: '', value: misc.lifeInsurance });
+  if (misc.otherAssets) assetRows.push({ type: 'Other', financial: '', account: '', value: misc.otherAssets });
+  if (misc.vestedInterestInRetirement) assetRows.push({ type: 'Retirement', financial: '', account: '', value: misc.vestedInterestInRetirement });
+  // Fill up to 5 rows
+  for (let i = 0; i < 5; i++) {
+    const idx = i + 1;
+    const row = assetRows[i] || {};
+    form.getDropdown(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account_Type${idx}[0]`).select(row.type || '');
+    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Financial${idx}[0]`).setText(row.financial || '');
+    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account${idx}[0]`).setText(row.account || '');
+    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Cash${idx}[0]`).setText(row.value ? String(row.value) : '');
+  }
+  // Set total cash field
+  const totalAssets = assetRows.reduce((sum, row) => sum + (parseFloat(row.value) || 0), 0);
+  form.getTextField('topmostSubform[0].Page3[0].Table2a[0].TR6[0]._2a_Total_Cash[0]').setText(totalAssets ? String(totalAssets) : '');
+
+
+
+  // check doesnot apply box in  2b  portion in our form as it is not applicable for us
+  form.getCheckBox('topmostSubform[0].Page3[0]._2b_Does_Not_Apply[0]').check();
+
+  // --- Debts ---
+  if (debts && debts.length > 0) {
+    debts.forEach((debt, index) => {
+      if (index < 5) { // Only handle up to 5 debts as that's what the PDF has
+        const rowNum = index + 1;
+        
+        // Account Type - Set to "Other" as default
+        form.getDropdown(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Account_Type${rowNum}[0]`).select('Other');
+        
+        // Company (Creditor)
+        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Company${rowNum}[0]`).setText(debt.creditor || '');
+        
+        // Unpaid Balance
+        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Unpaid${rowNum}[0]`).setText(debt.balance ? String(debt.balance) : '');
+        
+        // Monthly Payment
+        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Monthly${rowNum}[0]`).setText(debt.monthlyPayment ? String(debt.monthlyPayment) : '');
+        
+        // Paid Off checkbox
+        if (debt.paidAtClosing) {
+          form.getCheckBox(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Paid_Off${rowNum}[0]`).check();
+        }
+      }
+    });
+  }
+
+}
+
+
   
 
   
-  
-  
-  
+
+
+
+  // --- Property Information (Page 5) ---
+  if (propertiesOwned && loanDetails && property) {
+    // Fill loan amount from loanDetails
+    form.getTextField('topmostSubform[0].Page5[0]._4a_Loan_Amount[0]').setText(loanDetails.loanAmount ? String(loanDetails.loanAmount) : '');
+
+    // Fill property details
+    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_St[0]').setText(property.streetAddress || '');
+    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_Unit[0]').setText(property.aptSteNum || '');
+    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_City[0]').setText(property.city || '');
+    //if (property.state) form.getDropdown('topmostSubform[0].Page5[0]._4a_Address_State[0]').select(property.state);
+    form.getTextField('topmostSubform[0].Page5[0]._4a_Address_Zip[0]').setText(property.zipCode || '');
+    //form.getTextField('topmostSubform[0].Page5[0]._4a_Property_County[0]').setText(property.county || '');
+    
+    // Fill number of units
+    form.getTextField('topmostSubform[0].Page5[0]._4a_Units[0]').setText(property.numberOfUnits ? String(property.numberOfUnits) : '');
+    
+    // Fill property value
+    form.getTextField('topmostSubform[0].Page5[0]._4a_Value[0]').setText(property.propertyValue ? String(property.propertyValue) : '');
+
+    // Fill loan purpose based on loanType and property details
+    let purpose = loanDetails.loanType;
+    form.getTextField('topmostSubform[0].Page5[0].loan_purpose[0].other[0]._4a_Purpose_other_spec[0]').setText(purpose);
+
+    // --- Down Payment and Assets (Page 5) ---
+    // Check if there are any assets to report
+    if (loanDetails.downPayment > 0 || loanDetails.loanParameters) {
+      // Fill down payment information
+      form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Asset_Type1[0]').select('Down Payment');
+      form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Source1[0]').select('Borrower');
+      form.getTextField('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Cash1[0]').setText(String(loanDetails.downPayment));
+
+      // Fill additional assets if available
+      if (loanDetails.loanParameters) {
+        const params = loanDetails.loanParameters;
+        
+        // Second row: Property Taxes
+        if (params.propertyTaxes) {
+          form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Asset_Type2[0]').select('Property Taxes');
+          form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Source2[0]').select('Annual');
+          form.getTextField('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Cash2[0]').setText(String(params.propertyTaxes));
+        }
+      }
+    } else {
+      // If no assets to report, check "Does Not Apply" box
+      form.getCheckBox('topmostSubform[0].Page5[0]._4d_Does_Not_Apply[0]').check();
+    }
+
+    // Check FHA box if applicable (you might want to add a flag in your schema for this)
+    //form.getCheckBox('topmostSubform[0].Page5[0]._4a_FHA[0]').check();
+
+    // --- Property Expenses and Ownership (Page 5) ---
+    // Check if there are any properties owned or expenses to report
+    if (propertiesOwned.ownsProperty || propertiesOwned.firstMortgage > 0 || propertiesOwned.realEstateTaxes > 0 || 
+        propertiesOwned.hazardInsurance > 0 || propertiesOwned.hoaDues > 0 || propertiesOwned.mortgageInsurance > 0 || 
+        propertiesOwned.otherFinancing > 0 || propertiesOwned.otherHousingExpenses > 0 || propertiesOwned.rent > 0) {
+      
+      // First row: First Mortgage
+      if (propertiesOwned.firstMortgage > 0) {
+        form.getTextField('topmostSubform[0].Page5[0]._4c_Table[0].TR1[0]._4c_Amount1[0]').setText(String(property.proposedRentalIncome));
+      }
+      
+      form.getTextField('topmostSubform[0].Page5[0]._4c_Table[0].TR2[0]._4c_Amount2[0]').setText(String(property.netMonthlyRentalIncome));
+
+    } else {
+      // If no properties or expenses to report, check "Does Not Apply" box
+      form.getCheckBox('topmostSubform[0].Page5[0]._4c_Does_Not_Apply[0]').check();
+    }
+
+    // --- Declarations (Page 6) ---
+    // Property declarations
+    if (declarations.hadOwnershipInterest) {
+      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a31[0]._5a_About_A3[0]').select('Yes');
+      if (declarations.ownedPropertyType) {
+        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]').select(declarations.ownedPropertyType);
+      }
+    } else {
+      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a31[0]._5a_About_A3[0]').select('No');
+    }
+
+    // Bankruptcy information
+    if (declarations.declaredBankruptcy) {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
+      if (declarations.bankruptcyType) {
+        form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]').setText(declarations.bankruptcyType);
+      }
+    }
+
+    // Property foreclosure information
+    if (declarations.propertyForeclosed) {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch11[0]._5bM_ch11[0]').check();
+    }
+
+    // Lawsuit information
+    if (declarations.partyToLawsuit) {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch12[0]._5bM_ch12[0]').check();
+    }
+
+    // Property lien information
+    if (declarations.propertySubjectToLien) {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch13[0]._5bM_ch13[0]').check();
+    }
+  }
+
+
+
+  // --- Demographics (Page 8) ---
+
+// Ethnicity
+if (demographics.ethnicity === "hispanic") {
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').check();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
+
+  // Hispanic origin
+  if (demographics.origin === "mexican") {
+    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].mexican[0]._8_ethnicity_Mexican[0]').check();
+  } else if (demographics.origin === "puerto-rican") {
+    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].puertorican[0]._8_ethnicity_Puerto_Rican[0]').check();
+  } else if (demographics.origin === "cuban") {
+    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].cuban[0]._8_ethnicity_Cuban[0]').check();
+  } else if (demographics.origin === "other" && demographics.otherOrigin) {
+    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_hispanic_other[0]').check();
+    form.getTextField('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_other_hispanic[0]').setText(demographics.otherOrigin);
+  }
+} else if (demographics.ethnicity === "not-hispanic") {
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').check();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
+} else if (demographics.ethnicity === "refuse") {
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').check();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
+  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
+}
+
+// Race
+if (demographics.race === "american-indian") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_native_american[0]').check();
+  if (demographics.tribe) {
+    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_tribe[0]').setText(demographics.tribe);
+  }
+} else if (demographics.race === "asian") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0]._8_race_asian[0]').check();
+  // Asian sub-origin
+  if (demographics.asianOrigin === "indian") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].indian[0]._8_race_indian[0]').check();
+  } else if (demographics.asianOrigin === "chinese") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].chinese[0]._8_race_chinese[0]').check();
+  } else if (demographics.asianOrigin === "filipino") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].filipino[0]._8_race_filipino[0]').check();
+  } else if (demographics.asianOrigin === "japanese") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].japanese[0]._8_race_japanese[0]').check();
+  } else if (demographics.asianOrigin === "korean") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].korean[0]._8_race_korean[0]').check();
+  } else if (demographics.asianOrigin === "vietnamese") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].vietnamese[0]._8_race_vietnamese[0]').check();
+  } else if (demographics.asianOrigin === "other" && demographics.otherOrigin) {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_race_asian_other[0]').check();
+    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_asian_race[0]').setText(demographics.otherOrigin);
+  }
+} else if (demographics.race === "black") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].black[0]._8_race_black[0]').check();
+} else if (demographics.race === "pacific-islander") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0]._8_race_pacific[0]').check();
+  // Pacific Islander sub-origin
+  if (demographics.pacificIslanderOrigin === "hawaiian") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].hawaiian[0]._8_race_hawaiian[0]').check();
+  } else if (demographics.pacificIslanderOrigin === "guamanian") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].guanamian[0]._8_race_guamanian[0]').check();
+  } else if (demographics.pacificIslanderOrigin === "samoan") {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].samoan[0]._8_race_samoan[0]').check();
+  } else if (demographics.pacificIslanderOrigin === "other" && demographics.otherOrigin) {
+    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_race_pacific_other[0]').check();
+    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_pacific_race[0]').setText(demographics.otherOrigin);
+  }
+} else if (demographics.race === "white") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].white[0]._8_race_white[0]').check();
+} else if (demographics.race === "refuse") {
+  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].not_provide[0]._8_race_refuse[0]').check();
+}
+
+  // check doesnot apply box in  2b  portion in our form as it is not applicable for us
+  form.getCheckBox('topmostSubform[0].Page3[0]._2b_Does_Not_Apply[0]').check();
+  form.getCheckBox('topmostSubform[0].Page4[0]._3_Do_Not_Own[0]').check();
+  form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').check();
+  form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
+  form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
+
+
+
+
+  // --- Save the filled PDF ---
+  const pdfBytes = await pdfDoc.save();
+  return pdfBytes;
+}
 
 const LoanDetails = () => {
   const router = useRouter();
@@ -337,7 +676,16 @@ const LoanDetails = () => {
       console.log("Fetching loan details for ID:", id);
 
       const response = await lenderService.getLoan(id);
-      console.log("Loan details response:", response);
+      
+      // Print debug info to terminal
+      console.log('\n=== LOAN DETAILS DEBUG INFO ===');
+      console.log('Loan ID:', id);
+      console.log('Full Response:', JSON.stringify(response, null, 2));
+      console.log('Response Data:', JSON.stringify(response?.data, null, 2));
+      console.log('Response Data Data:', JSON.stringify(response?.data?.data, null, 2));
+      console.log('Loan Data:', JSON.stringify(response?.data?.data?.loan, null, 2));
+      console.log('Borrower Details:', JSON.stringify(response?.data?.data?.loan?.borrowerDetails, null, 2));
+      console.log('================================\n');
 
       if (response && (response.data || response.data?.data)) {
         // Extract loan data, handling different response structures
@@ -468,16 +816,16 @@ const LoanDetails = () => {
   };
 
   const handleDownloadURLA = async () => {
-    const pdfBytes = await generateURLAPdf(loan.borrowerDetails);
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
+    const pdfBytes = await generateURLAPdf(loan.borrowerDetails, loan.assets, loan.income, loan.debts, loan.propertiesOwned, loan.loanDetails, loan.property, loan.declarations, loan.demographics);
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `URLA_${loan.loanNumber || loan._id}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-  
+
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
       <MainLayout>
@@ -745,6 +1093,7 @@ const LoanDetails = () => {
                       >
                         <Download className="h-5 w-5" />
                       </button>
+
                       <button
                         title="Download URLA"
                         onClick={handleDownloadURLA}
@@ -752,6 +1101,7 @@ const LoanDetails = () => {
                       >
                         <FileText className="h-5 w-5" />
                       </button>
+
                       <button
                         onClick={() =>
                           toast.success("Pre-approval letter sent to borrower")

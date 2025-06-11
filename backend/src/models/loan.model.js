@@ -59,7 +59,12 @@ const propertySchema = new mongoose.Schema({
   isNewConstruction: {
     type: Boolean,
     default: false
-  }
+  },
+  netMonthlyRentalIncome: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
 });
 
 const loanDetailSchema = new mongoose.Schema({
