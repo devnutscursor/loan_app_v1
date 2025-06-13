@@ -28,7 +28,6 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
   const [numberOfUnits, setNumberOfUnits] = useState(propertyInfo.numberOfUnits || '');
   const [yearBuilt, setYearBuilt] = useState(propertyInfo.yearBuilt || '');
   const [proposedRentalIncome, setProposedRentalIncome] = useState(propertyInfo.proposedRentalIncome || '');
-  const [netMonthlyRentalIncome, setNetMonthlyRentalIncome] = useState(propertyInfo.netMonthlyRentalIncome || '');
   
   // Update local state when propertyInfo changes from parent
   useEffect(() => {
@@ -48,7 +47,6 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
     setNumberOfUnits(propertyInfo.numberOfUnits || '');
     setYearBuilt(propertyInfo.yearBuilt || '');
     setProposedRentalIncome(propertyInfo.proposedRentalIncome || '');
-    setNetMonthlyRentalIncome(propertyInfo.netMonthlyRentalIncome || '');
   }, [propertyInfo]);
 
   // Handle form field changes
@@ -98,9 +96,6 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
         break;
       case 'proposedRentalIncome':
         setProposedRentalIncome(value);
-        break;
-      case 'netMonthlyRentalIncome':
-        setNetMonthlyRentalIncome(value);
         break;
       default:
         break;
@@ -378,31 +373,7 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
                 </div>
               </div>
             </div>
-            {/* Net Monthly Rental Income - Lender Only */}
-            <div className="mb-4">
-              <label htmlFor="netMonthlyRentalIncome" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Net Monthly Rental Income
-                <span className="block text-xs text-blue-600 font-normal">
-                  (Only lender can enter this value. This will not be visible to the borrower.)
-                </span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">$</span>
-                </div>
-                <input
-                  type="number"
-                  id="netMonthlyRentalIncome"
-                  name="netMonthlyRentalIncome"
-                  value={netMonthlyRentalIncome || ''}
-                  onChange={handleChange}
-                  className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                  style={{ '--focus-ring-color': theme.colors.primary }}
-                  min={0}
-                  step="any"
-                />
-              </div>
-            </div>
+           
           </>
         )}
         
