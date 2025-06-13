@@ -1,330 +1,350 @@
 const Message = require('../models/message.model');
-const Conversation = require('../models/conversation.model');
 const User = require('../models/user.model');
-const Loan = require('../models/loan.model');
-const APIError = require('../utils/apiError');
-const catchAsync = require('../utils/catchAsync');
+const Borrower = require('../models/borrower.model');
+const Lender = require('../models/lender.model');
+const fs = require('fs');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
-/**
- * Get all conversations for a user
- */
-exports.getConversations = catchAsync(async (req, res) => {
+// Get conversations for a user (lender or borrower)
+exports.getConversations = async (req, res) => {
+  try {
   const userId = req.user.id;
-  
-  const conversations = await Conversation.find({ 
-    participants: userId,
-    isActive: true 
-  })
-  .populate({
-    path: 'participants',
-    select: 'firstName lastName email role profilePicture'
-  })
-  .populate({
-    path: 'lastMessage',
-    select: 'content createdAt sender'
-  })
-  .populate({
-    path: 'loan',
-    select: 'loanNumber propertyAddress loanType loanAmount'
-  })
-  .sort({ updatedAt: -1 });
-  
-  // Get unread count for each conversation
-  const conversationsWithUnread = conversations.map(conversation => {
-    const unreadInfo = conversation.unreadCountByUser.find(
-      item => item.user.toString() === userId
-    );
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'lender') {
+      // Find lender details
+      const lender = await Lender.findOne({ user: userId });
+      
+      if (!lender) {
+        return res.status(404).json({ message: 'Lender profile not found' });
+      }
+      
+      // Find all borrowers associated with this lender
+      const borrowers = await Borrower.find({ lender: lender._id })
+        .populate('user', 'firstName lastName email profileImage');
+      
+      // Get the latest message with each borrower
+      const conversations = await Promise.all(
+        borrowers.map(async (borrower) => {
+          const latestMessage = await Message.findOne({
+            lender: lender._id,
+            borrower: borrower._id
+          })
+          .sort({ createdAt: -1 })
+          .limit(1);
+          
+          const unreadCount = await Message.countDocuments({
+            lender: lender._id,
+            borrower: borrower._id,
+            recipient: userId,
+            isRead: false
+          });
     
     return {
-      ...conversation.toObject(),
-      unreadCount: unreadInfo ? unreadInfo.count : 0
-    };
-  });
-  
-  res.status(200).json({
-    status: 'success',
-    results: conversationsWithUnread.length,
-    data: conversationsWithUnread
-  });
-});
-
-/**
- * Get or create a conversation
- */
-exports.getOrCreateConversation = catchAsync(async (req, res) => {
-  const { participantId, loanId } = req.body;
-  const userId = req.user.id;
-  
-  if (!participantId) {
-    throw new APIError('Participant ID is required', 400);
-  }
-  
-  // Check if participant exists
-  const participant = await User.findById(participantId);
-  if (!participant) {
-    throw new APIError('Participant not found', 404);
-  }
-  
-  // If loan ID provided, verify the loan
-  if (loanId) {
-    const loan = await Loan.findById(loanId);
-    if (!loan) {
-      throw new APIError('Loan not found', 404);
-    }
-  }
-  
-  // Check if conversation already exists
-  let conversation = await Conversation.findOne({
-    participants: { $all: [userId, participantId] },
-    loan: loanId || { $exists: false },
-    isActive: true
-  });
-  
-  // If not, create new conversation
-  if (!conversation) {
-    conversation = await Conversation.create({
-      participants: [userId, participantId],
-      loan: loanId,
-      unreadCountByUser: [
-        { user: userId, count: 0 },
-        { user: participantId, count: 0 }
-      ]
-    });
-    
-    // Populate participants and loan
-    conversation = await Conversation.findById(conversation._id)
-      .populate({
-        path: 'participants',
-        select: 'firstName lastName email role profilePicture'
-      })
-      .populate({
-        path: 'loan',
-        select: 'loanNumber propertyAddress loanType loanAmount'
-      });
-  }
-  
-  res.status(200).json({
-    status: 'success',
-    data: conversation
-  });
-});
-
-/**
- * Get messages in a conversation
- */
-exports.getMessages = catchAsync(async (req, res) => {
-  const { conversationId } = req.params;
-  const userId = req.user.id;
-  const { page = 1, limit = 50 } = req.query;
-  
-  // Check if conversation exists and user is a participant
-  const conversation = await Conversation.findOne({ 
-    _id: conversationId,
-    participants: userId,
-    isActive: true
-  });
-  
-  if (!conversation) {
-    throw new APIError('Conversation not found or you do not have access', 404);
-  }
-  
-  // Get messages with pagination
-  const skip = (page - 1) * limit;
-  const messages = await Message.find({ conversationId })
-    .populate({
-      path: 'sender',
-      select: 'firstName lastName email role profilePicture'
-    })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit));
-  
-  // Mark messages as read
-  await Promise.all(
-    messages.map(async message => {
-      // Only mark others' messages as read
-      if (message.sender._id.toString() !== userId) {
-        // Check if user has already read the message
-        const alreadyRead = message.readBy.some(
-          item => item.user.toString() === userId
-        );
-        
-        if (!alreadyRead) {
-          message.readBy.push({ user: userId, readAt: new Date() });
-          await message.save();
-        }
-      }
-    })
-  );
-  
-  // Reset unread count for this user in the conversation
-  const unreadIndex = conversation.unreadCountByUser.findIndex(
-    item => item.user.toString() === userId
-  );
-  
-  if (unreadIndex !== -1) {
-    conversation.unreadCountByUser[unreadIndex].count = 0;
-    await conversation.save();
-  }
-  
-  // Get total count for pagination info
-  const totalMessages = await Message.countDocuments({ conversationId });
-  
-  res.status(200).json({
-    status: 'success',
-    results: messages.length,
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(totalMessages / limit),
-      totalResults: totalMessages
-    },
-    data: messages.reverse() // Return in chronological order
-  });
-});
-
-/**
- * Send a message
- */
-exports.sendMessage = catchAsync(async (req, res) => {
-  const { conversationId, content, attachments = [] } = req.body;
-  const userId = req.user.id;
-  
-  if (!conversationId || !content) {
-    throw new APIError('Conversation ID and content are required', 400);
-  }
-  
-  // Check if conversation exists and user is a participant
-  const conversation = await Conversation.findOne({ 
-    _id: conversationId,
-    participants: userId,
-    isActive: true
-  });
-  
-  if (!conversation) {
-    throw new APIError('Conversation not found or you do not have access', 404);
-  }
-  
-  // Create the message
-  const message = await Message.create({
-    conversationId,
-    sender: userId,
-    content,
-    attachments,
-    readBy: [{ user: userId, readAt: new Date() }]
-  });
-  
-  // Update conversation's last message and increment unread count for other participants
-  conversation.lastMessage = message._id;
-  
-  // Increment unread count for other participants
-  conversation.participants.forEach(participantId => {
-    if (participantId.toString() !== userId) {
-      const unreadIndex = conversation.unreadCountByUser.findIndex(
-        item => item.user.toString() === participantId.toString()
+            borrower: {
+              _id: borrower._id,
+              user: borrower.user
+            },
+            latestMessage: latestMessage || null,
+            unreadCount
+          };
+        })
       );
       
-      if (unreadIndex !== -1) {
-        conversation.unreadCountByUser[unreadIndex].count += 1;
-      } else {
-        conversation.unreadCountByUser.push({
-          user: participantId,
-          count: 1
+      return res.status(200).json(conversations);
+    } 
+    else if (user.role === 'borrower') {
+      // Find borrower details
+      const borrower = await Borrower.findOne({ user: userId });
+      
+      if (!borrower) {
+        return res.status(404).json({ message: 'Borrower profile not found' });
+      }
+      
+      // Find lender associated with this borrower
+      const lender = await Lender.findById(borrower.lender)
+        .populate('user', 'firstName lastName email profileImage');
+      
+      if (!lender) {
+        return res.status(404).json({ message: 'Lender not found for this borrower' });
+      }
+      
+      // Get the latest message between borrower and lender
+      const latestMessage = await Message.findOne({
+        lender: lender._id,
+        borrower: borrower._id
+      })
+      .sort({ createdAt: -1 })
+      .limit(1);
+      
+      const unreadCount = await Message.countDocuments({
+        lender: lender._id,
+        borrower: borrower._id,
+        recipient: userId,
+        isRead: false
+      });
+      
+      const conversation = {
+        lender: {
+          _id: lender._id,
+          user: lender.user
+        },
+        latestMessage: latestMessage || null,
+        unreadCount
+      };
+      
+      return res.status(200).json([conversation]);
+    }
+    
+    return res.status(403).json({ message: 'Unauthorized role' });
+  } catch (error) {
+    console.error('Error getting conversations:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get messages between a lender and borrower
+exports.getMessages = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { borrowerId } = req.params;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    let lenderId, borrower;
+    
+    if (user.role === 'lender') {
+      // Find lender details
+      const lender = await Lender.findOne({ user: userId });
+      
+      if (!lender) {
+        return res.status(404).json({ message: 'Lender profile not found' });
+      }
+      
+      lenderId = lender._id;
+      borrower = await Borrower.findById(borrowerId).populate('user', 'firstName lastName email profileImage');
+      
+      // Check if borrower is associated with this lender
+      if (!borrower || !borrower.lender.equals(lenderId)) {
+        return res.status(403).json({ message: 'Unauthorized to view these messages' });
+      }
+    } 
+    else if (user.role === 'borrower') {
+      // Find borrower details
+      borrower = await Borrower.findOne({ user: userId });
+      
+      if (!borrower) {
+        return res.status(404).json({ message: 'Borrower profile not found' });
+      }
+      
+      // Check if the requested borrowerId matches the user's borrower profile
+      if (!borrower._id.equals(borrowerId)) {
+        return res.status(403).json({ message: 'Unauthorized to view these messages' });
+      }
+      
+      lenderId = borrower.lender;
+    } 
+    else {
+      return res.status(403).json({ message: 'Unauthorized role' });
+    }
+    
+    // Find all messages between the lender and borrower
+    const messages = await Message.find({
+      lender: lenderId,
+      borrower: borrowerId
+    })
+    .sort({ createdAt: 1 })
+    .populate('sender', 'firstName lastName email profileImage role');
+    
+    // Mark messages as read if user is the recipient
+    await Message.updateMany(
+      {
+        lender: lenderId,
+        borrower: borrowerId,
+        recipient: userId,
+        isRead: false
+      },
+      { isRead: true }
+    );
+    
+    return res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Send a message
+exports.sendMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { borrowerId, content } = req.body;
+    
+    if ((!content || content.trim() === '') && (!req.files || !req.files.attachments)) {
+      return res.status(400).json({ message: 'Message content or attachment is required' });
+    }
+    
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    let lender, borrower, recipient;
+    
+    if (user.role === 'lender') {
+      // Find lender details
+      lender = await Lender.findOne({ user: userId });
+      
+      if (!lender) {
+        return res.status(404).json({ message: 'Lender profile not found' });
+      }
+      
+      // Find borrower
+      borrower = await Borrower.findById(borrowerId);
+      
+      if (!borrower) {
+        return res.status(404).json({ message: 'Borrower not found' });
+      }
+      
+      // Check if borrower is associated with this lender
+      if (!borrower.lender.equals(lender._id)) {
+        return res.status(403).json({ message: 'Unauthorized to message this borrower' });
+      }
+      
+      recipient = borrower.user;
+    } 
+    else if (user.role === 'borrower') {
+      // Find borrower details
+      borrower = await Borrower.findOne({ user: userId });
+      
+      if (!borrower) {
+        return res.status(404).json({ message: 'Borrower profile not found' });
+      }
+      
+      // Check if the requested borrowerId matches the user's borrower profile
+      if (!borrower._id.equals(borrowerId)) {
+        return res.status(403).json({ message: 'Unauthorized to send messages as this borrower' });
+      }
+      
+      // Find lender associated with this borrower
+      lender = await Lender.findById(borrower.lender);
+      
+      if (!lender) {
+        return res.status(404).json({ message: 'Lender not found for this borrower' });
+      }
+      
+      recipient = lender.user;
+    } 
+    else {
+      return res.status(403).json({ message: 'Unauthorized role' });
+    }
+    
+    // Process file uploads if any
+    let attachments = [];
+    
+    if (req.files && req.files.attachments) {
+      const files = Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments];
+      
+      // Process each file
+      for (const file of files) {
+        const fileName = `${uuidv4()}_${file.name}`;
+        const uploadPath = path.join(__dirname, '../../uploads', fileName);
+        
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        // Move the file to the uploads directory
+        await file.mv(uploadPath);
+        
+        // Add attachment metadata
+        attachments.push({
+          url: `/uploads/${fileName}`,
+          fileName: file.name,
+          fileType: file.mimetype,
+          fileSize: file.size
         });
       }
     }
-  });
-  
-  await conversation.save();
-  
-  // Populate sender information
-  const populatedMessage = await Message.findById(message._id).populate({
-    path: 'sender',
-    select: 'firstName lastName email role profilePicture'
-  });
-  
-  res.status(201).json({
-    status: 'success',
-    data: populatedMessage
-  });
-});
+    
+    // Create and save the message
+    const message = new Message({
+      sender: userId,
+      recipient,
+      lender: lender._id,
+      borrower: borrower._id,
+      content: content || '',
+      attachments
+    });
+    
+    await message.save();
+    
+    // Populate sender info before returning
+    await message.populate('sender', 'firstName lastName email profileImage role');
+    
+    return res.status(201).json(message);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
-/**
- * Mark messages as read
- */
-exports.markAsRead = catchAsync(async (req, res) => {
-  const { conversationId } = req.params;
-  const userId = req.user.id;
-  
-  // Check if conversation exists and user is a participant
-  const conversation = await Conversation.findOne({ 
-    _id: conversationId,
-    participants: userId,
-    isActive: true
-  });
-  
-  if (!conversation) {
-    throw new APIError('Conversation not found or you do not have access', 404);
-  }
-  
-  // Find all unread messages sent by others
-  const messages = await Message.find({
-    conversationId,
-    sender: { $ne: userId },
-    'readBy.user': { $ne: userId }
-  });
-  
-  // Mark each message as read
-  await Promise.all(
-    messages.map(message => {
-      message.readBy.push({ user: userId, readAt: new Date() });
-      return message.save();
-    })
-  );
-  
-  // Reset unread count for this user in the conversation
-  const unreadIndex = conversation.unreadCountByUser.findIndex(
-    item => item.user.toString() === userId
-  );
-  
-  if (unreadIndex !== -1) {
-    conversation.unreadCountByUser[unreadIndex].count = 0;
-    await conversation.save();
-  }
-  
-  res.status(200).json({
-    status: 'success',
-    message: 'Messages marked as read',
-    data: {
-      markedCount: messages.length
+// Upload attachment
+exports.uploadAttachment = async (req, res) => {
+  try {
+    if (!req.files || !req.files.attachment) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
-  });
-});
+    
+    const file = req.files.attachment;
+    const fileName = `${uuidv4()}_${file.name}`;
+    const uploadPath = path.join(__dirname, '../../uploads', fileName);
+    
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Move the file to the uploads directory
+    await file.mv(uploadPath);
+    
+    return res.status(200).json({
+      url: `/uploads/${fileName}`,
+      fileName: file.name,
+      fileType: file.mimetype,
+      fileSize: file.size
+    });
+  } catch (error) {
+    console.error('Error uploading attachment:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
-/**
- * Delete a conversation (soft delete)
- */
-exports.deleteConversation = catchAsync(async (req, res) => {
-  const { conversationId } = req.params;
+// Get unread message count
+exports.getUnreadCount = async (req, res) => {
+  try {
   const userId = req.user.id;
   
-  // Check if conversation exists and user is a participant
-  const conversation = await Conversation.findOne({ 
-    _id: conversationId,
-    participants: userId,
-    isActive: true
-  });
-  
-  if (!conversation) {
-    throw new APIError('Conversation not found or you do not have access', 404);
+    const unreadCount = await Message.countDocuments({
+      recipient: userId,
+      isRead: false
+    });
+    
+    return res.status(200).json({ unreadCount });
+  } catch (error) {
+    console.error('Error getting unread count:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
-  
-  // Soft delete by setting isActive to false
-  conversation.isActive = false;
-  await conversation.save();
-  
-  res.status(200).json({
-    status: 'success',
-    message: 'Conversation deleted successfully'
-  });
-});
+};

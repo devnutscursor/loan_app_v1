@@ -34,6 +34,10 @@ const lenderSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
+  },
   activeLoans: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Loan'

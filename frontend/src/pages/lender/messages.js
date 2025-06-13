@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
-import MessageCenter from '../../components/common/messaging/MessageCenter';
-import { lenderService } from '../../services/api';
+import { MessageService } from '../../services';
+import api from '../../services/api';
+import { useRouter } from 'next/router';
 
 /**
  * Lender Messages Page
@@ -12,59 +13,69 @@ import { lenderService } from '../../services/api';
  * Provides conversation management, messaging capabilities, and integration with loan information.
  */
 const LenderMessages = () => {
+  const router = useRouter();
+  
   // State for user data
   const [userData, setUserData] = useState(null);
-  
   // State for loading
   const [isLoading, setIsLoading] = useState(true);
+  // State for conversations
+  const [conversations, setConversations] = useState([]);
+  // State for loading conversations
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  // State for selected borrower
+  const [selectedBorrower, setSelectedBorrower] = useState(null);
+  // State for messages
+  const [messages, setMessages] = useState([]);
+  // State for loading messages
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  // State for message input
+  const [messageInput, setMessageInput] = useState('');
+  // State for sending message
+  const [sendingMessage, setSendingMessage] = useState(false);
+  // State for file attachments
+  const [attachments, setAttachments] = useState([]);
+  // State for uploading status
+  const [uploading, setUploading] = useState(false);
   
-  // URL parameters
-  const [initialConversationId, setInitialConversationId] = useState(null);
-  const [selectedBorrowerId, setSelectedBorrowerId] = useState(null);
+  // Ref for message container to auto scroll
+  const messageContainerRef = useRef(null);
+  // Ref for file input
+  const fileInputRef = useRef(null);
   
   // Load user data when component mounts
   useEffect(() => {
-    // Get query parameters from URL
-    const queryParams = new URLSearchParams(window.location.search);
-    const conversationId = queryParams.get('conversation');
-    const borrowerId = queryParams.get('borrowerId');
-    
-    if (conversationId) {
-      setInitialConversationId(conversationId);
-    }
-    
-    if (borrowerId) {
-      setSelectedBorrowerId(borrowerId);
-    }
+    // Get borrowerId from URL if available
+    const { borrowerId } = router.query;
     
     fetchUserData();
-  }, []);
+    
+    // If borrowerId is provided, select that borrower
+    if (borrowerId) {
+      // We'll set this after loading conversations
+      localStorage.setItem('selectedBorrowerId', borrowerId);
+    }
+  }, [router.query]);
+  
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
   
   // Fetch user data
   const fetchUserData = async () => {
+    console.log("fetchUserData");
     setIsLoading(true);
     try {
-      // In a real app, this would be an API call
-      // const response = await lenderService.getUserProfile();
+      // Get the user profile from the server
+      const response = await api.get('/users/me');
+      console.log("response", response.data);
+      setUserData(response.data);
       
-      // For demo purposes, use mock data
-      setTimeout(() => {
-        const mockUserData = {
-          id: 'user-4',
-          name: 'Michael Chen',
-          email: 'michael.chen@lendingcompany.com',
-          role: 'lender',
-          title: 'Senior Loan Officer'
-        };
-        
-        setUserData(mockUserData);
-        setIsLoading(false);
-        
-        // If borrowerId is set but no conversation, find or create one
-        if (selectedBorrowerId && !initialConversationId) {
-          findOrCreateConversation(selectedBorrowerId);
-        }
-      }, 1000);
+      // Fetch conversations
+      fetchConversations();
     } catch (error) {
       console.error('Error fetching user data:', error);
       toast.error('Failed to load user data. Please try again later.');
@@ -72,37 +83,188 @@ const LenderMessages = () => {
     }
   };
   
-  // Find or create a conversation with a borrower
-  const findOrCreateConversation = async (borrowerId) => {
+  // Fetch all conversations for the lender
+  const fetchConversations = async () => {
+    setLoadingConversations(true);
     try {
-      // In a real app, this would be an API call
-      // const response = await lenderService.findOrCreateConversation(borrowerId);
-      // setInitialConversationId(response.conversationId);
-      
-      // For demo purposes, simulate finding a conversation
-      // This would typically search existing conversations or create a new one
-      console.log(`Finding or creating conversation with borrower ${borrowerId}`);
-      
-      // Simulate finding conversation ID for borrower ID user-2
-      if (borrowerId === 'user-2') {
-        setInitialConversationId('conv-1');
-      } else if (borrowerId === 'user-3') {
-        setInitialConversationId('conv-2');
+      const result = await MessageService.getConversations();
+      if (result.success) {
+        setConversations(result.data);
+        setIsLoading(false);
+        
+        // If there are conversations and selectedBorrowerId exists in localStorage, select that borrower
+        if (result.data.length > 0) {
+          const savedBorrowerId = localStorage.getItem('selectedBorrowerId');
+          if (savedBorrowerId) {
+            const found = result.data.find(
+              conv => conv.borrower?._id === savedBorrowerId
+            );
+            
+            if (found) {
+              selectBorrower(found.borrower);
+              localStorage.removeItem('selectedBorrowerId');
+            } else {
+              // If no matching borrower found, select the first one
+              selectBorrower(result.data[0].borrower);
+            }
+          } else {
+            // Select first borrower by default
+            selectBorrower(result.data[0].borrower);
+          }
+        }
+      } else {
+        toast.error('Failed to load conversations');
+        setIsLoading(false);
       }
-      
-      // In a real app, if no conversation exists, you would create one
     } catch (error) {
-      console.error('Error finding or creating conversation:', error);
-      toast.error('Failed to initiate conversation. Please try again later.');
+      console.error('Error fetching conversations:', error);
+      toast.error('Failed to load conversations');
+      setIsLoading(false);
+    } finally {
+      setLoadingConversations(false);
     }
   };
   
-  // Create a mock API service for the MessageCenter component
-  const messagingApi = {
-    getConversations: () => lenderService.getConversations(),
-    getMessages: (conversationId) => lenderService.getMessages(conversationId),
-    sendMessage: (conversationId, message) => lenderService.sendMessage(conversationId, message),
-    deleteMessage: (messageId) => lenderService.deleteMessage(messageId)
+  // Select a borrower to chat with
+  const selectBorrower = (borrower) => {
+    setSelectedBorrower(borrower);
+    
+    if (borrower) {
+      fetchMessages(borrower._id);
+    } else {
+      setMessages([]);
+    }
+  };
+  
+  // Fetch messages between lender and selected borrower
+  const fetchMessages = async (borrowerId) => {
+    setLoadingMessages(true);
+    try {
+      const result = await MessageService.getMessages(borrowerId);
+      if (result.success) {
+        setMessages(result.data);
+        
+        // Update unread count in conversations
+        setConversations(prevConversations => 
+          prevConversations.map(conv => 
+            conv.borrower._id === borrowerId 
+              ? { ...conv, unreadCount: 0 } 
+              : conv
+          )
+        );
+      } else {
+        toast.error('Failed to load messages');
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast.error('Failed to load messages');
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+  
+  // Handle file selection
+  const handleFileChange = (e) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      
+      // Filter by image files only
+      const imageFiles = newFiles.filter(file => file.type.startsWith('image/'));
+      
+      if (imageFiles.length !== newFiles.length) {
+        toast.error('Only image files are allowed');
+      }
+      
+      // Limit to 5 images at a time
+      if (attachments.length + imageFiles.length > 5) {
+        toast.error('Maximum 5 images allowed per message');
+        return;
+      }
+      
+      // Add preview for selected images
+      const filesWithPreview = imageFiles.map(file => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+      
+      setAttachments([...attachments, ...filesWithPreview]);
+    }
+  };
+  
+  // Remove an attachment
+  const removeAttachment = (index) => {
+    const newAttachments = [...attachments];
+    
+    // Revoke object URL to prevent memory leaks
+    URL.revokeObjectURL(newAttachments[index].preview);
+    
+    newAttachments.splice(index, 1);
+    setAttachments(newAttachments);
+  };
+  
+  // Open file selector
+  const openFileSelector = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  // Send a message to the selected borrower
+  const sendMessage = async () => {
+    if ((!messageInput.trim() && attachments.length === 0) || !selectedBorrower) return;
+    
+    setSendingMessage(true);
+    try {
+      // Extract files from the attachments
+      const files = attachments.map(attachment => attachment.file);
+      
+      const result = await MessageService.sendMessage(selectedBorrower._id, messageInput, files);
+      if (result.success) {
+        setMessages([...messages, result.data]);
+        setMessageInput('');
+        setAttachments([]);
+        
+        // Update latest message in conversations
+        setConversations(prevConversations => 
+          prevConversations.map(conv => 
+            conv.borrower._id === selectedBorrower._id 
+              ? { 
+                  ...conv, 
+                  latestMessage: result.data 
+                } 
+              : conv
+          )
+        );
+      } else {
+        toast.error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+  
+  // Get the sender's display name
+  const getSenderName = (message) => {
+    if (message.sender._id === userData?._id) {
+      return 'You';
+    }
+    return `${message.sender.firstName || ''} ${message.sender.lastName || ''}`.trim() || message.sender.email || 'Unknown';
+  };
+  
+  // Format message time
+  const formatMessageTime = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  // Get the total unread count across all conversations
+  const getTotalUnreadCount = () => {
+    return conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
   };
   
   return (
@@ -123,13 +285,252 @@ const LenderMessages = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-220px)]">
-                <MessageCenter
-                  userId={userData?.id}
-                  userRole="lender"
-                  api={messagingApi}
-                  initialConversationId={initialConversationId}
-                />
+              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-220px)] flex">
+                {/* Borrowers list (sidebar) */}
+                <div className="w-80 border-r overflow-y-auto">
+                  <div className="p-4 border-b">
+                    <h2 className="font-medium text-lg">Borrowers</h2>
+                    <p className="text-sm text-gray-500">
+                      {getTotalUnreadCount()} unread messages
+                    </p>
+                  </div>
+                  
+                  {loadingConversations ? (
+                    <div className="flex justify-center items-center h-20">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                  ) : conversations.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      No borrowers found
+                    </div>
+                  ) : (
+                    <div>
+                      {conversations.map((conversation) => (
+                        <div 
+                          key={conversation.borrower._id}
+                          onClick={() => selectBorrower(conversation.borrower)}
+                          className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
+                            selectedBorrower?._id === conversation.borrower._id ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg">
+                                {conversation.borrower.user?.firstName?.[0] || 'B'}
+                              </div>
+                              <div className="ml-3">
+                                <p className="font-medium text-gray-900">
+                                  {conversation.borrower.user?.firstName} {conversation.borrower.user?.lastName}
+                                </p>
+                                <p className="text-sm text-gray-500 truncate max-w-[200px]">
+                                  {conversation.latestMessage?.content || 'No messages yet'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {conversation.unreadCount > 0 && (
+                              <div className="bg-blue-500 text-white text-xs rounded-full h-5 min-w-[20px] flex items-center justify-center px-1">
+                                {conversation.unreadCount}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Chat area */}
+                <div className="flex-grow flex flex-col">
+                  {selectedBorrower ? (
+                    <>
+                      {/* Selected borrower header */}
+                      <div className="border-b p-4 flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg">
+                          {selectedBorrower.user?.firstName?.[0] || 'B'}
+                        </div>
+                        <div className="ml-3">
+                          <p className="font-medium text-gray-900">
+                            {selectedBorrower.user?.firstName} {selectedBorrower.user?.lastName}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {selectedBorrower.user?.email}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Messages container */}
+                      <div ref={messageContainerRef} className="flex-grow overflow-y-auto p-4">
+                        {loadingMessages ? (
+                          <div className="flex justify-center items-center h-full">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                          </div>
+                        ) : messages.length === 0 ? (
+                          <div className="text-center py-10">
+                            <p className="text-gray-500">No messages yet. Start the conversation!</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {messages.map((message) => {
+                              const isSender = message.sender._id !== userData.data.user?._id;
+                              console.log("message", message);
+                              console.log(message.sender.role);
+                              console.log(userData.data.user.role);
+                              const senderName = getSenderName(message);
+                              
+                              return (
+                                <div 
+                                  key={message._id} 
+                                  className={`flex w-full ${isSender ? 'justify-start' : 'justify-end'}`}
+                                >
+                                  <div className={`flex flex-col max-w-[75%] ${isSender ? 'items-start' : 'items-end'}`}>
+                                    {/* Sender name */}
+                                    <div className={`text-xs text-gray-500 mb-1 ${isSender ? 'text-left' : 'text-right'}`}>
+                                      {senderName}
+                                    </div>
+                                    
+                                    {/* Message content */}
+                                    <div 
+                                      className={`rounded-lg px-4 py-2 break-words ${
+                                        isSender 
+                                          ? 'bg-gray-200 text-black rounded-tl-none' 
+                                          : 'bg-blue-500 text-white rounded-tr-none'
+                                      }`}
+                                    >
+                                      {message.content && <p>{message.content}</p>}
+                                      
+                                      {/* Image attachments */}
+                                      {message.attachments && message.attachments.length > 0 && (
+                                        <div className="mt-2 grid gap-2">
+                                          {message.attachments.map((attachment, index) => (
+                                            <div key={index} className="relative">
+                                              {attachment.fileType.startsWith('image/') ? (
+                                                <img 
+                                                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${attachment.url}`} 
+                                                  alt={attachment.fileName}
+                                                  className="max-w-full rounded"
+                                                  style={{ maxHeight: '200px' }}
+                                                />
+                                              ) : (
+                                                <div className="p-2 border rounded bg-gray-50 text-sm flex items-center">
+                                                  <svg className="h-5 w-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                                  </svg>
+                                                  {attachment.fileName}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      
+                                      <p className={`text-xs mt-1 ${isSender ? 'text-gray-500' : 'text-gray-200'}`}>
+                                        {formatMessageTime(message.createdAt)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Selected attachments preview */}
+                      {attachments.length > 0 && (
+                        <div className="border-t p-2">
+                          <div className="flex overflow-x-auto space-x-2 pb-2">
+                            {attachments.map((attachment, index) => (
+                              <div key={index} className="relative flex-shrink-0">
+                                <img 
+                                  src={attachment.preview} 
+                                  alt="Selected" 
+                                  className="h-16 w-16 object-cover rounded border"
+                                />
+                                <button 
+                                  onClick={() => removeAttachment(index)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Message input */}
+                      <div className="border-t p-4">
+                        <div className="flex items-end">
+                          <div className="flex-grow">
+                            <textarea
+                              value={messageInput}
+                              onChange={(e) => setMessageInput(e.target.value)}
+                              placeholder="Type your message..."
+                              className="w-full p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              rows="2"
+                              style={{ minHeight: '60px', maxHeight: '120px' }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  sendMessage();
+                                }
+                              }}
+                            />
+                            
+                            {/* Hidden file input */}
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={attachments.length >= 5}
+                            />
+                          </div>
+                          
+                          {/* Attachment button */}
+                          <button
+                            onClick={openFileSelector}
+                            className="p-3 bg-gray-100 text-gray-700 border-t border-b border-l hover:bg-gray-200 focus:outline-none"
+                            title="Attach images"
+                            disabled={attachments.length >= 5}
+                          >
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          
+                          {/* Send button */}
+                          <button
+                            onClick={sendMessage}
+                            disabled={sendingMessage || (!messageInput.trim() && attachments.length === 0)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            {sendingMessage ? (
+                              <span className="flex items-center justify-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Sending
+                              </span>
+                            ) : (
+                              'Send'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-grow flex items-center justify-center">
+                      <div className="text-center text-gray-500">
+                        <p>Select a borrower to start messaging</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             
@@ -154,8 +555,7 @@ const LenderMessages = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      // In a real app, this would insert the template into the message input
-                      toast.success('Template copied to clipboard');
+                      setMessageInput("Thank you for your application. I'll be your dedicated loan officer throughout the process. Please let me know if you have any questions.");
                     }}
                     className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
                   >
@@ -165,7 +565,7 @@ const LenderMessages = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      toast.success('Template copied to clipboard');
+                      setMessageInput("To proceed with your application, we need the following documents: 1) Last 2 months of bank statements, 2) Recent pay stubs, 3) W-2 forms from the last 2 years. Please upload these to your dashboard.");
                     }}
                     className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
                   >
@@ -175,7 +575,7 @@ const LenderMessages = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      toast.success('Template copied to clipboard');
+                      setMessageInput("Great news! Your loan application has been approved. The next step is to review and sign the closing documents. We'll schedule a convenient time for the closing process.");
                     }}
                     className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
                   >

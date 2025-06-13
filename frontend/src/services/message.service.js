@@ -1,143 +1,139 @@
-import api, { handleResponse } from './api.service';
-import { createAuditLog } from '../utils/auditLogger';
+import api from './api.service';
+import messageApi from './api/message.service';
 
 /**
  * Message Service
  * 
- * Handles all API calls related to messaging functionality between borrowers and lenders
+ * Handles all message-related functionality, including sending messages,
+ * retrieving conversations, and managing message state.
  */
-const MessageService = {
+class MessageService {
   /**
    * Get all conversations for the current user
-   * 
-   * @returns {Promise} Promise object containing conversations list
    */
-  getConversations: () => {
-    return handleResponse(api.get('/messages/conversations'));
-  },
+  static async getConversations() {
+    try {
+      const response = await messageApi.getConversations();
+      return {
+        success: true,
+        data: response || []
+      };
+    } catch (error) {
+      console.error('Error getting conversations:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to load conversations'
+      };
+    }
+  }
 
   /**
-   * Get or create a conversation with a specific user
-   * 
-   * @param {string} participantId - ID of the conversation participant (user to chat with)
-   * @param {string} loanId - Optional loan ID to associate with conversation
-   * @returns {Promise} Promise object containing conversation data
+   * Get all messages for a specific conversation with a borrower
    */
-  getOrCreateConversation: (participantId, loanId = null) => {
-    return handleResponse(
-      api.post('/messages/conversations', {
-        participantId,
-        loanId
-      })
-    );
-  },
+  static async getMessages(borrowerId) {
+    try {
+      const response = await messageApi.getMessages(borrowerId);
+      return {
+        success: true,
+        data: response || []
+      };
+    } catch (error) {
+      console.error('Error getting messages:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to load messages'
+      };
+    }
+  }
 
   /**
-   * Get messages for a specific conversation
-   * 
-   * @param {string} conversationId - ID of the conversation
-   * @param {number} page - Page number for pagination
-   * @param {number} limit - Number of messages per page
-   * @returns {Promise} Promise object containing messages and pagination data
+   * Send a message to a specific borrower
    */
-  getMessages: (conversationId, page = 1, limit = 50) => {
-    return handleResponse(
-      api.get(`/messages/conversations/${conversationId}/messages`, {
-        params: { page, limit }
-      })
-    ).then(response => {
-      // Log message view for auditing if successful
-      if (response.success) {
-        createAuditLog(
-          'message:view',
-          `Viewed conversation messages`,
-          { conversationId, page, limit }
-        );
-      }
-      return response;
-    });
-  },
+  static async sendMessage(borrowerId, content, attachments = []) {
+    try {
+      const response = await messageApi.sendMessage(borrowerId, content, attachments);
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to send message'
+      };
+    }
+  }
 
   /**
-   * Send a message in a conversation
-   * 
-   * @param {string} conversationId - ID of the conversation
-   * @param {string} content - Message content
-   * @param {Array} attachments - Optional array of file attachments
-   * @returns {Promise} Promise object containing the created message
+   * Upload an attachment
    */
-  sendMessage: (conversationId, content, attachments = []) => {
-    return handleResponse(
-      api.post('/messages', {
-        conversationId,
-        content,
-        attachments
-      })
-    ).then(response => {
-      // Log message sent for auditing if successful
-      if (response.success) {
-        createAuditLog(
-          'message:send',
-          `Sent message in conversation`,
-          { conversationId, hasAttachments: attachments.length > 0 }
-        );
-      }
-      return response;
-    });
-  },
+  static async uploadAttachment(file) {
+    try {
+      const response = await messageApi.uploadAttachment(file);
+      return {
+        success: true,
+        data: response
+      };
+    } catch (error) {
+      console.error('Error uploading attachment:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to upload attachment'
+      };
+    }
+  }
+
+  /**
+   * Get the unread message count for the current user
+   */
+  static async getUnreadCount() {
+    try {
+      const unreadCount = await messageApi.getUnreadCount();
+      return {
+        success: true,
+        data: { unreadCount }
+      };
+    } catch (error) {
+      console.error('Error getting unread count:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get unread count',
+        data: { unreadCount: 0 }
+      };
+    }
+  }
 
   /**
    * Mark all messages in a conversation as read
-   * 
-   * @param {string} conversationId - ID of the conversation
-   * @returns {Promise} Promise object containing result
    */
-  markAsRead: (conversationId) => {
-    return handleResponse(
-      api.patch(`/messages/conversations/${conversationId}/read`)
-    );
-  },
-
-  /**
-   * Delete a conversation (soft delete)
-   * 
-   * @param {string} conversationId - ID of the conversation to delete
-   * @returns {Promise} Promise object containing result
-   */
-  deleteConversation: (conversationId) => {
-    return handleResponse(
-      api.delete(`/messages/conversations/${conversationId}`)
-    ).then(response => {
-      // Log conversation deletion for auditing if successful
-      if (response.success) {
-        createAuditLog(
-          'message:delete_conversation',
-          `Deleted conversation`,
-          { conversationId }
-        );
-      }
-      return response;
-    });
-  },
-
-  /**
-   * Upload file attachment for message
-   * 
-   * @param {File} file - File object to upload
-   * @returns {Promise} Promise containing file metadata
-   */
-  uploadAttachment: (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    return handleResponse(
-      api.post('/documents/uploads/message-attachment', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-    );
+  static async markAsRead(borrowerId) {
+    try {
+      // The backend handles marking messages as read when retrieving them
+      // This function exists for API compatibility with the existing MessageCenter component
+      await messageApi.getMessages(borrowerId);
+      return {
+        success: true
+      };
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to mark messages as read'
+      };
+    }
   }
-};
+
+  /**
+   * Delete a message (placeholder for future functionality)
+   */
+  static async deleteMessage(messageId) {
+    // This function is a placeholder for future functionality
+    return {
+      success: false,
+      error: 'Message deletion is not supported'
+    };
+  }
+}
 
 export default MessageService;

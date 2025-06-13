@@ -7,6 +7,7 @@ const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const path = require('path');
+const fileUpload = require('express-fileupload');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -56,6 +57,17 @@ app.use('/api', limiter);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
+// File upload middleware
+app.use(fileUpload({
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10 MB max file size
+  },
+  abortOnLimit: true,
+  createParentPath: true,
+  useTempFiles: true,
+  tempFileDir: '/tmp/'
+}));
+
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
 
@@ -66,7 +78,7 @@ app.use(xss());
 app.use(compression());
 
 // Serve static files
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API routes
 app.use('/api/v1/auth', authRoutes);
