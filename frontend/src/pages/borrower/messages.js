@@ -4,6 +4,8 @@ import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import { MessageService } from '../../services';
 import api from '../../services/api';
+import { ImageViewer } from '../../components/common';
+import socketService from '../../services/socket.service';
 
 /**
  * Borrower Messages Page
@@ -47,6 +49,44 @@ const BorrowerMessages = () => {
       messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  // Initialize socket connection
+  useEffect(() => {
+    if (userData?.data?.user?._id) {
+      // Connect to socket
+      const socket = socketService.connect();
+      
+      // Join user's room
+      socketService.joinRoom(userData.data.user._id);
+      
+      // Add message listener
+      socketService.addMessageListener('borrower-messages', (message) => {
+        // Check if this message belongs to the current conversation
+        if (message.borrower && lender?.borrowerId && message.borrower === lender.borrowerId) {
+          setMessages((prevMessages) => {
+            // Check if message already exists to prevent duplicates
+            const exists = prevMessages.some(m => m._id === message._id);
+            if (!exists) {
+              return [...prevMessages, message];
+            }
+            return prevMessages;
+          });
+          
+          // Scroll to bottom when new message arrives
+          setTimeout(() => {
+            if (messageContainerRef.current) {
+              messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+            }
+          }, 100);
+        }
+      });
+      
+      // Clean up on unmount
+      return () => {
+        socketService.removeMessageListener('borrower-messages');
+      };
+    }
+  }, [userData?.data?.user?._id, lender?.borrowerId]);
   
   // Fetch user data
   const fetchUserData = async () => {
@@ -166,6 +206,10 @@ const BorrowerMessages = () => {
         setMessages([...messages, result.data]);
         setMessageInput('');
         setAttachments([]);
+        
+        // Emit socket event for real-time updates
+        socketService.sendMessage(result.data);
+        
         toast.success('Message sent');
       } else {
         toast.error('Failed to send message');
@@ -197,6 +241,23 @@ const BorrowerMessages = () => {
   // Check if the message has an image attachment
   const hasImageAttachment = (message) => {
     return message.attachments && message.attachments.length > 0;
+  };
+
+  // Get image URL with proper base path
+  const getImageUrl = (attachment) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    
+    // Make sure we don't duplicate the base URL if it's already included
+    if (attachment.url.startsWith('http')) {
+      return attachment.url;
+    }
+    
+    // Extract the filename from the URL path
+    const urlParts = attachment.url.split('/');
+    const filename = urlParts[urlParts.length - 1];
+    
+    // Use our proxy route to avoid CORS issues
+    return `${baseUrl}/api/image-proxy/${filename}`;
   };
   
   return (
@@ -279,8 +340,8 @@ const BorrowerMessages = () => {
                                     {message.attachments.map((attachment, index) => (
                                       <div key={index} className="relative">
                                         {attachment.fileType.startsWith('image/') ? (
-                                          <img 
-                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${attachment.url}`} 
+                                          <ImageViewer 
+                                            src={getImageUrl(attachment)}
                                             alt={attachment.fileName}
                                             className="max-w-full rounded"
                                             style={{ maxHeight: '200px' }}
@@ -290,7 +351,14 @@ const BorrowerMessages = () => {
                                             <svg className="h-5 w-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                                               <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                                             </svg>
-                                            {attachment.fileName}
+                                            <a 
+                                              href={getImageUrl(attachment)} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-blue-500 hover:underline"
+                                            >
+                                              {attachment.fileName}
+                                            </a>
                                           </div>
                                         )}
                                       </div>
@@ -310,39 +378,38 @@ const BorrowerMessages = () => {
                   )}
                 </div>
                 
-                {/* Selected attachments preview */}
-                {attachments.length > 0 && (
-                  <div className="border-t p-2">
-                    <div className="flex overflow-x-auto space-x-2 pb-2">
-                      {attachments.map((attachment, index) => (
-                        <div key={index} className="relative flex-shrink-0">
-                          <img 
-                            src={attachment.preview} 
-                            alt="Selected" 
-                            className="h-16 w-16 object-cover rounded border"
-                          />
-                          <button 
-                            onClick={() => removeAttachment(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
                 {/* Message input */}
-                <div className="border-t p-4">
-                  <div className="flex items-end">
-                    <div className="flex-grow">
+                <div className="border-t p-4 bg-gray-50">
+                  <div className="flex flex-col">
+                    {/* Selected attachments preview */}
+                    {attachments.length > 0 && (
+                      <div className="mb-3 bg-white rounded-lg p-2 shadow-sm">
+                        <div className="flex overflow-x-auto space-x-3 pb-2">
+                          {attachments.map((attachment, index) => (
+                            <div key={index} className="relative flex-shrink-0">
+                              <img 
+                                src={attachment.preview} 
+                                alt="Selected" 
+                                className="h-16 w-16 object-cover rounded-md border border-gray-200"
+                              />
+                              <button 
+                                onClick={() => removeAttachment(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold shadow-sm hover:bg-red-600 transition-colors"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-end bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                       <textarea
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         placeholder="Type your message..."
-                        className="w-full p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                        rows="2"
+                        className="flex-grow p-3 focus:outline-none resize-none min-h-[60px] max-h-[120px]"
                         style={{ minHeight: '60px', maxHeight: '120px' }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey && lender) {
@@ -350,51 +417,56 @@ const BorrowerMessages = () => {
                             sendMessage();
                           }
                         }}
-                        disabled={!lender}
+                        disabled={!lender || sendingMessage}
                       />
                       
-                      {/* Hidden file input */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileChange}
-                        disabled={!lender || attachments.length >= 5}
-                      />
-                    </div>
-                    
-                    {/* Attachment button */}
-                    <button
-                      onClick={openFileSelector}
-                      className="p-3 bg-gray-100 text-gray-700 border-t border-b border-l hover:bg-gray-200 focus:outline-none"
-                      title="Attach images"
-                      disabled={!lender || attachments.length >= 5}
-                    >
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    
-                    {/* Send button */}
-                    <button
-                      onClick={sendMessage}
-                      disabled={sendingMessage || (!messageInput.trim() && attachments.length === 0) || !lender}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                      {sendingMessage ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <div className="flex items-center h-full px-2 mb-3">
+                        {/* Attachment button */}
+                        <button
+                          onClick={openFileSelector}
+                          className="p-2 text-gray-500 hover:text-blue-500 focus:outline-none transition-colors"
+                          title="Attach images"
+                          disabled={!lender || attachments.length >= 5 || sendingMessage}
+                        >
+                          <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                           </svg>
-                          Sending
-                        </span>
-                      ) : (
-                        'Send'
-                      )}
-                    </button>
+                        </button>
+                        
+                        {/* Send button */}
+                        <button
+                          onClick={sendMessage}
+                          className={`ml-2 p-2 rounded-full ${
+                            !messageInput.trim() && attachments.length === 0 || !lender || sendingMessage
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          } focus:outline-none transition-colors`}
+                          disabled={(!messageInput.trim() && attachments.length === 0) || !lender || sendingMessage}
+                        >
+                          {sendingMessage ? (
+                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent border-white"></div>
+                          ) : (
+                            <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                      
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileChange}
+                      disabled={!lender || attachments.length >= 5 || sendingMessage}
+                    />
+                    
+  
+                   
                   </div>
                 </div>
               </div>

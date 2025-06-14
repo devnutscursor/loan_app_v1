@@ -8,6 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const path = require('path');
 const fileUpload = require('express-fileupload');
+const fs = require('fs');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -35,10 +36,26 @@ const logger = require('./utils/logger');
 const app = express();
 
 // Set security HTTP headers
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", "localhost:*"],
+      connectSrc: ["'self'", "localhost:*"]
+    }
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+}));
 
 // Enable CORS
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins
+  credentials: true,
+  exposedHeaders: ['Content-Disposition'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Development logging with Morgan
 if (process.env.NODE_ENV === 'development') {
@@ -77,8 +94,94 @@ app.use(xss());
 // Compression middleware
 app.use(compression());
 
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve static files with proper headers
+app.use('/uploads', (req, res, next) => {
+  // Set Cache-Control headers for better performance
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  // Allow cross-origin access to the files
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  
+  // Handle OPTIONS requests for CORS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+}, express.static(path.resolve(__dirname, '../uploads'), {
+  setHeaders: (res) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
+
+// Create a specific route to check if uploads directory is accessible
+app.get('/api/check-uploads', (req, res) => {
+  const uploadsDir = path.resolve(__dirname, '../uploads');
+  if (fs.existsSync(uploadsDir)) {
+    const files = fs.readdirSync(uploadsDir);
+    res.json({ 
+      success: true, 
+      message: 'Uploads directory exists', 
+      path: uploadsDir,
+      files: files
+    });
+  } else {
+    res.json({ 
+      success: false, 
+      message: 'Uploads directory does not exist',
+      path: uploadsDir
+    });
+  }
+});
+
+// Debug route to check specific file
+app.get('/api/debug/file/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.resolve(__dirname, '../uploads', filename);
+  
+  if (fs.existsSync(filePath)) {
+    const stats = fs.statSync(filePath);
+    res.json({
+      exists: true,
+      filename,
+      path: filePath,
+      size: stats.size,
+      isFile: stats.isFile(),
+      permissions: stats.mode.toString(8).slice(-3)
+    });
+  } else {
+    res.json({
+      exists: false,
+      filename,
+      path: filePath
+    });
+  }
+});
+
+// Add a proxy route for images to avoid CORS issues
+app.get('/api/image-proxy/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.resolve(__dirname, '../uploads', filename);
+  
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } else {
+    res.status(404).json({
+      error: 'File not found',
+      filename,
+      path: filePath
+    });
+  }
+});
 
 // API routes
 app.use('/api/v1/auth', authRoutes);

@@ -1,19 +1,23 @@
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-// Create a base axios instance with common configuration
+// Create an API instance with default configuration
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
-  timeout: 30000, // 30 seconds timeout
+  withCredentials: true,
+  timeout: 30000 // 30 seconds timeout
 });
 
-// Request interceptor for adding auth token
+// Add a request interceptor to include the auth token in all requests
 api.interceptors.request.use(
   (config) => {
+    // Get token from localStorage
     const token = localStorage.getItem('token');
+    
+    // If token exists, add it to the Authorization header
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,7 +35,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling errors
+// Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => {
     return response;
@@ -45,6 +49,7 @@ api.interceptors.response.use(
         case 401:
           // Unauthorized - clear token and redirect to login
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           
           // Only show toast if not already on login page
           if (window.location.pathname !== '/login') {
@@ -110,7 +115,7 @@ const handleResponse = (promise) => {
     });
 };
 
-// Export the configured axios instance
+// Export the API instance
 export default api;
 
 // Export the response handler

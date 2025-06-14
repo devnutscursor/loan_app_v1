@@ -252,29 +252,49 @@ exports.sendMessage = async (req, res) => {
     let attachments = [];
     
     if (req.files && req.files.attachments) {
-      const files = Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments];
-      
-      // Process each file
-      for (const file of files) {
-        const fileName = `${uuidv4()}_${file.name}`;
-        const uploadPath = path.join(__dirname, '../../uploads', fileName);
+      try {
+        const files = Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments];
         
         // Create uploads directory if it doesn't exist
-        const uploadsDir = path.join(__dirname, '../../uploads');
+        const uploadsDir = path.resolve(__dirname, '../../uploads');
         if (!fs.existsSync(uploadsDir)) {
           fs.mkdirSync(uploadsDir, { recursive: true });
         }
         
-        // Move the file to the uploads directory
-        await file.mv(uploadPath);
-        
-        // Add attachment metadata
-        attachments.push({
-          url: `/uploads/${fileName}`,
-          fileName: file.name,
-          fileType: file.mimetype,
-          fileSize: file.size
-        });
+        // Process each file
+        for (const file of files) {
+          try {
+            // Generate a unique filename to prevent collisions
+            const fileExtension = file.name.split('.').pop();
+            const fileName = `${uuidv4()}.${fileExtension}`;
+            const uploadPath = path.join(uploadsDir, fileName);
+            
+            // Move the file to the uploads directory
+            await file.mv(uploadPath);
+            
+            // Log file information for debugging
+            console.log('File saved:', {
+              originalName: file.name,
+              savedAs: fileName,
+              path: uploadPath,
+              exists: fs.existsSync(uploadPath)
+            });
+            
+            // Add attachment metadata with absolute URL
+            attachments.push({
+              url: `/uploads/${fileName}`,
+              fileName: file.name,
+              fileType: file.mimetype,
+              fileSize: file.size
+            });
+          } catch (fileError) {
+            console.error('Error processing individual file:', fileError);
+            // Continue with other files even if one fails
+          }
+        }
+      } catch (filesError) {
+        console.error('Error processing file uploads:', filesError);
+        return res.status(500).json({ message: 'Error processing file uploads', error: filesError.message });
       }
     }
     
@@ -293,6 +313,12 @@ exports.sendMessage = async (req, res) => {
     // Populate sender info before returning
     await message.populate('sender', 'firstName lastName email profileImage role');
     
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.to(recipient.toString()).emit('receive_message', message);
+    }
+    
     return res.status(201).json(message);
   } catch (error) {
     console.error('Error sending message:', error);
@@ -308,20 +334,34 @@ exports.uploadAttachment = async (req, res) => {
     }
     
     const file = req.files.attachment;
-    const fileName = `${uuidv4()}_${file.name}`;
-    const uploadPath = path.join(__dirname, '../../uploads', fileName);
     
     // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, '../../uploads');
+    const uploadsDir = path.resolve(__dirname, '../../uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
     
+    // Generate a unique filename to prevent collisions
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExtension}`;
+    const uploadPath = path.join(uploadsDir, fileName);
+    
     // Move the file to the uploads directory
     await file.mv(uploadPath);
     
+    // Log file information for debugging
+    console.log('File uploaded:', {
+      originalName: file.name,
+      savedAs: fileName,
+      path: uploadPath,
+      exists: fs.existsSync(uploadPath)
+    });
+    
+    // Construct the URL for the frontend
+    const fileUrl = `/uploads/${fileName}`;
+    
     return res.status(200).json({
-      url: `/uploads/${fileName}`,
+      url: fileUrl,
       fileName: file.name,
       fileType: file.mimetype,
       fileSize: file.size
