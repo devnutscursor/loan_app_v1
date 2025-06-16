@@ -43,7 +43,7 @@ router.get('/:lenderId/borrowers/:borrowerId', authorize('lender', 'admin'), len
 router.get('/', authorize('admin'), lenderController.getAllLenders);
 
 // Get specific lender by ID
-router.get('/:id', authorize('admin'), lenderController.getLenderById);
+router.get('/:id', lenderController.getLenderById);
 
 // Update lender active status
 router.patch('/:id/status', authorize('admin'), lenderController.updateLenderStatus);
