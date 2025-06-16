@@ -41,6 +41,7 @@ import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerS
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
+import NoteModal from "../../../components/common/NoteModal";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -486,6 +487,11 @@ if (demographics.race === "american-indian") {
   return pdfBytes;
 }
 
+// Debug utility
+const debug = (message, data) => {
+  console.log(`[LoanDetails] ${message}`, data);
+};
+
 const LoanDetails = () => {
   const router = useRouter();
   const { id } = router.query;
@@ -498,6 +504,13 @@ const LoanDetails = () => {
   const [activeTab, setActiveTab] = useState("dashboard"); // Change this line
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Add debug for id
+  useEffect(() => {
+    if (id) {
+      debug('Loan ID from router query', { id, type: typeof id });
+    }
+  }, [id]);
 
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
@@ -849,6 +862,13 @@ const LoanDetails = () => {
     }
   };
 
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  const handleNoteButtonClick = () => {
+    debug('Opening note modal', { loanId: id });
+    setIsNoteModalOpen(true);
+  };
+
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
       <MainLayout>
@@ -1089,9 +1109,7 @@ const LoanDetails = () => {
                     <div className="flex items-center gap-1">
                       <button
                         title="Add Note"
-                        onClick={() =>
-                          toast.info("Add note feature coming soon")
-                        }
+                        onClick={handleNoteButtonClick}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <StickyNote className="h-5 w-5" />
@@ -1866,27 +1884,36 @@ const LoanDetails = () => {
             )}
           </div>
         </div>
+
+        {/* Add the NoteModal component */}
+        <NoteModal 
+          isOpen={isNoteModalOpen} 
+          onClose={() => setIsNoteModalOpen(false)} 
+          loanId={id}
+        />
+        
+        {/* Existing unsaved changes bar */}
+        {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
+            <button
+              type="button"
+              className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
+              onClick={handleCancel}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
+              onClick={saveLoan}
+              disabled={saving}
+            >
+              {saving ? "Saving Changes..." : "Save All Changes"}
+            </button>
+          </div>
+        )}
       </MainLayout>
-      {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
-          <button
-            type="button"
-            className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
-            onClick={handleCancel}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
-            onClick={saveLoan}
-            disabled={saving}
-          >
-            {saving ? "Saving Changes..." : "Save All Changes"}
-          </button>
-        </div>
-      )}
     </ProtectedRoute>
   );
 };

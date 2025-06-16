@@ -13,6 +13,7 @@ const loanProgramRoutes = require('./loanProgram.routes');
 const messageRoutes = require('./message.routes');
 const documentRoutes = require('./document.routes');
 const notificationRoutes = require('./notification.routes');
+const noteRoutes = require('./note.routes');
 
 // Debug route to check uploads directory
 router.get('/debug/uploads', (req, res) => {
@@ -78,5 +79,6 @@ router.use('/loan-programs', loanProgramRoutes);
 router.use('/messages', messageRoutes);
 router.use('/documents', documentRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/notes', noteRoutes);
 
 module.exports = router; 
