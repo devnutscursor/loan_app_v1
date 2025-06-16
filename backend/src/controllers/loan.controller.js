@@ -594,8 +594,6 @@ exports.createLoan = async (req, res, next) => {
   }
 };
 
-// ... existing imports and functions ...
-
 /**
  * @desc    Get all loans for a specific borrower
  * @route   GET /api/loans/borrower/:borrowerId
@@ -2049,6 +2047,331 @@ exports.updateLoanParameters = async (req, res, next) => {
       data: {
         loanParameters: loan.loanParameters,
         loanCalculations: loan.loanCalculations,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create a new loan application with JSON data only (no files)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.createLoanData = async (req, res, next) => {
+  try {
+    console.log("Received loan data submission");
+    
+    // Get user and borrower profile
+    let borrower, lenderId, borrowerId;
+
+    if (req.user.role === "borrower") {
+      // For borrower users, use their own profile
+      borrower = await Borrower.findOne({ user: req.user._id }).populate(
+        "lender"
+      );
+
+      if (!borrower) {
+        return next(new ApiError("Borrower profile not found", 404));
+      }
+
+      // Get the lender associated with this borrower
+      if (!borrower.lender) {
+        return next(
+          new ApiError("No lender associated with this borrower", 400)
+        );
+      }
+
+      lenderId = borrower.lender._id;
+      borrowerId = borrower._id;
+    } else if (req.user.role === "lender") {
+      // For lender users creating a loan
+      const lender = await Lender.findOne({ user: req.user._id });
+
+      if (!lender) {
+        return next(new ApiError("Lender profile not found", 404));
+      }
+
+      // A borrower ID must be provided
+      if (!req.body.borrower) {
+        return next(new ApiError("Borrower ID is required", 400));
+      }
+
+      borrowerId = req.body.borrower;
+
+      // Verify that the borrower exists and belongs to this lender
+      borrower = await Borrower.findById(borrowerId);
+      if (!borrower) {
+        return next(new ApiError("Borrower not found", 404));
+      }
+
+      // Check if this borrower belongs to the lender
+      if (!borrower.lender.equals(lender._id)) {
+        return next(
+          new ApiError(
+            "You are not authorized to create loans for this borrower",
+            403
+          )
+        );
+      }
+
+      lenderId = lender._id;
+    } else {
+      // For admin users, both borrower and lender IDs must be provided
+      if (!req.body.borrower || !req.body.lender) {
+        return next(
+          new ApiError("Both borrower and lender IDs are required", 400)
+        );
+      }
+
+      borrowerId = req.body.borrower;
+      lenderId = req.body.lender;
+
+      // Verify that both borrower and lender exist
+      borrower = await Borrower.findById(borrowerId);
+      if (!borrower) {
+        return next(new ApiError("Borrower not found", 404));
+      }
+
+      const lender = await Lender.findById(lenderId);
+      if (!lender) {
+        return next(new ApiError("Lender not found", 404));
+      }
+    }
+
+    // Extract data directly from the request body
+    // The data is already parsed as JSON by Express
+    const primaryBorrower = req.body.borrowerDetails || (req.body.borrowers && req.body.borrowers[0]) || {};
+    const property = req.body.property || req.body.propertyInfo || {};
+    const loanDetails = req.body.loanDetails || req.body.loanInfo || {};
+    const assets = req.body.assets || {};
+    const income = req.body.income || {};
+    const debts = req.body.debts || [];
+    const expenses = req.body.expenses || [];
+    const propertiesOwned = req.body.propertiesOwned || {};
+    const militaryService = req.body.militaryService || {};
+    const declarations = req.body.declarations || {};
+    const demographics = req.body.demographics || {};
+    const coBorrowers = req.body.coBorrowers || [];
+
+    console.log("Processing loan data with borrower:", borrowerId);
+    console.log("Property data:", property);
+
+    // Prepare property data
+    const propertyData = {
+      zipCode: property?.zipCode || property?.address?.zipCode || "00000",
+      propertyType: property?.propertyType || "Single Family Home",
+      occupancyType: property?.occupancyType || "Primary Residence",
+      numberOfUnits: property?.numberOfUnits || 1,
+      yearBuilt: property?.yearBuilt || new Date().getFullYear(),
+      propertyValue: parseFloat(property?.propertyValue) || 100000,
+      isNewConstruction: property?.isNewConstruction || false,
+      // Add fields for property with accepted offer
+      hasAcceptedOffer: property?.hasAcceptedOffer || false,
+      contractPurchasePrice: parseFloat(property?.contractPurchasePrice) || 0,
+      isMixedUse: property?.isMixedUse || "No",
+      isManufactured: property?.isManufactured || "No",
+      proposedRentalIncome: parseFloat(property?.proposedRentalIncome) || 0,
+    };
+
+    // Prepare loan details data
+    const cleanLoanAmount = parseFloat(loanDetails?.loanAmount) || 50000;
+
+    // Base loan details that apply to all loan types
+    const loanDetailsData = {
+      loanType: loanDetails?.loanType || "Purchase",
+      loanAmount: cleanLoanAmount,
+      downPayment: parseFloat(loanDetails?.downPayment) || 0,
+      downPaymentPercentage:
+        parseFloat(loanDetails?.downPaymentPercentage) || 20,
+      interestRate: parseFloat(loanDetails?.interestRate) || 4.5,
+      loanTerm: parseInt(loanDetails?.loanTerm) || 30,
+      isFixedRate: loanDetails?.isFixedRate !== false, // Default to true
+      includeEscrow: loanDetails?.includeEscrow !== false, // Default to true
+      includeMortgageInsurance: loanDetails?.includeMortgageInsurance !== false, // Default to true
+    };
+
+    // Add fields specific to the loan type
+    if (loanDetails?.loanType === "Purchase") {
+      loanDetailsData.purchasePrice =
+        parseFloat(loanDetails?.purchasePrice) || 0;
+    } else if (loanDetails?.loanType === "Refinance") {
+      loanDetailsData.yearAcquired = parseInt(loanDetails?.yearAcquired) || 0;
+      loanDetailsData.currentLoanBalance =
+        parseFloat(loanDetails?.currentLoanBalance) || 0;
+      loanDetailsData.requestedLoanAmount =
+        parseFloat(loanDetails?.requestedLoanAmount) || 0;
+      loanDetailsData.refinanceType = loanDetails?.refinanceType || "Refinance";
+    } else if (loanDetails?.loanType === "Construction") {
+      loanDetailsData.yearLotAcquired =
+        parseInt(loanDetails?.yearLotAcquired) || 0;
+      loanDetailsData.originalCost = parseFloat(loanDetails?.originalCost) || 0;
+      loanDetailsData.existingLoans =
+        parseFloat(loanDetails?.existingLoans) || 0;
+      loanDetailsData.presentValueOfLot =
+        parseFloat(loanDetails?.presentValueOfLot) || 0;
+      loanDetailsData.costOfImprovements =
+        parseFloat(loanDetails?.costOfImprovements) || 0;
+      loanDetailsData.constructionType =
+        loanDetails?.constructionType || "Construction";
+    }
+
+    // Get borrower details from the borrowers array or directly from borrowerDetails
+    let borrowerDetailsData;
+    if (req.body.borrowers && req.body.borrowers[0]) {
+      const borrowerData = req.body.borrowers[0];
+      borrowerDetailsData = {
+        firstName: borrowerData?.firstName || "",
+        middleName: borrowerData?.middleName || "",
+        lastName: borrowerData?.lastName || "",
+        suffix: borrowerData?.suffix || "",
+        maritalStatus: borrowerData?.maritalStatus || "",
+        dateOfBirth: borrowerData?.dateOfBirth || null,
+        ssn: borrowerData?.ssn || "",
+        citizenship: borrowerData?.citizenship || "",
+        phone: borrowerData?.phone || "",
+        email: borrowerData?.email || "",
+        dependents: Array.isArray(borrowerData?.dependents) ? borrowerData.dependents : [],
+        currentAddress: borrowerData?.currentAddress || {},
+        mailingAddress: borrowerData?.mailingAddress || {},
+        previousAddresses: Array.isArray(borrowerData?.previousAddresses) ? borrowerData.previousAddresses : [],
+        employers: Array.isArray(borrowerData?.employers) ? borrowerData.employers : [],
+      };
+    } else {
+      // Use the borrowerDetails directly if available
+      borrowerDetailsData = {
+        firstName: primaryBorrower?.firstName || "",
+        middleName: primaryBorrower?.middleName || "",
+        lastName: primaryBorrower?.lastName || "",
+        suffix: primaryBorrower?.suffix || "",
+        maritalStatus: primaryBorrower?.maritalStatus || "",
+        dateOfBirth: primaryBorrower?.dateOfBirth || null,
+        ssn: primaryBorrower?.ssn || "",
+        citizenship: primaryBorrower?.citizenship || "",
+        phone: primaryBorrower?.phone || "",
+        email: primaryBorrower?.email || "",
+        dependents: Array.isArray(primaryBorrower?.dependents) ? primaryBorrower.dependents : [],
+        currentAddress: primaryBorrower?.currentAddress || {},
+        mailingAddress: primaryBorrower?.mailingAddress || {},
+        previousAddresses: Array.isArray(primaryBorrower?.previousAddresses) ? primaryBorrower.previousAddresses : [],
+        employers: Array.isArray(primaryBorrower?.employers) ? primaryBorrower.employers : [],
+      };
+    }
+
+    // Create a new loan application
+    const newLoan = new Loan({
+      borrower: borrowerId,
+      lender: lenderId,
+      status: "Application Submitted",
+      purpose: req.body.purpose || "Home Purchase",
+      borrowerDetails: borrowerDetailsData,
+      property: propertyData,
+      loanDetails: loanDetailsData,
+      assets: assets || {},
+      income: income || {},
+      debts: debts || [],
+      expenses: expenses || [],
+      propertiesOwned: propertiesOwned || {},
+      militaryService: militaryService || {},
+      declarations: declarations || {},
+      demographics: demographics || {},
+      coBorrowers: coBorrowers || [],
+      documents: [], // No documents in this step
+    });
+
+    // Save the loan application
+    await newLoan.save();
+
+    // Generate a loan number (LN prefix + ID)
+    newLoan.loanNumber = `LN${newLoan._id.toString().substring(0, 8)}`;
+    await newLoan.save();
+
+    // Return success response with loan details
+    res.status(201).json({
+      status: "success",
+      message: "Loan application submitted successfully",
+      data: {
+        _id: newLoan._id,
+        loanNumber: newLoan.loanNumber,
+        status: newLoan.status,
+        purpose: newLoan.purpose,
+        borrower: newLoan.borrower,
+        lender: newLoan.lender,
+        createdAt: newLoan.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating loan:", error);
+    next(error);
+  }
+};
+
+/**
+ * Add documents to an existing loan
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.addDocumentsToLoan = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the loan
+    const loan = await Loan.findById(id);
+    
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+    
+    // Check permissions for borrowers
+    if (req.user.role === "borrower") {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      
+      if (!borrower) {
+        return next(new ApiError("Borrower profile not found", 404));
+      }
+      
+      const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers.some(
+        (coBorrower) => coBorrower.toString() === borrower._id.toString()
+      );
+      
+      if (!isPrimaryBorrower && !isCoBorrower) {
+        return next(new ApiError("You are not authorized to modify this loan", 403));
+      }
+    }
+    
+    // Process uploaded files
+    const uploadedFiles = req.files || [];
+    const documents = [];
+    
+    for (const file of uploadedFiles) {
+      // Create document record
+      documents.push({
+        fileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        url: file.path,
+        uploadedBy: req.user._id,
+        uploadedAt: new Date(),
+        documentType: "Other", // Default type
+      });
+    }
+    
+    // Add documents to the loan
+    if (documents.length > 0) {
+      loan.documents = [...loan.documents, ...documents];
+      await loan.save();
+    }
+    
+    res.status(200).json({
+      status: "success",
+      message: "Documents added to loan successfully",
+      data: {
+        documentsAdded: documents.length,
+        totalDocuments: loan.documents.length,
       },
     });
   } catch (error) {

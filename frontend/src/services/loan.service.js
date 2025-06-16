@@ -16,87 +16,56 @@ class LoanService {
    */
   async submitApplication(loanData, documents = []) {
     try {
-      // console.log('LOAN SERVICE - Start submission, data keys:', Object.keys(loanData));
-      // console.log('LOAN SERVICE - BorrowerDetails before processing:', loanData.borrowerDetails);
+      // First, submit the loan data without documents
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
       
-      // // Debug the structure of borrower details
-      // if (loanData.borrowerDetails) {
-      //   console.log('LOAN SERVICE - Borrower dependents:', loanData.borrowerDetails.dependents);
-      //   console.log('LOAN SERVICE - Borrower employers:', loanData.borrowerDetails.employers);
-      //   console.log('LOAN SERVICE - Borrower previousAddresses:', loanData.borrowerDetails.previousAddresses);
-      // }
+      console.log('Submitting loan application data:', loanData);
       
-      // Create a new object with all properties stringified
-      const formattedData = {};
+      // Submit loan data as JSON directly without stringifying individual properties
+      const response = await fetch(`${baseURL}/api/v1/borrower/loans/data`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(loanData)
+      });
       
-      // Process each field to ensure proper formatting
-      for (const [key, value] of Object.entries(loanData)) {
-        if (key === 'documents') continue; // Skip documents
-        
-        // Convert objects to JSON strings
-        if (value !== null && typeof value === 'object') {
-          formattedData[key] = JSON.stringify(value);
-          // console.log(`LOAN SERVICE - Field ${key} converted to JSON string, length: ${formattedData[key].length}`);
-          
-          // Log sample of stringified data for debugging
-          if (key === 'borrowerDetails') {
-            // console.log('LOAN SERVICE - BorrowerDetails sample (first 100 chars):', 
-              // formattedData[key].substring(0, 100) + '...');
-          }
-        } else {
-          formattedData[key] = value;
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Loan submission error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       
-      // Debug: log keys and values in formattedData
-      // console.log('LOAN SERVICE - formattedData keys:', Object.keys(formattedData));
-      // console.log('LOAN SERVICE - formattedData values sample:', 
-      //   Object.entries(formattedData).slice(0, 3).map(([k, v]) => 
-      //     `${k}: ${typeof v === 'string' && v.length > 30 ? v.substring(0, 30) + '...' : v}`
-      //   )
-      // );
+      const data = await response.json();
+      const loanId = data.data._id;
       
-      // console.log('formattedData', formattedData);
-      // Create form data for file upload
-      const formData = new FormData();
-      
-      // Add all formatted fields to formData
-      for (const [key, value] of Object.entries(formattedData)) {
-        if (value !== null && value !== undefined) {
-          try {
-            // Make sure we're adding a string value to FormData
-            const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-            formData.append(key, stringValue);
-            // console.log(`LOAN SERVICE - Successfully appended ${key} to FormData, length: ${stringValue.length}`);
-          } catch (err) {
-            // console.error(`LOAN SERVICE - Error appending ${key} to FormData:`, err);
-          }
-        }
-      }
-      
-      // Add documents if any
+      // If there are documents, upload them separately
       if (documents && documents.length > 0) {
-        // console.log(`LOAN SERVICE - Adding ${documents.length} documents to FormData`);
-        documents.forEach((doc, index) => {
+        const formData = new FormData();
+        
+        // Add the loan ID to the form data
+        formData.append('loanId', loanId);
+        
+        // Add documents
+        documents.forEach((doc) => {
           formData.append('documents', doc);
-          // console.log(`LOAN SERVICE - Added document ${index + 1}: ${doc.name}, size: ${doc.size}, type: ${doc.type}`);
         });
-      } 
-      
-      // console.log('Sending formatted loan data to backend');
-      // // Debug FormData contents
-      // console.log('FormData entries:');
-      // for (const [key, value] of formData.entries()) {
-      //   if (key === 'documents') {
-      //     console.log(`${key}: [File object], size: ${value.size || 'unknown'}`);
-      //   } else {
-      //     console.log(`${key}: ${typeof value === 'string' ? `${value.substring(0, 30)}... (length: ${value.length})` : value}`);
-      //   }
-      // }
-
-      // console.log('formData', formData);
-      // Don't set Content-Type header manually - let the browser set it with the correct boundary
-      const response = await ApiService.post('/api/v1/borrower/loans', formData);
+        
+        // Upload documents
+        const uploadResponse = await fetch(`${baseURL}/api/v1/borrower/loans/${loanId}/documents`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+          console.warn('Document upload failed, but loan was created');
+        }
+      }
       
       // Log the loan application submission
       try {
@@ -104,24 +73,23 @@ class LoanService {
           'loan_submission',
           `Loan application submitted for ${loanData.purpose || 'unspecified purpose'}`,
           {
-            loanId: response.data._id,
+            loanId: loanId,
             purpose: loanData.purpose
           }
         );
       } catch (logError) {
-        // Continue even if logging fails
         console.warn('Failed to create audit log, but loan submission succeeded', logError);
       }
       
       return {
         success: true,
-        data: response.data
+        data: data.data
       };
     } catch (error) {
       console.error('Loan application submission error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to submit loan application'
+        message: error.message || 'Failed to submit loan application'
       };
     }
   }

@@ -50,10 +50,10 @@ app.use(helmet({
 
 // Enable CORS
 app.use(cors({
-  origin: '*', // Allow all origins
-  credentials: true,
+  origin: ['http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean),
+  credentials: false,
   exposedHeaders: ['Content-Disposition'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
@@ -77,12 +77,14 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // File upload middleware
 app.use(fileUpload({
   limits: { 
-    fileSize: 10 * 1024 * 1024, // 10 MB max file size
+    fileSize: 50 * 1024 * 1024, // 50 MB max file size
   },
   abortOnLimit: true,
   createParentPath: true,
   useTempFiles: true,
-  tempFileDir: '/tmp/'
+  tempFileDir: '/tmp/',
+  parseNested: true,
+  debug: true
 }));
 
 // Data sanitization against NoSQL query injection
