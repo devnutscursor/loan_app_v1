@@ -425,15 +425,19 @@ const LoanApplication = () => {
       if (formData.propertiesOwned && formData.propertiesOwned.ownsProperty === true && 
           Array.isArray(formData.propertiesOwned.properties) && formData.propertiesOwned.properties.length > 0) {
         
+        // Debug: Log the properties before transformation
+        console.log('FORM SUBMISSION - Properties before transformation:', formData.propertiesOwned.properties);
+        
         // Map each property to the format expected by the backend
         formData.propertiesOwned.properties.forEach(property => {
+          console.log('FORM SUBMISSION - Processing property:', property);
           transformedPropertiesOwned.push({
             propertyAddress: {
-              streetAddress: property.address?.streetAddress || '',
-              apt: property.address?.apt || '',
-              city: property.address?.city || '',
-              state: property.address?.state || '',
-              zipCode: property.address?.zipCode || ''
+              streetAddress: property.propertyAddress?.streetAddress || '',
+              apt: property.propertyAddress?.apt || '',
+              city: property.propertyAddress?.city || '',
+              state: property.propertyAddress?.state || '',
+              zipCode: property.propertyAddress?.zipCode || ''
             },
             propertyType: property.propertyType || '',
             presentMarketValue: parseFloat(property.presentMarketValue) || 0,

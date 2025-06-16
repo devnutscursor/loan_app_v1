@@ -1494,12 +1494,14 @@ const LoanDetails = () => {
                             </div>
                             <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                               <PropertyOwned
-                                propertyOwned={loan.propertiesOwned || []}
-                                onChange={(properties) => {
+                                propertyOwned={loan.propertiesOwned || {}}
+                                onChange={(updatedPropertyOwned) => {
+                                  console.log("Updated property owned data:", updatedPropertyOwned);
                                   setLoan((prev) => ({
                                     ...prev,
-                                    propertiesOwned: properties,
+                                    propertiesOwned: updatedPropertyOwned
                                   }));
+                                  setHasUnsavedChanges(true);
                                 }}
                               />
                             </div>

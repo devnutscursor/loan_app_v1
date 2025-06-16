@@ -43,22 +43,24 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
         id: `property-${Date.now()}`,
         propertyAddress: {
           streetAddress: '',
-          apt: '', // Added missing field
+          apt: '',
           city: '',
           state: '',
           zipCode: ''
         },
-        propertyType: '', // Added missing field (though no input yet)
+        propertyType: '',
         presentMarketValue: '',
-        statusOfProperty: '', // Default to empty or a sensible default like 'retained'
-        intendedOccupancy: '', // Default to empty or a sensible default
-        monthlyCosts: '', // Added missing field
-        grossRentalIncome: '', // Added missing field
-        netRentalIncome: '', // Added missing field
-        hasLoan: null, // Use null for unset boolean select
-        monthlyPayment: '', // Added missing field
-        unpaidBalance: '', // Added missing field
+        statusOfProperty: '',
+        intendedOccupancy: '',
+        monthlyCosts: '',
+        grossRentalIncome: '',
+        netRentalIncome: '',
+        hasLoan: null,
+        monthlyPayment: '',
+        unpaidBalance: '',
       };
+
+      console.log("Creating default property with structure:", defaultProperty);
 
       const newProperties = [defaultProperty];
       setLocalProperties(newProperties);
@@ -79,22 +81,25 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       id: `property-${Date.now()}`,
       propertyAddress: {
         streetAddress: '',
-        apt: '', // Added missing field
+        apt: '', 
         city: '',
         state: '',
         zipCode: ''
       },
-      propertyType: '', // Added missing field (though no input yet)
+      propertyType: '',
       presentMarketValue: '',
-      statusOfProperty: '', // Default to empty or a sensible default like 'retained'
-      intendedOccupancy: '', // Default to empty or a sensible default
-      monthlyCosts: '', // Added missing field
-      grossRentalIncome: '', // Added missing field
-      netRentalIncome: '', // Added missing field
-      hasLoan: null, // Use null for unset boolean select
-      monthlyPayment: '', // Added missing field
-      unpaidBalance: '', // Added missing field
+      statusOfProperty: '',
+      intendedOccupancy: '',
+      monthlyCosts: '',
+      grossRentalIncome: '',
+      netRentalIncome: '',
+      hasLoan: null,
+      monthlyPayment: '',
+      unpaidBalance: '',
     };
+
+    // Log the new property structure
+    console.log("Adding new property with initial structure:", newProperty);
 
     const updatedProperties = [...localProperties, newProperty];
     setLocalProperties(updatedProperties);
@@ -120,10 +125,13 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       const [parent, child] = field.split('.');
       updatedProperties = localProperties.map(property => {
         if (property.id === propertyId) {
+          // Ensure propertyAddress exists
+          const parentObject = property[parent] || {};
+          
           return {
             ...property,
             [parent]: {
-              ...property[parent],
+              ...parentObject,
               [child]: value
             }
           };
@@ -146,6 +154,7 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       });
     }
 
+    console.log("Updated properties:", updatedProperties);
     setLocalProperties(updatedProperties);
     onChange({
       ...propertyOwned,
@@ -295,10 +304,8 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
                     value={property.propertyAddress?.streetAddress || ''}
                     onChange={(e) => handlePropertyChange(property.id, 'propertyAddress.streetAddress', e.target.value)}
                     className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    // style={{ '--focus-ring-color': theme.colors.primary }} // Use Tailwind focus classes instead if possible
                     placeholder="e.g., 123 Main St"
                   />
-                  {/* Error display example: {errors?.[`properties.${index}.propertyAddress.streetAddress`] && <p className="text-red-500 text-xs mt-1">{errors[`properties.${index}.propertyAddress.streetAddress`]}</p>} */}
                 </div>
 
                 <div className="mb-4">
