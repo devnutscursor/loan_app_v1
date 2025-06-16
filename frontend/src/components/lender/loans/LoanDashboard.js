@@ -43,12 +43,12 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
     try {
       setLoadingDocuments(true);
 
-      console.log("Calculating document stats...");
-      console.log("Documents:", documents);
-      console.log(
-        "Standard Document Requirements:",
-        standardDocumentRequirements
-      );
+      // console.log("Calculating document stats...");
+      // console.log("Documents:", documents);
+      // console.log(
+      //   "Standard Document Requirements:",
+      //   standardDocumentRequirements
+      // );
       // Get total required documents from standard requirements
       const totalRequired = standardDocumentRequirements.length;
 

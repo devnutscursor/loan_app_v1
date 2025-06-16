@@ -241,7 +241,7 @@ if (assets) {
   for (let i = 0; i < 5; i++) {
     const idx = i + 1;
     const row = assetRows[i] || {};
-    form.getDropdown(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account_Type${idx}[0]`).select(row.type || '');
+    // form.getDropdown(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account_Type${idx}[0]`).select(row.type || '');
     form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Financial${idx}[0]`).setText(row.financial || '');
     form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account${idx}[0]`).setText(row.account || '');
     form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Cash${idx}[0]`).setText(row.value ? String(row.value) : '');
@@ -369,13 +369,37 @@ if (assets) {
       form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a31[0]._5a_About_A3[0]').select('No');
     }
 
-    // Bankruptcy information
-    if (declarations.declaredBankruptcy) {
-      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
-      if (declarations.bankruptcyType) {
-        form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]').setText(declarations.bankruptcyType);
+    // ...existing code...
+    if (borrowerDetails.citizenship) {
+      const citizenshipGroup = form.getRadioGroup('Group1');
+      
+      // Map your data values to PDF option values
+      let citizenshipOption;
+      switch (borrowerDetails.citizenship.toLowerCase()) {
+        case 'uscitizen':
+          citizenshipOption = 'U.S. Citizen';
+          break;
+        case 'permanentresident':
+          citizenshipOption = 'Permanent Resident Alien';
+          break;
+        case 'nonpermanentresident':
+          citizenshipOption = 'Non-Permanent Resident Alien';
+          break;
+        default:
+          citizenshipOption = 'U.S. Citizen'; // Default fallback
       }
+      
+      citizenshipGroup.select(citizenshipOption);
     }
+    form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
+      
+    // Bankruptcy information
+    // if (declarations.declaredBankruptcy) {
+    //   form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
+    //   if (declarations.bankruptcyType) {
+    //     form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]').setText(declarations.bankruptcyType);
+    //   }
+    // }
 
     // Property foreclosure information
     if (declarations.propertyForeclosed) {
@@ -673,26 +697,26 @@ const LoanDetails = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log("Fetching loan details for ID:", id);
+      // console.log("Fetching loan details for ID:", id);
 
       const response = await lenderService.getLoan(id);
       
       // Print debug info to terminal
-      console.log('\n=== LOAN DETAILS DEBUG INFO ===');
-      console.log('Loan ID:', id);
-      console.log('Full Response:', JSON.stringify(response, null, 2));
-      console.log('Response Data:', JSON.stringify(response?.data, null, 2));
-      console.log('Response Data Data:', JSON.stringify(response?.data?.data, null, 2));
-      console.log('Loan Data:', JSON.stringify(response?.data?.data?.loan, null, 2));
-      console.log('Borrower Details:', JSON.stringify(response?.data?.data?.loan?.borrowerDetails, null, 2));
-      console.log('================================\n');
+      // console.log('\n=== LOAN DETAILS DEBUG INFO ===');
+      // console.log('Loan ID:', id);
+      // console.log('Full Response:', JSON.stringify(response, null, 2));
+      // console.log('Response Data:', JSON.stringify(response?.data, null, 2));
+      // console.log('Response Data Data:', JSON.stringify(response?.data?.data, null, 2));
+      // console.log('Loan Data:', JSON.stringify(response?.data?.data?.loan, null, 2));
+      // console.log('Borrower Details:', JSON.stringify(response?.data?.data?.loan?.borrowerDetails, null, 2));
+      // console.log('================================\n');
 
       if (response && (response.data || response.data?.data)) {
         // Extract loan data, handling different response structures
         // Based on the API structure in memory, data is nested under response.data.data
         const loanData =
           response.data?.data?.loan || response.data?.data || response.data;
-        console.log("Loan details:", loanData);
+        // console.log("Loan details:", loanData);
 
         // Ensure all required properties exist with defaults
         const normalizedData = {
@@ -711,15 +735,15 @@ const LoanDetails = () => {
 
         // Add console logs to inspect data
         console.log("Normalized data structure:", normalizedData);
-        console.log("Borrower details:", normalizedData.borrowerDetails);
-        console.log("Loan details:", normalizedData.loanDetails);
+        // console.log("Borrower details:", normalizedData.borrowerDetails);
+        // console.log("Loan details:", normalizedData.loanDetails);
 
         setLoan(normalizedData);
 
         // Fetch documents separately since they are stored in a different collection
         try {
           const docsResponse = await lenderService.getLoanDocuments(id);
-          console.log("Documents response:", docsResponse);
+          // console.log("Documents response:", docsResponse);
 
           if (docsResponse && docsResponse.data) {
             // Extract documents, handling nested structure
