@@ -38,10 +38,10 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = socketIo(server, {
   cors: {
-    origin: '*',
+    origin: ['http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean),
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    credentials: false
   }
 });
 
