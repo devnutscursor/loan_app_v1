@@ -514,6 +514,9 @@ const LoanDetails = () => {
 
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
+  
+  // Tabs where save functionality is needed
+  const SAVE_TABS = ["borrower", "loan", "property", "financial", "additional"];
 
   // Call this to cancel changes
   const handleCancel = () => {
@@ -792,7 +795,9 @@ const LoanDetails = () => {
   // Handle form field changes with better null checks
   const handleFieldChange = (section, field, value) => {
     console.log(`Updating ${section}.${field} with:`, value);
+    // Set unsaved changes flag
     setHasUnsavedChanges(true);
+    
     setLoan((prev) => {
       // Make sure the section exists
       const sectionData = prev[section] || {};
@@ -810,7 +815,8 @@ const LoanDetails = () => {
   // Handle nested field changes
   const handleNestedFieldChange = (section, nestedSection, field, value) => {
     console.log(`Updating ${section}.${nestedSection}.${field} with:`, value);
-
+    setHasUnsavedChanges(true);
+    
     setLoan((prev) => {
       // Make sure the section and nested section exist
       const sectionData = prev[section] || {};
@@ -868,6 +874,48 @@ const LoanDetails = () => {
     debug('Opening note modal', { loanId: id });
     setIsNoteModalOpen(true);
   };
+
+  // Monitor changes in forms for different tabs
+  useEffect(() => {
+    // Add event listener for radio button and select element changes when in specific tabs
+    const handleFormElementChange = () => {
+      // Check if we're in a tab that needs save functionality
+      if (SAVE_TABS.includes(activeTab)) {
+        console.log(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
+        setHasUnsavedChanges(true);
+      }
+    };
+    
+    // Add event listeners for form elements
+    const formElements = document.querySelectorAll('input[type=radio], input[type=checkbox], select');
+    formElements.forEach(element => {
+      element.addEventListener('change', handleFormElementChange);
+    });
+    
+    // Add event listeners for buttons within forms (like Yes/No toggle buttons)
+    const formButtons = document.querySelectorAll('.border-t.border-gray-200 button');
+    formButtons.forEach(button => {
+      button.addEventListener('click', handleFormElementChange);
+    });
+    
+    // Cleanup listeners when component unmounts or tab changes
+    return () => {
+      formElements.forEach(element => {
+        element.removeEventListener('change', handleFormElementChange);
+      });
+      formButtons.forEach(button => {
+        button.removeEventListener('click', handleFormElementChange);
+      });
+    };
+  }, [activeTab]);
+
+  // Monitor changes to hasUnsavedChanges
+  useEffect(() => {
+    console.log(`hasUnsavedChanges changed to: ${hasUnsavedChanges}`, {
+      activeTab,
+      isExcludedTab: NO_SAVE_TABS.includes(activeTab)
+    });
+  }, [hasUnsavedChanges, activeTab]);
 
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
@@ -1549,6 +1597,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       income: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange("income", field, value);
                                   }
@@ -1571,6 +1620,7 @@ const LoanDetails = () => {
                                     ...prev,
                                     assets: assets,
                                   }));
+                                  setHasUnsavedChanges(true);
                                 }}
                               />
                             </div>
@@ -1598,6 +1648,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       debts: Array.isArray(value) ? value : [],
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else if (field === "expenses") {
                                     setLoan((prev) => ({
                                       ...prev,
@@ -1605,6 +1656,7 @@ const LoanDetails = () => {
                                         ? value
                                         : [],
                                     }));
+                                    setHasUnsavedChanges(true);
                                   }
                                 }}
                               />
@@ -1646,6 +1698,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       militaryService: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "militaryService",
@@ -1688,6 +1741,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       declarations: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "declarations",
@@ -1731,6 +1785,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       demographics: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "demographics",

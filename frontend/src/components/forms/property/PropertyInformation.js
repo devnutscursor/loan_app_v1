@@ -22,7 +22,9 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
   const [occupancyType, setOccupancyType] = useState(propertyInfo.occupancyType || '');
   const [propertyType, setPropertyType] = useState(propertyInfo.propertyType || '');
   const [propertyValue, setPropertyValue] = useState(propertyInfo.propertyValue || '');
-  const [hasAcceptedOffer, setHasAcceptedOffer] = useState(propertyInfo.hasAcceptedOffer || '');
+const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
+  propertyInfo.hasAcceptedOffer !== undefined ? propertyInfo.hasAcceptedOffer : ''
+);
   const [isMixedUse, setIsMixedUse] = useState(propertyInfo.isMixedUse || '');
   const [isManufactured, setIsManufactured] = useState(propertyInfo.isManufactured || '');
   const [numberOfUnits, setNumberOfUnits] = useState(propertyInfo.numberOfUnits || '');
@@ -41,7 +43,9 @@ const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
     setOccupancyType(propertyInfo.occupancyType || '');
     setPropertyType(propertyInfo.propertyType || '');
     setPropertyValue(propertyInfo.propertyValue || '');
-    setHasAcceptedOffer(propertyInfo.hasAcceptedOffer || '');
+    setHasAcceptedOffer(
+    propertyInfo.hasAcceptedOffer !== undefined ? propertyInfo.hasAcceptedOffer : ''
+  );
     setIsMixedUse(propertyInfo.isMixedUse || '');
     setIsManufactured(propertyInfo.isManufactured || '');
     setNumberOfUnits(propertyInfo.numberOfUnits || '');
