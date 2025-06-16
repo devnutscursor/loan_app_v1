@@ -40,6 +40,7 @@ import LenderDocumentRequirements from "../../../components/lender/documents/Len
 import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerScenarioTailwind";
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
 import { PDFDocument } from "pdf-lib";
+import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -815,6 +816,7 @@ const LoanDetails = () => {
     });
   };
 
+
   const handleDownloadURLA = async () => {
     const pdfBytes = await generateURLAPdf(loan.borrowerDetails, loan.assets, loan.income, loan.debts, loan.propertiesOwned, loan.loanDetails, loan.property, loan.declarations, loan.demographics);
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -824,6 +826,27 @@ const LoanDetails = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadMismoXml = () => {
+    if (!loan) {
+      toast.error("Loan data not available");
+      return;
+    }
+    
+    try {
+      // Generate XML string from loan data
+      const xmlString = generateMismoXml(loan);
+      
+      // Download as XML file
+      const filename = `MISMO_${loan.loanNumber || loan._id}.xml`;
+      downloadXmlFile(xmlString, filename);
+      
+      toast.success("MISMO 3.4 file downloaded successfully");
+    } catch (error) {
+      console.error("Error generating MISMO XML:", error);
+      toast.error("Failed to generate MISMO 3.4 file");
+    }
   };
 
   return (
@@ -1075,20 +1098,16 @@ const LoanDetails = () => {
                       </button>
                       <button
                         title="Send Message"
-                        onClick={() =>
-                          toast.info("Send message feature coming soon")
-                        }
+                        onClick={() => {
+                          router.push("/lender/messages");
+                        }}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <MessageCircle className="h-5 w-5" />
                       </button>
                       <button
-                        title="Download 3.2/3.4 File"
-                        onClick={() =>
-                          toast.info(
-                            "Download 3.2/3.4 file feature coming soon"
-                          )
-                        }
+                        title="Download 3.4 File"
+                        onClick={handleDownloadMismoXml}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <Download className="h-5 w-5" />
