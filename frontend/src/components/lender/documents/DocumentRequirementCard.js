@@ -8,6 +8,9 @@ const DocumentRequirementCard = ({
   onApprove,
   onReject,
   openRequestModal,
+  isSelectable = false,
+  isSelected = false,
+  onSelectToggle = null,
 }) => {
   useEffect(() => {
     console.log("DocumentRequirementCard mounted");
@@ -33,6 +36,17 @@ const DocumentRequirementCard = ({
       
     >
       <div className="flex items-start space-x-3" >
+        {isSelectable && !req.isSubmitted && (
+          <div className="flex-shrink-0 pt-1.5 mr-1">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onSelectToggle && onSelectToggle(req)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+          </div>
+        )}
+
         <div className="flex-shrink-0 pt-0.5">
           {req.isSubmitted ? (
             <span

@@ -120,6 +120,17 @@ export const lenderService = {
       throw error;
     }
   },
+  // Loan Conditions
+  getLoanConditions: async (loanId) => {
+    try {
+      const response = await api.get(`/loans/${loanId}/conditions`);
+      console.log('Fetched loan conditions:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching loan conditions:', error);
+      return { success: false, message: error.message || 'Failed to fetch loan conditions' };
+    }
+  },
   // Loans
   getLoans: (params) => api.get('/loans', { params }),
   getLoan: (id) => api.get(`/loans/${id}`),

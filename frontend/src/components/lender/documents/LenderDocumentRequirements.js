@@ -5,6 +5,7 @@ import { standardDocumentRequirements } from "../../../data/documentRequirements
 import { assignDocumentsToRequirements } from "../../../utils/documentMatching";
 import DocumentRequirementCard from "./DocumentRequirementCard";
 import DocumentRequestModal from "./DocumentRequestModal";
+import BatchRequestModal from "./BatchRequestModal";
 
 /**
  * LenderDocumentRequirements Component
@@ -81,6 +82,11 @@ const LenderDocumentRequirements = ({
   const [modalKey, setModalKey] = useState(Date.now());
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [loanConditions, setLoanConditions] = useState([]);
+  // New state for multi-select functionality
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [processingBatch, setProcessingBatch] = useState(false);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -167,6 +173,107 @@ const LenderDocumentRequirements = ({
     setLoading(false);
   };
 
+  // Toggle document selection
+  const handleToggleDocumentSelection = (doc) => {
+    setSelectedDocuments(prev => {
+      const isSelected = prev.some(item => item.id === doc.id);
+      if (isSelected) {
+        return prev.filter(item => item.id !== doc.id);
+      } else {
+        return [...prev, doc];
+      }
+    });
+  };
+
+  // Toggle selection mode
+  const toggleSelectionMode = () => {
+    setSelectMode(prev => {
+      const newMode = !prev;
+      if (!newMode) {
+        // When turning off selection mode, clear selections
+        setSelectedDocuments([]);
+      }
+      return newMode;
+    });
+  };
+
+  // Open batch request modal
+  const openBatchModal = () => {
+    if (selectedDocuments.length === 0) {
+      toast.error("Please select at least one document to request");
+      return;
+    }
+    setShowBatchModal(true);
+  };
+
+  // Close batch request modal
+  const closeBatchModal = () => {
+    setShowBatchModal(false);
+  };
+
+  // Handle batch document requests
+  const handleBatchRequest = async () => {
+    if (selectedDocuments.length === 0) {
+      toast.error("Please select at least one document to request");
+      return;
+    }
+
+    setProcessingBatch(true);
+
+    try {
+      // First, fetch loan data to get borrower ID
+      console.log("Fetching loan data for batch request...");
+      const loanResponse = await lenderService.getLoan(loanId);
+      
+      if (!loanResponse?.data?.data) {
+        console.error("Error: Could not fetch loan data for batch request");
+        toast.error("Unable to fetch loan details");
+        return;
+      }
+      
+      const loan = loanResponse.data.data;
+      const borrowerId = loan?.borrower;
+      
+      if (!borrowerId) {
+        console.error("Error: No borrower ID found in loan for batch request", loan);
+        toast.error("Unable to determine the borrower for this loan. Please check loan details.");
+        return;
+      }
+
+      // Process each document request sequentially
+      for (const doc of selectedDocuments) {
+        const requestData = {
+          title: doc.title,
+          documentType: doc.documentType,
+          category: doc.category,
+          loanId,
+          borrowerId,
+          description: doc.description,
+          isUpdate: false,
+        };
+
+        await lenderService.requestDocument(loanId, requestData);
+      }
+
+      toast.success(`${selectedDocuments.length} document requests sent successfully!`);
+      
+      // Clear selections and close modal
+      setSelectedDocuments([]);
+      setShowBatchModal(false);
+      setSelectMode(false);
+      
+      // Refresh documents list
+      if (refreshDocuments) {
+        refreshDocuments();
+      }
+    } catch (error) {
+      console.error("Error requesting documents in batch:", error);
+      toast.error("Failed to send some document requests");
+    } finally {
+      setProcessingBatch(false);
+    }
+  };
+
   useEffect(() => {
     console.log("Loan conditions:", loanConditions);
     // Force refresh of requirements when conditions change
@@ -199,61 +306,40 @@ const LenderDocumentRequirements = ({
     setRequirements(updatedReqs);
   }, [loanConditions]);
 
-  // Function to fetch loan conditions
-  const fetchLoanConditions = async () => {
-    if (!loanId) return;
-
-    console.log("📃 Fetching loan conditions on demand");
-    try {
-      console.log("🔄 Fetching loan conditions for", loanId);
-      const response = await lenderService.getLoan(loanId);
-
-      if (response && response.data) {
-        const conditions = response.data.data.conditions || [];
-        console.log("🔄 Fetched loan conditions:", conditions.length);
-        setLoanConditions(conditions);
-      }
-    } catch (error) {
-      console.error("Error fetching loan conditions:", error);
-    }
-  };
-
-  // Add manual condition fetching on component mount
+  // Effect for processing documents whenever loanId or documents change
   useEffect(() => {
-    if (!loanId) return;
+    console.log("Process Documents triggered with loan ID:", loanId);
 
-    console.log("🔄 Initial fetch of loan conditions");
+    setLoading(true);
+    processDocuments(documents);
 
-    // Initial fetch only - no polling
-    fetchLoanConditions();
-  }, [loanId]);
-
-  // Use effect to map requirements with documents when loan ID changes or when refreshCounter changes
-  useEffect(() => {
-    if (loanId && refreshCounter > 0) {
-      console.log(
-        `🔄 Updating requirements due to manual refresh (${refreshCounter})`
-      );
-    } else if (loanId) {
-      // Just process documents if it's the initial load
-      processDocuments(documents);
+    // If we have a loanId, also fetch loan conditions
+    if (loanId) {
+      lenderService
+        .getLoanConditions(loanId)
+        .then((response) => {
+          if (
+            response &&
+            response.success !== false &&
+            response.data &&
+            response.data.conditions
+          ) {
+            const conditions = response.data.conditions;
+            console.log("Loaded loan conditions:", conditions);
+            setLoanConditions(conditions);
+          } else {
+            console.warn("No loan conditions found:", response);
+            setLoanConditions([]);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching loan conditions:", error);
+          setLoanConditions([]);
+        });
+    } else {
+      setLoanConditions([]);
     }
   }, [loanId, documents, refreshCounter]);
-
-  // Open request document modal
-  const openRequestModal = (documentType, category, title, isUpdate = true) => {
-    setRequestDetails({
-      documentType,
-      category,
-      title,
-      reason: "",
-      customReason: "",
-      message: "",
-      isUpdate,
-    });
-    setModalKey(Date.now());
-    setShowRequestModal(true);
-  };
 
   // Generate appropriate message based on document type and reason
   const generateMessageForReason = (
@@ -399,6 +485,25 @@ const LenderDocumentRequirements = ({
     )}`;
   };
 
+  // Open the document request modal
+  const openRequestModal = (documentType, category, title, isUpdate = false) => {
+    console.log(`Opening request modal for ${documentType} (${category})`);
+    
+    // Initialize request modal data
+    const initialRequestData = {
+      documentType,
+      category,
+      title,
+      reason: "",
+      customReason: "",
+      isUpdate,
+    };
+
+    setRequestDetails(initialRequestData);
+    setModalKey(Date.now()); // Force re-render of modal components
+    setShowRequestModal(true);
+  };
+
   // Close request document modal
   const closeRequestModal = () => {
     // If this was an update request (not a new document request),
@@ -430,117 +535,60 @@ const LenderDocumentRequirements = ({
   // Handle document approval
   const handleApproveDocument = async (documentId) => {
     if (!documentId) {
-      console.error("Document approval failed: Document ID is missing");
-      toast.error("Document ID is missing");
+      toast.error("No document ID provided");
       return;
     }
 
     setProcessingDocId(documentId);
+
     try {
-      console.log(`⏳ Sending approval request to API...`);
+      const response = await lenderService.approveDocument(loanId, documentId);
+      if (response.success) {
+        toast.success("Document approved successfully");
 
-      let response;
-      try {
-        response = await lenderService.approveDocument(loanId, documentId);
-        console.log(`✅ API Response:`, response);
-      } catch (apiError) {
-        console.error("❌ API error approving document:", apiError);
-        // Mock successful response for testing if API fails
-        response = { success: true, message: "Document approved (simulated)" };
-      }
-
-      // Check for success in both mock API format and actual backend format
-      const isSuccess =
-        (response && response.success) || // Mock API format
-        (response &&
-          response.data &&
-          (response.data.status === "success" || response.status === 200)); // Backend format
-
-      if (isSuccess) {
-        const successMessage =
-          response.message ||
-          response.data?.message ||
-          "Document approved successfully";
-
-        toast.success(successMessage);
-
-        // Immediate local state update for responsive UI
-        setRequirements((prevReqs) => {
-          return prevReqs.map((req) =>
-            req.documentId === documentId ? { ...req, status: "Approved" } : req
-          );
-        });
-
-        setRefreshCounter((prev) => prev + 1);
+        // Refresh documents list
+        if (refreshDocuments) {
+          refreshDocuments();
+        }
       } else {
-        toast.error(
-          response?.data?.message ||
-            response?.message ||
-            "Failed to approve document"
-        );
+        toast.error(response.message || "Failed to approve document");
       }
     } catch (error) {
       console.error("Error approving document:", error);
       toast.error("An error occurred while approving the document");
     } finally {
-      setProcessingDocId(null);
+      setProcessingDocId("");
     }
   };
 
   // Handle document rejection
-  const handleRejectDocument = async (documentId) => {
+  const handleRejectDocument = async (documentId, reason) => {
     if (!documentId) {
-      toast.error("Document ID is missing");
+      toast.error("No document ID provided");
       return;
     }
 
     setProcessingDocId(documentId);
+
     try {
-      let response;
+      const response = await lenderService.rejectDocument(loanId, documentId, {
+        reason,
+      });
+      if (response.success) {
+        toast.success("Document rejected successfully");
 
-      try {
-        response = await lenderService.rejectDocument(loanId, documentId);
-      } catch (apiError) {
-        console.error("API error rejecting document:", apiError);
-        // Mock successful response for testing if API fails
-        response = { success: true, message: "Document rejected (simulated)" };
-      }
-
-      // Check for success
-      const isSuccess =
-        (response && response.success) ||
-        (response &&
-          response.data &&
-          (response.data.status === "success" || response.status === 200));
-
-      if (isSuccess) {
-        const successMessage =
-          response.message ||
-          response.data?.message ||
-          "Document rejected successfully";
-
-        toast.success(successMessage);
-
-        // Immediate local state update for responsive UI
-        setRequirements((prevReqs) => {
-          return prevReqs.map((req) =>
-            req.documentId === documentId ? { ...req, status: "Rejected" } : req
-          );
-        });
-        // Trigger a refresh of the document list
-        setRefreshCounter((prev) => prev + 1);
+        // Refresh documents list
+        if (refreshDocuments) {
+          refreshDocuments();
+        }
       } else {
-        toast.error(
-          response?.data?.message ||
-            response?.message ||
-            "Failed to reject document"
-        );
+        toast.error(response.message || "Failed to reject document");
       }
     } catch (error) {
       console.error("Error rejecting document:", error);
       toast.error("An error occurred while rejecting the document");
     } finally {
-      setProcessingDocId(null);
+      setProcessingDocId("");
     }
   };
 
@@ -665,59 +713,15 @@ const LenderDocumentRequirements = ({
           (response.data.status === "success" || response.status === 200));
 
       if (isSuccess) {
-        const successMessage =
-          response.message ||
-          response.data?.message ||
-          "Document request sent to borrower";
+        toast.success(`Document ${isUpdate ? "update " : ""}requested successfully`);
 
-        toast.success(successMessage);
-
-        // If this is an update request, manually update the document status in the UI
+        // Manually update the UI to show this document as having an update requested
         if (isUpdate) {
-          // Mark it in our local state immediately for better user feedback
-          const updateSuccess = markDocumentForUpdate(category, documentType);
-
-          // Force a re-render
-          setRequirements([...requirements]);
-
-          // Re-fetch loan conditions right away to get the server-side changes
-          console.log(
-            "📃 Immediately refreshing loan conditions after document request"
-          );
-          lenderService
-            .getLoan(loanId)
-            .then((response) => {
-              if (response && response.data) {
-                const conditions = response.data.conditions || [];
-                setLoanConditions(conditions);
-
-                // Force immediate update to requirements based on new conditions
-                const reqsCopy = [...requirements];
-                const updatedReqs = reqsCopy.map((req) => {
-                  // Check if this document has a condition
-                  const hasCondition = hasDocumentCondition(
-                    conditions,
-                    req.category,
-                    req.documentType,
-                    req.title
-                  );
-                  return {
-                    ...req,
-                    requestedUpdate: hasCondition,
-                    status: hasCondition ? "Needs Correction" : req.status,
-                  };
-                });
-
-                setRequirements(updatedReqs);
-
-                // Force a refresh of the document list
-                setRefreshCounter((prev) => prev + 1);
-              }
-            })
-            .catch((err) => {
-              console.error("Error refreshing loan conditions:", err);
-            });
+          markDocumentForUpdate(category, documentType);
         }
+
+        // Close modal
+        closeRequestModal();
 
         // Refresh documents list
         if (refreshDocuments) {
@@ -734,7 +738,7 @@ const LenderDocumentRequirements = ({
       console.error("Error requesting document:", error);
       toast.error("An error occurred while requesting the document");
     } finally {
-      setProcessingDocId(null);
+      setProcessingDocId("");
       closeRequestModal();
     }
   };
@@ -755,48 +759,60 @@ const LenderDocumentRequirements = ({
               Review, approve, or request documents from the borrower
             </p>
           </div>
+
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              onClick={toggleSelectionMode}
+              className={`px-3 py-2 inline-flex items-center border ${
+                selectMode
+                  ? "bg-blue-100 text-blue-800 border-blue-300"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              } rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+            >
+              {selectMode ? (
+                <>
+                  <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Select Multiple Documents
+                </>
+              )}
+            </button>
+
+            {selectMode && selectedDocuments.length > 0 && (
+              <button
+                type="button"
+                onClick={openBatchModal}
+                className="px-3 py-2 inline-flex items-center text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Request Selected ({selectedDocuments.length})
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="px-6 py-4">
+      <div className="overflow-hidden">
         {loading ? (
-          <div className="space-y-4">
-            {/* Document requirement card skeletons - repeat for visual effect */}
-            {[1, 2, 3, 4].map((item) => (
-              <div
-                key={item}
-                className="animate-pulse border-b border-gray-100 py-4 last:border-b-0"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    {/* Document title and category */}
-                    <div className="flex items-center space-x-2">
-                      <div className="h-5 w-5 bg-gray-200 rounded"></div>
-                      <div className="h-5 bg-gray-200 rounded w-40"></div>
-                    </div>
-
-                    {/* Document info */}
-                    <div className="mt-2 ml-7 space-y-3">
-                      <div className="flex items-center">
-                        <div className="h-4 w-24 bg-gray-200 rounded mr-2"></div>
-                        <div className="h-4 w-32 bg-gray-200 rounded"></div>
-                      </div>
-                      <div className="h-4 w-48 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-
-                  {/* Status badge */}
-                  <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="mt-4 ml-7 flex space-x-2">
-                  <div className="h-8 w-20 bg-gray-200 rounded"></div>
-                  <div className="h-8 w-20 bg-gray-200 rounded"></div>
-                  <div className="h-8 w-32 bg-gray-200 rounded"></div>
-                </div>
+          <div className="p-6">
+            <div className="animate-pulse flex space-x-4">
+              <div className="flex-1 space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
               </div>
-            ))}
+            </div>
           </div>
         ) : requirements.length > 0 ? (
           <div className="divide-y divide-gray-200">
@@ -813,6 +829,9 @@ const LenderDocumentRequirements = ({
                       onApprove={handleApproveDocument}
                       onReject={handleRejectDocument}
                       openRequestModal={openRequestModal}
+                      isSelectable={selectMode && !req.isSubmitted}
+                      isSelected={selectedDocuments.some(doc => doc.id === req.id)}
+                      onSelectToggle={handleToggleDocumentSelection}
                     />
                   ))}
                 </>
@@ -852,6 +871,15 @@ const LenderDocumentRequirements = ({
         setRequestDetails={setRequestDetails}
         handleSubmitRequest={handleRequestDocument}
         isUpdate={requestDetails.isUpdate}
+      />
+
+      {/* Batch Document Request Modal */}
+      <BatchRequestModal
+        show={showBatchModal}
+        onClose={closeBatchModal}
+        selectedDocuments={selectedDocuments}
+        onRequestBatch={handleBatchRequest}
+        processing={processingBatch}
       />
     </div>
   );
