@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/user.model');
 const { title } = require('process');
+const emailService = require('../utils/email/emailService');
 
 /**
  * Upload a document
@@ -910,7 +911,43 @@ exports.requestDocument = async (req, res, next) => {
       // Log the request
       logger.info(`Document request for ${documentType} created for borrower ${borrowerId} by ${req.user.role} ${req.user._id}`);
       
-      // In a real system, you would send an email or notification here
+      // Send an email notification to the borrower
+      try {
+        // Get borrower details from the loan
+        const borrowerName = loan.borrowerDetails?.firstName 
+          ? `${loan.borrowerDetails.firstName} ${loan.borrowerDetails.lastName}`
+          : borrowerUser.name || 'Borrower';
+        
+        // Get borrower email from user account or loan details
+        const borrowerEmail = borrowerUser.email || loan.borrowerDetails?.email;
+        
+        if (borrowerEmail) {
+          // Prepare document information for email
+          const documentInfo = {
+            title: title || documentType,
+            description: description || `Please upload your ${title || documentType} document`,
+            category: category
+          };
+          
+          // Send the email notification
+          await emailService.sendDocumentRequestNotification({
+            email: borrowerEmail,
+            borrowerName,
+            loanNumber: loan.loanNumber,
+            documents: [documentInfo] // For individual requests
+          });
+          
+          logger.info(`Email notification sent to borrower ${borrowerId} at ${borrowerEmail}`);
+        } else {
+          logger.warn(`Could not send email notification: No email found for borrower ${borrowerId}`);
+        }
+      } catch (emailError) {
+        // Don't fail the overall request if email sending fails
+        logger.error(`Failed to send email notification: ${emailError.message}`, { 
+          error: emailError,
+          borrowerId
+        });
+      }
     }
     
     res.status(201).json({

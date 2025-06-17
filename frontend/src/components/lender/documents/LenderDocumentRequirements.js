@@ -240,22 +240,19 @@ const LenderDocumentRequirements = ({
         return;
       }
 
-      // Process each document request sequentially
-      for (const doc of selectedDocuments) {
-        const requestData = {
-          title: doc.title,
-          documentType: doc.documentType,
-          category: doc.category,
-          loanId,
-          borrowerId,
-          description: doc.description,
-          isUpdate: false,
-        };
+      // Prepare the documents array for batch request
+      const documentsForRequest = selectedDocuments.map(doc => ({
+        title: doc.title,
+        documentType: doc.documentType,
+        category: doc.category,
+        description: doc.description,
+        isUpdate: false
+      }));
+      
+      // Send the batch request
+      await lenderService.requestDocumentsBatch(loanId, borrowerId, documentsForRequest);
 
-        await lenderService.requestDocument(loanId, requestData);
-      }
-
-      toast.success(`${selectedDocuments.length} document requests sent successfully!`);
+      toast.success(`${selectedDocuments.length} document requests sent successfully! An email notification has been sent to the borrower.`);
       
       // Clear selections and close modal
       setSelectedDocuments([]);
@@ -713,7 +710,7 @@ const LenderDocumentRequirements = ({
           (response.data.status === "success" || response.status === 200));
 
       if (isSuccess) {
-        toast.success(`Document ${isUpdate ? "update " : ""}requested successfully`);
+        toast.success(`Document ${isUpdate ? "update " : ""}requested successfully. An email notification has been sent to the borrower.`);
 
         // Manually update the UI to show this document as having an update requested
         if (isUpdate) {

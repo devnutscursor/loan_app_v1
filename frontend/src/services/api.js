@@ -167,6 +167,16 @@ export const lenderService = {
     return api.post(`/documents/request`, { ...docData, loanId });
   },
 
+  // Request multiple documents from the borrower in a batch
+  requestDocumentsBatch: (loanId, borrowerId, documents) => {
+    console.log(`📡 Requesting documents in batch:`, { loanId, borrowerId, documents });
+    return api.post(`/documents/request/batch`, { 
+      loanId, 
+      borrowerId, 
+      documents 
+    });
+  },
+
   // Approve a document - using mock function since backend endpoint is not implemented yet
   approveDocument: (loanId, docId) => {
     return api.put(`/documents/${docId}/approve`, { loanId });

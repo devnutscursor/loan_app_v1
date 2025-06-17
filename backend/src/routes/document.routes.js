@@ -70,6 +70,10 @@ router.post('/verify/:id', authorize(['lender', 'admin']), documentController.ve
 // Request a document from a borrower (lender only)
 router.post('/request', documentController.requestDocument);
 
+// Batch request multiple documents from a borrower (lender only)
+const documentBatchController = require('../controllers/document.batchController');
+router.post('/request/batch', documentBatchController.batchRequestDocuments);
+
 // Approve a document (lender only)
 router.put('/:id/approve', documentController.approveDocument);
 
