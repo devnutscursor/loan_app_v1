@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MESSAGE xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ULAD="http://www.datamodelextension.org/Schema/ULAD" xmlns:DU="http://www.datamodelextension.org/Schema/DU" xmlns:xlink="http://www.w3.org/1999/xlink" MISMOReferenceModelIdentifier="3.4.032420160128" xsi:schemaLocation="http://www.mismo.org/residential/2009/schemas DU_Wrapper_3.4.0_B324.xsd" xmlns="http://www.mismo.org/residential/2009/schemas">
+  <ABOUT_VERSIONS>
+    <ABOUT_VERSION>
+      <CreatedDatetime>2025-06-16T07:35:08.772Z</CreatedDatetime>
+    </ABOUT_VERSION>
+  </ABOUT_VERSIONS>
+  <DEAL_SETS>
+    <DEAL_SET>
+      <DEALS>
+        <DEAL>
+          <ASSETS>
+            <ASSET SequenceNumber="1" xlink:label="ASSET_1">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>3342</AssetCashOrMarketValueAmount>
+                <AssetType>CheckingAccount</AssetType>
+              </ASSET_DETAIL>
+              <ASSET_HOLDER>
+                <NAME>
+                  <FullName>Bank of America</FullName>
+                </NAME>
+              </ASSET_HOLDER>
+            </ASSET>
+            <ASSET SequenceNumber="2" xlink:label="ASSET_2">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>231</AssetCashOrMarketValueAmount>
+                <AssetType>CheckingAccount</AssetType>
+              </ASSET_DETAIL>
+              <ASSET_HOLDER>
+                <NAME>
+                  <FullName>Bank of Spain</FullName>
+                </NAME>
+              </ASSET_HOLDER>
+            </ASSET>
+            <ASSET SequenceNumber="3" xlink:label="ASSET_3">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>344322</AssetCashOrMarketValueAmount>
+                <AssetType>CheckingAccount</AssetType>
+              </ASSET_DETAIL>
+              <ASSET_HOLDER>
+                <NAME>
+                  <FullName>National Bank</FullName>
+                </NAME>
+              </ASSET_HOLDER>
+            </ASSET>
+            <ASSET SequenceNumber="4" xlink:label="ASSET_4">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>900.67</AssetCashOrMarketValueAmount>
+                <AssetType>Stock</AssetType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="5" xlink:label="ASSET_5">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>787.787</AssetCashOrMarketValueAmount>
+                <AssetType>Stock</AssetType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="6" xlink:label="ASSET_6">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>8989</AssetCashOrMarketValueAmount>
+                <AssetType>GiftOfCash</AssetType>
+                <FundsSourceType>Relative</FundsSourceType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="7" xlink:label="ASSET_7">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>231312</AssetCashOrMarketValueAmount>
+                <AssetType>GiftOfCash</AssetType>
+                <FundsSourceType>Employer</FundsSourceType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="8" xlink:label="ASSET_8">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>20000</AssetCashOrMarketValueAmount>
+                <AssetType>GiftOfCash</AssetType>
+                <FundsSourceType>Employer</FundsSourceType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="9" xlink:label="ASSET_9">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>77789</AssetCashOrMarketValueAmount>
+                <AssetType>Other</AssetType>
+                <AssetTypeOtherDescription>EarnestMoney</AssetTypeOtherDescription>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="10" xlink:label="ASSET_10">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>878789</AssetCashOrMarketValueAmount>
+                <AssetType>LifeInsurance</AssetType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="11" xlink:label="ASSET_11">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>98908</AssetCashOrMarketValueAmount>
+                <AssetType>RetirementFund</AssetType>
+              </ASSET_DETAIL>
+            </ASSET>
+            <ASSET SequenceNumber="12" xlink:label="ASSET_12">
+              <ASSET_DETAIL>
+                <AssetCashOrMarketValueAmount>98908</AssetCashOrMarketValueAmount>
+                <AssetType>Other</AssetType>
+                <AssetTypeOtherDescription>OtherLiquidAsset</AssetTypeOtherDescription>
+              </ASSET_DETAIL>
+            </ASSET>
+          </ASSETS>
+          <COLLATERALS>
+            <COLLATERAL>
+              <SUBJECT_PROPERTY>
+                <ADDRESS>
+                  <AddressLineText></AddressLineText>
+                  <CityName></CityName>
+                  <PostalCode>33101</PostalCode>
+                  <StateCode></StateCode>
+                </ADDRESS>
+                <PROPERTY_DETAIL>
+                  <PropertyUsageType>PrimaryResidence</PropertyUsageType>
+                  <PropertyEstimatedValueAmount>450000</PropertyEstimatedValueAmount>
+                </PROPERTY_DETAIL>
+                <SALES_CONTRACTS>
+                  <SALES_CONTRACT>
+                    <SALES_CONTRACT_DETAIL>
+                      <SalesContractAmount>450000</SalesContractAmount>
+                    </SALES_CONTRACT_DETAIL>
+                  </SALES_CONTRACT>
+                </SALES_CONTRACTS>
+              </SUBJECT_PROPERTY>
+            </COLLATERAL>
+          </COLLATERALS>
+          <LIABILITIES>
+            <LIABILITY SequenceNumber="1" xlink:label="LIABILITY_1">
+              <LIABILITY_DETAIL>
+                <LiabilityExclusionIndicator>false</LiabilityExclusionIndicator>
+                <LiabilityMonthlyPaymentAmount>8898</LiabilityMonthlyPaymentAmount>
+                <LiabilityPayoffStatusIndicator>false</LiabilityPayoffStatusIndicator>
+                <LiabilityType>Installment</LiabilityType>
+                <LiabilityUnpaidBalanceAmount>89</LiabilityUnpaidBalanceAmount>
+              </LIABILITY_DETAIL>
+              <LIABILITY_HOLDER>
+                <NAME>
+                  <FullName>John</FullName>
+                </NAME>
+              </LIABILITY_HOLDER>
+            </LIABILITY>
+            <LIABILITY SequenceNumber="2" xlink:label="LIABILITY_2">
+              <LIABILITY_DETAIL>
+                <LiabilityExclusionIndicator>false</LiabilityExclusionIndicator>
+                <LiabilityMonthlyPaymentAmount>98890</LiabilityMonthlyPaymentAmount>
+                <LiabilityPayoffStatusIndicator>false</LiabilityPayoffStatusIndicator>
+                <LiabilityType>Installment</LiabilityType>
+                <LiabilityUnpaidBalanceAmount>98908</LiabilityUnpaidBalanceAmount>
+              </LIABILITY_DETAIL>
+              <LIABILITY_HOLDER>
+                <NAME>
+                  <FullName>John1</FullName>
+                </NAME>
+              </LIABILITY_HOLDER>
+            </LIABILITY>
+          </LIABILITIES>
+          <EXPENSES>
+            <EXPENSE SequenceNumber="1" xlink:label="EXPENSE_1">
+              <ExpenseType>Other</ExpenseType>
+              <ExpenseMonthlyPaymentAmount>19999</ExpenseMonthlyPaymentAmount>
+            </EXPENSE>
+          </EXPENSES>
+          <LOANS>
+            <LOAN LoanRoleType="SubjectLoan" xlink:label="LOAN_1">
+              <AMORTIZATION>
+                <AMORTIZATION_RULE>
+                  <AmortizationType>Fixed</AmortizationType>
+                  <LoanAmortizationPeriodCount>360</LoanAmortizationPeriodCount>
+                  <LoanAmortizationPeriodType>Month</LoanAmortizationPeriodType>
+                </AMORTIZATION_RULE>
+              </AMORTIZATION>
+              <HOUSING_EXPENSES>
+                
+                <HOUSING_EXPENSE>
+                  <HousingExpensePaymentAmount>1500</HousingExpensePaymentAmount>
+                  <HousingExpenseTimingType>Present</HousingExpenseTimingType>
+                  <HousingExpenseType>FirstMortgagePrincipalAndInterest</HousingExpenseType>
+                </HOUSING_EXPENSE>
+              </HOUSING_EXPENSES>
+              <LOAN_DETAIL>
+                <ApplicationReceivedDate>20250616</ApplicationReceivedDate>
+                <BorrowerCount>1</BorrowerCount>
+                <ConstructionLoanIndicator>false</ConstructionLoanIndicator>
+                <TotalMortgagedPropertiesCount>2</TotalMortgagedPropertiesCount>
+                <HELOCIndicator>false</HELOCIndicator>
+              </LOAN_DETAIL>
+              <TERMS_OF_LOAN>
+                <BaseLoanAmount>360000</BaseLoanAmount>
+                <LoanPurposeType>Purchase</LoanPurposeType>
+                <MortgageType>Conventional</MortgageType>
+                <NoteRatePercent>0</NoteRatePercent>
+                <NoteAmount>360000</NoteAmount>
+              </TERMS_OF_LOAN>
+              <PAYMENT>
+                <PAYMENT_RULE>
+                  <InitialPrincipalAndInterestPaymentAmount>0</InitialPrincipalAndInterestPaymentAmount>
+                </PAYMENT_RULE>
+              </PAYMENT>
+            </LOAN>
+          </LOANS>
+          <PARTIES>
+            <PARTY>
+              <INDIVIDUAL>
+                <CONTACT_POINTS>
+                  <CONTACT_POINT>
+                    <CONTACT_POINT_EMAIL>
+                      <ContactPointEmailValue>test@example.com</ContactPointEmailValue>
+                    </CONTACT_POINT_EMAIL>
+                  </CONTACT_POINT>
+                  <CONTACT_POINT>
+                    <CONTACT_POINT_TELEPHONE>
+                      <ContactPointTelephoneValue>(123) 456-7890</ContactPointTelephoneValue>
+                    </CONTACT_POINT_TELEPHONE>
+                    <CONTACT_POINT_DETAIL>
+                      <ContactPointRoleType>Mobile</ContactPointRoleType>
+                    </CONTACT_POINT_DETAIL>
+                  </CONTACT_POINT>
+                </CONTACT_POINTS>
+                <NAME>
+                  <FirstName>John</FirstName>
+                  <MiddleName>A</MiddleName>
+                  <LastName>Smith</LastName>
+                  <NameSuffix>Jr</NameSuffix>
+                  <FullName>John A Smith Jr</FullName>
+                </NAME>
+              </INDIVIDUAL>
+              <ROLES>
+                <ROLE SequenceNumber="1" xlink:label="BORROWER_1">
+                  <BORROWER>
+                    <BORROWER_DETAIL>
+                      <BorrowerBirthDate>19800101</BorrowerBirthDate>
+                      <DependentCount>3</DependentCount>
+                      <MaritalStatusType>Married</MaritalStatusType>
+                      <SelfDeclaredMilitaryServiceIndicator>false</SelfDeclaredMilitaryServiceIndicator>
+                      <SpousalVABenefitsEligibilityIndicator>false</SpousalVABenefitsEligibilityIndicator>
+                    </BORROWER_DETAIL>
+                    
+                    <CURRENT_INCOME>
+                      <CURRENT_INCOME_ITEMS>
+                        <CURRENT_INCOME_ITEM SequenceNumber="1" xlink:label="CURRENT_INCOME_ITEM_1">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>9500</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
+                            <IncomeType>Base</IncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="2" xlink:label="CURRENT_INCOME_ITEM_2">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>1200</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
+                            <IncomeType>Overtime</IncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="3" xlink:label="CURRENT_INCOME_ITEM_3">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>5000</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
+                            <IncomeType>Bonus</IncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="4" xlink:label="CURRENT_INCOME_ITEM_4">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>2000</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
+                            <IncomeType>Commission</IncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="5" xlink:label="CURRENT_INCOME_ITEM_5">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>10000</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>false</EmploymentIncomeIndicator>
+                            <IncomeType>Other</IncomeType>
+                            <OtherIncomeType>Other</OtherIncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="6" xlink:label="CURRENT_INCOME_ITEM_6">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>2000</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>false</EmploymentIncomeIndicator>
+                            <IncomeType>Other</IncomeType>
+                            <OtherIncomeType>Other</OtherIncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                        <CURRENT_INCOME_ITEM SequenceNumber="7" xlink:label="CURRENT_INCOME_ITEM_7">
+                          <CURRENT_INCOME_ITEM_DETAIL>
+                            <CurrentIncomeMonthlyTotalAmount>50000</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>false</EmploymentIncomeIndicator>
+                            <IncomeType>Other</IncomeType>
+                            <OtherIncomeType>Other</OtherIncomeType>
+                          </CURRENT_INCOME_ITEM_DETAIL>
+                        </CURRENT_INCOME_ITEM>
+                      </CURRENT_INCOME_ITEMS>
+                    </CURRENT_INCOME>
+                    
+                    <DECLARATION>
+                      <DECLARATION_DETAIL>
+                        <BankruptcyIndicator>false</BankruptcyIndicator>
+                        <CitizenshipResidencyType>USCitizen</CitizenshipResidencyType>
+                        <HomeownerPastThreeYearsType>Yes</HomeownerPastThreeYearsType>
+                        <IntentToOccupyType>Yes</IntentToOccupyType>
+                        <OutstandingJudgmentsIndicator>false</OutstandingJudgmentsIndicator>
+                        <PartyToLawsuitIndicator>false</PartyToLawsuitIndicator>
+                        <PresentlyDelinquentIndicator>false</PresentlyDelinquentIndicator>
+                        <PriorPropertyForeclosureCompletedIndicator>false</PriorPropertyForeclosureCompletedIndicator>
+                        <UndisclosedBorrowedFundsIndicator>false</UndisclosedBorrowedFundsIndicator>
+                        
+                        <UndisclosedComakerOfNoteIndicator>false</UndisclosedComakerOfNoteIndicator>
+                        <UndisclosedMortgageApplicationIndicator>false</UndisclosedMortgageApplicationIndicator>
+                      </DECLARATION_DETAIL>
+                    </DECLARATION>
+                    
+                    <EMPLOYERS>
+                      <EMPLOYER SequenceNumber="1" xlink:label="EMPLOYER_1">
+                        <LEGAL_ENTITY>
+                          <CONTACTS>
+                            <CONTACT>
+                              <CONTACT_POINTS>
+                                <CONTACT_POINT>
+                                  <CONTACT_POINT_TELEPHONE>
+                                    <ContactPointTelephoneValue>(987) 654-3210</ContactPointTelephoneValue>
+                                  </CONTACT_POINT_TELEPHONE>
+                                  <CONTACT_POINT_DETAIL>
+                                    <ContactPointRoleType>Work</ContactPointRoleType>
+                                  </CONTACT_POINT_DETAIL>
+                                </CONTACT_POINT>
+                              </CONTACT_POINTS>
+                            </CONTACT>
+                          </CONTACTS>
+                          <LEGAL_ENTITY_DETAIL>
+                            <FullName>ACME Inc</FullName>
+                          </LEGAL_ENTITY_DETAIL>
+                        </LEGAL_ENTITY>
+                        <ADDRESS>
+                          <AddressLineText>456 Corporate Blvd</AddressLineText>
+                          <AddressUnitIdentifier>Suite 300</AddressUnitIdentifier>
+                          <CityName>Business City</CityName>
+                          <PostalCode>90210</PostalCode>
+                          <StateCode>CA</StateCode>
+                        </ADDRESS>
+                        <EMPLOYMENT>
+                          <EmploymentBorrowerSelfEmployedIndicator>false</EmploymentBorrowerSelfEmployedIndicator>
+                          <EmploymentMonthlyIncomeAmount>0</EmploymentMonthlyIncomeAmount>
+                          <EmploymentClassificationType>Primary</EmploymentClassificationType>
+                          <EmploymentPositionDescription>Software Engineer</EmploymentPositionDescription>
+                          <EmploymentStartDate>20150101</EmploymentStartDate>
+                          <EmploymentStatusType>Full-Time</EmploymentStatusType>
+                          
+                          <SpecialBorrowerEmployerRelationshipIndicator>false</SpecialBorrowerEmployerRelationshipIndicator>
+                          <OwnershipInterestType>LessThan25Percent</OwnershipInterestType>
+                        </EMPLOYMENT>
+                      </EMPLOYER>
+                      <EMPLOYER SequenceNumber="2" xlink:label="EMPLOYER_2">
+                        <LEGAL_ENTITY>
+                          <CONTACTS>
+                            <CONTACT>
+                              <CONTACT_POINTS>
+                                <CONTACT_POINT>
+                                  <CONTACT_POINT_TELEPHONE>
+                                    <ContactPointTelephoneValue>(987) 654-3210</ContactPointTelephoneValue>
+                                  </CONTACT_POINT_TELEPHONE>
+                                  <CONTACT_POINT_DETAIL>
+                                    <ContactPointRoleType>Work</ContactPointRoleType>
+                                  </CONTACT_POINT_DETAIL>
+                                </CONTACT_POINT>
+                              </CONTACT_POINTS>
+                            </CONTACT>
+                          </CONTACTS>
+                          <LEGAL_ENTITY_DETAIL>
+                            <FullName>ACME Inc1</FullName>
+                          </LEGAL_ENTITY_DETAIL>
+                        </LEGAL_ENTITY>
+                        <ADDRESS>
+                          <AddressLineText>456 Corporate Blvd</AddressLineText>
+                          <AddressUnitIdentifier>Suite 300</AddressUnitIdentifier>
+                          <CityName>Business CIty</CityName>
+                          <PostalCode>90210</PostalCode>
+                          <StateCode></StateCode>
+                        </ADDRESS>
+                        <EMPLOYMENT>
+                          <EmploymentBorrowerSelfEmployedIndicator>false</EmploymentBorrowerSelfEmployedIndicator>
+                          <EmploymentMonthlyIncomeAmount>0</EmploymentMonthlyIncomeAmount>
+                          <EmploymentClassificationType>Secondary</EmploymentClassificationType>
+                          <EmploymentPositionDescription>Software Engineer</EmploymentPositionDescription>
+                          <EmploymentStartDate>20150101</EmploymentStartDate>
+                          <EmploymentStatusType>Current</EmploymentStatusType>
+                          
+                          <SpecialBorrowerEmployerRelationshipIndicator>false</SpecialBorrowerEmployerRelationshipIndicator>
+                          <OwnershipInterestType>LessThan25Percent</OwnershipInterestType>
+                        </EMPLOYMENT>
+                      </EMPLOYER>
+                    </EMPLOYERS>
+                    
+                    <RESIDENCES>
+                      <RESIDENCE>
+                        <ADDRESS>
+                          <AddressLineText>123 Main St</AddressLineText>
+                          <AddressUnitIdentifier>Apt 4B</AddressUnitIdentifier>
+                          <CityName>Anytown</CityName>
+                          <PostalCode>90210</PostalCode>
+                          <StateCode>CA</StateCode>
+                        </ADDRESS>
+                        <RESIDENCE_DETAIL>
+                          <BorrowerResidencyBasisType>Own</BorrowerResidencyBasisType>
+                          <BorrowerResidencyDurationMonthsCount>42</BorrowerResidencyDurationMonthsCount>
+                          <BorrowerResidencyType>Current</BorrowerResidencyType>
+                        </RESIDENCE_DETAIL>
+                      </RESIDENCE>
+                      <RESIDENCE>
+                        <ADDRESS>
+                          <AddressLineText>456 Old Rd</AddressLineText>
+                          
+                          <CityName>Previous City</CityName>
+                          <PostalCode>10001</PostalCode>
+                          <StateCode>NY</StateCode>
+                        </ADDRESS>
+                        <RESIDENCE_DETAIL>
+                          <BorrowerResidencyBasisType>Own</BorrowerResidencyBasisType>
+                          <BorrowerResidencyDurationMonthsCount>28</BorrowerResidencyDurationMonthsCount>
+                          <BorrowerResidencyType>Former</BorrowerResidencyType>
+                        </RESIDENCE_DETAIL>
+                      </RESIDENCE>
+                    </RESIDENCES>
+                    
+                    
+                    
+                    <GOVERNMENT_MONITORING>
+                      <GOVERNMENT_MONITORING_DETAIL>
+                        <EXTENSION>
+                          <OTHER>
+                            <ULAD:GOVERNMENT_MONITORING_DETAIL_EXTENSION>
+                              <ULAD:ApplicationTakenMethodType>Internet</ULAD:ApplicationTakenMethodType>
+                              <ULAD:HMDAGenderType>InformationNotProvided</ULAD:HMDAGenderType>
+                            </ULAD:GOVERNMENT_MONITORING_DETAIL_EXTENSION>
+                          </OTHER>
+                        </EXTENSION>
+                      </GOVERNMENT_MONITORING_DETAIL>
+                      <HMDA_RACES>
+                        <HMDA_RACE>
+                          <HMDA_RACE_DETAIL>
+                            <HMDARaceType>Asian</HMDARaceType>
+                            
+                          </HMDA_RACE_DETAIL>
+                        </HMDA_RACE>
+                      </HMDA_RACES>
+                      <EXTENSION>
+                        <OTHER>
+                          <ULAD:GOVERNMENT_MONITORING_EXTENSION>
+                            <ULAD:HMDA_ETHNICITIES>
+                              <ULAD:HMDA_ETHNICITY>
+                                <ULAD:HMDAEthnicityType>HispanicOrLatino</ULAD:HMDAEthnicityType>
+                              </ULAD:HMDA_ETHNICITY>
+                            </ULAD:HMDA_ETHNICITIES>
+                          </ULAD:GOVERNMENT_MONITORING_EXTENSION>
+                        </OTHER>
+                      </EXTENSION>
+                      <HMDA_ETHNICITY_ORIGINS>
+                        <HMDA_ETHNICITY_ORIGIN>
+                          <HMDAEthnicityOriginType>PuertoRican</HMDAEthnicityOriginType>
+                        </HMDA_ETHNICITY_ORIGIN>
+                      </HMDA_ETHNICITY_ORIGINS>
+                    </GOVERNMENT_MONITORING>
+                  </BORROWER>
+                  <ROLE_DETAIL>
+                    <PartyRoleType>Borrower</PartyRoleType>
+                  </ROLE_DETAIL>
+                </ROLE>
+              </ROLES>
+              
+              <TAXPAYER_IDENTIFIERS>
+                <TAXPAYER_IDENTIFIER>
+                  <TaxpayerIdentifierType>SocialSecurityNumber</TaxpayerIdentifierType>
+                  <TaxpayerIdentifierValue>123-45-6789</TaxpayerIdentifierValue>
+                </TAXPAYER_IDENTIFIER>
+              </TAXPAYER_IDENTIFIERS>
+            </PARTY>
+            
+            <PARTY>
+              <LEGAL_ENTITY>
+                <LEGAL_ENTITY_DETAIL>
+                  <FullName>Capitol Coast Lending</FullName>
+                </LEGAL_ENTITY_DETAIL>
+              </LEGAL_ENTITY>
+              <ROLES>
+                <ROLE SequenceNumber="1" xlink:label="LOAN_ORIGINATION_COMPANY_1">
+                  <LICENSES>
+                    <LICENSE>
+                      <LICENSE_DETAIL>
+                        <LicenseAuthorityLevelType>PublicState</LicenseAuthorityLevelType>
+                        <LicenseIdentifier>2042983</LicenseIdentifier>
+                      </LICENSE_DETAIL>
+                    </LICENSE>
+                  </LICENSES>
+                  <ROLE_DETAIL>
+                    <PartyRoleType>LoanOriginationCompany</PartyRoleType>
+                  </ROLE_DETAIL>
+                </ROLE>
+              </ROLES>
+            </PARTY>
+          </PARTIES>
+          <RELATIONSHIPS xsi:type="RELATIONSHIPS">
+            <RELATIONSHIP SequenceNumber="1" xlink:from="ASSET_1" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="2" xlink:from="ASSET_2" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="3" xlink:from="ASSET_3" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="4" xlink:from="ASSET_4" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="5" xlink:from="ASSET_5" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="6" xlink:from="LIABILITY_1" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/LIABILITY_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="7" xlink:from="LIABILITY_2" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/LIABILITY_IsAssociatedWith_ROLE" />
+            <RELATIONSHIP SequenceNumber="8" xlink:from="CURRENT_INCOME_ITEM_1" xlink:to="EMPLOYER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/CURRENT_INCOME_ITEM_IsAssociatedWith_EMPLOYER" />
+            <RELATIONSHIP SequenceNumber="9" xlink:from="CURRENT_INCOME_ITEM_2" xlink:to="EMPLOYER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/CURRENT_INCOME_ITEM_IsAssociatedWith_EMPLOYER" />
+            <RELATIONSHIP SequenceNumber="10" xlink:from="CURRENT_INCOME_ITEM_3" xlink:to="EMPLOYER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/CURRENT_INCOME_ITEM_IsAssociatedWith_EMPLOYER" />
+          </RELATIONSHIPS>
+        </DEAL>
+      </DEALS>
+    </DEAL_SET>
+  </DEAL_SETS>
+  <DOCUMENT_SETS>
+    <DOCUMENT_SET>
+      <DOCUMENTS>
+        <DOCUMENT>
+          <SIGNATORIES>
+            <SIGNATORY>
+              <EXECUTION>
+                <EXECUTION_DETAIL>
+                  <ExecutionDate>20250616</ExecutionDate>
+                </EXECUTION_DETAIL>
+              </EXECUTION>
+            </SIGNATORY>
+          </SIGNATORIES>
+        </DOCUMENT>
+      </DOCUMENTS>
+    </DOCUMENT_SET>
+  </DOCUMENT_SETS>
+</MESSAGE>

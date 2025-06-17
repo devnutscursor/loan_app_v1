@@ -5,10 +5,10 @@ const messageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
+    },
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+      ref: 'User',
     required: true
   },
   lender: {
@@ -20,8 +20,8 @@ const messageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Borrower',
     required: true
-  },
-  content: {
+    },
+    content: {
     type: String,
     trim: true
   },
@@ -29,21 +29,21 @@ const messageSchema = new mongoose.Schema({
     url: {
       type: String,
       required: true
-    },
-    fileName: {
+        },
+        fileName: {
       type: String
-    },
-    fileType: {
+        },
+        fileType: {
       type: String
-    },
-    fileSize: {
+        },
+        fileSize: {
       type: Number
     }
   }],
   isRead: {
-    type: Boolean,
+      type: Boolean,
     default: false
-  },
+    },
   createdAt: {
     type: Date,
     default: Date.now

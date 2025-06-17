@@ -7,7 +7,6 @@ const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const path = require('path');
-const fileUpload = require('express-fileupload');
 const fs = require('fs');
 
 // Import routes
@@ -26,6 +25,7 @@ const userRoutes = require('./routes/user.routes');
 const loanTypeRoutes = require('./routes/loanType.routes');
 const loanProgramRoutes = require('./routes/loanProgram.routes');
 const loanRateRoutes = require('./routes/loanRate.routes');
+const noteRoutes = require('./routes/note.routes');
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -41,7 +41,11 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "blob:", "localhost:*"],
-      connectSrc: ["'self'", "localhost:*"]
+      connectSrc: ["'self'", "localhost:*"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", "data:"],
+      frameAncestors: ["'self'", "localhost:*", "http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean)
     }
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -74,19 +78,6 @@ app.use('/api', limiter);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// File upload middleware
-app.use(fileUpload({
-  limits: { 
-    fileSize: 50 * 1024 * 1024, // 50 MB max file size
-  },
-  abortOnLimit: true,
-  createParentPath: true,
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
-  parseNested: true,
-  debug: true
-}));
-
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
 
@@ -102,9 +93,24 @@ app.use('/uploads', (req, res, next) => {
   res.setHeader('Cache-Control', 'public, max-age=86400');
   // Allow cross-origin access to the files
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
+  
+  // Set appropriate content types for different file extensions
+  const filePath = req.url.split('?')[0];
+  const ext = path.extname(filePath).toLowerCase();
+  
+  if (ext === '.pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+  } else if (['.xlsx', '.xls'].includes(ext)) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  } else if (['.doc', '.docx'].includes(ext)) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  }
   
   // Handle OPTIONS requests for CORS preflight
   if (req.method === 'OPTIONS') {
@@ -113,8 +119,10 @@ app.use('/uploads', (req, res, next) => {
   
   next();
 }, express.static(path.resolve(__dirname, '../uploads'), {
-  setHeaders: (res) => {
+  setHeaders: (res, path) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('X-Frame-Options', 'ALLOWALL');
+    res.set('Content-Security-Policy', "frame-ancestors 'self' *");
   }
 }));
 
@@ -201,6 +209,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/loan-types', loanTypeRoutes);
 app.use('/api/v1/loan-programs', loanProgramRoutes);
 app.use('/api/v1/loan-rates', loanRateRoutes);
+app.use('/api/v1/notes', noteRoutes);
 
 // Root route
 app.get('/', (req, res) => {

@@ -120,6 +120,17 @@ export const lenderService = {
       throw error;
     }
   },
+  // Loan Conditions
+  getLoanConditions: async (loanId) => {
+    try {
+      const response = await api.get(`/loans/${loanId}/conditions`);
+      console.log('Fetched loan conditions:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching loan conditions:', error);
+      return { success: false, message: error.message || 'Failed to fetch loan conditions' };
+    }
+  },
   // Loans
   getLoans: (params) => api.get('/loans', { params }),
   getLoan: (id) => api.get(`/loans/${id}`),
@@ -156,6 +167,16 @@ export const lenderService = {
     return api.post(`/documents/request`, { ...docData, loanId });
   },
 
+  // Request multiple documents from the borrower in a batch
+  requestDocumentsBatch: (loanId, borrowerId, documents) => {
+    console.log(`📡 Requesting documents in batch:`, { loanId, borrowerId, documents });
+    return api.post(`/documents/request/batch`, { 
+      loanId, 
+      borrowerId, 
+      documents 
+    });
+  },
+
   // Approve a document - using mock function since backend endpoint is not implemented yet
   approveDocument: (loanId, docId) => {
     return api.put(`/documents/${docId}/approve`, { loanId });
@@ -186,6 +207,207 @@ export const adminService = {
   getCompanies: (params) => api.get('/admin/companies', { params }),
   getCompany: (id) => api.get(`/admin/companies/${id}`),
   updateCompanyStatus: (id, status) => api.patch(`/admin/companies/${id}/status`, { status }),
+};
+
+// Note Services
+export const noteService = {
+  // Get all notes for a loan
+  getNotes: async (loanId) => {
+    try {
+      console.log(`Calling getNotes API for loan ID: ${loanId}`);
+      const response = await api.get(`/notes/${loanId}`);
+      console.log('Raw getNotes API response:', response);
+      return response.data; // Axios wraps the actual response in a data property
+    } catch (error) {
+      console.error('Error in getNotes API call:', error);
+      // Check if there's a specific error response from the server
+      if (error.response) {
+        if (error.response.status === 401) {
+          console.error('Authentication error: User is not logged in or token expired');
+          // Return a standardized error format
+          return {
+            success: false,
+            message: 'Authentication failed. Please log in again.',
+            statusCode: 401
+          };
+        } else if (error.response.status === 403) {
+          console.error('Authorization error: User does not have permission');
+          return {
+            success: false,
+            message: 'You do not have permission to access these notes.',
+            statusCode: 403
+          };
+        } else if (error.response.status === 404) {
+          console.error('Resource not found:', error.response.data);
+          return {
+            success: false,
+            message: 'Notes could not be found.',
+            statusCode: 404
+          };
+        } else {
+          // Other server errors
+          console.error('Server error:', error.response.data);
+          return {
+            success: false,
+            message: error.response.data?.message || 'An error occurred while fetching notes.',
+            statusCode: error.response.status
+          };
+        }
+      }
+      // Network or other client-side errors
+      return {
+        success: false,
+        message: 'Network error. Please check your connection.',
+        statusCode: 0
+      };
+    }
+  },
+  
+  // Create a new note
+  createNote: async (loanId, content) => {
+    try {
+      console.log(`Calling createNote API for loan ID: ${loanId}`);
+      const response = await api.post(`/notes/${loanId}`, { content });
+      console.log('Raw createNote API response:', response);
+      return response.data; // Axios wraps the actual response in a data property
+    } catch (error) {
+      console.error('Error in createNote API call:', error);
+      // Check if there's a specific error response from the server
+      if (error.response) {
+        if (error.response.status === 401) {
+          console.error('Authentication error: User is not logged in or token expired');
+          return {
+            success: false,
+            message: 'Authentication failed. Please log in again.',
+            statusCode: 401
+          };
+        } else if (error.response.status === 403) {
+          console.error('Authorization error: User does not have permission');
+          return {
+            success: false,
+            message: 'You do not have permission to add notes.',
+            statusCode: 403
+          };
+        } else {
+          // Other server errors
+          console.error('Server error:', error.response.data);
+          return {
+            success: false,
+            message: error.response.data?.message || 'An error occurred while creating the note.',
+            statusCode: error.response.status
+          };
+        }
+      }
+      // Network or other client-side errors
+      return {
+        success: false,
+        message: 'Network error. Please check your connection.',
+        statusCode: 0
+      };
+    }
+  },
+  
+  // Update a note
+  updateNote: async (noteId, content) => {
+    try {
+      console.log(`Calling updateNote API for note ID: ${noteId}`);
+      const response = await api.put(`/notes/${noteId}`, { content });
+      console.log('Raw updateNote API response:', response);
+      return response.data; // Axios wraps the actual response in a data property
+    } catch (error) {
+      console.error('Error in updateNote API call:', error);
+      // Check if there's a specific error response from the server
+      if (error.response) {
+        if (error.response.status === 401) {
+          console.error('Authentication error: User is not logged in or token expired');
+          return {
+            success: false,
+            message: 'Authentication failed. Please log in again.',
+            statusCode: 401
+          };
+        } else if (error.response.status === 403) {
+          console.error('Authorization error: User does not have permission');
+          return {
+            success: false,
+            message: 'You do not have permission to update this note.',
+            statusCode: 403
+          };
+        } else if (error.response.status === 404) {
+          console.error('Resource not found:', error.response.data);
+          return {
+            success: false,
+            message: 'Note could not be found.',
+            statusCode: 404
+          };
+        } else {
+          // Other server errors
+          console.error('Server error:', error.response.data);
+          return {
+            success: false,
+            message: error.response.data?.message || 'An error occurred while updating the note.',
+            statusCode: error.response.status
+          };
+        }
+      }
+      // Network or other client-side errors
+      return {
+        success: false,
+        message: 'Network error. Please check your connection.',
+        statusCode: 0
+      };
+    }
+  },
+  
+  // Delete a note
+  deleteNote: async (noteId) => {
+    try {
+      console.log(`Calling deleteNote API for note ID: ${noteId}`);
+      const response = await api.delete(`/notes/${noteId}`);
+      console.log('Raw deleteNote API response:', response);
+      return response.data; // Axios wraps the actual response in a data property
+    } catch (error) {
+      console.error('Error in deleteNote API call:', error);
+      // Check if there's a specific error response from the server
+      if (error.response) {
+        if (error.response.status === 401) {
+          console.error('Authentication error: User is not logged in or token expired');
+          return {
+            success: false,
+            message: 'Authentication failed. Please log in again.',
+            statusCode: 401
+          };
+        } else if (error.response.status === 403) {
+          console.error('Authorization error: User does not have permission');
+          return {
+            success: false,
+            message: 'You do not have permission to delete this note.',
+            statusCode: 403
+          };
+        } else if (error.response.status === 404) {
+          console.error('Resource not found:', error.response.data);
+          return {
+            success: false,
+            message: 'Note could not be found.',
+            statusCode: 404
+          };
+        } else {
+          // Other server errors
+          console.error('Server error:', error.response.data);
+          return {
+            success: false,
+            message: error.response.data?.message || 'An error occurred while deleting the note.',
+            statusCode: error.response.status
+          };
+        }
+      }
+      // Network or other client-side errors
+      return {
+        success: false,
+        message: 'Network error. Please check your connection.',
+        statusCode: 0
+      };
+    }
+  },
 };
 
 export default api;

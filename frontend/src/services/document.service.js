@@ -1,6 +1,7 @@
 import ApiService from './api.service';
 import { toast } from 'react-hot-toast';
 import { AuditLogService } from './index';
+import { createFileFormData } from '../utils/formDataHelper';
 
 /**
  * Document Service
@@ -20,61 +21,59 @@ class DocumentService {
   async uploadDocument(documentData, loanId, file) {
     try {
       console.log('Document data:', documentData);
-      // Create a FormData object to handle file upload
-      const formData = new FormData();
-      formData.append('file', file);
       
-      // Map fields to what the backend expects
-      formData.append('name', documentData.name || file.name); // Required by backend
-      formData.append('category', documentData.category); // Required by backend
-      formData.append('documentType', documentData.documentType); // Document type field
-      formData.append('description', documentData.description || '');
+      // Use the helper to create FormData (safer approach)
+      const metadata = {
+        name: documentData.name || file.name,
+        category: documentData.category,
+        documentType: documentData.type || documentData.documentType,
+        description: documentData.description || '',
+      };
       
+      // Add loan ID if provided
       if (loanId) {
-        formData.append('loanId', loanId);
+        metadata.loanId = loanId;
       }
       
+      // Add tags if available
       if (documentData.tags && documentData.tags.length > 0) {
-        documentData.tags.forEach(tag => {
-          formData.append('tags', tag);
-        });
+        metadata.tags = documentData.tags;
       }
+      
+      // Create FormData using our helper
+      const formData = createFileFormData(file, metadata);
       
       // Log what we're sending for debugging
       console.log('Document upload data:', {
-        name: documentData.name || file.name,
-        category: documentData.category,
-        documentType: documentData.documentType,
-        loanId
+        ...metadata,
+        fileSize: file.size,
+        fileType: file.type
       });
       
+      // Make API request with proper error handling and timeout
       const response = await ApiService.post('/api/v1/documents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 60000  // 60 seconds timeout for large uploads
       });
       
-      // Log the document upload action - commented out due to method mismatch
-      // The AuditLogService has createAuditLog method, not createLog
-      /* 
+      // Try to create an audit log (don't let it affect the main functionality)
       try {
-        await AuditLogService.createAuditLog(
-          'document', 
-          `Uploaded document: ${documentData.type}`,
-          {
-            documentType: documentData.type,
-            documentId: response.data._id
-          }
-        );
+        await AuditLogService.createAuditLog({
+          action: 'UPLOAD',
+          resourceType: 'DOCUMENT',
+          resourceId: response.data._id || 'unknown',
+          details: `Uploaded document: ${documentData.name || file.name}`
+        });
       } catch (logError) {
-        // Don't let logging errors affect the main functionality
         console.warn('Failed to create audit log:', logError);
       }
-      */
-      
+
       return {
         success: true,
-        data: response.data
+        data: response.data,
+        message: 'Document uploaded successfully'
       };
     } catch (error) {
       console.error('Document upload error:', error);
@@ -159,7 +158,7 @@ class DocumentService {
    */
   async downloadDocument(documentId) {
     try {
-      const response = await ApiService.get(`/documents/download/${documentId}`, {
+      const response = await ApiService.get(`/api/v1/documents/download/${documentId}`, {
         responseType: 'blob'
       });
       
@@ -206,7 +205,7 @@ class DocumentService {
    */
   async deleteDocument(documentId) {
     try {
-      const response = await ApiService.delete(`/documents/${documentId}`);
+      const response = await ApiService.delete(`/api/v1/documents/${documentId}`);
       
       // Log the document deletion action
       // Audit logging temporarily disabled
@@ -244,7 +243,7 @@ class DocumentService {
    */
   async updateDocumentStatus(documentId, status, feedback = '') {
     try {
-      const response = await ApiService.put(`/documents/${documentId}/status`, {
+      const response = await ApiService.put(`/api/v1/documents/${documentId}/status`, {
         status,
         feedback
       });
@@ -286,7 +285,7 @@ class DocumentService {
    */
   async requestAdditionalDocuments(loanId, requestedDocuments, message = '') {
     try {
-      const response = await ApiService.post(`/documents/request/${loanId}`, {
+      const response = await ApiService.post(`/api/v1/documents/request/${loanId}`, {
         requestedDocuments,
         message
       });
@@ -328,7 +327,7 @@ class DocumentService {
    */
   async getVerificationQueue(filters = {}, page = 1, limit = 10) {
     try {
-      let url = '/documents/verification-queue';
+      let url = '/api/v1/documents/verification-queue';
       
       // Add query parameters for pagination and filters
       const queryParams = new URLSearchParams();
@@ -366,6 +365,7 @@ class DocumentService {
    */
   async updateDocument(documentId, updateData) {
     try {
+      // Update document details
       const response = await ApiService.put(`/api/v1/documents/${documentId}`, updateData);
       
       // Log the document update action
@@ -384,7 +384,8 @@ class DocumentService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data,
+        message: `Document updated successfully`
       };
     } catch (error) {
       console.error('Document update error:', error);
@@ -394,20 +395,13 @@ class DocumentService {
       };
     }
   }
-  
-  /**
-   * Request a document from a borrower (lender only)
-   * @param {string} borrowerId - ID of the borrower
-   * @param {string} loanId - ID of the loan to request document for
-   * @param {Object} requestData - Document request details
-   * @returns {Promise<Object>} Response with request status
-   */
+
   async requestDocument(borrowerId, loanId, requestData) {
     try {
       const response = await ApiService.post(`/api/v1/documents/request`, {
         borrowerId,
         loanId,
-        ...requestData
+        requestData
       });
       
       // Log the document request action
@@ -416,8 +410,8 @@ class DocumentService {
       try {
         await AuditLogService.createAuditLog(
           'document',
-          `Requested document: ${requestData.type}`,
-          { loanId, borrowerId }
+          `Requested additional documents for loan ${loanId}`,
+          { loanId }
         );
       } catch (logError) {
         console.warn('Failed to log document request:', logError);
@@ -426,22 +420,18 @@ class DocumentService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data,
+        message: 'Document request sent successfully'
       };
     } catch (error) {
-      console.error('Document request error:', error);
+      console.error('Request documents error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to request document'
+        message: error.response?.data?.message || 'Failed to send document request'
       };
     }
   }
-  
-  /**
-   * Get document requirements for a loan
-   * @param {string} loanId - ID of the loan to get requirements for
-   * @returns {Promise<Object>} Response with document requirements
-   */
+
   async getDocumentRequirements(loanId) {
     try {
       const response = await ApiService.get(`/api/v1/documents/requirements/${loanId}`);
@@ -458,13 +448,7 @@ class DocumentService {
       };
     }
   }
-  
-  /**
-   * Verify a document (lender only)
-   * @param {string} documentId - ID of the document to verify
-   * @param {Object} verificationData - Verification details including status and notes
-   * @returns {Promise<Object>} Response with verification status
-   */
+
   async verifyDocument(documentId, verificationData) {
     try {
       const response = await ApiService.post(`/api/v1/documents/verify/${documentId}`, verificationData);
@@ -475,8 +459,8 @@ class DocumentService {
       try {
         await AuditLogService.createAuditLog(
           'document',
-          `Verified document with status: ${verificationData.status}`,
-          { documentId, status: verificationData.status }
+          `Verified document: ${documentId}`,
+          { documentId }
         );
       } catch (logError) {
         console.warn('Failed to log document verification:', logError);
@@ -485,7 +469,8 @@ class DocumentService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data,
+        message: 'Document verification completed successfully'
       };
     } catch (error) {
       console.error('Document verification error:', error);

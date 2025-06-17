@@ -40,6 +40,8 @@ import LenderDocumentRequirements from "../../../components/lender/documents/Len
 import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerScenarioTailwind";
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
 import { PDFDocument } from "pdf-lib";
+import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
+import NoteModal from "../../../components/common/NoteModal";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -509,6 +511,11 @@ if (demographics.race === "american-indian") {
   return pdfBytes;
 }
 
+// Debug utility
+const debug = (message, data) => {
+  console.log(`[LoanDetails] ${message}`, data);
+};
+
 const LoanDetails = () => {
   const router = useRouter();
   const { id } = router.query;
@@ -522,8 +529,18 @@ const LoanDetails = () => {
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Add debug for id
+  useEffect(() => {
+    if (id) {
+      debug('Loan ID from router query', { id, type: typeof id });
+    }
+  }, [id]);
+
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
+  
+  // Tabs where save functionality is needed
+  const SAVE_TABS = ["borrower", "loan", "property", "financial", "additional"];
 
   // Call this to cancel changes
   const handleCancel = () => {
@@ -802,7 +819,9 @@ const LoanDetails = () => {
   // Handle form field changes with better null checks
   const handleFieldChange = (section, field, value) => {
     console.log(`Updating ${section}.${field} with:`, value);
+    // Set unsaved changes flag
     setHasUnsavedChanges(true);
+    
     setLoan((prev) => {
       // Make sure the section exists
       const sectionData = prev[section] || {};
@@ -820,7 +839,8 @@ const LoanDetails = () => {
   // Handle nested field changes
   const handleNestedFieldChange = (section, nestedSection, field, value) => {
     console.log(`Updating ${section}.${nestedSection}.${field} with:`, value);
-
+    setHasUnsavedChanges(true);
+    
     setLoan((prev) => {
       // Make sure the section and nested section exist
       const sectionData = prev[section] || {};
@@ -839,6 +859,7 @@ const LoanDetails = () => {
     });
   };
 
+
   const handleDownloadURLA = async () => {
     const pdfBytes = await generateURLAPdf(loan.borrowerDetails, loan.assets, loan.income, loan.debts, loan.propertiesOwned, loan.loanDetails, loan.property, loan.declarations, loan.demographics);
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -849,6 +870,76 @@ const LoanDetails = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleDownloadMismoXml = () => {
+    if (!loan) {
+      toast.error("Loan data not available");
+      return;
+    }
+    
+    try {
+      // Generate XML string from loan data
+      const xmlString = generateMismoXml(loan);
+      
+      // Download as XML file
+      const filename = `MISMO_${loan.loanNumber || loan._id}.xml`;
+      downloadXmlFile(xmlString, filename);
+      
+      toast.success("MISMO 3.4 file downloaded successfully");
+    } catch (error) {
+      console.error("Error generating MISMO XML:", error);
+      toast.error("Failed to generate MISMO 3.4 file");
+    }
+  };
+
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  const handleNoteButtonClick = () => {
+    debug('Opening note modal', { loanId: id });
+    setIsNoteModalOpen(true);
+  };
+
+  // Monitor changes in forms for different tabs
+  useEffect(() => {
+    // Add event listener for radio button and select element changes when in specific tabs
+    const handleFormElementChange = () => {
+      // Check if we're in a tab that needs save functionality
+      if (SAVE_TABS.includes(activeTab)) {
+        console.log(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
+        setHasUnsavedChanges(true);
+      }
+    };
+    
+    // Add event listeners for form elements
+    const formElements = document.querySelectorAll('input[type=radio], input[type=checkbox], select');
+    formElements.forEach(element => {
+      element.addEventListener('change', handleFormElementChange);
+    });
+    
+    // Add event listeners for buttons within forms (like Yes/No toggle buttons)
+    const formButtons = document.querySelectorAll('.border-t.border-gray-200 button');
+    formButtons.forEach(button => {
+      button.addEventListener('click', handleFormElementChange);
+    });
+    
+    // Cleanup listeners when component unmounts or tab changes
+    return () => {
+      formElements.forEach(element => {
+        element.removeEventListener('change', handleFormElementChange);
+      });
+      formButtons.forEach(button => {
+        button.removeEventListener('click', handleFormElementChange);
+      });
+    };
+  }, [activeTab]);
+
+  // Monitor changes to hasUnsavedChanges
+  useEffect(() => {
+    console.log(`hasUnsavedChanges changed to: ${hasUnsavedChanges}`, {
+      activeTab,
+      isExcludedTab: NO_SAVE_TABS.includes(activeTab)
+    });
+  }, [hasUnsavedChanges, activeTab]);
 
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
@@ -1090,29 +1181,23 @@ const LoanDetails = () => {
                     <div className="flex items-center gap-1">
                       <button
                         title="Add Note"
-                        onClick={() =>
-                          toast.info("Add note feature coming soon")
-                        }
+                        onClick={handleNoteButtonClick}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <StickyNote className="h-5 w-5" />
                       </button>
                       <button
                         title="Send Message"
-                        onClick={() =>
-                          toast.info("Send message feature coming soon")
-                        }
+                        onClick={() => {
+                          router.push("/lender/messages");
+                        }}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <MessageCircle className="h-5 w-5" />
                       </button>
                       <button
-                        title="Download 3.2/3.4 File"
-                        onClick={() =>
-                          toast.info(
-                            "Download 3.2/3.4 file feature coming soon"
-                          )
-                        }
+                        title="Download 3.4 File"
+                        onClick={handleDownloadMismoXml}
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <Download className="h-5 w-5" />
@@ -1481,12 +1566,14 @@ const LoanDetails = () => {
                             </div>
                             <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                               <PropertyOwned
-                                propertyOwned={loan.propertiesOwned || []}
-                                onChange={(properties) => {
+                                propertyOwned={loan.propertiesOwned || {}}
+                                onChange={(updatedPropertyOwned) => {
+                                  console.log("Updated property owned data:", updatedPropertyOwned);
                                   setLoan((prev) => ({
                                     ...prev,
-                                    propertiesOwned: properties,
+                                    propertiesOwned: updatedPropertyOwned
                                   }));
+                                  setHasUnsavedChanges(true);
                                 }}
                               />
                             </div>
@@ -1534,6 +1621,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       income: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange("income", field, value);
                                   }
@@ -1556,6 +1644,7 @@ const LoanDetails = () => {
                                     ...prev,
                                     assets: assets,
                                   }));
+                                  setHasUnsavedChanges(true);
                                 }}
                               />
                             </div>
@@ -1583,6 +1672,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       debts: Array.isArray(value) ? value : [],
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else if (field === "expenses") {
                                     setLoan((prev) => ({
                                       ...prev,
@@ -1590,6 +1680,7 @@ const LoanDetails = () => {
                                         ? value
                                         : [],
                                     }));
+                                    setHasUnsavedChanges(true);
                                   }
                                 }}
                               />
@@ -1631,6 +1722,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       militaryService: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "militaryService",
@@ -1673,6 +1765,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       declarations: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "declarations",
@@ -1716,6 +1809,7 @@ const LoanDetails = () => {
                                       ...prev,
                                       demographics: field,
                                     }));
+                                    setHasUnsavedChanges(true);
                                   } else {
                                     handleFieldChange(
                                       "demographics",
@@ -1871,27 +1965,36 @@ const LoanDetails = () => {
             )}
           </div>
         </div>
+
+        {/* Add the NoteModal component */}
+        <NoteModal 
+          isOpen={isNoteModalOpen} 
+          onClose={() => setIsNoteModalOpen(false)} 
+          loanId={id}
+        />
+        
+        {/* Existing unsaved changes bar */}
+        {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
+            <button
+              type="button"
+              className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
+              onClick={handleCancel}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
+              onClick={saveLoan}
+              disabled={saving}
+            >
+              {saving ? "Saving Changes..." : "Save All Changes"}
+            </button>
+          </div>
+        )}
       </MainLayout>
-      {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
-          <button
-            type="button"
-            className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
-            onClick={handleCancel}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
-            onClick={saveLoan}
-            disabled={saving}
-          >
-            {saving ? "Saving Changes..." : "Save All Changes"}
-          </button>
-        </div>
-      )}
     </ProtectedRoute>
   );
 };

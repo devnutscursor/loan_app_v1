@@ -69,10 +69,15 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
   const handleOtherIncomeChange = (index, field, value) => {
     // Update local state for immediate feedback
     const localOtherIncome = [...(localIncome.otherIncome || [])];
+    
+    // Map 'type' field to 'incomeType' for database compatibility
+    const dbField = field === 'type' ? 'incomeType' : field;
+    
     localOtherIncome[index] = {
       ...localOtherIncome[index],
-      [field]: value
+      [dbField]: value
     };
+    
     setLocalIncome({
       ...localIncome,
       otherIncome: localOtherIncome
@@ -80,10 +85,12 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
 
     // Update parent component - use original income prop as base
     const otherIncome = [...(income.otherIncome || [])];
+    
     otherIncome[index] = {
       ...otherIncome[index],
-      [field]: value
+      [dbField]: value
     };
+    
     onChange({
       ...income,
       otherIncome
@@ -261,7 +268,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
                 </label>
                 <div className="relative">
                   <select
-                    value={item.type || ''}
+                    value={item.incomeType || ''}
                     onChange={(e) => handleOtherIncomeChange(index, 'type', e.target.value)}
                     className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >

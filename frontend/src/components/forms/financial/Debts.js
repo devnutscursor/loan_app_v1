@@ -93,10 +93,13 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
 
   // Handle change for a specific expense field
   const handleExpenseChange = (id, field, value) => {
+    // Map 'type' field to 'expenseType' for database compatibility
+    const dbField = field === 'type' ? 'expenseType' : field;
+    
     // Update local state for immediate feedback
     const updatedLocalExpenses = localExpenses.map(expense => {
       if (expense.id === id) {
-        return { ...expense, [field]: value };
+        return { ...expense, [dbField]: value };
       }
       return expense;
     });
@@ -105,7 +108,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     // Update parent component - use original expenses as base
     const updatedExpenses = expenses.map(expense => {
       if (expense.id === id) {
-        return { ...expense, [field]: value };
+        return { ...expense, [dbField]: value };
       }
       return expense;
     });
@@ -295,7 +298,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                 </label>
                 <div className="relative">
                   <select
-                    value={expense.type || ''}
+                    value={expense.expenseType || ''}
                     onChange={(e) => handleExpenseChange(expense.id, 'type', e.target.value)}
                     className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >

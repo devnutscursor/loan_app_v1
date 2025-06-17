@@ -175,3 +175,20 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Add custom animation class for slow spinning */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Text wrapping utility for long words and strings */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
