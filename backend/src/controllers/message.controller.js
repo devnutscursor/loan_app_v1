@@ -248,42 +248,28 @@ exports.sendMessage = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized role' });
     }
     
-    // Process file uploads if any
+    // Process file uploads if any (now handled by multer)
     let attachments = [];
     
-    if (req.files && req.files.attachments) {
+    if (req.files && req.files.length > 0) {
       try {
-        const files = Array.isArray(req.files.attachments) ? req.files.attachments : [req.files.attachments];
-        
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = path.resolve(__dirname, '../../uploads');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        
-        // Process each file
-        for (const file of files) {
+        // Files are already saved to disk by multer
+        // Just need to create attachment metadata
+        for (const file of req.files) {
           try {
-            // Generate a unique filename to prevent collisions
-            const fileExtension = file.name.split('.').pop();
-            const fileName = `${uuidv4()}.${fileExtension}`;
-            const uploadPath = path.join(uploadsDir, fileName);
-            
-            // Move the file to the uploads directory
-            await file.mv(uploadPath);
-            
             // Log file information for debugging
-            console.log('File saved:', {
-              originalName: file.name,
-              savedAs: fileName,
-              path: uploadPath,
-              exists: fs.existsSync(uploadPath)
+            console.log('File processed by multer:', {
+              originalName: file.originalname,
+              savedAs: file.filename,
+              path: file.path,
+              mimetype: file.mimetype,
+              size: file.size
             });
             
             // Add attachment metadata with absolute URL
             attachments.push({
-              url: `/uploads/${fileName}`,
-              fileName: file.name,
+              url: `/uploads/${file.filename}`,
+              fileName: file.originalname,
               fileType: file.mimetype,
               fileSize: file.size
             });
@@ -329,40 +315,27 @@ exports.sendMessage = async (req, res) => {
 // Upload attachment
 exports.uploadAttachment = async (req, res) => {
   try {
-    if (!req.files || !req.files.attachment) {
+    if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
     
-    const file = req.files.attachment;
-    
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.resolve(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    
-    // Generate a unique filename to prevent collisions
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExtension}`;
-    const uploadPath = path.join(uploadsDir, fileName);
-    
-    // Move the file to the uploads directory
-    await file.mv(uploadPath);
+    const file = req.file;
     
     // Log file information for debugging
-    console.log('File uploaded:', {
-      originalName: file.name,
-      savedAs: fileName,
-      path: uploadPath,
-      exists: fs.existsSync(uploadPath)
+    console.log('File uploaded via multer:', {
+      originalName: file.originalname,
+      savedAs: file.filename,
+      path: file.path,
+      mimetype: file.mimetype,
+      size: file.size
     });
     
     // Construct the URL for the frontend
-    const fileUrl = `/uploads/${fileName}`;
+    const fileUrl = `/uploads/${file.filename}`;
     
     return res.status(200).json({
       url: fileUrl,
-      fileName: file.name,
+      fileName: file.originalname,
       fileType: file.mimetype,
       fileSize: file.size
     });

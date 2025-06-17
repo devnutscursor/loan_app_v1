@@ -16,15 +16,30 @@ const { title } = require('process');
  */
 exports.uploadDocument = async (req, res, next) => {
   try {
+    // Log request details for debugging
+    console.log('Upload document request received:');
+    console.log('- User:', req.user ? req.user._id : 'Not authenticated');
+    console.log('- Body keys:', Object.keys(req.body));
+    console.log('- File present:', !!req.file);
+    
     // The file will be available in req.file after multer middleware processes it
     if (!req.file) {
+      console.log('Error: No file in request');
       return next(new ApiError('No file uploaded', 400));
     }
+
+    console.log('File details:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      filename: req.file.filename
+    });
 
     const { name, description, category, documentType, loanId, borrowerId } = req.body;
 
     // Validate required inputs
     if (!name || !category) {
+      console.log('Error: Missing required fields:', { name, category });
       return next(new ApiError('Document name and category are required', 400));
     }
 
@@ -96,6 +111,8 @@ exports.uploadDocument = async (req, res, next) => {
       data: document
     });
   } catch (error) {
+    console.error('Document upload error:', error);
+    logger.error(`Document upload failed: ${error.message}`);
     next(error);
   }
 };

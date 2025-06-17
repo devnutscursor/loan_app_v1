@@ -7,7 +7,6 @@ const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const path = require('path');
-const fileUpload = require('express-fileupload');
 const fs = require('fs');
 
 // Import routes
@@ -74,19 +73,6 @@ app.use('/api', limiter);
 // Body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-// File upload middleware
-app.use(fileUpload({
-  limits: { 
-    fileSize: 50 * 1024 * 1024, // 50 MB max file size
-  },
-  abortOnLimit: true,
-  createParentPath: true,
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
-  parseNested: true,
-  debug: true
-}));
 
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());

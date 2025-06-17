@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const documentController = require('../../controllers/admin/document.controller');
 const { protect, authorize } = require('../../middleware/auth');
-const upload = require('../../middleware/fileUpload');
+const { upload } = require('../../middleware/fileHandler');
 
 // All routes require authentication and admin role
 router.use(protect);

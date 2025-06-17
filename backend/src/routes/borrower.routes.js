@@ -1,7 +1,7 @@
 const express = require('express');
 const borrowerController = require('../controllers/borrower.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
-const upload = require('../middleware/upload.middleware');
+const { upload } = require('../middleware/fileHandler');
 const debugMiddleware = require('../middleware/debug.middleware');
 const loanController = require('../controllers/loan.controller');
 
