@@ -1,5 +1,5 @@
-import React from "react";
-import {useEffect} from "react";
+import React, { useEffect, useState } from "react";
+import LenderDocumentViewer from "./LenderDocumentViewer";
 
 const DocumentRequirementCard = ({
   req,
@@ -16,6 +16,41 @@ const DocumentRequirementCard = ({
     console.log("DocumentRequirementCard mounted");
     console.log("DocumentRequirementCard", req);
   }, []);
+
+  // State to track when the document viewer should be shown
+  const [viewingDocument, setViewingDocument] = useState(null);
+
+  // Enhanced handler for document download
+  const handleDownload = (docToDownload) => {
+    // Look for all possible URL field names
+    const docUrlPath = docToDownload?.url || docToDownload?.path || docToDownload?.filePath || docToDownload?.fileName;
+    
+    if (docToDownload && docUrlPath) {
+      // Extract filename from path if it contains a timestamp format (e.g., 1747561194941-filename.pdf)
+      let path = docUrlPath;
+      if (path.includes('/')) {
+        // If the path contains slashes, get just the filename
+        path = path.split('/').pop();
+      }
+      
+      // Construct proper URL
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      let url;
+      
+      if (path.startsWith('/uploads/')) {
+        url = `${baseUrl}${path}`;
+      } else if (path.startsWith('uploads/')) {
+        url = `${baseUrl}/${path}`;
+      } else {
+        url = `${baseUrl}/uploads/${path}`;
+      }
+      
+      console.log("Opening document in new tab:", url);
+      
+      // Just open in new tab, don't create a download link
+      window.open(url, '_blank');
+    }
+  };
   
   return (
     <li
@@ -167,12 +202,8 @@ const DocumentRequirementCard = ({
               <div className="inline-flex rounded-md shadow-sm">
                 {/* View button */}
                 {req.url && (
-                  <a
-                    href={`${
-                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-                    }/uploads/${req.url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setViewingDocument(req)}
                     className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-l text-gray-700 bg-white hover:bg-gray-50"
                   >
                     <svg
@@ -195,7 +226,7 @@ const DocumentRequirementCard = ({
                       />
                     </svg>
                     View
-                  </a>
+                  </button>
                 )}
 
                 {/* Approve button */}
@@ -423,6 +454,15 @@ const DocumentRequirementCard = ({
           )}
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewingDocument && (
+        <LenderDocumentViewer
+          document={viewingDocument}
+          onClose={() => setViewingDocument(null)}
+          onDownload={handleDownload}
+        />
+      )}
     </li>
   );
 };

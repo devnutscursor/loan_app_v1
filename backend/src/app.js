@@ -41,7 +41,11 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "blob:", "localhost:*"],
-      connectSrc: ["'self'", "localhost:*"]
+      connectSrc: ["'self'", "localhost:*"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", "data:"],
+      frameAncestors: ["'self'", "localhost:*", "http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean)
     }
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -89,9 +93,24 @@ app.use('/uploads', (req, res, next) => {
   res.setHeader('Cache-Control', 'public, max-age=86400');
   // Allow cross-origin access to the files
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
+  
+  // Set appropriate content types for different file extensions
+  const filePath = req.url.split('?')[0];
+  const ext = path.extname(filePath).toLowerCase();
+  
+  if (ext === '.pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+  } else if (['.xlsx', '.xls'].includes(ext)) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  } else if (['.doc', '.docx'].includes(ext)) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  }
   
   // Handle OPTIONS requests for CORS preflight
   if (req.method === 'OPTIONS') {
@@ -100,8 +119,10 @@ app.use('/uploads', (req, res, next) => {
   
   next();
 }, express.static(path.resolve(__dirname, '../uploads'), {
-  setHeaders: (res) => {
+  setHeaders: (res, path) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('X-Frame-Options', 'ALLOWALL');
+    res.set('Content-Security-Policy', "frame-ancestors 'self' *");
   }
 }));
 
