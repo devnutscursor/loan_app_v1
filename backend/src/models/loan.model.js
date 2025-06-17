@@ -792,6 +792,14 @@ const loanSchema = new mongoose.Schema({
       value: {
         type: Number,
         min: 0
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
+        type: Boolean,
+        default: true
       }
     }],
     stocksAndBonds: [{
@@ -802,6 +810,14 @@ const loanSchema = new mongoose.Schema({
       value: {
         type: Number,
         min: 0
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
+        type: Boolean,
+        default: true
       }
     }],
     giftsAndGrants: [{
@@ -820,6 +836,14 @@ const loanSchema = new mongoose.Schema({
       deposited: {
         type: Boolean,
         default: false
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
+        type: Boolean,
+        default: true
       }
     }],
     miscellaneous: {

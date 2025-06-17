@@ -58,7 +58,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       id: `account-${Date.now()}`,
       bankName: '',
       accountType: 'Checking',
-      value: ''
+      value: '',
+      isVerified: false,
+      isLiquid: true
     };
     const updatedAccounts = [...localAssets.checkingAndSavings, newAccount];
     
@@ -80,7 +82,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
     const newStock = {
       id: `stock-${Date.now()}`,
       description: '',
-      value: ''
+      value: '',
+      isVerified: false,
+      isLiquid: true
     };
     const updatedStocks = [...localAssets.stocksAndBonds, newStock];
     
@@ -104,7 +108,9 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
       assetType: 'Cash Gift',
       source: 'Relative',
       value: '',
-      deposited: false
+      deposited: false,
+      isVerified: false,
+      isLiquid: true
     };
     const updatedGifts = [...localAssets.giftsAndGrants, newGift];
     
@@ -313,19 +319,42 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
         {localAssets.checkingAndSavings.map(account => (
           <div key={account.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <button
-              type="button"
-              onClick={() => removeAccount(account.id)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-              aria-label="Remove this account"
-            >
-              <div className="flex items-center">
-                <span className="text-xs mr-1">Remove</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex space-x-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={account.isVerified || false}
+                    onChange={(e) => handleAccountChange(account.id, 'isVerified', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Verified</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={account.isLiquid || false}
+                    onChange={(e) => handleAccountChange(account.id, 'isLiquid', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
+                </label>
               </div>
-            </button>
+              
+              <button
+                type="button"
+                onClick={() => removeAccount(account.id)}
+                className="text-red-500 hover:text-red-700"
+                aria-label="Remove this account"
+              >
+                <div className="flex items-center">
+                  <span className="text-xs mr-1">Remove</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </button>
+            </div>
 
             <div className="mb-4">
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
@@ -384,6 +413,8 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                 </div>
               </div>
             </div>
+
+
           </div>
         ))}
 
@@ -421,19 +452,42 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
         {localAssets.stocksAndBonds.map(stock => (
           <div key={stock.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <button
-              type="button"
-              onClick={() => removeStock(stock.id)}
-              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
-              aria-label="Remove this stock or bond"
-            >
-              <div className="flex items-center">
-                <span className="text-xs mr-1">Remove</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex space-x-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={stock.isVerified || false}
+                    onChange={(e) => handleStockChange(stock.id, 'isVerified', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Verified</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={stock.isLiquid || false}
+                    onChange={(e) => handleStockChange(stock.id, 'isLiquid', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
+                </label>
               </div>
-            </button>
+              
+              <button
+                type="button"
+                onClick={() => removeStock(stock.id)}
+                className="text-red-500 hover:text-red-700"
+                aria-label="Remove this stock or bond"
+              >
+                <div className="flex items-center">
+                  <span className="text-xs mr-1">Remove</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -506,19 +560,42 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
         {localAssets.giftsAndGrants.map(gift => (
           <div key={gift.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <button
-              type="button"
-              onClick={() => removeGift(gift.id)}
-              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
-              aria-label="Remove this gift or grant"
-            >
-              <div className="flex items-center">
-                <span className="text-xs mr-1">Remove</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex space-x-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={gift.isVerified || false}
+                    onChange={(e) => handleGiftChange(gift.id, 'isVerified', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Verified</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={gift.isLiquid || false}
+                    onChange={(e) => handleGiftChange(gift.id, 'isLiquid', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
+                </label>
               </div>
-            </button>
+              
+              <button
+                type="button"
+                onClick={() => removeGift(gift.id)}
+                className="text-red-500 hover:text-red-700"
+                aria-label="Remove this gift or grant"
+              >
+                <div className="flex items-center">
+                  <span className="text-xs mr-1">Remove</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -597,7 +674,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                   onChange={(e) => handleGiftChange(gift.id, 'deposited', e.target.checked)}
                   className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                 />
-                <span className="ml-2 text-gray-700">Deposited</span>
+                <span className="ml-2 text-xs text-gray-700">Deposited</span>
               </label>
             </div>
           </div>
