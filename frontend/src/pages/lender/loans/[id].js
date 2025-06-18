@@ -7,6 +7,7 @@ import ProtectedRoute from "../../../components/auth/ProtectedRoute";
 import { lenderService } from "../../../services/api";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
 import { MessageCircle, StickyNote, Download } from "lucide-react";
+import {  StandardFonts } from 'pdf-lib';
 import {
   BarChart2,
   User,
@@ -60,230 +61,460 @@ export async function generateURLAPdf(borrowerDetails,assets,income,debts,proper
   const existingPdfBytes = await fetch(formUrl).then(res => res.arrayBuffer());
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
   const form = pdfDoc.getForm();
+  console.log("---------------------------------------")
+  console.log("Generating URLA PDF with borrower details:", borrowerDetails);
+  console.log("------------------------")
 
+  // Helper function to safely set text field values
+  const safeSetText = (fieldName, value, maxLength = 100) => {
+    try {
+      const field = form.getTextField(fieldName);
+      // Ensure value is a string and truncated to max length
+      const safeValue = String(value || '').substring(0, maxLength);
+      field.setText(safeValue);
+    } catch (e) {
+      console.log(`Error setting field ${fieldName}: ${e.message}`);
+    }
+  };
+  
   // --- Personal Info ---
   const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''} ${borrowerDetails.suffix || ''}`.trim();
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Borrower_s_Name[0]').setText(fullName);
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Email[0]').setText(borrowerDetails.email || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Dependents[0]').setText((borrowerDetails.dependents?.length || 0).toString());
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Dependent_Age[0]').setText((borrowerDetails.dependents || []).map(d => d.age).join(', '));
-  form.getTextField('topmostSubform[0].Page1[0].credit[0].joint[0]._1a_Initials[0]').setText((borrowerDetails.suffix || ''));
+  safeSetText('3', fullName);
+  safeSetText('topmostSubform[0].Page1[0]._1a_Borrower_s_Name[0]', fullName);
+  //set alternate name of borrower altname
+  safeSetText('4', borrowerDetails.alternateName || '');
+
+  
+  safeSetText('topmostSubform[0].Page1[0]._1a_Email[0]', borrowerDetails.email || '');
+  safeSetText('topmostSubform[0].Page1[0]._1a_Dependents[0]', (borrowerDetails.dependents?.length || 0).toString());
+  safeSetText('topmostSubform[0].Page1[0]._1a_Dependent_Age[0]', (borrowerDetails.dependents || []).map(d => d.age).join(', '));
+  safeSetText('topmostSubform[0].Page1[0].credit[0].joint[0]._1a_Initials[0]', (borrowerDetails.suffix || ''));
+  //count the number of borrowers
+  const numberOfBorrowers = borrowerDetails?.borrowers?.length || 1; // Default to 1 if not specified
+  safeSetText('topmostSubform[0].Page1[0].credit[0].joint[0]._1a_Borrowers_Number[0]', numberOfBorrowers.toString());
+
   // Date of Birth
   if (borrowerDetails.dateOfBirth) {
     const dob = new Date(borrowerDetails.dateOfBirth);
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_1[0]').setText(String(dob.getMonth() + 1).padStart(2, '0'));
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_2[0]').setText(String(dob.getDate()).padStart(2, '0'));
-    form.getTextField('topmostSubform[0].Page1[0]._1a_Birth_3[0]').setText(String(dob.getFullYear()));
+    safeSetText('topmostSubform[0].Page1[0]._1a_Birth_1[0]', String(dob.getMonth() + 1).padStart(2, '0'), 2);
+    safeSetText('topmostSubform[0].Page1[0]._1a_Birth_2[0]', String(dob.getDate()).padStart(2, '0'), 2);
+    safeSetText('topmostSubform[0].Page1[0]._1a_Birth_3[0]', String(dob.getFullYear()), 4);
   }
+  
   // Phone
   const phone = (borrowerDetails.phone || '').replace(/\D/g, '').padEnd(10, '0');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH1[0]').setText(phone.slice(0, 3));
-  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH2[0]').setText(phone.slice(3, 6));
-  form.getTextField('topmostSubform[0].Page1[0]._1a_PhoneH3[0]').setText(phone.slice(6, 10));
+  safeSetText('topmostSubform[0].Page1[0]._1a_PhoneH1[0]', phone.slice(0, 3), 3);
+  safeSetText('topmostSubform[0].Page1[0]._1a_PhoneH2[0]', phone.slice(3, 6), 3);
+  safeSetText('topmostSubform[0].Page1[0]._1a_PhoneH3[0]', phone.slice(6, 10), 4);
+  
   // SSN
-  //if (form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]')) {
-    //form.getTextField('topmostSubform[0].Page1[0]._1a_SSN[0]').setText(borrowerDetails.ssn || '');
-  //}
+  if (borrowerDetails.ssn) {
+    const ssn = borrowerDetails.ssn.replace(/\D/g, '').padEnd(9, '0');
+    try {
+      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN1[0]').setText(ssn.slice(0, 3));
+      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN2[0]').setText(ssn.slice(3, 5));
+      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN3[0]').setText(ssn.slice(5, 9));
+    } catch (e) {
+      console.log('Error setting SSN fields:', e.message);
+    }
+  }
+  
+  // Citizenship
+  if (borrowerDetails.citizenship) {
+    const citizenshipGroup = form.getRadioGroup('Group1');
+    let citizenshipOption;
+    switch (borrowerDetails.citizenship.toLowerCase()) {
+      case 'uscitizen':
+        citizenshipOption = 'U.S. Citizen';
+        break;
+      case 'permanentresident':
+        citizenshipOption = 'Permanent Resident Alien';
+        break;
+      case 'nonpermanentresident':
+        citizenshipOption = 'Non-Permanent Resident Alien';
+        break;
+      default:
+        citizenshipOption = 'U.S. Citizen'; // Default fallback
+    }
+    citizenshipGroup.select(citizenshipOption);
+  }
+  
+  // Marital Status
+  if (borrowerDetails.maritalStatus) {
+    const maritalGroup = form.getRadioGroup('Group3');
+    let maritalOption;
+    switch (borrowerDetails.maritalStatus.toLowerCase()) {
+      case 'married':
+        maritalOption = 'Married';
+        break;
+      case 'separated':
+        maritalOption = 'Separated';
+        break;
+      case 'unmarried':
+        maritalOption = 'Unmarried';
+        break;
+      default:
+        maritalOption = 'Unmarried'; // Default fallback
+    }
+    maritalGroup.select(maritalOption);
+  }
 
   // --- Current Address ---
   const curr = borrowerDetails.currentAddress || {};
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_St[0]').setText(curr.streetAddress || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_City[0]').setText(curr.city || '');
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_St[0]').setText((curr.streetAddress || '').substring(0, 50));
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Unit[0]').setText((curr.aptSteNum || '').substring(0, 5));
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_City[0]').setText((curr.city || '').substring(0, 35));
   if (curr.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Address_State[0]').select(curr.state);
   form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Zip[0]').setText(curr.zipCode || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Country[0]').setText(borrowerDetails.citizenship);
+  form.getTextField('topmostSubform[0].Page1[0]._1a_Address_Country[0]').setText('USA');
+  
+  //years and months at address
+  const yearsAtAddress = curr.yearsAtAddress || 0;
+  const monthsAtAddress = curr.monthsAtAddress || 0;
+  safeSetText('Text1', String(yearsAtAddress || 0), 2);
+  safeSetText('Text2', String(monthsAtAddress || 0), 2);
+  
+  //rent (it will be get from property details)
+  const rent = propertiesOwned?.rent || 0;
+  safeSetText('topmostSubform[0].Page1[0].housing_current[0].rent[0]._1a_Address_Rent[0]', rent ? String(rent) : '0', 20);
+  
+  //RADIO BUTTON FOR CURRENT ADDRESS
+  if(propertiesOwned.ownsProperty && propertiesOwned.rent == 0) {
+    form.getRadioGroup('Group5').select('No primary housing expense');
+  } else {
+    if(propertiesOwned.ownsProperty) {
+      form.getRadioGroup('Group5').select('Own');
+    } else {
+      form.getRadioGroup('Group5').select('Rent');
+    }
+  }
 
-  const yearsAtAddress = borrowerDetails?.currentAddress?.yearsAtAddress || 0;
- // Check if the user has been at the current address for less than 2 years
- if (yearsAtAddress < 2) {
-  // Mark the checkbox for "Does Not Apply" for the former address
-  form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').check();
-} else {
-  // Uncheck the "Does Not Apply" checkbox if the user has been at the current address for 2 or more years
-  form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').uncheck();
-}
+  // Check if the user has been at the current address for less than 2 years
+  if (yearsAtAddress < 2) {
+    // Uncheck the "Does Not Apply" checkbox if user has been at the current address for less than 2 years
+    form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').uncheck();
+  } else {
+    // Check the "Does Not Apply" checkbox if the user has been at the current address for 2 or more years
+    form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply1[0]').check();
+  }
 
   // --- Previous Address (first one) ---
   const prev = (borrowerDetails.previousAddresses || [])[0] || {};
-  form.getTextField('topmostSubform[0].Page1[0]._1a_FormerAddress_St[0]').setText(prev.streetAddress || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Unit[0]').setText(prev.aptSteNum || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_City[0]').setText(prev.city || '');
-  if (prev.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Former_Address_State[0]').select(prev.state);
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Zip[0]').setText(prev.zipCode || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Country[0]').setText(borrowerDetails.citizenship);
+  if (Object.keys(prev).length > 0 && yearsAtAddress < 2) {
+    form.getTextField('topmostSubform[0].Page1[0]._1a_FormerAddress_St[0]').setText((prev.streetAddress || '').substring(0, 50));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Unit[0]').setText((prev.aptSteNum || '').substring(0, 5));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_City[0]').setText((prev.city || '').substring(0, 35));
+    if (prev.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Former_Address_State[0]').select(prev.state);
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Zip[0]').setText(prev.zipCode || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Former_Address_Country[0]').setText('USA');
+    
+    // Years and months at previous address
+    const prevYears = prev.yearsAtAddress || 0;
+    const prevMonths = prev.monthsAtAddress || 0;
+    safeSetText('How long in this line of work1', String(prevYears || 0), 2);
+    safeSetText('How long in this line of work2', String(prevMonths || 0), 2);
+    
+    // Set housing type for previous address
+    // This might need adjustment based on your data structure
+    form.getRadioGroup('Group7').select('Rent');
+  }
 
-   // --- Mailing Address ---
-   const mail = borrowerDetails.mailingAddress || {};
-   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_St[0]').setText(mail.streetAddress || '');
-   //form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Unit[0]').setText(mail.aptSteNum || '');
-   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_City[0]').setText(mail.city || '');
-   if (mail.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Mail_Address_State[0]').select(mail.state);
-   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Zip[0]').setText(mail.zipCode || '');
-   form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Country[0]').setText(borrowerDetails.citizenship);
- 
- 
+  // --- Mailing Address ---
+  const mail = borrowerDetails.mailingAddress || {};
+  if (mail.sameAsCurrentAddress) {
+    form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply2[0]').check();
+  } else {
+    form.getCheckBox('topmostSubform[0].Page1[0]._1a_Does_Not_Apply2[0]').uncheck();
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_St[0]').setText((mail.streetAddress || '').substring(0, 50));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Unit[0]').setText((mail.aptSteNum || '').substring(0, 5));
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_City[0]').setText((mail.city || '').substring(0, 35));
+    if (mail.state) form.getDropdown('topmostSubform[0].Page1[0]._1a_Mail_Address_State[0]').select(mail.state);
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Zip[0]').setText(mail.zipCode || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1a_Mail_Address_Country[0]').setText('USA');
+  }
 
   // --- Employer (first one) ---
   const emp = (borrowerDetails.employers || [])[0] || {};
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Employer[0]').setText(emp.companyName || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE1[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(0, 3));
-  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE2[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(3, 6));
-  form.getTextField('topmostSubform[0].Page1[0]._1b_PhoneE3[0]').setText((emp.companyPhone || '').replace(/\D/g, '').slice(6, 10));
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Position[0]').setText(emp.jobTitle || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Month[0]').setText(emp.startDate ? String(new Date(emp.startDate).getMonth() + 1).padStart(2, '0') : '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Day[0]').setText(emp.startDate ? String(new Date(emp.startDate).getDate()).padStart(2, '0') : '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Employment_Start_Year[0]').setText(emp.startDate ? String(new Date(emp.startDate).getFullYear()) : '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_City[0]').setText(emp.city || '');
-  if (emp.state) form.getDropdown('topmostSubform[0].Page1[0]._1b_State[0]').select(emp.state);
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Zip[0]').setText(emp.zipCode || '');
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Country[0]').setText(borrowerDetails.citizenship);
-  form.getTextField('topmostSubform[0].Page1[0]._1b_Address[0]').setText(emp.streetAddress || '');
+  if (Object.keys(emp).length > 0) {
+    form.getCheckBox('topmostSubform[0].Page1[0]._1b_Does_Not_Apply1[0]').uncheck();
+    safeSetText('topmostSubform[0].Page1[0]._1b_Employer[0]', emp.companyName || '', 40);
+    
+    // Format phone
+    const empPhone = (emp.companyPhone || '').replace(/\D/g, '').padEnd(10, '0');
+    safeSetText('topmostSubform[0].Page1[0]._1b_PhoneE1[0]', empPhone.slice(0, 3), 3);
+    safeSetText('topmostSubform[0].Page1[0]._1b_PhoneE2[0]', empPhone.slice(3, 6), 3);
+    safeSetText('topmostSubform[0].Page1[0]._1b_PhoneE3[0]', empPhone.slice(6, 10), 4);
+    
+    safeSetText('topmostSubform[0].Page1[0]._1b_Position[0]', emp.jobTitle || '', 35);
+    
+    // Start date
+    if (emp.startDate) {
+      const startDate = new Date(emp.startDate);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Employment_Start_Month[0]', String(startDate.getMonth() + 1).padStart(2, '0'), 2);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Employment_Start_Day[0]', String(startDate.getDate()).padStart(2, '0'), 2);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Employment_Start_Year[0]', String(startDate.getFullYear()), 4);
+    }
+    
+    // Address
+    form.getTextField('topmostSubform[0].Page1[0]._1b_Address[0]').setText((emp.streetAddress || '').substring(0, 50));
+    form.getTextField('topmostSubform[0].Page1[0]._1b_Unit[0]').setText((emp.aptSteNum || '').substring(0, 5));
+    form.getTextField('topmostSubform[0].Page1[0]._1b_City[0]').setText((emp.city || '').substring(0, 35));
+    if (emp.state) form.getDropdown('topmostSubform[0].Page1[0]._1b_State[0]').select(emp.state);
+    form.getTextField('topmostSubform[0].Page1[0]._1b_Zip[0]').setText(emp.zipCode || '');
+    form.getTextField('topmostSubform[0].Page1[0]._1b_Country[0]').setText('USA');
+    
+    // Years and months in profession
+    if (emp.yearsInProfession || emp.monthsInProfession) {
+      safeSetText('Text6', String(emp.yearsInProfession || 0), 2);
+      safeSetText('Text7', String(emp.monthsInProfession || 0), 2);
+    }
+    
+    // Income fields
+    if (income) {
+      safeSetText('topmostSubform[0].Page1[0]._1b_Base[0]', String(income.baseIncome || 0), 20);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Overtime[0]', String(income.overtime || 0), 20);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Bonus[0]', String(income.bonuses || 0), 20);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Commission[0]', String(income.commissions || 0), 20);
+      safeSetText('topmostSubform[0].Page1[0]._1b_Military[0]', String(income.militaryEntitlements || 0), 20);
+      
+      // Calculate total income
+      const totalIncome = 
+        (parseFloat(income.baseIncome) || 0) +
+        (parseFloat(income.overtime) || 0) +
+        (parseFloat(income.bonuses) || 0) +
+        (parseFloat(income.commissions) || 0) +
+        (parseFloat(income.militaryEntitlements) || 0);
+      
+      safeSetText('topmostSubform[0].Page1[0]._1b_IncomeTotal[0]', totalIncome.toFixed(2), 20);
+    }
+    
+    // Self-employed checkbox
+    if (emp.employmentStatus && emp.employmentStatus.toLowerCase().includes('self')) {
+      form.getCheckBox('topmostSubform[0].Page1[0]._1b_Owner[0]').check();
+    }
+  } else {
+    form.getCheckBox('topmostSubform[0].Page1[0]._1b_Does_Not_Apply1[0]').check();
+  }
 
   // --- Employer (second) or Does Not Apply ---
   const employers = borrowerDetails.employers || [];
-  if (employers.length === 1) {
-    // Only one employer, check Does Not Apply for employer 2
+  if (employers.length <= 1) {
+    // Only one or no employer, check Does Not Apply for employer 2
     form.getCheckBox('topmostSubform[0].Page2[0]._1c_Does_Not_Apply[0]').check();
   } else if (employers.length > 1) {
     // Fill employer 2 fields (index 1)
+    form.getCheckBox('topmostSubform[0].Page2[0]._1c_Does_Not_Apply[0]').uncheck();
     const emp2 = employers[1];
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Employer[0]').setText(emp2.companyName || '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE1[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(0, 3));
-    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE2[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(3, 6));
-    form.getTextField('topmostSubform[0].Page2[0]._1c_PhoneE3[0]').setText((emp2.companyPhone || '').replace(/\D/g, '').slice(6, 10));
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Position[0]').setText(emp2.jobTitle || '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Month[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getMonth() + 1).padStart(2, '0') : '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Day[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getDate()).padStart(2, '0') : '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Employment_Start_Year[0]').setText(emp2.startDate ? String(new Date(emp2.startDate).getFullYear()) : '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_City[0]').setText(emp2.city || '');
+    safeSetText('topmostSubform[0].Page2[0]._1c_Employer[0]', emp2.companyName || '', 40);
+    
+    // Format phone
+    const emp2Phone = (emp2.companyPhone || '').replace(/\D/g, '').padEnd(10, '0');
+    safeSetText('topmostSubform[0].Page2[0]._1c_PhoneE1[0]', emp2Phone.slice(0, 3), 3);
+    safeSetText('topmostSubform[0].Page2[0]._1c_PhoneE2[0]', emp2Phone.slice(3, 6), 3);
+    safeSetText('topmostSubform[0].Page2[0]._1c_PhoneE3[0]', emp2Phone.slice(6, 10), 4);
+    
+    safeSetText('topmostSubform[0].Page2[0]._1c_Position[0]', emp2.jobTitle || '', 35);
+    
+    // Start date
+    if (emp2.startDate) {
+      const start2Date = new Date(emp2.startDate);
+      safeSetText('topmostSubform[0].Page2[0]._1c_Employment_Start_Month[0]', String(start2Date.getMonth() + 1).padStart(2, '0'), 2);
+      safeSetText('topmostSubform[0].Page2[0]._1c_Employment_Start_Day[0]', String(start2Date.getDate()).padStart(2, '0'), 2);
+      safeSetText('topmostSubform[0].Page2[0]._1c_Employment_Start_Year[0]', String(start2Date.getFullYear()), 4);
+    }
+    
+    // Address
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Address[0]').setText((emp2.streetAddress || '').substring(0, 50));
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Unit[0]').setText((emp2.aptSteNum || '').substring(0, 5));
+    form.getTextField('topmostSubform[0].Page2[0]._1c_City[0]').setText((emp2.city || '').substring(0, 35));
     if (emp2.state) form.getDropdown('topmostSubform[0].Page2[0]._1c_State[0]').select(emp2.state);
     form.getTextField('topmostSubform[0].Page2[0]._1c_Zip[0]').setText(emp2.zipCode || '');
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Country[0]').setText(borrowerDetails.citizenship);
-    form.getTextField('topmostSubform[0].Page2[0]._1c_Address[0]').setText(emp2.streetAddress || '');
+    form.getTextField('topmostSubform[0].Page2[0]._1c_Country[0]').setText('USA');
+    
+    // Self-employed checkbox
+    if (emp2.employmentStatus && emp2.employmentStatus.toLowerCase().includes('self')) {
+      form.getCheckBox('topmostSubform[0].Page2[0]._1c_Owner[0]').check();
+    }
   }
 
-  // check doesnot apply box in  1d  portion in our form as it is not applicable for us
-form.getCheckBox('topmostSubform[0].Page2[0]._1d_Does_Not_Apply[0]').check();
+  // check doesnot apply box in 1d portion in our form as it is not applicable for us
+  form.getCheckBox('topmostSubform[0].Page2[0]._1d_Does_Not_Apply[0]').check();
 
 
   // --- Income (Other Monthly Income Table) ---
-  if (income) {
-    // 1) Monthly income (baseIncome + bonuses + commissions + militaryEntitlements)
-    const monthlyIncome =
-      (parseFloat(income.baseIncome) || 0) +
-      (parseFloat(income.bonuses) || 0) +
-      (parseFloat(income.commissions) || 0) +
-      (parseFloat(income.militaryEntitlements) || 0);
-    // 2) otherIncome (sum of all otherIncome amounts)
-    const otherIncome = (income.otherIncome || []).reduce((sum, oi) => sum + (parseFloat(oi.amount) || 0), 0);
-    // 3) overtime
-    const overtime = parseFloat(income.overtime) || 0;
-
-    // Row 1: monthlyIncome
-    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R1[0]._1e_Income_Other_Sources1[0]').select('monthlyIncome');
-    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R1[0]._1e_Other_Monthly_Income1[0]').setText(monthlyIncome ? String(monthlyIncome) : '');
-    // Row 2: otherIncome
-    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R2[0]._1e_Income_Other_Sources2[0]').select('otherIncome');
-    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R2[0]._1e_Other_Monthly_Income2[0]').setText(income.otherIncome[0].amount ? String(income.otherIncome[0].amount) : '');
-    // Row 3: overtime
-    form.getDropdown('topmostSubform[0].Page2[0].Table1[0].T1R3[0]._1e_Income_Other_Sources3[0]').select('overtime');
-    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R3[0]._1e_Other_Monthly_Income3[0]').setText(income.overtime ? String(income.overtime) : '');
-    // Total Other Monthly Income
-    let totalOther = 0;
-    totalOther += parseFloat(monthlyIncome) || 0;
-    totalOther += parseFloat(income.otherIncome) || 0;
-    totalOther += parseFloat(income.overtime) || 0;
-    (income.otherIncome || []).forEach(oi => {
-      totalOther += parseFloat(oi.amount) || 0;
-    });
-    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R4[0]._1e_Total_Other_Monthly_Income[0]').setText(totalOther ? String(totalOther) : '');
-    // You can now use monthlyIncome, otherIncome, and overtime variables for any additional PDF fields as needed
+  if (income && income.otherIncome && income.otherIncome.length > 0) {
+    form.getCheckBox('topmostSubform[0].Page2[0]._1e_Does_Not_Apply[0]').uncheck();
+    
+    // Get all income sources
+    const otherIncomeItems = income.otherIncome || [];
+    
+    // Fill up to 3 rows of other income
+    for (let i = 0; i < Math.min(otherIncomeItems.length, 3); i++) {
+      const idx = i + 1;
+      const item = otherIncomeItems[i];
+      
+      // Select appropriate income type based on description or source
+      let incomeType = 'Other';
+      if (item.description) {
+        const desc = item.description.toLowerCase();
+        if (desc.includes('alimony') || desc.includes('child support')) {
+          incomeType = 'Alimony/Child Support';
+        } else if (desc.includes('rental') || desc.includes('rent')) {
+          incomeType = 'Rental';
+        } else if (desc.includes('trust')) {
+          incomeType = 'Trust';
+        } else if (desc.includes('dividend') || desc.includes('interest')) {
+          incomeType = 'Interest and Dividends';
+        }
+      }
+      
+      // Select income type in dropdown
+      form.getDropdown(`topmostSubform[0].Page2[0].Table1[0].T1R${idx}[0]._1e_Income_Other_Sources${idx}[0]`).select(incomeType);
+      
+      // Set income amount
+      form.getTextField(`topmostSubform[0].Page2[0].Table1[0].T1R${idx}[0]._1e_Other_Monthly_Income${idx}[0]`).setText(item.amount ? String(item.amount) : '0');
+    }
+    
+    // Calculate total other monthly income
+    const totalOtherIncome = otherIncomeItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    form.getTextField('topmostSubform[0].Page2[0].Table1[0].T1R4[0]._1e_Total_Other_Monthly_Income[0]').setText(totalOtherIncome.toFixed(2));
+  } else {
+    form.getCheckBox('topmostSubform[0].Page2[0]._1e_Does_Not_Apply[0]').check();
   }
 
 
 
 
   // --- Assets (Checking/Savings, Gifts/Grants, Stocks/Bonds, Miscellaneous) ---
-if (assets) {
-  const assetRows = [];
-  // Checking & Savings
-  (assets.checkingAndSavings || []).forEach(a => {
-    assetRows.push({
-      type: a.accountType || 'Checking',
-      financial: a.bankName || '',
-      account: a.accountNumber || '',
-      value: a.value || ''
+  if (assets && (assets.checkingAndSavings?.length > 0 || 
+                assets.giftsAndGrants?.length > 0 || 
+                assets.stocksAndBonds?.length > 0 ||
+                Object.values(assets.miscellaneous || {}).some(val => val > 0))) {
+    
+    //form.getCheckBox('topmostSubform[0].Page3[0]._2a_Does_Not_Apply[0]').uncheck();
+    
+    const assetRows = [];
+    
+    // Checking & Savings
+    (assets.checkingAndSavings || []).forEach(a => {
+      assetRows.push({
+        type: a.accountType || 'Checking',
+        financial: a.bankName || '',
+        account: a.accountNumber || '',
+        value: a.value || ''
+      });
     });
-  });
-  // Gifts & Grants
-  (assets.giftsAndGrants || []).forEach(a => {
-    assetRows.push({
-      type: a.assetType || 'Gift',
-      financial: a.source || '',
-      account: '',
-      value: a.value || ''
+    
+    // Gifts & Grants
+    (assets.giftsAndGrants || []).forEach(a => {
+      assetRows.push({
+        type: a.assetType || 'Gift',
+        financial: a.source || '',
+        account: '',
+        value: a.value || ''
+      });
     });
-  });
-  // Stocks & Bonds
-  (assets.stocksAndBonds || []).forEach(a => {
-    assetRows.push({
-      type: 'Bonds',
-      financial: '',
-      account: a.description || '',
-      value: a.value || ''
+    
+    // Stocks & Bonds
+    (assets.stocksAndBonds || []).forEach(a => {
+      assetRows.push({
+        type: 'Bonds',
+        financial: '',
+        account: a.description || '',
+        value: a.value || ''
+      });
     });
-  });
-  // Miscellaneous (map each as a separate row)
-  const misc = assets.miscellaneous || {};
-  if (misc.earnestMoney) assetRows.push({ type: 'Earnest Money', financial: '', account: '', value: misc.earnestMoney });
-  if (misc.lifeInsurance) assetRows.push({ type: 'Life Insurance', financial: '', account: '', value: misc.lifeInsurance });
-  if (misc.otherAssets) assetRows.push({ type: 'Other', financial: '', account: '', value: misc.otherAssets });
-  if (misc.vestedInterestInRetirement) assetRows.push({ type: 'Retirement', financial: '', account: '', value: misc.vestedInterestInRetirement });
-  // Fill up to 5 rows
-  for (let i = 0; i < 5; i++) {
-    const idx = i + 1;
-    const row = assetRows[i] || {};
-    // form.getDropdown(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account_Type${idx}[0]`).select(row.type || '');
-    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Financial${idx}[0]`).setText(row.financial || '');
-    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account${idx}[0]`).setText(row.account || '');
-    form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Cash${idx}[0]`).setText(row.value ? String(row.value) : '');
-  }
-  // Set total cash field
-  const totalAssets = assetRows.reduce((sum, row) => sum + (parseFloat(row.value) || 0), 0);
-  form.getTextField('topmostSubform[0].Page3[0].Table2a[0].TR6[0]._2a_Total_Cash[0]').setText(totalAssets ? String(totalAssets) : '');
+    
+    // Miscellaneous (map each as a separate row)
+    const misc = assets.miscellaneous || {};
+    if (misc.earnestMoney) assetRows.push({ type: 'Earnest Money', financial: '', account: '', value: misc.earnestMoney });
+    if (misc.lifeInsurance) assetRows.push({ type: 'Life Insurance', financial: '', account: '', value: misc.lifeInsurance });
+    if (misc.otherAssets) assetRows.push({ type: 'Other', financial: '', account: '', value: misc.otherAssets });
+    if (misc.vestedInterestInRetirement) assetRows.push({ type: 'Retirement', financial: '', account: '', value: misc.vestedInterestInRetirement });
+    
+    // Fill up to 5 rows
+    for (let i = 0; i < Math.min(assetRows.length, 5); i++) {
+      const idx = i + 1;
+      const row = assetRows[i] || {};
+      
+      // Set account type in dropdown
+      try {
+        form.getDropdown(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account_Type${idx}[0]`).select(row.type || '');
+      } catch (e) {
+        console.log(`Could not set account type dropdown for row ${idx}: ${e.message}`);
+      }
+      
+      // Set other fields
+      form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Financial${idx}[0]`).setText(row.financial || '');
+      form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Account${idx}[0]`).setText(row.account || '');
+      form.getTextField(`topmostSubform[0].Page3[0].Table2a[0].TR${idx}[0]._2a_Cash${idx}[0]`).setText(row.value ? String(row.value) : '');
+    }
+    
+    // Set total cash field
+    const totalAssets = assetRows.reduce((sum, row) => sum + (parseFloat(row.value) || 0), 0);
+    form.getTextField('topmostSubform[0].Page3[0].Table2a[0].TR6[0]._2a_Total_Cash[0]').setText(totalAssets.toFixed(2));
+  } 
 
-
-
-  // check doesnot apply box in  2b  portion in our form as it is not applicable for us
+  // Check 'Does Not Apply' for section 2b (Other Assets)
   form.getCheckBox('topmostSubform[0].Page3[0]._2b_Does_Not_Apply[0]').check();
 
-  // --- Debts ---
+  // --- Debts (Liabilities) ---
   if (debts && debts.length > 0) {
-    debts.forEach((debt, index) => {
-      if (index < 5) { // Only handle up to 5 debts as that's what the PDF has
-        const rowNum = index + 1;
-        
-        // Account Type - Set to "Other" as default
-        form.getDropdown(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Account_Type${rowNum}[0]`).select('Other');
-        
-        // Company (Creditor)
-        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Company${rowNum}[0]`).setText(debt.creditor || '');
-        
-        // Unpaid Balance
-        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Unpaid${rowNum}[0]`).setText(debt.balance ? String(debt.balance) : '');
-        
-        // Monthly Payment
-        form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Monthly${rowNum}[0]`).setText(debt.monthlyPayment ? String(debt.monthlyPayment) : '');
-        
-        // Paid Off checkbox
-        if (debt.paidAtClosing) {
-          form.getCheckBox(`topmostSubform[0].Page3[0].Table2c[0].TR${rowNum}[0]._2c_Paid_Off${rowNum}[0]`).check();
+    form.getCheckBox('topmostSubform[0].Page3[0]._2c_Does_Not_Apply[0]').uncheck();
+    
+    // Fill up to 5 debt rows
+    for (let i = 0; i < Math.min(debts.length, 5); i++) {
+      const idx = i + 1;
+      const debt = debts[i];
+      
+      // Set account type based on debt creditor name or type
+      let accountType = 'Other';
+      if (debt.creditor) {
+        const creditorName = debt.creditor.toLowerCase();
+        if (creditorName.includes('car') || creditorName.includes('auto') || creditorName.includes('vehicle')) {
+          accountType = 'Automobile';
+        } else if (creditorName.includes('credit') || creditorName.includes('card')) {
+          accountType = 'Credit Card';
+        } else if (creditorName.includes('student') || creditorName.includes('education')) {
+          accountType = 'Student Loan';
+        } else if (creditorName.includes('mortgage') || creditorName.includes('home')) {
+          accountType = 'Mortgage';
+        } else if (creditorName.includes('personal')) {
+          accountType = 'Personal Loan';
         }
       }
-    });
+      
+      try {
+        form.getDropdown(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Account_Type${idx}[0]`).select(accountType);
+      } catch (e) {
+        console.log(`Could not set account type dropdown for debt ${idx}: ${e.message}`);
+      }
+      
+      // Company (Creditor)
+      form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Company${idx}[0]`).setText(debt.creditor || '');
+      
+      // Account number
+      form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Account${idx}[0]`).setText(debt.id || '');
+      
+      // Unpaid Balance
+      form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Unpaid${idx}[0]`).setText(debt.balance ? String(debt.balance) : '0');
+      
+      // Monthly Payment
+      form.getTextField(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Monthly${idx}[0]`).setText(debt.monthlyPayment ? String(debt.monthlyPayment) : '0');
+      
+      // Paid Off checkbox
+      if (debt.paidAtClosing) {
+        form.getCheckBox(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Paid_Off${idx}[0]`).check();
+      } else {
+        form.getCheckBox(`topmostSubform[0].Page3[0].Table2c[0].TR${idx}[0]._2c_Paid_Off${idx}[0]`).uncheck();
+      }
+    }
+  } else {
+    form.getCheckBox('topmostSubform[0].Page3[0]._2c_Does_Not_Apply[0]').check();
   }
-
-}
+  
+  // Other liabilities section (alimony, child support, etc.)
+  form.getCheckBox('topmostSubform[0].Page3[0]._2d_Does_Not_Apply[0]').check();
 
 
   
@@ -293,219 +524,1432 @@ if (assets) {
 
 
   // --- Property Information (Page 5) ---
-  if (propertiesOwned && loanDetails && property) {
+  if (loanDetails && property) {
+    // Property You Own Section - Handle Section 3a
+    try {
+      // Check if the borrower owns any real estate
+      const ownsProperty = propertiesOwned && (propertiesOwned.ownsProperty === true || (propertiesOwned.properties && propertiesOwned.properties.length > 0));
+      
+      // Set the "I do not own any real estate" checkbox based on whether the borrower owns property
+      if (ownsProperty) {
+        form.getCheckBox('topmostSubform[0].Page4[0]._3_Do_Not_Own[0]').uncheck();
+        
+        // Populate Property Address fields with primary property data - Section 3a shown in the image
+        // This corresponds to the fields in the PDF form showing "Property You Own"
+        try {
+          console.log("Populating 'Property You Own' Section 3a of the URLA PDF");
+        } catch (e) {
+          console.log("Error adding log for Property section:", e.message);
+        }
+        
+        // Use the property data from propertiesOwned.properties[0] if available
+        const propertyToUse = propertiesOwned && propertiesOwned.properties && propertiesOwned.properties.length > 0 
+            ? propertiesOwned.properties[0].propertyAddress 
+            : (property.address || {});
+            
+        // Set address fields
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_St[0]', (propertyToUse.streetAddress || '').substring(0, 50), 50);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Unit[0]', (propertyToUse.aptSteNum || propertyToUse.apt || '').substring(0, 5), 5);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_City[0]', (propertyToUse.city || '').substring(0, 35), 35);
+        if (propertyToUse.state) {
+          try {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Address_State[0]').select(propertyToUse.state);
+          } catch (e) {
+            console.log(`Error setting property state dropdown: ${e.message}`);
+          }
+        }
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Zip[0]', propertyToUse.zipCode || '', 10);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Country[0]', 'USA', 25);
+        
+        // Property Status (Sold, Pending Sale, or Retained)
+        try {
+          // Get status from propertiesOwned.properties[0] if available
+          const propertyStatus = propertiesOwned && propertiesOwned.properties && propertiesOwned.properties.length > 0 
+              ? propertiesOwned.properties[0].statusOfProperty || 'Retained'
+              : (propertiesOwned.propertyStatus || 'Retained');
+              
+          if (propertyStatus.toLowerCase().includes('sold')) {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Status[0]').select('Sold');
+          } else if (propertyStatus.toLowerCase().includes('pending')) {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Status[0]').select('Pending Sale');
+          } else {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Status[0]').select('Retained');
+          }
+        } catch (e) {
+          console.log(`Error setting property status dropdown: ${e.message}`);
+        }
+        
+        // Intended Occupancy - using correct field name
+        try {
+          const occupancyType = property.occupancyType || 'Primary Residence';
+          if (occupancyType.toLowerCase().includes('primary')) {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Intended_Occupancy[0]').select('Primary Residence');
+          } else if (occupancyType.toLowerCase().includes('second') || occupancyType.toLowerCase().includes('vacation')) {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Intended_Occupancy[0]').select('Second Home');
+          } else if (occupancyType.toLowerCase().includes('investment')) {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Intended_Occupancy[0]').select('Investment');
+          } else {
+            form.getDropdown('topmostSubform[0].Page4[0]._3a_Intended_Occupancy[0]').select('Other');
+          }
+        } catch (e) {
+          console.log(`Error setting occupancy dropdown: ${e.message}`);
+        }
+        
+        // Monthly Insurance, Taxes, etc.
+        if (propertiesOwned) {
+          // Format values as numbers with 0 decimal places
+          const formatCurrency = (val) => String(Math.round(parseFloat(val) || 0));
+          
+          // Set monthly insurance and taxes - based on the correct field names from extractFields.mjs
+          if (propertiesOwned.hazardInsurance) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Expenses[0]', formatCurrency(propertiesOwned.hazardInsurance), 20);
+          }
+          
+          // Set mortgage payments - using the correct field name
+          if (propertiesOwned.firstMortgage) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Expenses[0]', formatCurrency(propertiesOwned.firstMortgage), 20);
+          }
+          
+          // Set monthly rental if available
+          if (propertiesOwned.rent) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Rent[0]', formatCurrency(propertiesOwned.rent), 20);
+          }
+          
+          // Set net monthly rental income if available
+          if (propertiesOwned.netRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Net_Monthly[0]', formatCurrency(propertiesOwned.netRentalIncome), 20);
+          }
+        }
+        
+        // Property Value - use presentMarketValue from propertiesOwned.properties[0] if available
+        const propertyValue = propertiesOwned && propertiesOwned.properties && propertiesOwned.properties.length > 0 
+            ? propertiesOwned.properties[0].presentMarketValue || property.propertyValue
+            : property.propertyValue;
+            
+        if (propertyValue) {
+          safeSetText('topmostSubform[0].Page4[0]._3a_Value[0]', String(propertyValue), 20);
+        }
+        
+        // Mortgage Loans on this Property section (checkbox and table)
+        try {
+          // Check if the property has mortgage loans
+          const hasMortgageLoans = debts && debts.length > 0;
+          
+          // Set the "Does Not Apply" checkbox based on whether there are mortgage loans
+          if (hasMortgageLoans) {
+            form.getCheckBox('topmostSubform[0].Page4[0]._3a_Mortgage_Does_Not_Apply[0]').uncheck();
+            
+            // Take the first debt to populate the table
+            const primaryDebt = debts[0];
+            
+            // Only set field values if they exist in the object
+            // Creditor Name
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Creditor1[0]', primaryDebt.creditor || '', 40);
+            
+            // Account Number
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Account1[0]', primaryDebt.id || '', 30);
+            
+            // Monthly Mortgage Payment - ensure it's a string and handle null/undefined
+            const monthlyPayment = primaryDebt.monthlyPayment !== undefined && primaryDebt.monthlyPayment !== null 
+              ? String(primaryDebt.monthlyPayment) 
+              : '';
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Monthly_Mortgage1[0]', monthlyPayment, 20);
+            
+            // Unpaid Balance - ensure it's a string and handle null/undefined
+            const unpaidBalance = primaryDebt.balance !== undefined && primaryDebt.balance !== null 
+              ? String(primaryDebt.balance) 
+              : '';
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Unpaid1[0]', unpaidBalance, 20);
+            
+            // Paid Off at or Before Closing checkbox - using correct field name
+            try {
+              if (primaryDebt.paidAtClosing) {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Paid_Off1[0]').check();
+              } else {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Paid_Off1[0]').uncheck();
+              }
+            } catch (e) {
+              console.log(`Error setting paid off checkbox: ${e.message}`);
+            }
+            
+            // Determine loan type based on debt information or default to Conventional
+            let loanType = 'Conventional';
+            if (primaryDebt.creditor) {
+              const creditorName = primaryDebt.creditor.toLowerCase();
+              if (creditorName.includes('fha')) {
+                loanType = 'FHA';
+              } else if (creditorName.includes('va')) {
+                loanType = 'VA';
+              } else if (creditorName.includes('usda') || creditorName.includes('rural')) {
+                loanType = 'USDA-RD';
+              }
+            }
+            
+            // Set loan type
+            try {
+              form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Type1[0]').select(loanType);
+            } catch (e) {
+              console.log(`Error setting loan type dropdown: ${e.message}`);
+            }
+            
+            // Credit Limit (if applicable) - using correct field name and handling null/undefined
+            if (primaryDebt.creditLimit !== undefined && primaryDebt.creditLimit !== null) {
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Credit1[0]', String(primaryDebt.creditLimit), 20);
+            } else {
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Credit1[0]', '', 20);
+            }
+            
+            // Second row - if there are multiple debts
+            if (debts.length > 1) {
+              const secondaryDebt = debts[1];
+              try {
+                // Creditor Name - only set if it exists
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', secondaryDebt.creditor || '', 40);
+                
+                // Account Number - only set if it exists
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', secondaryDebt.id || '', 30);
+                
+                // Monthly Mortgage Payment - ensure it's a string and handle null/undefined
+                const secondaryMonthlyPayment = secondaryDebt.monthlyPayment !== undefined && secondaryDebt.monthlyPayment !== null 
+                  ? String(secondaryDebt.monthlyPayment) 
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', secondaryMonthlyPayment, 20);
+                
+                // Unpaid Balance - ensure it's a string and handle null/undefined
+                const secondaryUnpaidBalance = secondaryDebt.balance !== undefined && secondaryDebt.balance !== null 
+                  ? String(secondaryDebt.balance) 
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', secondaryUnpaidBalance, 20);
+                
+                // Paid Off at or Before Closing checkbox
+                if (secondaryDebt.paidAtClosing) {
+                  form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Paid_Off2[0]').check();
+                } else {
+                  form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Paid_Off2[0]').uncheck();
+                }
+                
+                // Determine loan type for secondary debt
+                let secondaryLoanType = 'Conventional';
+                if (secondaryDebt.creditor) {
+                  const creditorName = secondaryDebt.creditor.toLowerCase();
+                  if (creditorName.includes('fha')) {
+                    secondaryLoanType = 'FHA';
+                  } else if (creditorName.includes('va')) {
+                    secondaryLoanType = 'VA';
+                  } else if (creditorName.includes('usda') || creditorName.includes('rural')) {
+                    secondaryLoanType = 'USDA-RD';
+                  }
+                }
+                
+                // Set loan type for secondary debt
+                form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Type2[0]').select(secondaryLoanType);
+                
+                // Credit Limit for secondary debt - handling null/undefined
+                if (secondaryDebt.creditLimit !== undefined && secondaryDebt.creditLimit !== null) {
+                  safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', String(secondaryDebt.creditLimit), 20);
+                } else {
+                  safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+                }
+              } catch (e) {
+                console.log(`Error setting secondary debt fields: ${e.message}`);
+                
+                // Clear the second row fields if there was an error
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', '', 40);
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', '', 30);
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', '', 20);
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', '', 20);
+                safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+              }
+            } else {
+              // No secondary debt, clear the second row
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', '', 40);
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', '', 30);
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', '', 20);
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', '', 20);
+              safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+              
+              // Make sure checkboxes are unchecked
+              try {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Paid_Off2[0]').uncheck();
+              } catch (e) {
+                console.log(`Error clearing second debt checkbox: ${e.message}`);
+              }
+            }
+          } else {
+            // No debts associated with this property
+            form.getCheckBox('topmostSubform[0].Page4[0]._3a_Mortgage_Does_Not_Apply[0]').check();
+            
+            // Clear all fields in the mortgage tables
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Creditor1[0]', '', 40);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Account1[0]', '', 30);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Monthly_Mortgage1[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Unpaid1[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Credit1[0]', '', 20);
+            
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', '', 40);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', '', 30);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+            
+            // Make sure checkboxes are unchecked
+            try {
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Paid_Off1[0]').uncheck();
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Paid_Off2[0]').uncheck();
+            } catch (e) {
+              console.log(`Error clearing debt checkboxes: ${e.message}`);
+            }
+
+            // Clear the loan type dropdowns - they should be empty when "Does Not Apply" is checked
+            try {
+              // For PDF.js, we can try to set them to an empty string
+              form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Type1[0]').select('');
+            } catch (e) {
+              console.log(`Could not clear first type dropdown with empty string: ${e.message}`);
+              // Some PDF libraries don't allow empty selection, so we might need to use the default
+            }
+            
+            try {
+              form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Type2[0]').select('');
+            } catch (e) {
+              console.log(`Could not clear second type dropdown with empty string: ${e.message}`);
+              // Some PDF libraries don't allow empty selection, so we might need to use the default
+            }
+          }
+        } catch (e) {
+          console.log(`Error setting mortgage loan information: ${e.message}`);
+          // If there's an error, check the "Does Not Apply" checkbox as fallback
+          form.getCheckBox('topmostSubform[0].Page4[0]._3a_Mortgage_Does_Not_Apply[0]').check();
+          
+          // Clear all fields in the mortgage tables as fallback
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Creditor1[0]', '', 40);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Account1[0]', '', 30);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Monthly_Mortgage1[0]', '', 20);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Unpaid1[0]', '', 20);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Credit1[0]', '', 20);
+          
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', '', 40);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', '', 30);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', '', 20);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', '', 20);
+          safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+          
+          // Clear the loan type dropdowns - they should be empty when "Does Not Apply" is checked
+          try {
+            // For PDF.js, we can try to set them to an empty string
+            form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Type1[0]').select('');
+          } catch (e) {
+            console.log(`Could not clear first type dropdown with empty string in error handler: ${e.message}`);
+            // Some PDF libraries don't allow empty selection, so we might need to use the default
+          }
+          
+          try {
+            form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Type2[0]').select('');
+          } catch (e) {
+            console.log(`Could not clear second type dropdown with empty string in error handler: ${e.message}`);
+            // Some PDF libraries don't allow empty selection, so we might need to use the default
+          }
+          
+          // Make sure checkboxes are unchecked
+          try {
+            form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Paid_Off1[0]').uncheck();
+            form.getCheckBox('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Paid_Off2[0]').uncheck();
+          } catch (e) {
+            console.log(`Error clearing debt checkboxes in error handler: ${e.message}`);
+          }
+        }
+        
+        // For 2-4 Unit Primary or Investment Property section
+        if (property.numberOfUnits > 1 || (property.occupancyType && property.occupancyType.toLowerCase().includes('investment'))) {
+          // Monthly rental income - using correct field name
+          if (property.proposedRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Rent[0]', String(property.proposedRentalIncome), 20);
+          }
+          
+          // Net monthly rental income - using correct field name
+          if (property.netMonthlyRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3a_Net_Monthly[0]', String(property.netMonthlyRentalIncome), 20);
+          }
+        }
+        
+        // Handle Section 3b - Additional Property
+        if (propertiesOwned && propertiesOwned.properties && propertiesOwned.properties.length > 1) {
+          // Uncheck the "Does Not Apply" checkbox since there is an additional property
+          form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').uncheck();
+          
+          // Get the second property (index 1)
+          const additionalProperty = propertiesOwned.properties[1];
+          const additionalPropertyAddress = additionalProperty.propertyAddress || {};
+          
+          // Set address fields
+          safeSetText('topmostSubform[0].Page4[0]._3b_Address_St[0]', (additionalPropertyAddress.streetAddress || '').substring(0, 50), 50);
+          safeSetText('topmostSubform[0].Page4[0]._3b_Address_Unit[0]', (additionalPropertyAddress.aptSteNum || additionalPropertyAddress.apt || '').substring(0, 5), 5);
+          safeSetText('topmostSubform[0].Page4[0]._3b_Address_City[0]', (additionalPropertyAddress.city || '').substring(0, 35), 35);
+          
+          if (additionalPropertyAddress.state) {
+            try {
+              form.getDropdown('topmostSubform[0].Page4[0]._3b_Address_State[0]').select(additionalPropertyAddress.state);
+            } catch (e) {
+              console.log(`Error setting additional property state dropdown: ${e.message}`);
+            }
+          }
+          
+          safeSetText('topmostSubform[0].Page4[0]._3b_Address_Zip[0]', additionalPropertyAddress.zipCode || '', 10);
+          safeSetText('topmostSubform[0].Page4[0]._3b_Address_Country[0]', 'USA', 25);
+          
+          // Property Status (Sold, Pending Sale, or Retained)
+          if (additionalProperty.statusOfProperty) {
+            const status = additionalProperty.statusOfProperty.toLowerCase();
+            try {
+              if (status.includes('sold')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Status[0]').select('Sold');
+              } else if (status.includes('pending')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Status[0]').select('Pending Sale');
+              } else {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Status[0]').select('Retained');
+              }
+            } catch (e) {
+              console.log(`Error setting additional property status dropdown: ${e.message}`);
+            }
+          }
+          
+          // Intended Occupancy
+          if (additionalProperty.intendedOccupancy) {
+            try {
+              const occupancyType = additionalProperty.intendedOccupancy.toLowerCase();
+              if (occupancyType.includes('primary')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Intended_Occupancy[0]').select('Primary Residence');
+              } else if (occupancyType.includes('second') || occupancyType.includes('vacation')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Intended_Occupancy[0]').select('Second Home');
+              } else if (occupancyType.includes('investment')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Intended_Occupancy[0]').select('Investment');
+              } else {
+                form.getDropdown('topmostSubform[0].Page4[0]._3b_Intended_Occupancy[0]').select('Other');
+              }
+            } catch (e) {
+              console.log(`Error setting additional property occupancy dropdown: ${e.message}`);
+            }
+          }
+          
+          // Monthly expenses
+          if (additionalProperty.monthlyExpenses) {
+            safeSetText('topmostSubform[0].Page4[0]._3b_Monthly_Expenses[0]', String(additionalProperty.monthlyExpenses), 20);
+          }
+          
+          // Monthly rental income
+          if (additionalProperty.monthlyRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3b_Monthly_Rent[0]', String(additionalProperty.monthlyRentalIncome), 20);
+          }
+          
+          // Net monthly rental income
+          if (additionalProperty.netMonthlyRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3b_Net_Monthly[0]', String(additionalProperty.netMonthlyRentalIncome), 20);
+          }
+          
+          // Property Value
+          if (additionalProperty.presentMarketValue) {
+            safeSetText('topmostSubform[0].Page4[0]._3b_Value[0]', String(additionalProperty.presentMarketValue), 20);
+          }
+          
+          // Mortgage Loans for additional property
+          if (additionalProperty.mortgageLoans && additionalProperty.mortgageLoans.length > 0) {
+            form.getCheckBox('topmostSubform[0].Page4[0]._3b_Mortgage_Does_Not_Apply[0]').uncheck();
+            
+            // First mortgage loan
+            const primaryLoan = additionalProperty.mortgageLoans[0];
+            
+            // Only set field values if they exist in the object
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Creditor1[0]', primaryLoan.creditor || '', 40);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Account1[0]', primaryLoan.accountNumber || '', 30);
+            
+            // Monthly Mortgage Payment - ensure it's a string and handle null/undefined
+            const monthlyPayment = primaryLoan.monthlyPayment !== undefined && primaryLoan.monthlyPayment !== null 
+              ? String(primaryLoan.monthlyPayment) 
+              : '';
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Monthly_Mortgage1[0]', monthlyPayment, 20);
+            
+            // Unpaid Balance - ensure it's a string and handle null/undefined
+            const unpaidBalance = primaryLoan.unpaidBalance !== undefined && primaryLoan.unpaidBalance !== null 
+              ? String(primaryLoan.unpaidBalance) 
+              : '';
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Unpaid1[0]', unpaidBalance, 20);
+            
+            // Paid off checkbox
+            if (primaryLoan.paidAtClosing) {
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Paid_Off1[0]').check();
+            } else {
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Paid_Off1[0]').uncheck();
+            }
+            
+            // Loan type
+            if (primaryLoan.loanType) {
+              try {
+                form.getDropdown('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Type1[0]').select(primaryLoan.loanType);
+              } catch (e) {
+                console.log(`Error setting additional property loan type dropdown: ${e.message}`);
+              }
+            }
+            
+            // Credit limit - handling null/undefined
+            if (primaryLoan.creditLimit !== undefined && primaryLoan.creditLimit !== null) {
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Credit1[0]', String(primaryLoan.creditLimit), 20);
+            } else {
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Credit1[0]', '', 20);
+            }
+            
+            // Second mortgage loan if available
+            if (additionalProperty.mortgageLoans.length > 1) {
+              const secondaryLoan = additionalProperty.mortgageLoans[1];
+              
+              // Only set field values if they exist in the object
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Creditor2[0]', secondaryLoan.creditor || '', 40);
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Account2[0]', secondaryLoan.accountNumber || '', 30);
+              
+              // Monthly Mortgage Payment - ensure it's a string and handle null/undefined
+              const secondaryMonthlyPayment = secondaryLoan.monthlyPayment !== undefined && secondaryLoan.monthlyPayment !== null 
+                ? String(secondaryLoan.monthlyPayment) 
+                : '';
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Monthly_Mortgage2[0]', secondaryMonthlyPayment, 20);
+              
+              // Unpaid Balance - ensure it's a string and handle null/undefined
+              const secondaryUnpaidBalance = secondaryLoan.unpaidBalance !== undefined && secondaryLoan.unpaidBalance !== null 
+                ? String(secondaryLoan.unpaidBalance) 
+                : '';
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Unpaid2[0]', secondaryUnpaidBalance, 20);
+              
+              // Paid off checkbox
+              if (secondaryLoan.paidAtClosing) {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Paid_Off2[0]').check();
+              } else {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Paid_Off2[0]').uncheck();
+              }
+              
+              // Loan type
+              if (secondaryLoan.loanType) {
+                try {
+                  form.getDropdown('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Type2[0]').select(secondaryLoan.loanType);
+                } catch (e) {
+                  console.log(`Error setting additional property secondary loan type dropdown: ${e.message}`);
+                }
+              }
+              
+              // Credit limit - handling null/undefined
+              if (secondaryLoan.creditLimit !== undefined && secondaryLoan.creditLimit !== null) {
+                safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Credit2[0]', String(secondaryLoan.creditLimit), 20);
+              } else {
+                safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Credit2[0]', '', 20);
+              }
+            } else {
+              // No secondary loan, clear the second row
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Creditor2[0]', '', 40);
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Account2[0]', '', 30);
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Monthly_Mortgage2[0]', '', 20);
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Unpaid2[0]', '', 20);
+              safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Credit2[0]', '', 20);
+              
+              // Make sure checkbox is unchecked
+              try {
+                form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Paid_Off2[0]').uncheck();
+              } catch (e) {
+                console.log(`Error clearing second loan checkbox: ${e.message}`);
+              }
+            }
+          } else {
+            // No mortgage loans for additional property
+            form.getCheckBox('topmostSubform[0].Page4[0]._3b_Mortgage_Does_Not_Apply[0]').check();
+            
+            // Clear all mortgage loan fields
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Creditor1[0]', '', 40);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Account1[0]', '', 30);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Monthly_Mortgage1[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Unpaid1[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Credit1[0]', '', 20);
+            
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Creditor2[0]', '', 40);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Account2[0]', '', 30);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Monthly_Mortgage2[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Unpaid2[0]', '', 20);
+            safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Credit2[0]', '', 20);
+            
+            // Make sure checkboxes are unchecked
+            try {
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Paid_Off1[0]').uncheck();
+              form.getCheckBox('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Paid_Off2[0]').uncheck();
+            } catch (e) {
+              console.log(`Error clearing loan checkboxes: ${e.message}`);
+            }
+          }
+        } else {
+          // No additional property
+          form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').check();
+        }
+        
+        // Handle Section 3c - Additional Property
+        if (propertiesOwned && propertiesOwned.properties && propertiesOwned.properties.length > 2) {
+          // Uncheck the "Does Not Apply" checkbox since there is a third property
+          form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').uncheck();
+          
+          // Get the third property (index 2)
+          const thirdProperty = propertiesOwned.properties[2];
+          const thirdPropertyAddress = thirdProperty.propertyAddress || {};
+          
+          // Set address fields
+          safeSetText('topmostSubform[0].Page4[0]._3c_Address_St[0]', (thirdPropertyAddress.streetAddress || '').substring(0, 50), 50);
+          safeSetText('topmostSubform[0].Page4[0]._3c_Address_Unit[0]', (thirdPropertyAddress.aptSteNum || thirdPropertyAddress.apt || '').substring(0, 5), 5);
+          safeSetText('topmostSubform[0].Page4[0]._3c_Address_City[0]', (thirdPropertyAddress.city || '').substring(0, 35), 35);
+          
+          if (thirdPropertyAddress.state) {
+            try {
+              form.getDropdown('topmostSubform[0].Page4[0]._3c_Address_State[0]').select(thirdPropertyAddress.state);
+            } catch (e) {
+              console.log(`Error setting third property state dropdown: ${e.message}`);
+            }
+          }
+          
+          safeSetText('topmostSubform[0].Page4[0]._3c_Address_Zip[0]', thirdPropertyAddress.zipCode || '', 10);
+          safeSetText('topmostSubform[0].Page4[0]._3c_Address_Country[0]', 'USA', 25);
+          
+          // Property Status (Sold, Pending Sale, or Retained)
+          if (thirdProperty.statusOfProperty) {
+            const status = thirdProperty.statusOfProperty.toLowerCase();
+            try {
+              if (status.includes('sold')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Status[0]').select('Sold');
+              } else if (status.includes('pending')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Status[0]').select('Pending Sale');
+              } else {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Status[0]').select('Retained');
+              }
+            } catch (e) {
+              console.log(`Error setting third property status dropdown: ${e.message}`);
+            }
+          }
+          
+          // Intended Occupancy
+          if (thirdProperty.intendedOccupancy) {
+            try {
+              const occupancyType = thirdProperty.intendedOccupancy.toLowerCase();
+              if (occupancyType.includes('primary')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Intended_Occupancy[0]').select('Primary Residence');
+              } else if (occupancyType.includes('second') || occupancyType.includes('vacation')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Intended_Occupancy[0]').select('Second Home');
+              } else if (occupancyType.includes('investment')) {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Intended_Occupancy[0]').select('Investment');
+              } else {
+                form.getDropdown('topmostSubform[0].Page4[0]._3c_Intended_Occupancy[0]').select('Other');
+              }
+            } catch (e) {
+              console.log(`Error setting third property occupancy dropdown: ${e.message}`);
+            }
+          }
+          
+          // Monthly expenses
+          if (thirdProperty.monthlyExpenses) {
+            safeSetText('topmostSubform[0].Page4[0]._3c_Monthly_Expenses[0]', String(thirdProperty.monthlyExpenses), 20);
+          }
+          
+          // Monthly rental income
+          if (thirdProperty.monthlyRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3c_Monthly_Rent[0]', String(thirdProperty.monthlyRentalIncome), 20);
+          }
+          
+          // Net monthly rental income
+          if (thirdProperty.netMonthlyRentalIncome) {
+            safeSetText('topmostSubform[0].Page4[0]._3c_Net_Monthly[0]', String(thirdProperty.netMonthlyRentalIncome), 20);
+          }
+          
+          // Property Value
+          if (thirdProperty.presentMarketValue) {
+            safeSetText('topmostSubform[0].Page4[0]._3c_Value[0]', String(thirdProperty.presentMarketValue), 20);
+          }
+          
+          // Mortgage Loans for third property - only implementing the table fields that were found in extractFields.mjs
+          // The PDF form might have limited fields for the third property
+          if (thirdProperty.mortgageLoans && thirdProperty.mortgageLoans.length > 0) {
+            // There's no "Does Not Apply" checkbox for 3c mortgage loans in the extractFields.mjs output
+            
+            // Attempt to set any available mortgage fields for the third property
+            try {
+              // Process first mortgage loan
+              const firstLoan = thirdProperty.mortgageLoans[0];
+              
+              // Set credit limit fields which we know exist based on extractFields.mjs output
+              if (thirdProperty.mortgageLoans.length > 1) {
+                const secondLoan = thirdProperty.mortgageLoans[1];
+                const creditLimit = secondLoan.creditLimit !== undefined && secondLoan.creditLimit !== null
+                  ? String(secondLoan.creditLimit)
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Credit2[0]', creditLimit, 20);
+              } else {
+                // Clear second row credit limit field if no second loan
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Credit2[0]', '', 20);
+              }
+              
+              // Try to set other fields, but use try/catch rather than document.querySelector
+              // Since we're in a PDF context, not a browser DOM context
+              try {
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Creditor1[0]', firstLoan.creditor || '', 40);
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              try {
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Account1[0]', firstLoan.accountNumber || '', 30);
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error  
+              }
+              
+              try {
+                const monthlyPayment = firstLoan.monthlyPayment !== undefined && firstLoan.monthlyPayment !== null 
+                  ? String(firstLoan.monthlyPayment) 
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Monthly_Mortgage1[0]', monthlyPayment, 20);
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              try {
+                const unpaidBalance = firstLoan.unpaidBalance !== undefined && firstLoan.unpaidBalance !== null 
+                  ? String(firstLoan.unpaidBalance) 
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Unpaid1[0]', unpaidBalance, 20);
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              try {
+                const creditLimit = firstLoan.creditLimit !== undefined && firstLoan.creditLimit !== null
+                  ? String(firstLoan.creditLimit)
+                  : '';
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Credit1[0]', creditLimit, 20);
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              // Try checkbox fields
+              try {
+                if (firstLoan.paidAtClosing) {
+                  form.getCheckBox('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Paid_Off1[0]').check();
+                } else {
+                  form.getCheckBox('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Paid_Off1[0]').uncheck();
+                }
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              // Try dropdown fields
+              try {
+                form.getDropdown('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Type1[0]').select(firstLoan.loanType || 'Conventional');
+              } catch (e) {
+                // Field might not exist in this PDF form, ignore error
+              }
+              
+              // Try second row fields if a second loan exists
+              if (thirdProperty.mortgageLoans.length > 1) {
+                const secondLoan = thirdProperty.mortgageLoans[1];
+                
+                try {
+                  safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Creditor2[0]', secondLoan.creditor || '', 40);
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+                
+                try {
+                  safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Account2[0]', secondLoan.accountNumber || '', 30);
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+                
+                try {
+                  const monthlyPayment = secondLoan.monthlyPayment !== undefined && secondLoan.monthlyPayment !== null
+                    ? String(secondLoan.monthlyPayment)
+                    : '';
+                  safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Monthly_Mortgage2[0]', monthlyPayment, 20);
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+                
+                try {
+                  const unpaidBalance = secondLoan.unpaidBalance !== undefined && secondLoan.unpaidBalance !== null
+                    ? String(secondLoan.unpaidBalance)
+                    : '';
+                  safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Unpaid2[0]', unpaidBalance, 20);
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+                
+                try {
+                  if (secondLoan.paidAtClosing) {
+                    form.getCheckBox('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Paid_Off2[0]').check();
+                  } else {
+                    form.getCheckBox('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Paid_Off2[0]').uncheck();
+                  }
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+                
+                try {
+                  form.getDropdown('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Type2[0]').select(secondLoan.loanType || 'Conventional');
+                } catch (e) {
+                  // Field might not exist in this PDF form, ignore error
+                }
+              }
+            } catch (e) {
+              console.log(`Error setting third property mortgage fields: ${e.message}`);
+              
+              // Clear known fields in case of error
+              try {
+                safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Credit2[0]', '', 20);
+              } catch (e) {
+                // Ignore any errors
+              }
+            }
+          } else {
+            // No mortgage loans for third property, clear the credit limit field we know exists
+            try {
+              safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Credit2[0]', '', 20);
+            } catch (e) {
+              // Ignore any errors
+            }
+          }
+        } else {
+          // No third property
+          form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
+        }
+      } else {
+        // If no properties owned, check the main "I do not own any real estate" checkbox
+        form.getCheckBox('topmostSubform[0].Page4[0]._3_Do_Not_Own[0]').check();
+        
+        // Check "Does not apply" for all subsections
+        form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').check();
+        form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
+        
+        // Ensure mortgage loans checkbox is checked as "Does not apply"
+        form.getCheckBox('topmostSubform[0].Page4[0]._3a_Mortgage_Does_Not_Apply[0]').check();
+        
+        // Clear all fields in section 3a
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_St[0]', '', 50);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Unit[0]', '', 5);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_City[0]', '', 35);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Zip[0]', '', 10);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Address_Country[0]', '', 25);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Value[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Expenses[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Monthly_Rent[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3a_Net_Monthly[0]', '', 20);
+        
+        // Clear all mortgage loan table fields
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Creditor1[0]', '', 40);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Account1[0]', '', 30);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Monthly_Mortgage1[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Unpaid1[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Credit1[0]', '', 20);
+        
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Creditor2[0]', '', 40);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Account2[0]', '', 30);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Monthly_Mortgage2[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Unpaid2[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Credit2[0]', '', 20);
+        
+        // Clear the loan type dropdowns - they should be empty when no properties
+        try {
+          // For PDF.js, we can try to set them to an empty string
+          form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Type1[0]').select('');
+        } catch (e) {
+          console.log(`Could not clear first type dropdown with empty string for no properties: ${e.message}`);
+          // Some PDF libraries don't allow empty selection, so we might need to use the default
+        }
+        
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Type2[0]').select('');
+        } catch (e) {
+          console.log(`Could not clear second type dropdown with empty string for no properties: ${e.message}`);
+          // Some PDF libraries don't allow empty selection, so we might need to use the default
+        }
+        
+        // Clear all fields in section 3b
+        safeSetText('topmostSubform[0].Page4[0]._3b_Address_St[0]', '', 50);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Address_Unit[0]', '', 5);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Address_City[0]', '', 35);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Address_Zip[0]', '', 10);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Address_Country[0]', '', 25);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Value[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Monthly_Expenses[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Monthly_Rent[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3b_Net_Monthly[0]', '', 20);
+        
+        // Clear all mortgage loan table fields for 3b
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Creditor1[0]', '', 40);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Account1[0]', '', 30);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Monthly_Mortgage1[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Unpaid1[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Credit1[0]', '', 20);
+        
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Creditor2[0]', '', 40);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Account2[0]', '', 30);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Monthly_Mortgage2[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Unpaid2[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Credit2[0]', '', 20);
+        
+        // Clear the loan type dropdowns for section 3b - they should be empty when no properties
+        try {
+          // For PDF.js, we can try to set them to an empty string
+          form.getDropdown('topmostSubform[0].Page4[0].Table3b[0].TR1[0]._3b_Type1[0]').select('');
+        } catch (e) {
+          console.log(`Could not clear first 3b type dropdown with empty string: ${e.message}`);
+          // Some PDF libraries don't allow empty selection, so we might need to use the default
+        }
+        
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3b[0].TR2[0]._3b_Type2[0]').select('');
+        } catch (e) {
+          console.log(`Could not clear second 3b type dropdown with empty string: ${e.message}`);
+          // Some PDF libraries don't allow empty selection, so we might need to use the default
+        }
+        
+        // Clear all fields in section 3c
+        safeSetText('topmostSubform[0].Page4[0]._3c_Address_St[0]', '', 50);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Address_Unit[0]', '', 5);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Address_City[0]', '', 35);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Address_Zip[0]', '', 10);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Address_Country[0]', '', 25);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Value[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Monthly_Expenses[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Monthly_Rent[0]', '', 20);
+        safeSetText('topmostSubform[0].Page4[0]._3c_Net_Monthly[0]', '', 20);
+        
+        // The PDF might have mortgage loan table fields for 3c, but we only saw _3c_Credit2[0] in the extractFields.mjs output
+        // Clear any known fields
+        safeSetText('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Credit2[0]', '', 20);
+        
+        // Try to clear the loan type dropdowns for section 3c if they exist
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3c[0].TR1[0]._3c_Type1[0]').select('');
+        } catch (e) {
+          // Field might not exist, ignore error
+        }
+        
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3c[0].TR2[0]._3c_Type2[0]').select('');
+        } catch (e) {
+          // Field might not exist, ignore error
+        }
+      }
+    } catch (e) {
+      console.log(`Error setting Property You Own fields: ${e.message}`);
+      // If there's an error, ensure the checkboxes are checked as fallback
+      try {
+        form.getCheckBox('topmostSubform[0].Page4[0]._3_Do_Not_Own[0]').check();
+        form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').check();
+        form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
+        form.getCheckBox('topmostSubform[0].Page4[0]._3a_Mortgage_Does_Not_Apply[0]').check();
+        
+        // Clear the loan type dropdowns in error handler
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR1[0]._3a_Type1[0]').select('');
+        } catch (typeError) {
+          console.log(`Could not clear first type dropdown in global error handler: ${typeError.message}`);
+        }
+        
+        try {
+          form.getDropdown('topmostSubform[0].Page4[0].Table3a[0].TR2[0]._3a_Type2[0]').select('');
+        } catch (typeError) {
+          console.log(`Could not clear second type dropdown in global error handler: ${typeError.message}`);
+        }
+      } catch (e) {
+        console.log(`Error with fallback checkbox setting: ${e.message}`);
+      }
+    }
+    
     // Fill loan amount from loanDetails
     form.getTextField('topmostSubform[0].Page5[0]._4a_Loan_Amount[0]').setText(loanDetails.loanAmount ? String(loanDetails.loanAmount) : '');
 
+    // Set loan purpose radio buttons
+    if (loanDetails.loanType) {
+      const loanType = loanDetails.loanType.toLowerCase();
+      let purposeRadioGroup = '';
+      
+      if (loanType.includes('purchase')) {
+        purposeRadioGroup = 'Group11';
+        form.getRadioGroup(purposeRadioGroup).select('Purchase');
+      } else if (loanType.includes('refinance')) {
+        purposeRadioGroup = 'Group11';
+        form.getRadioGroup(purposeRadioGroup).select('Refinance');
+      } else if (loanType.includes('construction')) {
+        purposeRadioGroup = 'Group11';
+        form.getRadioGroup(purposeRadioGroup).select('Construction');
+      } else {
+        // Other purpose - specify in text field
+        purposeRadioGroup = 'Group11';
+        form.getRadioGroup(purposeRadioGroup).select('Other');
+        form.getTextField('topmostSubform[0].Page5[0].loan_purpose[0].other[0]._4a_Purpose_other_spec[0]').setText(loanDetails.loanType);
+      }
+    }
+    
     // Fill property details
-    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_St[0]').setText(property.streetAddress || '');
-    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_Unit[0]').setText(property.aptSteNum || '');
-    //form.getTextField('topmostSubform[0].Page5[0]._4a_Address_City[0]').setText(property.city || '');
-    //if (property.state) form.getDropdown('topmostSubform[0].Page5[0]._4a_Address_State[0]').select(property.state);
-    form.getTextField('topmostSubform[0].Page5[0]._4a_Address_Zip[0]').setText(property.zipCode || '');
-    //form.getTextField('topmostSubform[0].Page5[0]._4a_Property_County[0]').setText(property.county || '');
-    
-    // Fill number of units
-    form.getTextField('topmostSubform[0].Page5[0]._4a_Units[0]').setText(property.numberOfUnits ? String(property.numberOfUnits) : '');
-    
-    // Fill property value
-    form.getTextField('topmostSubform[0].Page5[0]._4a_Value[0]').setText(property.propertyValue ? String(property.propertyValue) : '');
+    console.log('Filling property details............');
+    console.log(propertiesOwned)
+    // --- 4a. Properties Owned (Selected Fields) ---
+if (propertiesOwned && Array.isArray(propertiesOwned.properties)) {
+  propertiesOwned.properties.forEach((prop, idx) => {
+    // Adjust the field names/indexes as per your PDF's actual field names for each property row
+    console.log(`Filling property details for property ${idx + 1}:`, prop);
+    // Street Address
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Address_St[0]`, prop.propertyAddress?.streetAddress || '');
 
-    // Fill loan purpose based on loanType and property details
-    let purpose = loanDetails.loanType;
-    form.getTextField('topmostSubform[0].Page5[0].loan_purpose[0].other[0]._4a_Purpose_other_spec[0]').setText(purpose);
+    // Address Unit
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Address_Unit[0]`, prop.propertyAddress?.apt || '');
+
+    // Address City
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Address_City[0]`, prop.propertyAddress?.city || '');
+
+    // Address State
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Address_State[0]`, prop.propertyAddress?.state || '');
+
+    // Address Zip
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Address_Zip[0]`, prop.propertyAddress?.zipCode || '');
+
+    // Property Count (if available, otherwise use propertiesOwned.properties.length)
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Property_County[0]`, prop.propertyCount?.toString() || propertiesOwned.properties.length.toString());
+
+    // Units (if available)
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Units[0]`, prop.units?.toString() || '');
+
+    // Present Market Value
+    safeSetText(`topmostSubform[0].Page5[0]._4a_Value[0]`, prop.presentMarketValue?.toString() || '');
+  });
+}
+
+//make the radio button group13,14, 1. Mixed-Use Property.2 Manufactured Home respectively.
+// Handle Mixed-Use Property radio button (Group13)
+try {
+  // Check if isMixedUse property exists and use its value
+  const isMixedUse = property.isMixedUse && 
+                     (property.isMixedUse === "Yes" || 
+                      property.isMixedUse === true || 
+                      property.isMixedUse === "true");
+  
+  const mixedUseRadioGroup = 'Group13';
+  form.getRadioGroup(mixedUseRadioGroup).select(isMixedUse ? 'YES' : 'NO');
+} catch (e) {
+  console.log('Error setting Mixed-Use Property radio button:', e.message);
+}
+
+// Handle Manufactured Home radio button (Group14)
+try {
+  // Check if isManufactured property exists and use its value
+  const isManufacturedHome = property.isManufactured && 
+                            (property.isManufactured === "Yes" || 
+                             property.isManufactured === true || 
+                             property.isManufactured === "true");
+  
+  const manufacturedHomeRadioGroup = 'Group14';
+  form.getRadioGroup(manufacturedHomeRadioGroup).select(isManufacturedHome ? 'YES' : 'NO');
+} catch (e) {
+  console.log('Error setting Manufactured Home radio button:', e.message);
+}
+    // Property type dropdown
+    // if (property.propertyType) {
+    //   const propertyType = property.propertyType.toLowerCase();
+    //   let propertyTypeRadioGroup = 'Group24';
+      
+    //   if (propertyType.includes('single family') || propertyType.includes('singlefamily')) {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('SF');
+    //   } else if (propertyType.includes('condo')) {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('Condo');
+    //   } else if (propertyType.includes('pud')) {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('PUD');
+    //   } else if (propertyType.includes('2-4')) {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('2-4 Unit');
+    //   } else if (propertyType.includes('manufactured')) {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('MFD Home');
+    //   } else {
+    //     form.getRadioGroup(propertyTypeRadioGroup).select('Other');
+    //   }
+    // }
+    
+    // Check FHA box if applicable
+    if (loanDetails.loanType && loanDetails.loanType.toLowerCase().includes('fha')) {
+      form.getCheckBox('topmostSubform[0].Page5[0]._4a_FHA[0]').check();
+    }
+
+    //4b doesnot apply check button, make it tick
+    form.getCheckBox('topmostSubform[0].Page5[0]._4b_Does_Not_Apply[0]').check();
+    
+
 
     // --- Down Payment and Assets (Page 5) ---
-    // Check if there are any assets to report
-    if (loanDetails.downPayment > 0 || loanDetails.loanParameters) {
-      // Fill down payment information
-      form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Asset_Type1[0]').select('Down Payment');
-      form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Source1[0]').select('Borrower');
-      form.getTextField('topmostSubform[0].Page5[0]._4d_Table[0].TR1[0]._4d_Cash1[0]').setText(String(loanDetails.downPayment));
-
-      // Fill additional assets if available
-      if (loanDetails.loanParameters) {
-        const params = loanDetails.loanParameters;
+    // Check if we have gift funds or other assets that might be used for down payment
+    if (loanDetails.downPayment > 0) {
+      form.getCheckBox('topmostSubform[0].Page5[0]._4d_Does_Not_Apply[0]').uncheck();
+      
+      // Initialize an array to track sources of funds
+      const fundingSources = [];
+      
+      // Process gift funds if available
+      if (assets && assets.giftsAndGrants && assets.giftsAndGrants.length > 0) {
+        assets.giftsAndGrants.forEach((gift, index) => {
+          if (index < 2) { // Only process first two gifts due to PDF form limitations
+            const rowNum = index + 1;
+            try {
+              // Set gift asset type based on the assetType field
+              let assetTypeValue = 'Gift Funds';
+              if (gift.assetType && gift.assetType.toLowerCase().includes('equity')) {
+                assetTypeValue = 'Gift of Equity';
+              } else if (gift.assetType && gift.assetType.toLowerCase().includes('grant')) {
+                assetTypeValue = 'Grant';
+              }
+              
+              form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Asset_Type${rowNum}[0]`).select(assetTypeValue);
+              
+              // Set source based on the gift source
+              let sourceValue = 'Other';
+              if (gift.source) {
+                const source = gift.source.toLowerCase();
+                if (source.includes('relative') || source.includes('family')) {
+                  sourceValue = 'Relative';
+                } else if (source.includes('employer')) {
+                  sourceValue = 'Employer';
+                } else if (source.includes('municipality') || source.includes('government')) {
+                  sourceValue = 'Municipality';
+                } else if (source.includes('nonprofit')) {
+                  sourceValue = 'Nonprofit';
+                }
+              }
+              
+              form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Source${rowNum}[0]`).select(sourceValue);
+              
+              // Set gift amount
+              form.getTextField(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Cash${rowNum}[0]`).setText(String(gift.value || 0));
+              
+              fundingSources.push({
+                type: assetTypeValue,
+                amount: gift.value || 0
+              });
+            } catch (e) {
+              console.log(`Error setting gift fund fields for row ${rowNum}:`, e.message);
+            }
+          }
+        });
+      }
+      
+      // If no gifts were processed or we need additional rows for down payment
+      if (fundingSources.length === 0 || loanDetails.downPayment > fundingSources.reduce((sum, src) => sum + src.amount, 0)) {
+        // Calculate remaining amount needed
+        const giftTotal = fundingSources.reduce((sum, src) => sum + src.amount, 0);
+        const remainingAmount = Math.max(0, loanDetails.downPayment - giftTotal);
         
-        // Second row: Property Taxes
-        if (params.propertyTaxes) {
-          form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Asset_Type2[0]').select('Property Taxes');
-          form.getDropdown('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Source2[0]').select('Annual');
-          form.getTextField('topmostSubform[0].Page5[0]._4d_Table[0].TR2[0]._4d_Cash2[0]').setText(String(params.propertyTaxes));
+        if (remainingAmount > 0) {
+          // Use the next available row
+          const rowNum = fundingSources.length + 1;
+          if (rowNum <= 2) { // Only process if we haven't filled 2 rows yet
+            try {
+              // For remaining amount, use checking/savings or default to Cash
+              form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Asset_Type${rowNum}[0]`).select('Cash');
+              form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Source${rowNum}[0]`).select('Borrower');
+              form.getTextField(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Cash${rowNum}[0]`).setText(String(remainingAmount));
+            } catch (e) {
+              console.log(`Error setting remaining down payment fields for row ${rowNum}:`, e.message);
+            }
+          }
+        }
+      }
+      
+      // If there are closing costs and we haven't filled all rows, add them
+      if (loanDetails.closingCosts && loanDetails.closingCosts > 0) {
+        const rowNum = Math.min(fundingSources.length + 1, 2); // Use row 2 if available, otherwise stay at max row
+        try {
+          form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Asset_Type${rowNum}[0]`).select('Closing Cost');
+          form.getDropdown(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Source${rowNum}[0]`).select('Borrower');
+          form.getTextField(`topmostSubform[0].Page5[0]._4d_Table[0].TR${rowNum}[0]._4d_Cash${rowNum}[0]`).setText(String(loanDetails.closingCosts));
+        } catch (e) {
+          console.log(`Error setting closing costs fields for row ${rowNum}:`, e.message);
         }
       }
     } else {
-      // If no assets to report, check "Does Not Apply" box
+      // No down payment information available
       form.getCheckBox('topmostSubform[0].Page5[0]._4d_Does_Not_Apply[0]').check();
     }
+    
+    //deposited,not deposited Group 17,18 radiouttons, and object is like:assets
 
-    // Check FHA box if applicable (you might want to add a flag in your schema for this)
-    //form.getCheckBox('topmostSubform[0].Page5[0]._4a_FHA[0]').check();
 
-    // --- Property Expenses and Ownership (Page 5) ---
-    // Check if there are any properties owned or expenses to report
-    if (propertiesOwned.ownsProperty || propertiesOwned.firstMortgage > 0 || propertiesOwned.realEstateTaxes > 0 || 
-        propertiesOwned.hazardInsurance > 0 || propertiesOwned.hoaDues > 0 || propertiesOwned.mortgageInsurance > 0 || 
-        propertiesOwned.otherFinancing > 0 || propertiesOwned.otherHousingExpenses > 0 || propertiesOwned.rent > 0) {
+// "Relative"
+
+    // Handle Deposited and Not Deposited radio buttons (Group 17, 18)
+    if (assets && assets.checkingAndSavings && assets.checkingAndSavings.length > 0) {
+      // Check if any asset is deposited
+      const hasDepositedAssets = assets.checkingAndSavings.some(asset => asset.deposited);
+      const depositedRadioGroup = 'Group17';
+      form.getRadioGroup(depositedRadioGroup).select(hasDepositedAssets ? 'YES' : 'NO');
+      // Check if any asset is not deposited
+      const hasNotDepositedAssets = assets.checkingAndSavings.some(asset => !asset.deposited);
+      const notDepositedRadioGroup = 'Group18';
+      form.getRadioGroup(notDepositedRadioGroup).select(hasNotDepositedAssets ? 'YES' : 'NO');
+    } 
+    else {
+      // If no assets, do nothing
+    }
+
+
+
+
+    // --- Property Expenses and Existing Loans (Page 5) ---
+    //form.getCheckBox('topmostSubform[0].Page5[0]._4d_Does_Not_Apply[0]').check();
+
+    
+    // --- Property Expenses Section 4c ---
+    if (property.proposedRentalIncome > 0 || property.netMonthlyRentalIncome > 0) {
+      form.getCheckBox('topmostSubform[0].Page5[0]._4c_Does_Not_Apply[0]').uncheck();
       
-      // First row: First Mortgage
-      if (propertiesOwned.firstMortgage > 0) {
+      // Rental income fields
+      if (property.proposedRentalIncome > 0) {
         form.getTextField('topmostSubform[0].Page5[0]._4c_Table[0].TR1[0]._4c_Amount1[0]').setText(String(property.proposedRentalIncome));
       }
       
-      form.getTextField('topmostSubform[0].Page5[0]._4c_Table[0].TR2[0]._4c_Amount2[0]').setText(String(property.netMonthlyRentalIncome));
-
+      if (property.netMonthlyRentalIncome > 0) {
+        form.getTextField('topmostSubform[0].Page5[0]._4c_Table[0].TR2[0]._4c_Amount2[0]').setText(String(property.netMonthlyRentalIncome));
+      }
     } else {
-      // If no properties or expenses to report, check "Does Not Apply" box
       form.getCheckBox('topmostSubform[0].Page5[0]._4c_Does_Not_Apply[0]').check();
-    }
-
-    // --- Declarations (Page 6) ---
-    // Property declarations
-    if (declarations.hadOwnershipInterest) {
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a31[0]._5a_About_A3[0]').select('Yes');
-      if (declarations.ownedPropertyType) {
-        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]').select(declarations.ownedPropertyType);
-      }
-    } else {
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a31[0]._5a_About_A3[0]').select('No');
-    }
-
-    // ...existing code...
-    if (borrowerDetails.citizenship) {
-      const citizenshipGroup = form.getRadioGroup('Group1');
-      
-      // Map your data values to PDF option values
-      let citizenshipOption;
-      switch (borrowerDetails.citizenship.toLowerCase()) {
-        case 'uscitizen':
-          citizenshipOption = 'U.S. Citizen';
-          break;
-        case 'permanentresident':
-          citizenshipOption = 'Permanent Resident Alien';
-          break;
-        case 'nonpermanentresident':
-          citizenshipOption = 'Non-Permanent Resident Alien';
-          break;
-        default:
-          citizenshipOption = 'U.S. Citizen'; // Default fallback
-      }
-      
-      citizenshipGroup.select(citizenshipOption);
-    }
-    form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
-      
-    // Bankruptcy information
-    // if (declarations.declaredBankruptcy) {
-    //   form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
-    //   if (declarations.bankruptcyType) {
-    //     form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]').setText(declarations.bankruptcyType);
-    //   }
-    // }
-
-    // Property foreclosure information
-    if (declarations.propertyForeclosed) {
-      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch11[0]._5bM_ch11[0]').check();
-    }
-
-    // Lawsuit information
-    if (declarations.partyToLawsuit) {
-      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch12[0]._5bM_ch12[0]').check();
-    }
-
-    // Property lien information
-    if (declarations.propertySubjectToLien) {
-      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch13[0]._5bM_ch13[0]').check();
     }
   }
 
+
+
+  // --- Declarations (Page 6) ---
+  if (declarations) {
+  // A. Will you occupy the property as your primary residence?
+  form.getRadioGroup('Group19').select(declarations.occupyAsPrimary ? 'YES' : 'NO');
+
+  // A(1). Had ownership interest in the past 3 years
+  if (declarations.hadOwnershipInterest !== null) {
+    form.getRadioGroup('Group20').select(declarations.hadOwnershipInterest ? 'YES' : 'NO');
+
+    if (declarations.ownedPropertyType) {
+      // Dropdown: What type of property did you own? (PR, SR, SH, IP)
+      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]')
+          .select(declarations.ownedPropertyType);
+    }
+
+    if (declarations.titleHoldingType) {
+      // Dropdown: How did you hold title to the property? (S, SP, O)
+      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]')
+          .select(declarations.titleHoldingType);
+    }
+  }
+
+  // B. Family relationship with seller?
+  form.getRadioGroup('Group21').select(declarations.familyRelationship ? 'YES' : 'NO');
+
+  // C. Borrowing money
+  form.getRadioGroup('Group22').select(declarations.borrowingMoney ? 'YES' : 'NO');
+  if (declarations.borrowingMoney && declarations.borrowingMoneyAmount) {
+    form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]')
+        .setText(String(declarations.borrowingMoneyAmount));
+  }
+
+  // D(1). Applying for mortgage on another property?
+  form.getRadioGroup('Group23').select(declarations.applyingForMortgage ? 'YES' : 'NO');
+
+  // D(2). Applying for new credit?
+  form.getRadioGroup('Group24').select(declarations.applyingForNewCredit ? 'YES' : 'NO');
+
+  // E. Property subject to lien?
+  form.getRadioGroup('Group25').select(declarations.propertySubjectToLien ? 'YES' : 'NO');
+
+  // F. Co-signer?
+  form.getRadioGroup('Group26').select(declarations.coSigner ? 'YES' : 'NO');
+
+  // G. Outstanding judgments?
+  form.getRadioGroup('Group27').select(declarations.outstandingJudgements ? 'YES' : 'NO');
+
+  // H. Delinquent on federal debt?
+  form.getRadioGroup('Group28').select(declarations.delinquent ? 'YES' : 'NO');
+
+  // I. Party to lawsuit?
+  form.getRadioGroup('Group29').select(declarations.partyToLawsuit ? 'YES' : 'NO');
+
+  // J. Conveyed title?
+  form.getRadioGroup('Group30').select(declarations.conveyedTitle ? 'YES' : 'NO');
+
+  // K. Pre-foreclosure sale?
+  form.getRadioGroup('Group31').select(declarations.preForeclosureSale ? 'YES' : 'NO');
+
+  // L. Property foreclosed?
+  form.getRadioGroup('Group32').select(declarations.propertyForeclosed ? 'YES' : 'NO');
+
+  // M. Declared bankruptcy?
+  form.getRadioGroup('Group33').select(declarations.declaredBankruptcy ? 'YES' : 'NO');
+  if (declarations.declaredBankruptcy && declarations.bankruptcyType) {
+    const chapter = declarations.bankruptcyType.trim().toLowerCase();
+    if (chapter === 'chapter 7') {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch7[0]._5bM_ch7[0]').check();
+    } else if (chapter === 'chapter 11') {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch11[0]._5bM_ch11[0]').check();
+    } else if (chapter === 'chapter 12') {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch12[0]._5bM_ch12[0]').check();
+    } else if (chapter === 'chapter 13') {
+      form.getCheckBox('topmostSubform[0].Page6[0]._5bM_type[0].ch13[0]._5bM_ch13[0]').check();
+    }
+
+    // Optional: store value of bankruptcyType in a text field (if needed)
+    form.getTextField('topmostSubform[0].Page6[0]._5a_About_C2[0]')
+        .setText(declarations.bankruptcyType);
+  }
+}
 
 
   // --- Demographics (Page 8) ---
-
-// Ethnicity
-if (demographics.ethnicity === "hispanic") {
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').check();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
-
-  // Hispanic origin
-  if (demographics.origin === "mexican") {
-    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].mexican[0]._8_ethnicity_Mexican[0]').check();
-  } else if (demographics.origin === "puerto-rican") {
-    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].puertorican[0]._8_ethnicity_Puerto_Rican[0]').check();
-  } else if (demographics.origin === "cuban") {
-    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].cuban[0]._8_ethnicity_Cuban[0]').check();
-  } else if (demographics.origin === "other" && demographics.otherOrigin) {
-    form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_hispanic_other[0]').check();
-    form.getTextField('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_other_hispanic[0]').setText(demographics.otherOrigin);
+  if (demographics) {
+    // Ethnicity
+    if (demographics.ethnicity === "hispanic") {
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').check();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
+    
+      // Hispanic origin
+      if (demographics.origin === "mexican") {
+        form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].mexican[0]._8_ethnicity_Mexican[0]').check();
+      } else if (demographics.origin === "puerto-rican") {
+        form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].puertorican[0]._8_ethnicity_Puerto_Rican[0]').check();
+      } else if (demographics.origin === "cuban") {
+        form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].cuban[0]._8_ethnicity_Cuban[0]').check();
+      } else if (demographics.origin === "other" && demographics.otherOrigin) {
+        form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_hispanic_other[0]').check();
+        form.getTextField('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0].hispanic[0].other[0]._8_other_hispanic[0]').setText(demographics.otherOrigin);
+      }
+    } else if (demographics.ethnicity === "not-hispanic") {
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').check();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
+    } else if (demographics.ethnicity === "refuse") {
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').check();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
+      form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
+    }
+    
+    // Race
+    if (demographics.race === "american-indian") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_native_american[0]').check();
+      if (demographics.tribe) {
+        form.getTextField('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_tribe[0]').setText(demographics.tribe);
+      }
+    } else if (demographics.race === "asian") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0]._8_race_asian[0]').check();
+      
+      // Asian sub-origin
+      if (demographics.asianOrigin === "indian") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].indian[0]._8_race_indian[0]').check();
+      } else if (demographics.asianOrigin === "chinese") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].chinese[0]._8_race_chinese[0]').check();
+      } else if (demographics.asianOrigin === "filipino") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].filipino[0]._8_race_filipino[0]').check();
+      } else if (demographics.asianOrigin === "japanese") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].japanese[0]._8_race_japanese[0]').check();
+      } else if (demographics.asianOrigin === "korean") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].korean[0]._8_race_korean[0]').check();
+      } else if (demographics.asianOrigin === "vietnamese") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].vietnamese[0]._8_race_vietnamese[0]').check();
+      } else if (demographics.asianOrigin === "other" && demographics.otherOrigin) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_race_asian_other[0]').check();
+        form.getTextField('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_asian_race[0]').setText(demographics.otherOrigin);
+      }
+    } else if (demographics.race === "black") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].black[0]._8_race_black[0]').check();
+    } else if (demographics.race === "pacific-islander") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0]._8_race_pacific[0]').check();
+      
+      // Pacific Islander sub-origin
+      if (demographics.pacificIslanderOrigin === "hawaiian") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].hawaiian[0]._8_race_hawaiian[0]').check();
+      } else if (demographics.pacificIslanderOrigin === "guamanian") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].guanamian[0]._8_race_guamanian[0]').check();
+      } else if (demographics.pacificIslanderOrigin === "samoan") {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].samoan[0]._8_race_samoan[0]').check();
+      } else if (demographics.pacificIslanderOrigin === "other" && demographics.otherOrigin) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_race_pacific_other[0]').check();
+        form.getTextField('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_pacific_race[0]').setText(demographics.otherOrigin);
+      }
+    } else if (demographics.race === "white") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].white[0]._8_race_white[0]').check();
+    } else if (demographics.race === "refuse") {
+      form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].not_provide[0]._8_race_refuse[0]').check();
+    }
+    
+    // Gender
+    if (demographics.gender === "male") {
+      form.getRadioGroup('Group35').select('Male');
+    } else if (demographics.gender === "female") {
+      form.getRadioGroup('Group35').select('Female');
+    } else {
+      form.getRadioGroup('Group35').select('I do not wish to provide this information');
+    }
   }
-} else if (demographics.ethnicity === "not-hispanic") {
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').check();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').uncheck();
-} else if (demographics.ethnicity === "refuse") {
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].refuse[0]._8_ethnicity_refuse[0]').check();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].hispanic[0]._8_hispanic[0]').uncheck();
-  form.getCheckBox('topmostSubform[0].Page8[0].ethnicity[0].not_hispanic[0]._8_not_hispanic[0]').uncheck();
-}
+  
+  // --- Military Service (Page 8) ---
+  //define military service object
+  const militaryService = loanDetails.militaryService || null;
+  if (militaryService) {
+    if (militaryService.hasServed) {
+      // Currently serving
+      if (militaryService.currentlyServing) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].current[0]._7_current[0]').check();
+        
+        // Active duty expiration date if available
+        if (militaryService.expirationDate) {
+          const expDate = new Date(militaryService.expirationDate);
+          form.getTextField('topmostSubform[0].Page8[0]._7[0].current[0]._7_Active_Duty_Month[0]').setText(String(expDate.getMonth() + 1).padStart(2, '0'));
+          form.getTextField('topmostSubform[0].Page8[0]._7[0].current[0]._7_Active_Duty_day[0]').setText(String(expDate.getDate()).padStart(2, '0'));
+          form.getTextField('topmostSubform[0].Page8[0]._7[0].current[0]._7_Active_Duty_Year[0]').setText(String(expDate.getFullYear()));
+        }
+      } else {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].current[0]._7_current[0]').uncheck();
+      }
+      
+      // Retired status
+      if (militaryService.isRetired) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].retired[0]._7_retired[0]').check();
+      } else {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].retired[0]._7_retired[0]').uncheck();
+      }
+      
+      // Non-activated status
+      if (militaryService.isNonActivated) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].non_active[0]._7_non_active[0]').check();
+      } else {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].non_active[0]._7_non_active[0]').uncheck();
+      }
+      
+      // Surviving spouse status
+      if (militaryService.isSurvivingSpouse) {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].surviving[0]._7_surviving[0]').check();
+      } else {
+        form.getCheckBox('topmostSubform[0].Page8[0]._7[0].surviving[0]._7_surviving[0]').uncheck();
+      }
+    }
+  }
 
-// Race
-if (demographics.race === "american-indian") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_native_american[0]').check();
-  if (demographics.tribe) {
-    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].native_american[0]._8_race_tribe[0]').setText(demographics.tribe);
-  }
-} else if (demographics.race === "asian") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0]._8_race_asian[0]').check();
-  // Asian sub-origin
-  if (demographics.asianOrigin === "indian") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].indian[0]._8_race_indian[0]').check();
-  } else if (demographics.asianOrigin === "chinese") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].chinese[0]._8_race_chinese[0]').check();
-  } else if (demographics.asianOrigin === "filipino") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].filipino[0]._8_race_filipino[0]').check();
-  } else if (demographics.asianOrigin === "japanese") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].japanese[0]._8_race_japanese[0]').check();
-  } else if (demographics.asianOrigin === "korean") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].korean[0]._8_race_korean[0]').check();
-  } else if (demographics.asianOrigin === "vietnamese") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].vietnamese[0]._8_race_vietnamese[0]').check();
-  } else if (demographics.asianOrigin === "other" && demographics.otherOrigin) {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_race_asian_other[0]').check();
-    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].asian[0].asian[0].other[0]._8_asian_race[0]').setText(demographics.otherOrigin);
-  }
-} else if (demographics.race === "black") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].black[0]._8_race_black[0]').check();
-} else if (demographics.race === "pacific-islander") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0]._8_race_pacific[0]').check();
-  // Pacific Islander sub-origin
-  if (demographics.pacificIslanderOrigin === "hawaiian") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].hawaiian[0]._8_race_hawaiian[0]').check();
-  } else if (demographics.pacificIslanderOrigin === "guamanian") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].guanamian[0]._8_race_guamanian[0]').check();
-  } else if (demographics.pacificIslanderOrigin === "samoan") {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].samoan[0]._8_race_samoan[0]').check();
-  } else if (demographics.pacificIslanderOrigin === "other" && demographics.otherOrigin) {
-    form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_race_pacific_other[0]').check();
-    form.getTextField('topmostSubform[0].Page8[0]._8_race[0].pacific[0].pacific[0].other[0]._8_pacific_race[0]').setText(demographics.otherOrigin);
-  }
-} else if (demographics.race === "white") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].white[0]._8_race_white[0]').check();
-} else if (demographics.race === "refuse") {
-  form.getCheckBox('topmostSubform[0].Page8[0]._8_race[0].not_provide[0]._8_race_refuse[0]').check();
-}
-
-  // check doesnot apply box in  2b  portion in our form as it is not applicable for us
+  // --- Final PDF Preparation ---
+  // Clear all extra "Does Not Apply" checkboxes to ensure they're in the correct state
   form.getCheckBox('topmostSubform[0].Page3[0]._2b_Does_Not_Apply[0]').check();
   form.getCheckBox('topmostSubform[0].Page4[0]._3_Do_Not_Own[0]').check();
   form.getCheckBox('topmostSubform[0].Page4[0]._3b_No_Additional[0]').check();
   form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
-  form.getCheckBox('topmostSubform[0].Page4[0]._3c_No_Additional[0]').check();
-
-
-
-
+  
+  // Add signature date (current date)
+  const today = new Date();
+  const formattedDate = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+  
+  try {
+    form.getTextField('topmostSubform[0].Page9[0].f9_159[0]').setText(formattedDate);
+  } catch (e) {
+    console.log('Error setting signature date:', e.message);
+  }
+  
+  // Flatten the form to prevent further editing (optional)
+  //form.flatten();
+  
   // --- Save the filled PDF ---
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
