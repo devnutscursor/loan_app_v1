@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import {
   CheckCircle,
-  Edit, Trash2, Plus
+  Edit, Trash2, Plus,
+  Clock // Added for deadline indicators
 } from 'lucide-react';
 import milestoneService from '../../../services/api/milestone.service';
 import MilestoneForm from './MilestoneForm';
+
+// Utility function to check if a milestone's deadline is approaching or passed
+const getDeadlineStatus = (deadlineDate) => {
+  if (!deadlineDate) return null;
+  
+  const today = new Date();
+  const deadline = new Date(deadlineDate);
+  
+  // Remove time portion for accurate day comparison
+  today.setHours(0, 0, 0, 0);
+  deadline.setHours(0, 0, 0, 0);
+  
+  const diffTime = deadline.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'overdue';
+  if (diffDays <= 3) return 'approaching'; // 3 days or less
+  return 'normal';
+};
 
 const MilestoneStatusIcon = ({ status }) => {
   switch (status) {
@@ -108,6 +128,13 @@ const LoanMilestones = ({ loanId }) => {
     try {
       setLoading(true);
       await milestoneService.updateMilestoneStatus(milestoneId, newStatus);
+      
+      // If we're marking a milestone as completed, set its completion date to today
+      if (newStatus === 'completed') {
+        const currentDate = new Date().toISOString();
+        await milestoneService.updateMilestone(milestoneId, { completedAt: currentDate });
+      }
+      
       fetchMilestones();
     } catch (err) {
       setError(err.message || 'Failed to update milestone status');
@@ -229,18 +256,61 @@ if (loading && milestones.length === 0) {
                   {milestone.description && (
                     <p className="text-xs text-gray-600">{milestone.description}</p>
                   )}
+                  
                 </div>
               </div>
 
             </div>
-            {/* Action buttons bar */}
-            <div className="bg-gray-50 px-3 py-1.5 border-t border-gray-100 flex justify-end space-x-2">
-              {/* Status buttons */}
-              <div className="flex space-x-2">
+            
+            {/* Action buttons bar and Timeline */}
+            <div className="bg-gray-50 px-3 py-2 border-t border-gray-100 flex justify-between items-center">
+              {/* Timeline moved to gray area - LEFT SIDE */}
+              {(milestone.startDate || milestone.deadlineDate) && (
+                <div className="flex items-center">
+                  <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                  <span className="text-xs text-gray-600">
+                    <span className="font-medium">Timeline:</span> 
+                    {milestone.startDate && 
+                      <> {new Date(milestone.startDate).toLocaleDateString()}</>
+                    }
+                    {milestone.deadlineDate && milestone.startDate && <> - </>}
+                    
+                    {milestone.deadlineDate && (() => {
+                      const deadlineStatus = getDeadlineStatus(milestone.deadlineDate);
+                      return (
+                        <span className={`font-medium inline-flex items-center ${
+                          deadlineStatus === 'overdue' 
+                            ? 'text-red-600' 
+                            : deadlineStatus === 'approaching' 
+                              ? 'text-orange-600' 
+                              : 'text-blue-600'
+                        }`}>
+                          {new Date(milestone.deadlineDate).toLocaleDateString()}
+                          {deadlineStatus === 'overdue' && (
+                            <span className="ml-1 px-1.5 py-0.5 text-xxs bg-red-100 text-red-800 rounded-sm shadow-sm">
+                              Overdue
+                            </span>
+                          )}
+                          {deadlineStatus === 'approaching' && (
+                            <span className="ml-1 px-1.5 py-0.5 text-xxs bg-orange-100 text-orange-800 rounded-sm shadow-sm">
+                              Due Soon
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                  </span>
+                </div>
+              )}
+              
+              {/* Action buttons - RIGHT SIDE */}
+              <div className="flex items-center space-x-2">
+                {/* Status buttons */}
+                <div className="flex space-x-2">
                 {milestone.status !== 'completed' && (
                   <button
                     onClick={() => handleStatusChange(milestone._id, 'completed')}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors duration-200"
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-green-300 rounded-md text-green-700  hover:bg-green-100 transition-colors duration-200"
                   >
                     <CheckCircle className="h-3 w-3 mr-1" /> Mark Complete
                   </button>
@@ -249,7 +319,7 @@ if (loading && milestones.length === 0) {
                 {milestone.status !== 'in_progress' && milestone.status !== 'completed' && (
                   <button
                     onClick={() => handleStatusChange(milestone._id, 'in_progress')}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium border border-blue-300 rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-blue-300 rounded-md text-blue-700  hover:bg-blue-100 transition-colors duration-200"
                   >
                     <Edit className="h-3 w-3 mr-1" /> Mark In Progress
                   </button>
@@ -258,7 +328,7 @@ if (loading && milestones.length === 0) {
                 {milestone.status !== 'pending' && (
                   <button
                     onClick={() => handleStatusChange(milestone._id, 'pending')}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                   >
                     <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Mark Pending
                   </button>
@@ -269,7 +339,7 @@ if (loading && milestones.length === 0) {
                 {/* Edit button */}
                 <button
                   onClick={() => handleEditMilestone(milestone)}
-                  className="inline-flex items-center px-2 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 transition-colors duration-200"
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 transition-colors duration-200"
                 >
                   <Edit className="h-3 w-3 mr-1" /> Edit
                 </button>
@@ -277,10 +347,11 @@ if (loading && milestones.length === 0) {
                 {/* Delete button */}
                 <button
                   onClick={() => setConfirmDelete(milestone._id)}
-                  className="inline-flex items-center px-2 py-1 text-xs font-medium border border-red-200 rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors duration-200"
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium border border-red-200 rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors duration-200"
                 >
                   <Trash2 className="h-3 w-3 mr-1" /> Delete
                 </button>
+              </div>
               </div>
             </div>
           </div>

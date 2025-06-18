@@ -29,6 +29,18 @@ const MilestoneSchema = new Schema(
       type: String,
       enum: ['pending', 'in_progress', 'completed'],
       default: 'pending',
+    },
+    startDate: {
+      type: Date,
+      default: Date.now
+    },
+    deadlineDate: {
+      type: Date,
+      default: null
+    },
+    completedAt: {
+      type: Date,
+      default: null
     }
   },
   {

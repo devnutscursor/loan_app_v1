@@ -162,12 +162,15 @@ exports.createMilestone = catchAsync(async (req, res) => {
   const isFirstMilestone = existingMilestones.length === 0;
 
   // Create the milestone with 'in_progress' status if it's the first one
+  // Set start date to now and get deadline date from req.body if provided
   const milestone = await Milestone.create({
     loan: loanId,
     name,
     description,
     order: order || 0,
-    status: isFirstMilestone ? 'in_progress' : 'pending'
+    status: isFirstMilestone ? 'in_progress' : 'pending',
+    startDate: new Date(), // Set start date to now
+    deadlineDate: req.body.deadlineDate || null // Use deadline date if provided
   });
   
   // Log the milestone creation for audit
@@ -268,8 +271,13 @@ exports.updateMilestone = catchAsync(async (req, res) => {
   if ((req.user.role === 'admin' || req.user.role === 'lender') && req.body.status) {
     milestone.status = req.body.status;
     
-    // If milestone is marked as completed, find the next milestone and mark it as in_progress
+    // If milestone is marked as completed, set the completion date and find the next milestone
     if (milestone.status === 'completed' && previousStatus !== 'completed') {
+      // Set completion date if not already set
+      if (!milestone.completedAt) {
+        milestone.completedAt = new Date();
+      }
+      
       // Find the next milestone in order
       const nextMilestone = await Milestone.findOne({
         loan: milestone.loan,
@@ -283,15 +291,20 @@ exports.updateMilestone = catchAsync(async (req, res) => {
         await nextMilestone.save();
         console.log(`Set next milestone ${nextMilestone._id} to in_progress`);
       }
+    } else if (milestone.status !== 'completed') {
+      // If milestone is marked as not completed, clear the completion date
+      milestone.completedAt = null;
     }
   }
   
-  // Update only name and description (lender/admin only)
+  // Update only name, description, deadline date, completedAt (lender/admin only)
   if (req.user.role === 'admin' || 
     (req.user.role === 'lender')) {
     if (req.body.name) milestone.name = req.body.name;
     if (req.body.description) milestone.description = req.body.description;
     if (req.body.order) milestone.order = req.body.order;
+    if (req.body.deadlineDate !== undefined) milestone.deadlineDate = req.body.deadlineDate;
+    if (req.body.completedAt !== undefined) milestone.completedAt = req.body.completedAt;
   }
   
   // Save the updated milestone
