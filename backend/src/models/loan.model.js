@@ -979,32 +979,44 @@ const loanSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique loan number
+// Generate unique loan number using Julian date plus 3-digit sequential number
 loanSchema.pre('save', async function(next) {
-  if (!this.isNew) return next();
+  // Only generate loan number for new loans or if loan number isn't set yet
+  if (!this.isNew && this.loanNumber) {
+    return next();
+  }
   
   try {
+    // Get current date in YYYYMMDD format
     const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
+    const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
     
-    // Find the latest loan with the same year/month prefix
-    const prefix = `LN${year}${month}`;
-    const latestLoan = await this.constructor.findOne(
-      { loanNumber: new RegExp(`^${prefix}`) },
-      { loanNumber: 1 },
-      { sort: { loanNumber: -1 } }
-    );
+    // Create the date prefix in YYYYMMDD format
+    const datePrefix = `${year}${month}${day}`;
     
+    // Use explicit model reference to avoid issues with this.constructor.findOne
+    const Loan = mongoose.model('Loan');
+    
+    // Find the latest loan with the same date prefix for today
+    const latestLoan = await Loan.findOne(
+      { loanNumber: new RegExp(`^${datePrefix}`) }
+    ).sort({ loanNumber: -1 }).select('loanNumber').exec();
+    
+    // Start with 001 for the first loan of the day, or increment from the latest
     let sequenceNumber = 1;
     if (latestLoan && latestLoan.loanNumber) {
-      const currentSequence = parseInt(latestLoan.loanNumber.slice(-4), 10);
+      // Extract the last 3 digits of the loan number
+      const currentSequence = parseInt(latestLoan.loanNumber.slice(-3), 10);
       if (!isNaN(currentSequence)) {
         sequenceNumber = currentSequence + 1;
       }
     }
     
-    this.loanNumber = `${prefix}${sequenceNumber.toString().padStart(4, '0')}`;
+    // Format: YYYYMMDD001, YYYYMMDD002, etc.
+    this.loanNumber = `${datePrefix}${sequenceNumber.toString().padStart(3, '0')}`;
+    console.log(`Generated new loan number: ${this.loanNumber}`);
     return next();
   } catch (error) {
     return next(error);
