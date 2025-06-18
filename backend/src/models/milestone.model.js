@@ -35,12 +35,11 @@ const MilestoneSchema = new Schema(
       default: Date.now
     },
     deadlineDate: {
-      type: Date,
-      default: null
+      type: Date
     },
-    completedAt: {
-      type: Date,
-      default: null
+    notificationSent: {
+      type: Boolean,
+      default: false
     }
   },
   {

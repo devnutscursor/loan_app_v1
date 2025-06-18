@@ -6,6 +6,8 @@ const http = require('http');
 const socketIo = require('socket.io');
 const app = require('./app');
 const logger = require('./utils/logger');
+const scheduler = require('./utils/scheduler');
+const milestoneNotificationService = require('./services/milestoneNotification.service');
 const { connectDatabase } = require('./config/database');
 
 // Environment variables
@@ -75,6 +77,15 @@ app.set('io', io);
 // Start server
 server.listen(PORT, () => {
   logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+  
+  // Start the milestone deadline notification scheduler
+  // Check for approaching deadlines every hour
+  scheduler.startTask(
+    'milestoneDeadlineChecker',
+    () => milestoneNotificationService.checkMilestoneDeadlines(),
+    60 * 60 * 1000 // 1 hour
+  );
+  logger.info('Milestone deadline notification scheduler started');
 });
 
 // Handle unhandled promise rejections

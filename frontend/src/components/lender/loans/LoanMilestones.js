@@ -11,18 +11,15 @@ import MilestoneForm from './MilestoneForm';
 const getDeadlineStatus = (deadlineDate) => {
   if (!deadlineDate) return null;
   
-  const today = new Date();
+  const now = new Date();
   const deadline = new Date(deadlineDate);
   
-  // Remove time portion for accurate day comparison
-  today.setHours(0, 0, 0, 0);
-  deadline.setHours(0, 0, 0, 0);
+  // Calculate hours difference using full date/time
+  const diffTime = deadline.getTime() - now.getTime();
+  const diffHours = diffTime / (1000 * 60 * 60);
   
-  const diffTime = deadline.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) return 'overdue';
-  if (diffDays <= 3) return 'approaching'; // 3 days or less
+  if (diffHours < 0) return 'overdue';
+  if (diffHours <= 24) return 'approaching'; // 24 hours or less
   return 'normal';
 };
 

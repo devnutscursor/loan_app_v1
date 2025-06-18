@@ -140,7 +140,9 @@ exports.createMilestone = catchAsync(async (req, res) => {
     loan: loanId,
     name,
     description,
-    order
+    order,
+    startDate,
+    deadlineDate
   } = req.body;
   
   // Check if loan exists
@@ -162,15 +164,14 @@ exports.createMilestone = catchAsync(async (req, res) => {
   const isFirstMilestone = existingMilestones.length === 0;
 
   // Create the milestone with 'in_progress' status if it's the first one
-  // Set start date to now and get deadline date from req.body if provided
   const milestone = await Milestone.create({
     loan: loanId,
     name,
     description,
     order: order || 0,
     status: isFirstMilestone ? 'in_progress' : 'pending',
-    startDate: new Date(), // Set start date to now
-    deadlineDate: req.body.deadlineDate || null // Use deadline date if provided
+    startDate: startDate || new Date(),
+    deadlineDate: deadlineDate || null
   });
   
   // Log the milestone creation for audit
@@ -188,6 +189,43 @@ exports.createMilestone = catchAsync(async (req, res) => {
       milestoneName: name
     }
   });
+  
+  // If milestone has a deadline, check if it's within 24 hours and send notification immediately
+  if (deadlineDate) {
+    const now = new Date();
+    const deadline = new Date(deadlineDate);
+    const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
+    
+    // If deadline is within 24 hours, trigger notification check immediately
+    if (hoursUntilDeadline <= 24) {
+      const milestoneNotificationService = require('../services/milestoneNotification.service');
+      try {
+        console.log(`New milestone has deadline within 24 hours (${hoursUntilDeadline.toFixed(1)} hours). Sending notification immediately...`);
+        // Force a notification for this specific milestone rather than checking all milestones
+        const populatedMilestone = await Milestone.findById(milestone._id).populate({
+          path: 'loan',
+          populate: [
+            { 
+              path: 'lender',
+              populate: { path: 'user', model: 'User' } // Get User from Lender
+            },
+            { 
+              path: 'assignedLoanOfficer', 
+              model: 'User' 
+            }
+          ]
+        });
+        
+        if (populatedMilestone) {
+          await milestoneNotificationService.sendDeadlineNotification(populatedMilestone);
+        } else {
+          console.error('Could not find newly created milestone with populated data');
+        }
+      } catch (err) {
+        console.error('Error sending milestone notification after creation:', err);
+      }
+    }
+  }
   
   res.status(201).json({
     status: 'success',
@@ -271,13 +309,8 @@ exports.updateMilestone = catchAsync(async (req, res) => {
   if ((req.user.role === 'admin' || req.user.role === 'lender') && req.body.status) {
     milestone.status = req.body.status;
     
-    // If milestone is marked as completed, set the completion date and find the next milestone
+    // If milestone is marked as completed, find the next milestone and mark it as in_progress
     if (milestone.status === 'completed' && previousStatus !== 'completed') {
-      // Set completion date if not already set
-      if (!milestone.completedAt) {
-        milestone.completedAt = new Date();
-      }
-      
       // Find the next milestone in order
       const nextMilestone = await Milestone.findOne({
         loan: milestone.loan,
@@ -291,20 +324,57 @@ exports.updateMilestone = catchAsync(async (req, res) => {
         await nextMilestone.save();
         console.log(`Set next milestone ${nextMilestone._id} to in_progress`);
       }
-    } else if (milestone.status !== 'completed') {
-      // If milestone is marked as not completed, clear the completion date
-      milestone.completedAt = null;
     }
   }
   
-  // Update only name, description, deadline date, completedAt (lender/admin only)
+  // Update only name, description, and dates (lender/admin only)
   if (req.user.role === 'admin' || 
     (req.user.role === 'lender')) {
     if (req.body.name) milestone.name = req.body.name;
     if (req.body.description) milestone.description = req.body.description;
     if (req.body.order) milestone.order = req.body.order;
-    if (req.body.deadlineDate !== undefined) milestone.deadlineDate = req.body.deadlineDate;
-    if (req.body.completedAt !== undefined) milestone.completedAt = req.body.completedAt;
+    if (req.body.startDate) milestone.startDate = req.body.startDate;
+    if (req.body.deadlineDate) {
+      milestone.deadlineDate = req.body.deadlineDate;
+      milestone.notificationSent = false; // Reset notification flag when deadline changes
+      
+      // Import the service here to avoid circular dependency
+      const milestoneNotificationService = require('../services/milestoneNotification.service');
+      await milestoneNotificationService.resetNotificationFlag(milestone._id);
+      
+      // If the updated deadline is within 24 hours, trigger notification check immediately
+      const now = new Date();
+      const deadline = new Date(req.body.deadlineDate);
+      const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
+      
+      if (hoursUntilDeadline <= 24) {
+        try {
+          console.log(`Updated milestone has deadline within 24 hours (${hoursUntilDeadline.toFixed(1)} hours). Sending notification immediately...`);
+          // Force a notification for this specific milestone rather than checking all milestones
+          const populatedMilestone = await Milestone.findById(milestoneId).populate({
+            path: 'loan',
+            populate: [
+              { 
+                path: 'lender',
+                populate: { path: 'user', model: 'User' } // Get User from Lender
+              },
+              { 
+                path: 'assignedLoanOfficer', 
+                model: 'User' 
+              }
+            ]
+          });
+          
+          if (populatedMilestone) {
+            await milestoneNotificationService.sendDeadlineNotification(populatedMilestone);
+          } else {
+            console.error('Could not find updated milestone with populated data');
+          }
+        } catch (err) {
+          console.error('Error sending milestone notification after update:', err);
+        }
+      }
+    }
   }
   
   // Save the updated milestone
