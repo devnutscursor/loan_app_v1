@@ -123,18 +123,23 @@ class LoanService {
    */
   async getDraft(draftId) {
     try {
-      // If this is a loan ID being used as a draft (for continuing an application)
-      if (draftId && draftId.startsWith('LN')) {
+      // If this is a loan ID (starts with LN or is a numeric loan number) being used as a draft (for continuing an application)
+      // New loan number format is YYYYMMDDXXX (where XXX is a 3-digit sequence)
+      const isLoanNumber = draftId && (draftId.startsWith('LN') || /^\d{8,11}$/.test(draftId));
+      console.log(`Draft ID: ${draftId}, Is loan number: ${isLoanNumber}`);
+      if (isLoanNumber) {
+        console.log('Getting loan for draft using loan number:', draftId);
         // Get the loan data first
         const loanResponse = await this.getLoan(draftId);
         if (!loanResponse.success) {
           throw new Error(loanResponse.message || 'Failed to retrieve loan data');
         }
         
+        console.log('Loan data retrieved successfully:', loanResponse.data);
         // Convert loan to draft format
         const draftData = await this.convertLoanToDraft(loanResponse.data);
 
-        // console.log('draftData from getDraft is ', draftData);
+        console.log('Loan converted to draft format:', draftData);
         return {
           success: true,
           data: draftData
@@ -338,7 +343,9 @@ class LoanService {
    */
   async getLoans(filters = {}) {
     try {
-      const response = await ApiService.get('/api/v1/borrower/loans', { params: filters });
+      // Request a large number of loans to effectively get all of them
+      const params = { ...filters, limit: 1000 };
+      const response = await ApiService.get('/api/v1/borrower/loans', { params });
       
       console.log('Get loans response: from service ', response.data);
       return {
@@ -362,7 +369,8 @@ class LoanService {
   async getLoan(loanId) {
     try {
       // For loan numbers (purely numeric, new pattern is YYYYMMDDNNN), use the by-number endpoint
-      const isLoanNumber = /^\d{11}$/.test(loanId) || loanId.startsWith('DRAFT-') || loanId.startsWith('LN');
+      const isLoanNumber = /^\d{8,11}$/.test(loanId) || loanId.startsWith('DRAFT-') || loanId.startsWith('LN');
+      console.log(`getLoan: loanId=${loanId}, isLoanNumber=${isLoanNumber}`);
       const endpoint = isLoanNumber
         ? `/api/v1/borrower/loans/by-number/${loanId}`
         : `/api/v1/borrower/loans/${loanId}`;

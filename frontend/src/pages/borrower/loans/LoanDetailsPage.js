@@ -34,11 +34,26 @@ const LoanDetailsPage = () => {
         if (response.success) {
           // Extract loan data, handling different response structures
           const loanData = response.data?.loan || response.data.data;
-          setLoan(loanData);
+          
+          if (!loanData || Object.keys(loanData).length === 0) {
+            console.warn('Loan not found or deleted');
+            setError('This loan no longer exists or has been deleted');
+            toast.error('This loan no longer exists or has been deleted');
+            // Redirect back to loans list after a short delay
+            setTimeout(() => {
+              router.push('/borrower/loans');
+            }, 3000);
+          } else {
+            setLoan(loanData);
+          }
         } else {
           console.warn('Failed to fetch loan details:', response.message);
           setError(response.message || 'Failed to load loan details');
           toast.error(response.message || 'Failed to load loan details');
+          // Redirect back to loans list after a short delay
+          setTimeout(() => {
+            router.push('/borrower/loans');
+          }, 3000);
         }
       } catch (error) {
         console.error('Error fetching loan details:', error);

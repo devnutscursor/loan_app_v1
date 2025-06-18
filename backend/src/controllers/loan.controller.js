@@ -1813,7 +1813,8 @@ exports.getRecentDrafts = async (req, res, next) => {
 exports.getDraft = async (req, res, next) => {
   try {
     const { id } = req.params;
-
+     console.log(`Retrieving draft with ID or loan number: ${id}`);
+    
     // Verify user is a borrower
     if (req.user.role !== "borrower") {
       return next(new ApiError("Only borrowers can access loan drafts", 403));
@@ -1826,21 +1827,37 @@ exports.getDraft = async (req, res, next) => {
       return next(new ApiError("Borrower profile not found", 404));
     }
 
-    // Get the draft using $or to check both field names
-    const draft = await Loan.findOne({
-      _id: id,
+    // Try to find a loan by loan number (either draft or completed)
+    // This allows existing loans to be edited
+    let draft = await Loan.findOne({
+      loanNumber: id,
       $or: [
         { borrower: borrower._id }, // New schema field
         { primaryBorrower: borrower._id }, // Old schema field
-      ],
-      status: "draft",
-      isDraft: true,
+      ]
     });
-
-    if (!draft) {
-      return next(new ApiError("Draft not found", 404));
+    
+    // If not found and it might be a valid ObjectId, try finding a draft by _id
+    if (!draft && id.match(/^[0-9a-fA-F]{24}$/)) {
+      draft = await Loan.findOne({
+        _id: id,
+        $or: [
+          { borrower: borrower._id }, // New schema field
+          { primaryBorrower: borrower._id }, // Old schema field
+        ],
+        status: "draft",
+        isDraft: true,
+      });
     }
 
+    console.log(`Search result: ${draft ? 'Found' : 'Not found'}, status: ${draft?.status}, isDraft: ${draft?.isDraft}`);
+    
+    if (!draft) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    // If we found a completed loan, we'll still return it as if it were a draft
+    // so the frontend can populate the edit form
     res.status(200).json({
       status: "success",
       data: draft,
