@@ -361,8 +361,9 @@ class LoanService {
    */
   async getLoan(loanId) {
     try {
-      // For loan numbers (starting with LN), use a different endpoint
-      const endpoint = loanId.startsWith('LN') 
+      // For loan numbers (purely numeric, new pattern is YYYYMMDDNNN), use the by-number endpoint
+      const isLoanNumber = /^\d{11}$/.test(loanId) || loanId.startsWith('DRAFT-') || loanId.startsWith('LN');
+      const endpoint = isLoanNumber
         ? `/api/v1/borrower/loans/by-number/${loanId}`
         : `/api/v1/borrower/loans/${loanId}`;
       
@@ -391,7 +392,8 @@ class LoanService {
   async updateLoan(loanId, updateData) {
     try {
       // Create appropriate endpoint based on whether we're using a loan number or MongoDB ID
-      const endpoint = loanId.startsWith('LN')
+      const isLoanNumber = /^\d{11}$/.test(loanId) || loanId.startsWith('DRAFT-') || loanId.startsWith('LN');
+      const endpoint = isLoanNumber
         ? `/api/v1/borrower/loans/by-number/${loanId}`  // For loan numbers
         : `/api/v1/borrower/loans/${loanId}`;         // For MongoDB IDs
         

@@ -199,9 +199,10 @@ const LoanApplication = () => {
             console.log('Draft data loaded:', result.data);
             setFormData(prev => ({ ...prev, ...result.data }));
             
-            // If it's a loan number (LN prefix), store both the MongoDB ID and the loan number
-            if (draft.startsWith('LN')) {
-              setDraftId(draft); // Keep the LN number as the draftId
+            // If it's a loan number (numeric format or DRAFT/LN prefix), store both the MongoDB ID and the loan number
+            const isLoanNumber = /^\d{11}$/.test(draft) || draft.startsWith('DRAFT-') || draft.startsWith('LN');
+            if (isLoanNumber) {
+              setDraftId(draft); // Keep the loan number as the draftId
               // Store original MongoDB ID if available
               if (result.data._id) {
                 setFormData(prev => ({ 
@@ -574,10 +575,11 @@ const LoanApplication = () => {
       // Make API call to submit the loan application
       let response;
       
-      // If we're editing an existing loan (with LN prefix), use updateLoan instead
-      if (formData.isExistingLoan && draftId && draftId.startsWith('LN')) {
+      // If we're editing an existing loan (with loan number), use updateLoan instead
+      const isLoanNumber = draftId && (/^\d{11}$/.test(draftId) || draftId.startsWith('DRAFT-') || draftId.startsWith('LN'));
+      if (formData.isExistingLoan && isLoanNumber) {
         console.log('Updating existing loan application:', draftId);
-        // For loan numbers, we need to use the LN number, not the MongoDB ID
+        // For loan numbers, we need to use the loan number, not the MongoDB ID
         response = await LoanService.updateLoan(draftId, submissionData);
       } else {
         // Otherwise create a new loan
