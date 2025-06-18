@@ -21,7 +21,50 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   // Format a simple address for display
   const formatAddress = (address) => {
     if (!address) return 'Not provided';
-    return `${address.streetAddress || ''}, ${address.city || ''}, ${address.state || ''} ${address.zipCode || ''}`;
+    
+    // Check if any address data is present
+    const hasAddressData = Object.values(address).some(val => val && String(val).trim() !== '');
+    if (!hasAddressData) return 'Not provided';
+    
+    let formattedAddress = '';
+    
+    // Add street address - check multiple possible field names
+    const streetAddress = address.streetAddress || address.street || '';
+    if (streetAddress) {
+      formattedAddress += streetAddress;
+    }
+    
+    // Add apartment/unit - check multiple possible field names
+    const aptUnit = address.aptSteNum || address.apt || address.unit || '';
+    if (aptUnit) {
+      if (formattedAddress) {
+        formattedAddress += ` ${aptUnit}`;
+      } else {
+        formattedAddress += aptUnit;
+      }
+    }
+    
+    // Add city
+    if (address.city) {
+      if (formattedAddress) formattedAddress += ', ';
+      formattedAddress += address.city;
+    }
+    
+    // Add state
+    if (address.state) {
+      if (address.city || formattedAddress) {
+        formattedAddress += ', ';
+      }
+      formattedAddress += address.state;
+    }
+    
+    // Add zip code - check multiple possible field names
+    const zipCode = address.zipCode || address.zip || '';
+    if (zipCode) {
+      formattedAddress += ' ' + zipCode;
+    }
+    
+    return formattedAddress || 'Not provided';
   };
 
   // Helper to render an edit button for a specific step
@@ -104,14 +147,54 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   );
 
   // Render property information
-  const renderPropertyInfo = () => (
-    <div>
-      <p className="mb-2"><strong>Property Address:</strong> {formatAddress(formData.propertyInfo?.address)}</p>
-      <p className="mb-2"><strong>Property Type:</strong> {formData.propertyInfo?.propertyType || 'Not provided'}</p>
-      <p className="mb-2"><strong>Property Value:</strong> {formatCurrency(formData.propertyInfo?.propertyValue) || 'Not provided'}</p>
-      <p className="mb-2"><strong>Home Purpose:</strong> {formData.propertyInfo?.homePurpose || 'Not provided'}</p>
-    </div>
-  );
+  const renderPropertyInfo = () => {
+    const propertyInfo = formData.propertyInfo || {};
+    
+    // Handle property address - try multiple possible structures
+    const formatPropertyAddress = () => {
+      // Try the structured approach first
+      if (propertyInfo.address && typeof propertyInfo.address === 'object') {
+        return formatAddress(propertyInfo.address);
+      }
+      
+      // Alternative: fields could be directly in propertyInfo
+      if (propertyInfo.streetAddress || propertyInfo.city || propertyInfo.state || propertyInfo.zipCode) {
+        return formatAddress({
+          streetAddress: propertyInfo.streetAddress,
+          aptSteNum: propertyInfo.aptSteNum,
+          city: propertyInfo.city,
+          state: propertyInfo.state,
+          zipCode: propertyInfo.zipCode
+        });
+      }
+      
+      return 'Not provided';
+    };
+    
+    return (
+      <div>
+        <p className="mb-2"><strong>Property Address:</strong> {formatPropertyAddress()}</p>
+        <p className="mb-2"><strong>Property Type:</strong> {propertyInfo?.propertyType || 'Not provided'}</p>
+        <p className="mb-2"><strong>Property Value:</strong> {formatCurrency(propertyInfo?.propertyValue) || 'Not provided'}</p>
+        <p className="mb-2"><strong>Occupancy Type:</strong> {propertyInfo?.occupancyType || 'Not provided'}</p>
+        
+        {propertyInfo?.hasAcceptedOffer && (
+          <>
+            <p className="mb-2"><strong>Has Accepted Offer:</strong> Yes</p>
+            <p className="mb-2"><strong>Contract Purchase Price:</strong> {formatCurrency(propertyInfo?.contractPurchasePrice) || 'Not provided'}</p>
+          </>
+        )}
+        
+        {propertyInfo?.numberOfUnits && <p className="mb-2"><strong>Number of Units:</strong> {propertyInfo?.numberOfUnits}</p>}
+        {propertyInfo?.yearBuilt && <p className="mb-2"><strong>Year Built:</strong> {propertyInfo?.yearBuilt}</p>}
+        {propertyInfo?.isMixedUse && <p className="mb-2"><strong>Mixed-Use Property:</strong> Yes</p>}
+        {propertyInfo?.isManufactured && <p className="mb-2"><strong>Manufactured Home:</strong> Yes</p>}
+        {propertyInfo?.proposedRentalIncome && (
+          <p className="mb-2"><strong>Proposed Rental Income:</strong> {formatCurrency(propertyInfo?.proposedRentalIncome)}</p>
+        )}
+      </div>
+    );
+  };
 
   // Render loan details
   const renderLoanInfo = () => (
@@ -138,37 +221,94 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   );
 
   // Render assets
-  const renderAssets = () => (
-    <div>
-      {Array.isArray(formData.assets) && formData.assets.length > 0 ? (
-        <div>
-          {formData.assets.map((asset, index) => (
-            <div key={index} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
-              <p className="mb-2"><strong>Type:</strong> {asset.type || 'Not specified'}</p>
-              
-              {asset.type === 'account' && (
-                <>
-                  <p className="mb-2"><strong>Account Type:</strong> {asset.accountType || 'Not specified'}</p>
-                  <p className="mb-2"><strong>Institution:</strong> {asset.institution || 'Not specified'}</p>
-                </>
-              )}
-              
-              {asset.type === 'investment' && (
-                <>
-                  <p className="mb-2"><strong>Investment Type:</strong> {asset.investmentType || 'Not specified'}</p>
-                  <p className="mb-2"><strong>Description:</strong> {asset.description || 'Not specified'}</p>
-                </>
-              )}
-              
-              <p className="mb-2"><strong>Value:</strong> {formatCurrency(asset.value) || '$0.00'}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p>No assets provided.</p>
-      )}
-    </div>
-  );
+  const renderAssets = () => {
+    const assets = formData.assets || {};
+    const checkingAndSavings = assets.checkingAndSavings || [];
+    const stocksAndBonds = assets.stocksAndBonds || [];
+    const giftsAndGrants = assets.giftsAndGrants || [];
+    const miscellaneous = assets.miscellaneous || {};
+    
+    const hasAssets = checkingAndSavings.length > 0 || stocksAndBonds.length > 0 || 
+                     giftsAndGrants.length > 0 || Object.values(miscellaneous).some(val => val > 0);
+    
+    return (
+      <div>
+        {hasAssets ? (
+          <div>
+            {/* Checking and Savings */}
+            {checkingAndSavings.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Checking and Savings</h4>
+                {checkingAndSavings.map((account, index) => (
+                  <div key={`checking-${index}`} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
+                    <p className="mb-1"><strong>Account Type:</strong> {account.accountType || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Financial Institution:</strong> {account.institution || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Account Number (last 4):</strong> {account.accountNumber ? `XXXX${account.accountNumber.slice(-4)}` : 'XXXX'}</p>
+                    <p className="mb-1"><strong>Value:</strong> {formatCurrency(account.value) || '$0.00'}</p>
+                    <p className="mb-1"><strong>Verified:</strong> {account.isVerified ? 'Yes' : 'No'}</p>
+                    <p className="mb-1"><strong>Liquid:</strong> {account.isLiquid ? 'Yes' : 'No'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Stocks and Bonds */}
+            {stocksAndBonds.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Stocks and Bonds</h4>
+                {stocksAndBonds.map((investment, index) => (
+                  <div key={`investment-${index}`} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
+                    <p className="mb-1"><strong>Type:</strong> {investment.investmentType || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Description:</strong> {investment.description || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Value:</strong> {formatCurrency(investment.value) || '$0.00'}</p>
+                    <p className="mb-1"><strong>Verified:</strong> {investment.isVerified ? 'Yes' : 'No'}</p>
+                    <p className="mb-1"><strong>Liquid:</strong> {investment.isLiquid ? 'Yes' : 'No'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Gifts and Grants */}
+            {giftsAndGrants.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Gifts and Grants</h4>
+                {giftsAndGrants.map((gift, index) => (
+                  <div key={`gift-${index}`} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
+                    <p className="mb-1"><strong>Source:</strong> {gift.source || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Type:</strong> {gift.giftType || 'Not specified'}</p>
+                    <p className="mb-1"><strong>Value:</strong> {formatCurrency(gift.value) || '$0.00'}</p>
+                    <p className="mb-1"><strong>Verified:</strong> {gift.isVerified ? 'Yes' : 'No'}</p>
+                    <p className="mb-1"><strong>Liquid:</strong> {gift.isLiquid ? 'Yes' : 'No'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Miscellaneous Assets */}
+            {Object.values(miscellaneous).some(val => val > 0) && (
+              <div>
+                <h4 className="font-medium mb-2">Other Assets</h4>
+                {miscellaneous.earnestMoney > 0 && (
+                  <p className="mb-1"><strong>Earnest Money:</strong> {formatCurrency(miscellaneous.earnestMoney) || '$0.00'}</p>
+                )}
+                {miscellaneous.lifeInsurance > 0 && (
+                  <p className="mb-1"><strong>Life Insurance Value:</strong> {formatCurrency(miscellaneous.lifeInsurance) || '$0.00'}</p>
+                )}
+                {miscellaneous.vestedInterestInRetirement > 0 && (
+                  <p className="mb-1"><strong>Retirement Funds:</strong> {formatCurrency(miscellaneous.vestedInterestInRetirement) || '$0.00'}</p>
+                )}
+                {miscellaneous.otherAssets > 0 && (
+                  <p className="mb-1"><strong>Other Assets:</strong> {formatCurrency(miscellaneous.otherAssets) || '$0.00'}</p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p>No assets provided.</p>
+        )}
+      </div>
+    );
+  };
 
   // Render income
   const renderIncome = () => (
@@ -229,25 +369,51 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   // Render additional information - Property Owned
   const renderPropertyOwned = () => (
     <div>
-      {formData.propertyOwned ? (
+      {formData.propertiesOwned ? (
         <>
-          <p className="mb-2"><strong>Owns Additional Property:</strong> {formData.propertyOwned.ownsProperty ? 'Yes' : 'No'}</p>
+          <p className="mb-2"><strong>Owns Additional Property:</strong> {formData.propertiesOwned.ownsProperty ? 'Yes' : 'No'}</p>
           
-          {formData.propertyOwned.ownsProperty && Array.isArray(formData.propertyOwned.properties) && (
+          {formData.propertiesOwned.ownsProperty && Array.isArray(formData.propertiesOwned.properties) && formData.propertiesOwned.properties.length > 0 && (
             <div className="mt-2">
-              {formData.propertyOwned.properties.map((property, index) => (
-                <div key={index} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
-                  <p className="mb-2"><strong>Address:</strong> {formatAddress(property.address)}</p>
-                  <p className="mb-2"><strong>Property Type:</strong> {property.propertyType || 'Not specified'}</p>
-                  <p className="mb-2"><strong>Market Value:</strong> {formatCurrency(property.presentMarketValue) || 'Not provided'}</p>
-                  <p className="mb-2"><strong>Status:</strong> {property.statusOfProperty || 'Not specified'}</p>
-                </div>
-              ))}
+              {formData.propertiesOwned.properties.map((property, index) => {
+                // Check for all possible property address formats
+                const propertyAddress = property.propertyAddress || property.address || {};
+                
+                return (
+                  <div key={index} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
+                    <p className="mb-2"><strong>Address:</strong> {formatAddress(propertyAddress)}</p>
+                    <p className="mb-2"><strong>Property Type:</strong> {property.propertyType || 'Not specified'}</p>
+                    <p className="mb-2"><strong>Market Value:</strong> {formatCurrency(property.presentMarketValue) || 'Not provided'}</p>
+                    <p className="mb-2"><strong>Status:</strong> {property.statusOfProperty || 'Not specified'}</p>
+                    {property.intendedOccupancy && <p className="mb-2"><strong>Intended Occupancy:</strong> {property.intendedOccupancy}</p>}
+                    {property.monthlyCosts && <p className="mb-2"><strong>Monthly Costs:</strong> {formatCurrency(property.monthlyCosts)}</p>}
+                    {property.grossRentalIncome && <p className="mb-2"><strong>Gross Rental Income:</strong> {formatCurrency(property.grossRentalIncome)}</p>}
+                    {property.netRentalIncome && <p className="mb-2"><strong>Net Rental Income:</strong> {formatCurrency(property.netRentalIncome)}</p>}
+                    {property.hasLoan && <p className="mb-2"><strong>Has Loan:</strong> Yes</p>}
+                    {property.monthlyPayment && <p className="mb-2"><strong>Monthly Payment:</strong> {formatCurrency(property.monthlyPayment)}</p>}
+                    {property.unpaidBalance && <p className="mb-2"><strong>Unpaid Balance:</strong> {formatCurrency(property.unpaidBalance)}</p>}
+                  </div>
+                );
+              })}
             </div>
           )}
           
-          {!formData.propertyOwned.ownsProperty && (
-            <p className="mb-2"><strong>Monthly Rent:</strong> {formatCurrency(formData.propertyOwned.rent) || 'Not provided'}</p>
+          {!formData.propertiesOwned.ownsProperty && (
+            <p className="mb-2"><strong>Monthly Rent:</strong> {formatCurrency(formData.propertiesOwned.rent) || 'Not provided'}</p>
+          )}
+          
+          {/* Display housing expenses if available */}
+          {formData.propertiesOwned.firstMortgage && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="font-medium mb-2">Housing Expenses</h4>
+              {formData.propertiesOwned.firstMortgage && <p className="mb-1"><strong>First Mortgage:</strong> {formatCurrency(formData.propertiesOwned.firstMortgage)}</p>}
+              {formData.propertiesOwned.otherFinancing && <p className="mb-1"><strong>Other Financing:</strong> {formatCurrency(formData.propertiesOwned.otherFinancing)}</p>}
+              {formData.propertiesOwned.hazardInsurance && <p className="mb-1"><strong>Hazard Insurance:</strong> {formatCurrency(formData.propertiesOwned.hazardInsurance)}</p>}
+              {formData.propertiesOwned.realEstateTaxes && <p className="mb-1"><strong>Real Estate Taxes:</strong> {formatCurrency(formData.propertiesOwned.realEstateTaxes)}</p>}
+              {formData.propertiesOwned.mortgageInsurance && <p className="mb-1"><strong>Mortgage Insurance:</strong> {formatCurrency(formData.propertiesOwned.mortgageInsurance)}</p>}
+              {formData.propertiesOwned.hoaDues && <p className="mb-1"><strong>HOA Dues:</strong> {formatCurrency(formData.propertiesOwned.hoaDues)}</p>}
+              {formData.propertiesOwned.otherHousingExpenses && <p className="mb-1"><strong>Other Housing Expenses:</strong> {formatCurrency(formData.propertiesOwned.otherHousingExpenses)}</p>}
+            </div>
           )}
         </>
       ) : (
