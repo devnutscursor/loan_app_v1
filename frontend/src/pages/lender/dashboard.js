@@ -260,15 +260,9 @@ const LenderDashboard = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         
-        // Fetch dashboard stats
+        // Fetch dashboard stats (includes recent loans)
         const statsResponse = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        // Fetch loans
-        const loansResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loans?limit=3&sort=-createdAt`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -285,10 +279,11 @@ const LenderDashboard = () => {
         );
         
         // Process responses
-        setStats(statsResponse.data.data || {});
+        const dashboardData = statsResponse.data.data || {};
+        setStats(dashboardData);
         
-        const loansData = loansResponse.data.data?.loans || [];
-        setRecentLoans(loansData);
+        // Use the recent loans from the dashboard API response
+        setRecentLoans(dashboardData.recentLoans || []);
 
         const borrowersData = borrowersResponse.data.data || [];
         setRecentBorrowers(borrowersData);
@@ -641,35 +636,40 @@ const LenderDashboard = () => {
                       <div>
                         <ProgressItem 
                           label="Pending Verifications" 
-                          value={4} 
-                          maxValue={10} 
+                          value={stats?.metrics?.pendingVerifications || 0} 
+                          maxValue={stats?.metrics?.maxPendingVerifications || 10} 
                           color="bg-yellow-500" 
                         />
                         <ProgressItem 
                           label="Document Reviews" 
-                          value={7} 
-                          maxValue={12} 
+                          value={stats?.metrics?.documentReviews || 0} 
+                          maxValue={stats?.metrics?.maxDocumentReviews || 12} 
                           color="bg-blue-500" 
                         />
                         <ProgressItem 
                           label="Loan Approvals" 
-                          value={12} 
-                          maxValue={15} 
+                          value={stats?.metrics?.loanApprovals || 0} 
+                          maxValue={stats?.metrics?.maxRecentApprovals || 15} 
                           color="bg-green-500" 
                         />
                       </div>
                       <div className="bg-gray-50 rounded-lg p-4">
                         <h4 className="text-xs font-medium text-gray-600 mb-2">Approval Rate</h4>
                         <div className="flex items-end space-x-1">
-                          <div className="text-2xl font-bold text-gray-900">78%</div>
-                          <div className="pb-1 text-xs text-green-600 font-medium">+5%</div>
+                          <div className="text-2xl font-bold text-gray-900">{stats?.metrics?.approvalRate || 0}%</div>
+                          <div className={`pb-1 text-xs ${stats?.metrics?.approvalRateTrend >= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
+                            {stats?.metrics?.approvalRateTrend >= 0 ? '+' : ''}{stats?.metrics?.approvalRateTrend || 0}%
+                          </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Based on last 30 days</p>
                         
                         <h4 className="text-xs font-medium text-gray-600 mb-2 mt-4">Avg. Processing Time</h4>
                         <div className="flex items-end space-x-1">
-                          <div className="text-2xl font-bold text-gray-900">3.2</div>
+                          <div className="text-2xl font-bold text-gray-900">{stats?.metrics?.avgProcessingTime || 0}</div>
                           <div className="pb-1 text-md font-medium text-gray-500">days</div>
+                          <div className={`pb-1 text-xs ${stats?.metrics?.processingTimeTrend <= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
+                            {stats?.metrics?.processingTimeTrend <= 0 ? '+' : ''}{Math.abs(stats?.metrics?.processingTimeTrend || 0)}%
+                          </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">From application to approval</p>
                       </div>
