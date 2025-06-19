@@ -384,7 +384,7 @@ const Documents = () => {
             </div>
 
             {/* Document Requests from Lender */}
-            {documentRequests && documentRequests.length > 0 && (
+            {documentRequests && documentRequests.filter(request => request.loanId === selectedLoanId).length > 0 && (
               <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-4 transition-all duration-300 hover:shadow-xl border border-gray-100">
                 <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-white">
                   <h3 className="text-lg leading-6 font-semibold text-gray-900 flex items-center">
@@ -400,11 +400,10 @@ const Documents = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    Document Requests
+                    Document Requests for Selected Loan
                   </h3>
                   <p className="mt-0.5 max-w-2xl text-xs text-gray-500">
-                    The following documents have been requested for your loan
-                    applications.
+                    The following documents have been requested for loan {loans.find(loan => loan._id === selectedLoanId)?.loanNumber}.
                   </p>
                 </div>
                 <div>
@@ -436,17 +435,27 @@ const Documents = () => {
                         </p>
                       </div>
                     </div>
+                  ) : documentRequests.filter(request => request.loanId === selectedLoanId).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <h3 className="text-sm font-medium text-gray-900">No document requests found</h3>
+                      <p className="text-xs text-gray-500 mt-1">There are no pending document requests for this loan.</p>
+                    </div>
                   ) : (
                     <ul className="divide-y divide-gray-100">
-                      {documentRequests.map((request) => {
-                        // Calculate if due date is soon (within 3 days)
+                      {documentRequests
+                        .filter(request => request.loanId === selectedLoanId)
+                        .map((request) => {
+                        // Calculate if due date is soon (within 24 hours)
                         const dueDate = new Date(request.dueDate);
                         const today = new Date();
                         const diffTime = dueDate - today;
                         const diffDays = Math.ceil(
                           diffTime / (1000 * 60 * 60 * 24)
                         );
-                        const isDueSoon = diffDays <= 3 && diffDays >= 0;
+                        const isDueSoon = diffDays <= 1 && diffDays >= 0;
                         const isPastDue = diffDays < 0;
 
                         return (

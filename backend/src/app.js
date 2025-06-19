@@ -26,6 +26,8 @@ const loanTypeRoutes = require('./routes/loanType.routes');
 const loanProgramRoutes = require('./routes/loanProgram.routes');
 const loanRateRoutes = require('./routes/loanRate.routes');
 const noteRoutes = require('./routes/note.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const debugRoutes = require('./routes/debug.routes');
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -210,6 +212,8 @@ app.use('/api/v1/loan-types', loanTypeRoutes);
 app.use('/api/v1/loan-programs', loanProgramRoutes);
 app.use('/api/v1/loan-rates', loanRateRoutes);
 app.use('/api/v1/notes', noteRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/debug', debugRoutes);
 
 // Root route
 app.get('/', (req, res) => {

@@ -792,6 +792,14 @@ const loanSchema = new mongoose.Schema({
       value: {
         type: Number,
         min: 0
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
+        type: Boolean,
+        default: false
       }
     }],
     stocksAndBonds: [{
@@ -802,6 +810,14 @@ const loanSchema = new mongoose.Schema({
       value: {
         type: Number,
         min: 0
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
+        type: Boolean,
+        default: false
       }
     }],
     giftsAndGrants: [{
@@ -818,6 +834,14 @@ const loanSchema = new mongoose.Schema({
         min: 0
       },
       deposited: {
+        type: Boolean,
+        default: false
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      },
+      isLiquid: {
         type: Boolean,
         default: false
       }
@@ -955,17 +979,20 @@ const loanSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique loan number
+// Generate unique loan number with format yyyymmdd + 3-digit sequence
 loanSchema.pre('save', async function(next) {
-  if (!this.isNew) return next();
+  if (!this.isNew || this.loanNumber) return next();
   
   try {
     const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
+    const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
     
-    // Find the latest loan with the same year/month prefix
-    const prefix = `LN${year}${month}`;
+    // Create prefix with full date (resets sequence daily)
+    const prefix = `${year}${month}${day}`;
+    
+    // Find the latest loan with today's date prefix
     const latestLoan = await this.constructor.findOne(
       { loanNumber: new RegExp(`^${prefix}`) },
       { loanNumber: 1 },
@@ -974,13 +1001,15 @@ loanSchema.pre('save', async function(next) {
     
     let sequenceNumber = 1;
     if (latestLoan && latestLoan.loanNumber) {
-      const currentSequence = parseInt(latestLoan.loanNumber.slice(-4), 10);
+      // Extract the 3-digit sequence from the end of the loan number
+      const currentSequence = parseInt(latestLoan.loanNumber.slice(-3), 10);
       if (!isNaN(currentSequence)) {
         sequenceNumber = currentSequence + 1;
       }
     }
     
-    this.loanNumber = `${prefix}${sequenceNumber.toString().padStart(4, '0')}`;
+    // Format as yyyymmdd + 3-digit sequence (e.g., 20250101001)
+    this.loanNumber = `${prefix}${sequenceNumber.toString().padStart(3, '0')}`;
     return next();
   } catch (error) {
     return next(error);

@@ -2,7 +2,13 @@ import React from 'react';
 import Link from 'next/link';
 
 const LoanCard = ({ loan, userRole = 'borrower' }) => {
+  // Check if loan exists and has required properties
+  if (!loan || !loan._id) {
+    return null; // Don't render anything if loan is missing or invalid
+  }
+  
   const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -11,8 +17,14 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
   };
   
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    if (!dateString) return 'N/A';
+    try {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString('en-US', options);
+    } catch (e) {
+      console.error('Invalid date:', dateString, e);
+      return 'Invalid Date';
+    }
   };
   
   const getStatusColorClass = (status) => {

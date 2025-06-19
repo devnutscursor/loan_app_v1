@@ -177,14 +177,55 @@ export const lenderService = {
     });
   },
 
-  // Approve a document - using mock function since backend endpoint is not implemented yet
-  approveDocument: (loanId, docId) => {
-    return api.put(`/documents/${docId}/approve`, { loanId });
+  // Approve a document
+  approveDocument: async (loanId, docId) => {
+    console.log(`📡 Approving document:`, { loanId, docId });
+    try {
+      // Send only the essential data to avoid payload size issues
+      const response = await api.put(`/documents/${docId}/approve`, { 
+        loanId
+      });
+      
+      // Return a standardized success response
+      return {
+        success: true,
+        message: 'Document approved successfully',
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error approving document:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to approve document',
+        error
+      };
+    }
   },
 
-  // Reject a document - using mock function since backend endpoint is not implemented yet
-  rejectDocument: (loanId, docId) => {
-    return api.put(`/documents/${docId}/reject`, { loanId });
+  // Reject a document
+  rejectDocument: async (loanId, docId, data = {}) => {
+    console.log(`📡 Rejecting document:`, { loanId, docId, ...data });
+    try {
+      // Send only the essential data to avoid payload size issues
+      const response = await api.put(`/documents/${docId}/reject`, { 
+        loanId,
+        reason: data.reason || 'Document does not meet requirements'
+      });
+      
+      // Return a standardized success response
+      return {
+        success: true,
+        message: 'Document rejected successfully',
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error rejecting document:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reject document',
+        error
+      };
+    }
   },
 };
 

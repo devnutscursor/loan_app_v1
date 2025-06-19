@@ -12,6 +12,7 @@ const Loans = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Used to force refresh
 
   useEffect(() => {
     const fetchLoans = async () => {
@@ -42,7 +43,11 @@ const Loans = () => {
             // Still use an empty array as fallback
           }
 
-          setLoans(loansArray);
+          // Filter out any null or undefined loans that might have been deleted
+          const validLoans = loansArray.filter(loan => loan && loan._id);
+          console.log(`Found ${validLoans.length} valid loans out of ${loansArray.length} total`);
+          
+          setLoans(validLoans);
         } else {
           console.warn("Unsuccessful loan fetch:", response.message);
           toast.error(response.message || "Failed to load your loans");
@@ -60,10 +65,15 @@ const Loans = () => {
     };
 
     fetchLoans();
-  }, [filter]);
+  }, [filter, refreshKey]);
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
+  };
+  
+  // Function to manually refresh loans
+  const refreshLoans = () => {
+    setRefreshKey(prevKey => prevKey + 1);
   };
 
   // Ensure loans is always an array before filtering
@@ -273,6 +283,16 @@ const Loans = () => {
                     </p>
                   </div>
                   <div className="mt-4 sm:mt-0 flex items-center">
+                    <button 
+                      onClick={refreshLoans} 
+                      disabled={loading}
+                      className="mr-3 inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Refresh
+                    </button>
                     <div className="relative mr-4">
                       <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <Filter className="h-4 w-4 text-gray-400" />
@@ -307,9 +327,18 @@ const Loans = () => {
                     <>
                       {/* Status Summary Card */}
                       <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200">
-                        <h3 className="text-sm font-medium text-blue-800 mb-1">
-                          Loan Status Summary
-                        </h3>
+                        <div className="flex justify-between items-center mb-1">
+                          <h3 className="text-sm font-medium text-blue-800">
+                            Loan Status Summary
+                          </h3>
+                          {loading ? (
+                            <span className="text-xs text-blue-600">Loading...</span>
+                          ) : (
+                            <span className="text-xs text-blue-600">
+                              Showing all {loansList.length} loans
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-blue-700">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 mr-2">
                             Total: {loansList.length}

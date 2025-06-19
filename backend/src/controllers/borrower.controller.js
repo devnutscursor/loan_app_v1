@@ -472,13 +472,20 @@ exports.getBorrowerLoans = async (req, res, next) => {
     }
     
     // Get query parameters
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 1000; // Default to a high number to get all loans
     const page = parseInt(req.query.page) || 1;
     const skip = (page - 1) * limit;
     const status = req.query.status; // Optional status filter
     
     // Build query
-    const query = { borrower: borrower._id, lender: borrower.lender };
+    const query = { 
+      borrower: borrower._id,
+      deleted: { $ne: true } // Ensure we don't return deleted loans
+    };
+    
+    if (borrower.lender) {
+      query.lender = borrower.lender;
+    }
     
     // Exclude draft loans unless specifically requested
     if (status) {
@@ -492,7 +499,7 @@ exports.getBorrowerLoans = async (req, res, next) => {
       .populate('assignedLoanOfficer', 'firstName lastName')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit); // Use the requested limit
     
     // Get total count for pagination
     const totalLoans = await Loan.countDocuments(query);
