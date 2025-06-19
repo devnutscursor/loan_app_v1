@@ -260,11 +260,39 @@ const DataLoader = ({
 
           // Get interest rate from loan rates based on selected program
           let interestRate = loanData.loanParameters?.interestRate;
-          if (!interestRate && loanRates && loanRates.length > 0) {
-            const programRate = loanRates.find(
-              (rate) => rate.programType === selectedProgramObj?.programType
-            );
-            interestRate = programRate?.rate || 5.5;
+          if (!interestRate) {
+            // If no interest rate is saved, try to find one for this program type
+            if (loanRates && loanRates.length > 0) {
+              const programRate = loanRates.find(
+                (rate) => rate.programType === selectedProgramObj?.programType
+              );
+              interestRate = programRate?.rate || 0;
+            }
+            
+            // If still no interest rate (empty or 0), use a meaningful default based on program type
+            if (!interestRate) {
+              // Default rates based on program type
+              switch (selectedProgramObj?.programType) {
+                case 'conventional':
+                  interestRate = 6.75;
+                  break;
+                case 'fha':
+                  interestRate = 6.5;
+                  break;
+                case 'va':
+                  interestRate = 6.25;
+                  break;
+                case 'usda':
+                  interestRate = 6.25;
+                  break;
+                case 'jumbo':
+                  interestRate = 7.25;
+                  break;
+                default:
+                  interestRate = 6.75; // Fallback default
+              }
+              console.log(`[DEBUG] Using default interest rate ${interestRate}% for ${selectedProgramObj?.programType} program`);
+            }
           }
 
           // If we're changing the program, prioritize the program's loan term

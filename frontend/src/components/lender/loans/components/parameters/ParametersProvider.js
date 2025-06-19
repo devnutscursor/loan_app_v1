@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   calculatePrincipalAndInterest,
-  calculateMortgageInsurance
+  calculateMortgageInsurance,
+  calculateVAFundingFee,
+  calculateUSDAFees
 } from '../../utils/LoanCalculationUtils';
 
 /**
@@ -175,7 +177,8 @@ const ParametersProvider = ({
     // After state update, explicitly calculate specific values to update qualification
     // This is the safer approach than trying to call calculateLoanValues directly
     const pAndI = calculatePrincipalAndInterest(
-      localParams.loanAmount - localParams.downPayment,
+      localParams.loanAmount,
+      (name === 'downPaymentPercent') ? numValue : localParams.downPaymentPercent,
       (name === 'interestRate') ? numValue : localParams.interestRate,
       (name === 'loanTerm') ? numValue : localParams.loanTerm
     );
@@ -218,12 +221,37 @@ const ParametersProvider = ({
           hoa = hoa / 12;
         }
         
-        // Calculate mortgage insurance based on down payment percentage
-        const mortgageInsurance = calculateMortgageInsurance(
-          localParams.loanAmount,
-          (name === 'downPaymentPercent') ? numValue : localParams.downPaymentPercent,
-          selectedProgram
-        );
+        // Calculate mortgage insurance
+        let mortgageInsurance = 0;
+        
+        if (selectedProgram) {
+          if (selectedProgram.programType === 'conventional') {
+            // For conventional loans, use the PMI tiers
+            mortgageInsurance = calculateMortgageInsurance(
+              localParams.loanAmount,
+              localParams.downPaymentPercent,
+              selectedProgram
+            );
+          } else if (selectedProgram.programType === 'fha') {
+            // For FHA loans, use the annual MIP rate
+            mortgageInsurance = (selectedProgram.mortgageInsurance / 100) * 
+              (localParams.loanAmount - localParams.downPayment) / 12;
+          } else if (selectedProgram.programType === 'usda') {
+            // For USDA loans, use the annual fee
+            const usdaFees = calculateUSDAFees(localParams.loanAmount, selectedProgram);
+            mortgageInsurance = usdaFees.annualFee;
+          } else if (selectedProgram.programType === 'va') {
+            // VA loans don't have monthly mortgage insurance
+            mortgageInsurance = 0;
+          } else {
+            // Default calculation for other loan types
+            mortgageInsurance = calculateMortgageInsurance(
+              localParams.loanAmount,
+              localParams.downPaymentPercent,
+              selectedProgram
+            );
+          }
+        }
         
         // Total monthly payment
         const monthlyPayment = pAndI + taxes + insurance + mortgageInsurance + hoa;
@@ -258,10 +286,10 @@ const ParametersProvider = ({
     if (!selectedProgram) return;
     
     // Calculate Principal and Interest
-    const loanPrincipal = localParams.loanAmount - localParams.downPayment;
     const pAndI = calculatePrincipalAndInterest(
-      loanPrincipal, 
-      localParams.interestRate, 
+      localParams.loanAmount,
+      localParams.downPaymentPercent,
+      localParams.interestRate,
       localParams.loanTerm
     );
     
@@ -293,11 +321,36 @@ const ParametersProvider = ({
     }
     
     // Calculate mortgage insurance
-    const mortgageInsurance = calculateMortgageInsurance(
-      localParams.loanAmount,
-      localParams.downPaymentPercent,
-      selectedProgram
-    );
+    let mortgageInsurance = 0;
+    
+    if (selectedProgram) {
+      if (selectedProgram.programType === 'conventional') {
+        // For conventional loans, use the PMI tiers
+        mortgageInsurance = calculateMortgageInsurance(
+          localParams.loanAmount,
+          localParams.downPaymentPercent,
+          selectedProgram
+        );
+      } else if (selectedProgram.programType === 'fha') {
+        // For FHA loans, use the annual MIP rate
+        mortgageInsurance = (selectedProgram.mortgageInsurance / 100) * 
+          (localParams.loanAmount - localParams.downPayment) / 12;
+      } else if (selectedProgram.programType === 'usda') {
+        // For USDA loans, use the annual fee
+        const usdaFees = calculateUSDAFees(localParams.loanAmount, selectedProgram);
+        mortgageInsurance = usdaFees.annualFee;
+      } else if (selectedProgram.programType === 'va') {
+        // VA loans don't have monthly mortgage insurance
+        mortgageInsurance = 0;
+      } else {
+        // Default calculation for other loan types
+        mortgageInsurance = calculateMortgageInsurance(
+          localParams.loanAmount,
+          localParams.downPaymentPercent,
+          selectedProgram
+        );
+      }
+    }
     
     // Total monthly payment
     const monthlyPayment = pAndI + taxes + insurance + mortgageInsurance + hoa;

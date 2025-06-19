@@ -42,14 +42,15 @@ export const getInterestRate = (selectedProgram, loanRates) => {
 /**
  * Calculate total income from all income sources
  * @param {Object} income - The income object
- * @returns {number} - Total income
+ * @returns {number} - Total monthly income
  */
 export const getTotalIncome = (income) => {
-  if (!income) return 0;
+  if (!income) return 5000; // Return default monthly income if no data
 
   let total = 0;
   const { baseIncome = 0, overtime = 0, commissions = 0, bonuses = 0, militaryEntitlements = 0 } = income;
 
+  // Add up all income sources (assuming yearly values)
   total += parseFloat(baseIncome || 0);
   total += parseFloat(overtime || 0);
   total += parseFloat(commissions || 0);
@@ -63,7 +64,8 @@ export const getTotalIncome = (income) => {
     });
   }
 
-  return total;
+  // Income values are yearly, so divide by 12 to get monthly income for DTI calculation
+  return total / 12;
 };
 
 /**
@@ -128,6 +130,52 @@ export const formatCurrency = (amount) => {
 };
 
 /**
+ * Calculate VA funding fee based on program settings
+ * @param {number} loanAmount - The loan amount
+ * @param {number} downPaymentPercent - Down payment percentage
+ * @param {Object} selectedProgram - Selected loan program
+ * @returns {number} - Total VA funding fee
+ */
+export const calculateVAFundingFee = (loanAmount, downPaymentPercent, selectedProgram) => {
+  if (!selectedProgram || selectedProgram.programType !== 'va') {
+    return 0;
+  }
+  
+  // Get the funding fee percentage from the program
+  const fundingFeePercent = selectedProgram.fundingFee || 2.3;
+  
+  // Calculate funding fee amount
+  return (fundingFeePercent / 100) * loanAmount;
+};
+
+/**
+ * Calculate USDA fees based on program settings
+ * @param {number} loanAmount - The loan amount
+ * @param {Object} selectedProgram - Selected loan program
+ * @returns {Object} - Object containing upfront fee and annual fee
+ */
+export const calculateUSDAFees = (loanAmount, selectedProgram) => {
+  if (!selectedProgram || selectedProgram.programType !== 'usda') {
+    return { upfrontFee: 0, annualFee: 0 };
+  }
+  
+  // Get the upfront guarantee fee percentage from the program
+  const fundingFeePercent = selectedProgram.fundingFee || 1.0;
+  
+  // Get the annual fee percentage from the program
+  const annualFeePercent = selectedProgram.mortgageInsurance || 0.4;
+  
+  // Calculate upfront guarantee fee
+  const upfrontFee = (fundingFeePercent / 100) * loanAmount;
+  
+  // Calculate annual fee (monthly portion)
+  const annualFee = (annualFeePercent / 100 * loanAmount) / 12;
+  
+  return { upfrontFee, annualFee };
+};
+
+
+/**
  * Calculate mortgage insurance based on LTV ratio
  * @param {number} loanAmount - The loan amount
  * @param {number} downPaymentPercent - Down payment percentage
@@ -156,34 +204,45 @@ export const calculateMortgageInsurance = (loanAmount, downPaymentPercent, selec
 };
 
 /**
- * Calculate principal and interest monthly payment
- * @param {number} loanAmount - The principal loan amount
- * @param {number} interestRate - Annual interest rate as a percentage
- * @param {number} term - Loan term in years
- * @returns {number} - Monthly principal and interest payment
+ * Calculate principal and interest payment
+ * @param {number} loanAmount - Total loan amount
+ * @param {number} downPaymentPercent - Down payment percentage
+ * @param {number} interestRate - Annual interest rate
+ * @param {number} termYears - Loan term in years
+ * @returns {number} Monthly principal and interest payment
  */
-export const calculatePrincipalAndInterest = (loanAmount, interestRate, term) => {
-  // Convert annual interest rate to monthly decimal rate
-  const monthlyRate = (interestRate / 100) / 12;
+export const calculatePrincipalAndInterest = (loanAmount, downPaymentPercent, interestRate, termYears) => {
+  if (!loanAmount) return 0;
   
-  // Convert years to months
-  const months = term * 12;
+  // Ensure we have valid values - use sensible defaults if missing
+  const principal = loanAmount * (1 - (downPaymentPercent / 100));
+  const safeRate = interestRate || 6.75; // Use default rate if none provided
+  const safeTerm = termYears || 30; // Use default term if none provided
   
-  // Special case: if interest rate is 0
-  if (interestRate === 0 || monthlyRate === 0) {
-    return loanAmount / months;
+  // Monthly interest rate
+  const monthlyRate = safeRate / 100 / 12;
+  
+  // Total number of payments
+  const payments = safeTerm * 12;
+  
+  // Return 0 if rate is 0 (avoid division by zero)
+  if (monthlyRate === 0) return principal / payments;
+  
+  try {
+    // Calculate payment using formula: P = L[c(1 + c)^n]/[(1 + c)^n - 1]
+    const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, payments)) / (Math.pow(1 + monthlyRate, payments) - 1);
+    
+    // Validate the calculation result
+    if (isNaN(payment) || !isFinite(payment)) {
+      console.error('[ERROR] Invalid P&I calculation result', { 
+        principal, monthlyRate, payments, result: payment 
+      });
+      return principal / payments; // Fallback to simple calculation
+    }
+    
+    return payment;
+  } catch (error) {
+    console.error('[ERROR] Exception in P&I calculation', error);
+    return principal / payments; // Fallback to simple calculation
   }
-  
-  // Calculate monthly payment using the mortgage formula
-  // M = P[r(1+r)^n]/[(1+r)^n-1]
-  // where M = monthly payment, P = principal, r = monthly interest rate, n = number of payments
-  
-  const numerator = monthlyRate * Math.pow(1 + monthlyRate, months);
-  const denominator = Math.pow(1 + monthlyRate, months) - 1;
-  
-  if (denominator === 0) {
-    return loanAmount / months;
-  }
-  
-  return loanAmount * (numerator / denominator);
 };

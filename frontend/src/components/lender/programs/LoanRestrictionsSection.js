@@ -17,6 +17,16 @@ const LoanRestrictionsSection = ({ formData, onChange, isLoading }) => {
     });
   };
 
+  // Handle simple numeric value changes
+  const handleNumberChange = (e) => {
+    const { name, value } = e.target;
+    if (value === '') {
+      onChange(name, '');
+    } else {
+      onChange(name, Number(value));
+    }
+  };
+
   return (
     <div className="border border-gray-300 rounded-md p-4 mb-6 bg-white">
       <button

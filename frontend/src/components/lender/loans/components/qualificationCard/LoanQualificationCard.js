@@ -84,6 +84,36 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     }
   }, [loan?._id, selectedProgram]);
 
+  // Add a new effect that will fetch fresh data after initial load
+  useEffect(() => {
+    // Only run this effect once after initial calculation is done and we're no longer loading
+    if (!isLoading && loan?._id && selectedProgram) {
+      const fetchFreshData = async () => {
+        console.log("[DEBUG] Fetching fresh loan data to ensure DTI is correct");
+        try {
+          const response = await fetchAPI(`/loans/${loan._id}`);
+          
+          if (response.status === "success" && response.data) {
+            const updatedLoan = {
+              ...loan,
+              loanParameters: response.data.loanParameters || {},
+              loanCalculations: response.data.loanCalculations || {},
+            };
+            
+            // Recalculate with fresh data
+            calculateLoanValues(updatedLoan);
+            
+            if (onUpdate) onUpdate(updatedLoan);
+          }
+        } catch (error) {
+          console.error("Error fetching fresh loan data:", error);
+        }
+      };
+      
+      fetchFreshData();
+    }
+  }, [isLoading]);
+
   // Set up polling for real-time updates
   useEffect(() => {
     if (!enablePolling) {
@@ -160,9 +190,55 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       const downPaymentPercent = hasStoredParams
         ? parseFloat(currentLoan.loanParameters.downPaymentPercent)
         : 0;
-      const interestRate = hasStoredParams
-        ? parseFloat(currentLoan.loanParameters.interestRate)
+      
+      // Get interest rate with a fallback to program-specific default
+      let interestRate = hasStoredParams
+        ? parseFloat(currentLoan.loanParameters.interestRate || 0)
         : 0;
+      
+      // If interest rate is missing, use program-specific default
+      if (!interestRate || interestRate === 0) {
+        // Find the selected program
+        const selectedProg = loanPrograms.find(
+          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+        );
+        
+        // Find matching loan rate
+        if (selectedProg) {
+          const programRate = loanRates.find(
+            (rate) => rate.programType === selectedProg.programType
+          );
+          
+          // Use the rate or program-specific default
+          if (programRate && programRate.rate) {
+            interestRate = programRate.rate;
+          } else {
+            // Default rates based on program type
+            switch (selectedProg.programType) {
+              case 'conventional':
+                interestRate = 6.75;
+                break;
+              case 'fha':
+                interestRate = 6.5;
+                break;
+              case 'va':
+                interestRate = 6.25;
+                break;
+              case 'usda':
+                interestRate = 6.25;
+                break;
+              case 'jumbo':
+                interestRate = 7.25;
+                break;
+              default:
+                interestRate = 6.75;
+            }
+            console.log(`[DEBUG] Using default interest rate ${interestRate}% for calculation`);
+          }
+        } else {
+          interestRate = 6.75; // General fallback
+        }
+      }
 
       // Update calculations with stored values
       setCalculations({

@@ -5,6 +5,8 @@ const Borrower = require('../models/borrower.model');
 const Company = require('../models/company.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
+const mongoose = require('mongoose');
+const { createDefaultLoanPrograms } = require('./auth.controller');
 
 /**
  * Get public lender profile by ID (no authentication required)
@@ -72,6 +74,9 @@ exports.createLender = async (req, res, next) => {
     if (req.user.role !== 'lender' && req.user.role !== 'admin') {
       await User.findByIdAndUpdate(req.user._id, { role: 'lender' });
     }
+    
+    // Create default loan programs for the new lender
+    await createDefaultLoanPrograms(req.user._id, lender._id);
     
     logger.info(`Lender profile created for user ${req.user._id}`);
     

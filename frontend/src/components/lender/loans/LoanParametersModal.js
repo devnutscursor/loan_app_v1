@@ -133,12 +133,12 @@ const LoanParametersModal = ({
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl text-gray-900">
-  <span className="font-bold">Loan Configuration</span> 
-  <span className="text-base font-normal text-gray-600 ml-2">
-    (Used to establish buyer qualification and pre-approval letters)
-  </span>
-</h2>
-<button
+              <span className="font-bold">Loan Configuration</span>
+              <span className="text-base font-normal text-gray-600 ml-2">
+                (Used to establish buyer qualification and pre-approval letters)
+              </span>
+            </h2>
+            <button
               onClick={onClose}
               className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
             >

@@ -72,6 +72,53 @@ export const calculateMortgageInsurance = (loanAmount, downPaymentPercent, pmiRa
 };
 
 /**
+ * Calculate VA funding fee
+ * @param {number} loanAmount - Loan amount
+ * @param {number} downPaymentPercent - Down payment percentage
+ * @param {Object} selectedProgram - Selected loan program
+ * @returns {number} VA funding fee amount
+ */
+export const calculateVAFundingFee = (loanAmount, downPaymentPercent, selectedProgram) => {
+  if (!selectedProgram || selectedProgram.programType !== 'va' || !loanAmount) {
+    return 0;
+  }
+  
+  // Get funding fee percentage from the program
+  const fundingFeePercent = selectedProgram.fundingFee || 2.3;
+  
+  // Calculate the funding fee
+  const fundingFee = (fundingFeePercent / 100) * loanAmount;
+  
+  return fundingFee;
+};
+
+/**
+ * Calculate USDA fees
+ * @param {number} loanAmount - Loan amount
+ * @param {Object} selectedProgram - Selected loan program
+ * @returns {Object} USDA fee details including upfront fee and annual fee
+ */
+export const calculateUSDAFees = (loanAmount, selectedProgram) => {
+  if (!selectedProgram || selectedProgram.programType !== 'usda' || !loanAmount) {
+    return { upfrontFee: 0, annualFee: 0 };
+  }
+  
+  // Get funding fee percentage from the program (upfront guarantee fee)
+  const fundingFeePercent = selectedProgram.fundingFee || 1.0;
+  
+  // Get annual mortgage insurance percentage
+  const annualFeePercent = selectedProgram.mortgageInsurance || 0.4;
+  
+  // Calculate the upfront guarantee fee
+  const upfrontFee = (fundingFeePercent / 100) * loanAmount;
+  
+  // Calculate the annual fee (monthly portion)
+  const annualFee = (annualFeePercent / 100 * loanAmount) / 12;
+  
+  return { upfrontFee, annualFee };
+};
+
+/**
  * Extract total income from loan data
  * @param {Object} incomeData - Income data from loan
  * @returns {number} Total monthly income
@@ -139,12 +186,35 @@ export const calculateDefaultInsurance = (propertyValue) => {
  * @returns {Object} Calculated values for qualification
  */
 export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) => {
+  // Get program-specific default interest rate
+  let defaultInterestRate = 6.75; // General default
+  
+  if (selectedProgram) {
+    // Get rate based on program type
+    switch(selectedProgram.programType) {
+      case 'conventional':
+        defaultInterestRate = 6.75;
+        break;
+      case 'fha':
+        defaultInterestRate = 6.5;
+        break;
+      case 'va':
+        defaultInterestRate = 6.25;
+        break;
+      case 'usda':
+        defaultInterestRate = 6.25;
+        break;
+      case 'jumbo':
+        defaultInterestRate = 7.25;
+        break;
+    }
+  }
+  
   // Use default values for new loans
-  const defaultInterestRate = 7.0; // Default interest rate
-  const defaultLoanAmount = loan?.loanDetails?.purchasePrice || 300000; // Default loan amount
+  const defaultLoanAmount = loan?.loanDetails?.purchasePrice || 300000;
   const defaultDownPaymentPercent = selectedProgram?.restrictions?.downPaymentRestriction?.min || 3.5;
   const defaultDownPayment = defaultLoanAmount * (defaultDownPaymentPercent / 100);
-  const defaultLoanTerm = 30; // Default loan term in years
+  const defaultLoanTerm = selectedProgram?.loanTerm || 30;
   
   // Calculate principal and interest
   const principalAndInterest = calculatePrincipalAndInterest(
@@ -159,18 +229,52 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   const insurance = calculateDefaultInsurance(defaultLoanAmount);
   const hoaFees = loan?.property?.hoaFees || 0;
   
-  // Calculate mortgage insurance if applicable
-  const mortgageInsurance = calculateMortgageInsurance(
-    defaultLoanAmount,
-    defaultDownPaymentPercent,
-    selectedProgram?.privateMortgageInsurance
-  );
+  // Calculate appropriate insurance based on loan program type
+  let mortgageInsurance = 0;
+  let upfrontFee = 0;
+  
+  if (selectedProgram) {
+    if (selectedProgram.programType === 'conventional') {
+      // Calculate PMI for conventional loans
+      mortgageInsurance = calculateMortgageInsurance(
+        defaultLoanAmount,
+        defaultDownPaymentPercent,
+        selectedProgram?.privateMortgageInsurance
+      );
+    } else if (selectedProgram.programType === 'va') {
+      // Calculate VA funding fee (one-time fee)
+      upfrontFee = calculateVAFundingFee(
+        defaultLoanAmount,
+        defaultDownPaymentPercent,
+        selectedProgram
+      );
+      // VA loans don't have monthly mortgage insurance
+      mortgageInsurance = 0;
+    } else if (selectedProgram.programType === 'fha') {
+      // FHA loans have monthly mortgage insurance premium
+      mortgageInsurance = (selectedProgram.mortgageInsurance / 100 * defaultLoanAmount) / 12;
+      // Plus upfront MIP (not included in monthly payment)
+      upfrontFee = (selectedProgram.upfrontMortgageInsurance / 100) * defaultLoanAmount;
+    } else if (selectedProgram.programType === 'usda') {
+      // USDA loans have upfront fee and annual fee
+      const usdaFees = calculateUSDAFees(defaultLoanAmount, selectedProgram);
+      upfrontFee = usdaFees.upfrontFee;
+      mortgageInsurance = usdaFees.annualFee;
+    } else if (selectedProgram.programType === 'jumbo') {
+      // Jumbo loans don't have mortgage insurance
+      mortgageInsurance = 0;
+    }
+  } else {
+    // Default to conventional PMI if no program selected
+    mortgageInsurance = (defaultLoanAmount > 0 && defaultDownPaymentPercent < 20) ? 
+      (0.5 / 100 * defaultLoanAmount) / 12 : 0;
+  }
   
   // Calculate monthly payment
   const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoaFees;
   
   // Calculate DTI
-  const monthlyIncome = getTotalIncome(loan?.income) / 12;
+  const monthlyIncome = getTotalIncome(loan?.income);
   const monthlyDebts = getTotalDebts(loan?.debts);
   const dti = monthlyIncome > 0 ? ((monthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
   
@@ -193,5 +297,6 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
     programName: selectedProgram?.displayName || 'Conventional',
     interestRate: defaultInterestRate,
     loanTerm: selectedProgram?.loanTerm || 30,
+    upfrontFee: upfrontFee || 0, // Add upfront fee to returned values
   };
 };

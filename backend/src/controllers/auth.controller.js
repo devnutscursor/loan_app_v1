@@ -39,9 +39,12 @@ exports.register = async (req, res, next) => {
 
     // Create lender profile
     if (user.role === 'lender') {
-      await Lender.create({
+      const lender = await Lender.create({
         user: user._id
       });
+      
+      // Create default loan programs for the new lender
+      await exports.createDefaultLoanPrograms(user._id, lender._id);
     }
 
     // Generate tokens
@@ -467,5 +470,248 @@ exports.logout = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * Create default loan programs for a new lender
+ * @param {ObjectId} userId - The user ID of the lender
+ * @param {ObjectId} lenderId - The lender ID
+ */
+exports.createDefaultLoanPrograms = async (userId, lenderId) => {
+  const LoanProgram = mongoose.model('LoanProgram');
+  
+  try {
+    // 1. Conventional Loan Program
+    await LoanProgram.create({
+      programName: 'Conventional',
+      displayName: 'Conventional Mortgage',
+      programType: 'conventional',
+      isAvailableToBorrower: true,
+      loanHelpText: 'Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 45
+        },
+        downPaymentRestriction: {
+          min: 3,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: 726200 // 2023 conforming loan limit
+        }
+      },
+      privateMortgageInsurance: [
+        { minLTV: 80, maxLTV: 85, rate: 0.3 },
+        { minLTV: 85, maxLTV: 90, rate: 0.5 },
+        { minLTV: 90, maxLTV: 95, rate: 0.7 },
+        { minLTV: 95, maxLTV: 97, rate: 0.85 }
+      ],
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0,
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 2. FHA Loan Program
+    await LoanProgram.create({
+      programName: 'FHA',
+      displayName: 'FHA Mortgage',
+      programType: 'fha',
+      isAvailableToBorrower: true,
+      loanHelpText: 'FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 43
+        },
+        downPaymentRestriction: {
+          min: 3.5,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: 726200 // 2023 FHA limit for most areas
+        }
+      },
+      upfrontMortgageInsurance: 1.75, // FHA upfront MIP
+      mortgageInsurance: 0.55, // FHA annual MIP (varies based on loan terms and LTV)
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 3. VA Loan Program
+    await LoanProgram.create({
+      programName: 'VA',
+      displayName: 'VA Home Loan',
+      programType: 'va',
+      isAvailableToBorrower: true,
+      loanHelpText: 'VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 41
+        },
+        downPaymentRestriction: {
+          min: 0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: null // No VA loan limit for those with full entitlement
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0, // VA loans don't have monthly mortgage insurance
+      fundingFee: 2.15, // VA funding fee for first-time use with no down payment
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 4. USDA Loan Program
+    await LoanProgram.create({
+      programName: 'USDA',
+      displayName: 'USDA Rural Development',
+      programType: 'usda',
+      isAvailableToBorrower: true,
+      loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 41
+        },
+        downPaymentRestriction: {
+          min: 0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: null
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0.4, // USDA annual fee
+      fundingFee: 1.0, // USDA upfront guarantee fee
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 5. Jumbo Loan Program
+    await LoanProgram.create({
+      programName: 'Jumbo',
+      displayName: 'Jumbo Mortgage',
+      programType: 'jumbo',
+      isAvailableToBorrower: true,
+      loanHelpText: 'A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000.',
+      rateAdjustment: 0.25,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 40
+        },
+        downPaymentRestriction: {
+          min: 10.0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: 726000,
+          max: 2000000
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0,
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 1000,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    logger.info(`Created default loan programs for lender ID: ${lenderId}`);
+  } catch (error) {
+    logger.error(`Error creating default loan programs: ${error.message}`);
+    // We don't want to fail the user registration if loan program creation fails
+    // This is a background task that can be retried later
   }
 };

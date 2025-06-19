@@ -76,7 +76,7 @@ export default function EditLoanProgram() {
     upfrontMortgageInsurance: 0,
     mortgageInsurance: 0,
     fmi: 0,
-    fundingFee: 0,
+    fundingFee: 2.3, // Default funding fee for VA loans (will be overridden for USDA)
     // Updated fee structure with toggle support
     originationFees: {
       amount: 0,
@@ -223,7 +223,45 @@ export default function EditLoanProgram() {
 
   // Main handler for simple field changes
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Special handling for program type to set appropriate defaults
+    if (field === 'programType') {
+      const updatedFormData = { ...formData, [field]: value };
+      
+      // Set program-specific default values
+      if (value === 'usda') {
+        updatedFormData.fundingFee = 1.0; // USDA upfront guarantee fee
+        updatedFormData.mortgageInsurance = 0.4; // USDA annual fee
+        updatedFormData.restrictions.downPaymentRestriction.min = 0; // USDA allows 0% down
+        updatedFormData.loanHelpText = "A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas."; // Default help text
+      } else if (value === 'va') {
+        updatedFormData.fundingFee = 2.3; // VA funding fee
+        updatedFormData.mortgageInsurance = 0; // VA has no monthly MI
+        updatedFormData.restrictions.downPaymentRestriction.min = 0; // VA allows 0% down
+        updatedFormData.loanHelpText = "VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses."; // Default help text
+      } else if (value === 'fha') {
+        updatedFormData.upfrontMortgageInsurance = 1.75; // FHA upfront MIP
+        updatedFormData.mortgageInsurance = 0.85; // FHA annual MIP
+        updatedFormData.restrictions.downPaymentRestriction.min = 3.5; // FHA minimum down payment
+        updatedFormData.loanHelpText = "FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments."; // Default help text
+      } else if (value === 'jumbo') {
+        updatedFormData.restrictions.downPaymentRestriction.min = 10.0; // Jumbo minimum down payment
+        updatedFormData.restrictions.dtiRestriction.max = 40; // Jumbo DTI restriction
+        updatedFormData.restrictions.loanAmountRestriction.min = 726000; // Jumbo minimum loan amount
+        updatedFormData.restrictions.loanAmountRestriction.max = 2000000; // Jumbo maximum loan amount
+        updatedFormData.loanHelpText = "A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000."; // Default help text
+      } else if (value === 'conventional') {
+        updatedFormData.fmi = 0; // Reset FMI for conventional
+        updatedFormData.upfrontMortgageInsurance = 0; // No upfront MI for conventional
+        updatedFormData.mortgageInsurance = 0; // PMI is calculated based on LTV tiers
+        updatedFormData.fundingFee = 0; // No funding fee for conventional
+        updatedFormData.restrictions.downPaymentRestriction.min = 3; // Conventional minimum down payment
+        updatedFormData.loanHelpText = "Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment."; // Default help text
+      }
+      
+      setFormData(updatedFormData);
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   // Handle nested object changes for component sections

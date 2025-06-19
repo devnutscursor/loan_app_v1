@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import MainLayout from '@/components/layout/MainLayout';
 import { LoanProgramService } from '@/services';
-import { Plus, Edit, Trash2, ArrowLeft, Search, X, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Search, X, DollarSign, XCircle } from 'lucide-react';
 // ... existing imports ...
 
 export default function LoanPrograms() {
