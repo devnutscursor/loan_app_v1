@@ -46,7 +46,7 @@ const hasDocumentCondition = (
       title.toLowerCase().includes(cleanTitle) ||
       cleanTitle.includes(title.toLowerCase());
 
-    // If we have specific documentType field in condition, check that too
+    // If we have a specific documentType field in condition, check that too
     const typeMatches = condition.documentType
       ? condition.documentType.toLowerCase() === documentType.toLowerCase()
       : false;
@@ -102,14 +102,43 @@ const LenderDocumentRequirements = ({
 
   // Process documents and map them to requirements
   const processDocuments = (docsList) => {
-    // console.log('⚠️ Process Documents called with:', docsList?.length, 'documents');
-    console.log("📚 Current loan conditions:", loanConditions);
+    console.log('Process Documents called with:', docsList?.length, 'documents');
+    console.log("Current loan conditions:", loanConditions);
+    console.log("Current requirements:", requirements);
+
+    // Create a map of existing requirement statuses to preserve them
+    const existingStatusMap = {};
+    requirements.forEach(req => {
+      if (req.documentId) {
+        existingStatusMap[req.documentId] = {
+          status: req.status,
+          isSubmitted: req.isSubmitted
+        };
+      }
+      // Also map by matchedDocument._id if available
+      if (req.matchedDocument?._id) {
+        existingStatusMap[req.matchedDocument._id] = {
+          status: req.status,
+          isSubmitted: req.isSubmitted
+        };
+      }
+      // Also map by req.id as fallback
+      if (req.id) {
+        existingStatusMap[req.id] = {
+          status: req.status,
+          isSubmitted: req.isSubmitted
+        };
+      }
+    });
+    
+    console.log("Existing status map:", existingStatusMap);
 
     if (!loanId || !docsList || !docsList.length) {
-      // console.log('⚠️ No documents found, setting default requirements');
+      console.log('No documents found, setting default requirements but preserving existing statuses');
 
-      // Set default requirements without document mappings
+      // Set default requirements without document mappings, but preserve statuses
       const updatedReqs = standardDocumentRequirements.map((req, index) => {
+        const reqId = `req-${index}`;
         // Check if there's a pending document condition for this requirement
         const hasCondition = hasDocumentCondition(
           loanConditions,
@@ -117,17 +146,22 @@ const LenderDocumentRequirements = ({
           req.documentType,
           req.title
         );
+        
+        // Check if we have an existing status for this requirement
+        const existingStatus = existingStatusMap[reqId];
 
         return {
           ...req,
-          id: `req-${index}`,
-          status: hasCondition ? "Needs Correction" : "Not Submitted",
-          isSubmitted: false,
+          id: reqId,
+          // Preserve existing status if available, otherwise set default
+          status: existingStatus ? existingStatus.status : 
+                 (hasCondition ? "Needs Correction" : "Not Submitted"),
+          isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
           requestedUpdate: hasCondition, // Set based on condition existence
         };
       });
 
-      console.log("Requirements with loan condition updates:", updatedReqs);
+      console.log("Requirements with preserved statuses:", updatedReqs);
       setRequirements(updatedReqs);
       setLoading(false);
       return;
@@ -142,16 +176,21 @@ const LenderDocumentRequirements = ({
       standardDocumentRequirements,
       docsList
     );
-    // console.log('Document assignments:', documentAssignments);
+    console.log('Document assignments:', documentAssignments);
 
     const updatedReqs = standardDocumentRequirements.map((req) => {
       const assignedDoc = documentAssignments[req.id];
 
       if (assignedDoc) {
+        // Check if we have an existing status for this document
+        const existingStatus = existingStatusMap[assignedDoc._id];
+        
         return {
           ...req,
           isSubmitted: true,
-          status: assignedDoc.status || "Pending Review",
+          // Use existing status if available, otherwise use the assigned doc status or default
+          status: existingStatus ? existingStatus.status : 
+                 (assignedDoc.status || "Pending Review"),
           documentId: assignedDoc._id,
           url: assignedDoc.fileUrl || assignedDoc.url,
           uploadDate: assignedDoc.createdAt || assignedDoc.uploadedAt,
@@ -160,10 +199,13 @@ const LenderDocumentRequirements = ({
         };
       }
 
+      // For unassigned documents, check if there's an existing status by req.id
+      const existingStatus = existingStatusMap[req.id];
+      
       return {
         ...req,
-        isSubmitted: false,
-        status: "Not Submitted",
+        isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
+        status: existingStatus ? existingStatus.status : "Not Submitted",
         matchedDocument: null,
       };
     });
@@ -537,22 +579,49 @@ const LenderDocumentRequirements = ({
     }
 
     setProcessingDocId(documentId);
+    
+    // Update UI state immediately, but save previous state in case we need to revert
+    const previousState = requirements.find(req => 
+      req.documentId === documentId || 
+      req.matchedDocument?._id === documentId || 
+      req.id === documentId
+    )?.status || "Pending Review";
+    
+    // Apply the new status in the UI
+    const updateSuccess = updateDocumentStatus(documentId, "Approved");
+    
+    if (!updateSuccess) {
+      console.log("Could not update document UI state immediately, will try to update after API call");
+    }
 
     try {
+      console.log("Calling API to approve document:", documentId);
       const response = await lenderService.approveDocument(loanId, documentId);
-      if (response.success) {
+      console.log("API response:", response);
+      
+      if (response && response.success) {
         toast.success("Document approved successfully");
-
-        // Refresh documents list
-        if (refreshDocuments) {
-          refreshDocuments();
-        }
+        
+        // Ensure UI is updated even if the initial update failed
+        updateDocumentStatus(documentId, "Approved");
+        
+        // Trigger a refresh of documents list to ensure UI is in sync with backend
+        // But don't force a reload of the full page
+        setRefreshCounter(prev => prev + 1);
       } else {
-        toast.error(response.message || "Failed to approve document");
+        // Show error message
+        toast.error(response?.message || "Failed to approve document");
+        
+        // Revert UI to previous state
+        console.log(`Reverting status back to: ${previousState}`);
+        updateDocumentStatus(documentId, previousState);
       }
     } catch (error) {
       console.error("Error approving document:", error);
       toast.error("An error occurred while approving the document");
+      
+      // Revert UI to previous state
+      updateDocumentStatus(documentId, previousState);
     } finally {
       setProcessingDocId("");
     }
@@ -566,24 +635,51 @@ const LenderDocumentRequirements = ({
     }
 
     setProcessingDocId(documentId);
+    
+    // Update UI state immediately, but save previous state in case we need to revert
+    const previousState = requirements.find(req => 
+      req.documentId === documentId || 
+      req.matchedDocument?._id === documentId || 
+      req.id === documentId
+    )?.status || "Pending Review";
+    
+    // Apply the new status in the UI
+    const updateSuccess = updateDocumentStatus(documentId, "Rejected");
+    
+    if (!updateSuccess) {
+      console.log("Could not update document UI state immediately, will try to update after API call");
+    }
 
     try {
+      console.log("Calling API to reject document:", documentId);
       const response = await lenderService.rejectDocument(loanId, documentId, {
-        reason,
+        reason: reason || "Document does not meet requirements",
       });
-      if (response.success) {
+      console.log("API response:", response);
+      
+      if (response && response.success) {
         toast.success("Document rejected successfully");
-
-        // Refresh documents list
-        if (refreshDocuments) {
-          refreshDocuments();
-        }
+        
+        // Ensure UI is updated even if the initial update failed
+        updateDocumentStatus(documentId, "Rejected");
+        
+        // Trigger a refresh of documents list to ensure UI is in sync with backend
+        // But don't force a reload of the full page
+        setRefreshCounter(prev => prev + 1);
       } else {
-        toast.error(response.message || "Failed to reject document");
+        // Show error message
+        toast.error(response?.message || "Failed to reject document");
+        
+        // Revert UI to previous state
+        console.log(`Reverting status back to: ${previousState}`);
+        updateDocumentStatus(documentId, previousState);
       }
     } catch (error) {
       console.error("Error rejecting document:", error);
       toast.error("An error occurred while rejecting the document");
+      
+      // Revert UI to previous state
+      updateDocumentStatus(documentId, previousState);
     } finally {
       setProcessingDocId("");
     }
@@ -713,17 +809,11 @@ const LenderDocumentRequirements = ({
         toast.success(`Document ${isUpdate ? "update " : ""}requested successfully. An email notification has been sent to the borrower.`);
 
         // Manually update the UI to show this document as having an update requested
-        if (isUpdate) {
-          markDocumentForUpdate(category, documentType);
-        }
+        // Always call markDocumentForUpdate, not just for updates
+        markDocumentForUpdate(category, documentType);
 
         // Close modal
         closeRequestModal();
-
-        // Refresh documents list
-        if (refreshDocuments) {
-          refreshDocuments();
-        }
       } else {
         toast.error(
           response?.data?.message ||
@@ -740,8 +830,67 @@ const LenderDocumentRequirements = ({
     }
   };
 
+  // Helper function to update document status in the UI immediately
+  const updateDocumentStatus = (documentId, newStatus) => {
+    console.log(`Updating document ${documentId} status to ${newStatus}`);
+    
+    // Create a deep copy of the requirements to avoid direct state mutation
+    const reqsCopy = JSON.parse(JSON.stringify(requirements));
+    
+    // Log all document IDs for debugging
+    console.log("All document IDs in requirements:", reqsCopy.map(req => ({
+      documentId: req.documentId,
+      matchedDocId: req.matchedDocument?._id,
+      id: req.id
+    })));
+    
+    // Try to find the document in the requirements array
+    const reqIndex = reqsCopy.findIndex(req => {
+      // Check for multiple possible ID field names
+      const matchesDocumentId = req.documentId === documentId;
+      const matchesMatchedDocId = req.matchedDocument?._id === documentId;
+      const matchesReqId = req.id === documentId;
+      
+      console.log(`Document ID check for ${req.documentType || req.title}:`, {
+        searchingFor: documentId,
+        documentId: req.documentId,
+        matchedDocId: req.matchedDocument?._id,
+        reqId: req.id,
+        matches: matchesDocumentId || matchesMatchedDocId || matchesReqId
+      });
+      
+      return matchesDocumentId || matchesMatchedDocId || matchesReqId;
+    });
+    
+    if (reqIndex >= 0) {
+      console.log(`Found document at index ${reqIndex}:`, reqsCopy[reqIndex]);
+      
+      // Create a new object with updated properties to ensure React detects the change
+      reqsCopy[reqIndex] = {
+        ...reqsCopy[reqIndex],
+        status: newStatus,
+        isSubmitted: true // Ensure it's marked as submitted
+      };
+      
+      console.log(`Updated document:`, reqsCopy[reqIndex]);
+      
+      // Create a new array to ensure React detects the change
+      setRequirements([...reqsCopy]);
+      return true;
+    }
+    
+    console.log(`⚠️ Document not found in requirements with ID: ${documentId}`);
+    return false;
+  };
+
   useEffect(() => {
     console.log("requirements are :", requirements);
+  }, [requirements]);
+  
+  // This effect ensures that any document status changes trigger a re-render of the component
+  useEffect(() => {
+    // This is an empty effect that just ensures the component re-renders when requirements change
+    // The dependency on requirements ensures this happens whenever a document status changes
   }, [requirements]);
 
   return (

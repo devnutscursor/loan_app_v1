@@ -13,9 +13,14 @@ const DocumentRequirementCard = ({
   onSelectToggle = null,
 }) => {
   useEffect(() => {
-    console.log("DocumentRequirementCard mounted");
+    console.log("DocumentRequirementCard updated");
     console.log("DocumentRequirementCard", req);
-  }, []);
+    
+    // Force re-render when status changes
+    if (req.status) {
+      console.log(`Document status: ${req.status}`);
+    }
+  }, [req, req.status, processingDocId]); // Re-run when req, req.status, or processingDocId changes
 
   // State to track when the document viewer should be shown
   const [viewingDocument, setViewingDocument] = useState(null);
@@ -397,45 +402,14 @@ const DocumentRequirementCard = ({
           ) : (
             /* Request document button - only for not submitted documents */
             <div className="mt-2">
-              <button
-                type="button"
-                onClick={() =>
-                  openRequestModal(
-                    req.documentType,
-                    req.category,
-                    req.title,
-                    false
-                  )
-                }
-                disabled={
-                  processingDocId === `${req.category}-${req.documentType}`
-                }
-                className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                {processingDocId === `${req.category}-${req.documentType}` ? (
+              {req.status === "Needs Correction" || req.requestedUpdate ? (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center px-2.5 py-1 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-500 bg-gray-100 cursor-not-allowed"
+                >
                   <svg
-                    className="animate-spin h-3.5 w-3.5 mr-1 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-3.5 w-3.5 mr-1"
+                    className="h-3.5 w-3.5 mr-1 text-gray-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -444,12 +418,66 @@ const DocumentRequirementCard = ({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="2"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                )}
-                Request Document
-              </button>
+                  Document Requested
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openRequestModal(
+                      req.documentType,
+                      req.category,
+                      req.title,
+                      false
+                    )
+                  }
+                  disabled={
+                    processingDocId === `${req.category}-${req.documentType}`
+                  }
+                  className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {processingDocId === `${req.category}-${req.documentType}` ? (
+                    <svg
+                      className="animate-spin h-3.5 w-3.5 mr-1 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  ) : (
+                    <svg
+                      className="h-3.5 w-3.5 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                  )}
+                  Request Document
+                </button>
+              )}
             </div>
           )}
         </div>
