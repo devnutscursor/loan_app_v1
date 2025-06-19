@@ -16,11 +16,23 @@ import theme from '../../../styles/theme';
  * @returns {JSX.Element} Assets form component
  */
 const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
-  // Initialize local state with proper structure
+  // Ensure each asset has a valid, unique ID
+  const ensureUniqueIds = (items, prefix) => {
+    return Array.isArray(items) ? items.map((item, index) => {
+      if (!item.id) {
+        const timestamp = new Date().getTime() + index;
+        const randomString = Math.random().toString(36).substring(2, 10);
+        return { ...item, id: `${prefix}-${timestamp}-${randomString}` };
+      }
+      return item;
+    }) : [];
+  };
+
+  // Initialize local state with proper structure and guaranteed IDs
   const [localAssets, setLocalAssets] = useState({
-    checkingAndSavings: Array.isArray(assets.checkingAndSavings) ? assets.checkingAndSavings : [],
-    stocksAndBonds: Array.isArray(assets.stocksAndBonds) ? assets.stocksAndBonds : [],
-    giftsAndGrants: Array.isArray(assets.giftsAndGrants) ? assets.giftsAndGrants : [],
+    checkingAndSavings: ensureUniqueIds(assets.checkingAndSavings, 'account'),
+    stocksAndBonds: ensureUniqueIds(assets.stocksAndBonds, 'stock'),
+    giftsAndGrants: ensureUniqueIds(assets.giftsAndGrants, 'gift'),
     miscellaneous: assets.miscellaneous || {
       earnestMoney: 0,
       lifeInsurance: 0,
@@ -29,12 +41,12 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
     }
   });
   
-  // Update local state when props change
+  // Update local state when props change, ensuring IDs are preserved
   useEffect(() => {
     setLocalAssets({
-      checkingAndSavings: Array.isArray(assets.checkingAndSavings) ? assets.checkingAndSavings : [],
-      stocksAndBonds: Array.isArray(assets.stocksAndBonds) ? assets.stocksAndBonds : [],
-      giftsAndGrants: Array.isArray(assets.giftsAndGrants) ? assets.giftsAndGrants : [],
+      checkingAndSavings: ensureUniqueIds(assets.checkingAndSavings, 'account'),
+      stocksAndBonds: ensureUniqueIds(assets.stocksAndBonds, 'stock'),
+      giftsAndGrants: ensureUniqueIds(assets.giftsAndGrants, 'gift'),
       miscellaneous: assets.miscellaneous || {
         earnestMoney: 0,
         lifeInsurance: 0,
@@ -54,13 +66,19 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
   // Add a new checking/savings account
   const addAccount = () => {
+    // Force delay to ensure unique timestamp
+    const timestamp = new Date().getTime();
+    const randomString = Math.random().toString(36).substring(2, 10);
+    const uniqueId = `account-${timestamp}-${randomString}`;
+    console.log('Generated new account with ID:', uniqueId);
+    
     const newAccount = {
-      id: `account-${Date.now()}`,
+      id: uniqueId,
       bankName: '',
       accountType: 'Checking',
       value: '',
       isVerified: false,
-      isLiquid: true
+      isLiquid: false
     };
     const updatedAccounts = [...localAssets.checkingAndSavings, newAccount];
     
@@ -79,12 +97,18 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
   // Add a new stock or bond
   const addStockOrBond = () => {
+    // Force delay to ensure unique timestamp
+    const timestamp = new Date().getTime();
+    const randomString = Math.random().toString(36).substring(2, 10);
+    const uniqueId = `stock-${timestamp}-${randomString}`;
+    console.log('Generated new stock with ID:', uniqueId);
+    
     const newStock = {
-      id: `stock-${Date.now()}`,
+      id: uniqueId,
       description: '',
       value: '',
       isVerified: false,
-      isLiquid: true
+      isLiquid: false
     };
     const updatedStocks = [...localAssets.stocksAndBonds, newStock];
     
@@ -103,14 +127,20 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
 
   // Add a new gift or grant
   const addGiftOrGrant = () => {
+    // Force delay to ensure unique timestamp
+    const timestamp = new Date().getTime();
+    const randomString = Math.random().toString(36).substring(2, 10);
+    const uniqueId = `gift-${timestamp}-${randomString}`;
+    console.log('Generated new gift with ID:', uniqueId);
+    
     const newGift = {
-      id: `gift-${Date.now()}`,
+      id: uniqueId,
       assetType: 'Cash Gift',
       source: 'Relative',
       value: '',
       deposited: false,
       isVerified: false,
-      isLiquid: true
+      isLiquid: false
     };
     const updatedGifts = [...localAssets.giftsAndGrants, newGift];
     
@@ -317,43 +347,43 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           Checking and Savings Accounts
         </h3>
 
-        {localAssets.checkingAndSavings.map(account => (
+        {localAssets.checkingAndSavings.map((account, index) => (
           <div key={account.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex space-x-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={account.isVerified || false}
-                    onChange={(e) => handleAccountChange(account.id, 'isVerified', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Verified</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={account.isLiquid || false}
-                    onChange={(e) => handleAccountChange(account.id, 'isLiquid', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
-                </label>
+            {/* ID is now guaranteed to exist */}
+            <button
+              type="button"
+              onClick={() => removeAccount(account.id)}
+              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              aria-label="Remove this account"
+            >
+              <div className="flex items-center">
+                <span className="text-xs mr-1">Remove</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
               </div>
+            </button>
+            
+            <div className="mb-4 flex space-x-6 mt-2">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={account.isVerified || false}
+                  onChange={(e) => handleAccountChange(account.id, 'isVerified', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Verified</span>
+              </label>
               
-              <button
-                type="button"
-                onClick={() => removeAccount(account.id)}
-                className="text-red-500 hover:text-red-700"
-                aria-label="Remove this account"
-              >
-                <div className="flex items-center">
-                  <span className="text-xs mr-1">Remove</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </button>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={account.isLiquid || false}
+                  onChange={(e) => handleAccountChange(account.id, 'isLiquid', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Liquid</span>
+              </label>
             </div>
 
             <div className="mb-4">
@@ -413,8 +443,6 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
                 </div>
               </div>
             </div>
-
-
           </div>
         ))}
 
@@ -450,46 +478,46 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           Stocks and Bonds
         </h3>
 
-        {localAssets.stocksAndBonds.map(stock => (
+        {localAssets.stocksAndBonds.map((stock, index) => (
           <div key={stock.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex space-x-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={stock.isVerified || false}
-                    onChange={(e) => handleStockChange(stock.id, 'isVerified', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Verified</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={stock.isLiquid || false}
-                    onChange={(e) => handleStockChange(stock.id, 'isLiquid', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
-                </label>
+            {/* ID is now guaranteed to exist */}
+            <button
+              type="button"
+              onClick={() => removeStock(stock.id)}
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
+              aria-label="Remove this stock or bond"
+            >
+              <div className="flex items-center">
+                <span className="text-xs mr-1">Remove</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
               </div>
+            </button>
+            
+            <div className="flex space-x-6 mt-2 absolute top-2 left-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={stock.isVerified || false}
+                  onChange={(e) => handleStockChange(stock.id, 'isVerified', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Verified</span>
+              </label>
               
-              <button
-                type="button"
-                onClick={() => removeStock(stock.id)}
-                className="text-red-500 hover:text-red-700"
-                aria-label="Remove this stock or bond"
-              >
-                <div className="flex items-center">
-                  <span className="text-xs mr-1">Remove</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </button>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={stock.isLiquid || false}
+                  onChange={(e) => handleStockChange(stock.id, 'isLiquid', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Liquid</span>
+              </label>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               <div>
                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   Description
@@ -558,46 +586,56 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
           Gifts and Grants
         </h3>
 
-        {localAssets.giftsAndGrants.map(gift => (
+        {localAssets.giftsAndGrants.map((gift, index) => (
           <div key={gift.id} className="mb-6 border border-gray-200 rounded-md p-4 relative">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex space-x-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={gift.isVerified || false}
-                    onChange={(e) => handleGiftChange(gift.id, 'isVerified', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Verified</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={gift.isLiquid || false}
-                    onChange={(e) => handleGiftChange(gift.id, 'isLiquid', e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className="ml-2 text-xs text-gray-700">Liquid</span>
-                </label>
+            {/* ID is now guaranteed to exist */}
+            <button
+              type="button"
+              onClick={() => removeGift(gift.id)}
+              className="text-xs absolute top-2 right-2 text-red-500 hover:text-red-700"
+              aria-label="Remove this gift or grant"
+            >
+              <div className="flex items-center">
+                <span className="text-xs mr-1">Remove</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
               </div>
+            </button>
+            
+            <div className="flex flex-wrap gap-4 absolute top-2 left-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={gift.deposited || false}
+                  onChange={(e) => handleGiftChange(gift.id, 'deposited', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Deposited</span>
+              </label>
               
-              <button
-                type="button"
-                onClick={() => removeGift(gift.id)}
-                className="text-red-500 hover:text-red-700"
-                aria-label="Remove this gift or grant"
-              >
-                <div className="flex items-center">
-                  <span className="text-xs mr-1">Remove</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </button>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={gift.isVerified || false}
+                  onChange={(e) => handleGiftChange(gift.id, 'isVerified', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Verified</span>
+              </label>
+              
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={gift.isLiquid || false}
+                  onChange={(e) => handleGiftChange(gift.id, 'isLiquid', e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-gray-700 text-xs">Liquid</span>
+              </label>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
               <div>
                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   Asset Type
@@ -666,17 +704,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="checkbox"
-                  checked={gift.deposited || false}
-                  onChange={(e) => handleGiftChange(gift.id, 'deposited', e.target.checked)}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-xs text-gray-700">Deposited</span>
-              </label>
-            </div>
+            {/* Checkboxes moved to the top */}
           </div>
         ))}
 
