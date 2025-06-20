@@ -299,6 +299,37 @@ exports.sendMessage = async (req, res) => {
     // Populate sender info before returning
     await message.populate('sender', 'firstName lastName email profileImage role');
     
+    // Create audit log entry if the sender is a borrower
+    if (user.role === 'borrower') {
+      try {
+        const AuditLog = require('../models/auditLog.model');
+        const borrowerUser = await User.findById(userId).select('firstName lastName');
+        
+        await AuditLog.create({
+          eventType: 'message:received',
+          description: `New message received from borrower`,
+          userId: userId,
+          userRole: 'borrower',
+          level: 'info',
+          entityType: 'message',
+          entityId: message._id,
+          metadata: {
+            messageId: message._id,
+            borrowerId: borrower._id,
+            borrowerName: borrowerUser ? `${borrowerUser.firstName} ${borrowerUser.lastName}` : 'Unknown',
+            lenderId: lender._id,
+            content: content && content.length > 50 ? `${content.substring(0, 50)}...` : content,
+            hasAttachments: attachments.length > 0
+          }
+        });
+        
+        console.log('Created audit log for new borrower message');
+      } catch (auditError) {
+        // Don't fail the message send if audit logging fails
+        console.error('Failed to create audit log for message:', auditError);
+      }
+    }
+    
     // Emit socket event for real-time updates
     const io = req.app.get('io');
     if (io) {

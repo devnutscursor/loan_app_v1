@@ -38,6 +38,13 @@ router.get('/:lenderId/borrowers', authorize('lender', 'admin'), lenderControlle
 // Get a specific borrower by ID for a lender
 router.get('/:lenderId/borrowers/:borrowerId', authorize('lender', 'admin'), lenderController.getLenderBorrowerById);
 
+// Get lender activities - moved above the route with ID parameter to avoid conflict
+router.get(
+  '/activities',
+  authorize('lender', 'admin'),
+  lenderController.getLenderActivities
+);
+
 // Admin-only routes
 // Get all lenders
 router.get('/', authorize('admin'), lenderController.getAllLenders);

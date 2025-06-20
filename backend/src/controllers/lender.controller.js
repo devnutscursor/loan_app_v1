@@ -675,3 +675,652 @@ exports.getLenderBorrowerById = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get lender activities
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderActivities = async (req, res, next) => {
+  // Make sure mongoose is available
+  const mongoose = require('mongoose');
+  try {
+    console.log('Fetching activities for lender, user ID:', req.user._id);
+    
+    const lenderId = req.user._id;
+    
+    // Find the lender profile for the current user
+    const lender = await Lender.findOne({ user: lenderId });
+    
+    if (!lender) {
+      console.error('Lender profile not found for user ID:', lenderId);
+      return next(new ApiError('Lender profile not found', 404));
+    }
+    
+    console.log('Found lender profile:', lender._id);
+    
+    // Get limit from query or use default
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // Get recent activity logs
+    console.log('Fetching activities for lender ID:', lender._id);
+    
+    let recentApplications = [];
+    let recentApprovals = [];
+    let recentRejections = [];
+    let documentVerifications = [];
+    let creditChecks = [];
+    let recentDocumentUploads = [];
+    let recentStatusChanges = [];
+    let recentLoanUpdates = [];
+    let recentDocumentStatusChanges = [];
+    let recentMessages = [];
+    
+    try {
+      // Recent loan applications - include any status
+      recentApplications = await Loan.find({ 
+        lender: lender._id,
+        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+      })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'borrower',
+        select: 'user',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName email'
+        }
+      })
+      .limit(10);
+      
+      // Add borrowerDetails if borrower population fails
+      for (let loan of recentApplications) {
+        if (!loan.borrower || !loan.borrower.user) {
+          // If no borrower info from population, try to use borrowerDetails
+          if (loan.borrowerDetails && (loan.borrowerDetails.firstName || loan.borrowerDetails.lastName)) {
+            console.log(`Using borrowerDetails for loan ${loan._id}`);
+          } else {
+            console.log(`No borrower information available for loan ${loan._id}`);
+          }
+        }
+      }
+      
+      console.log(`Found ${recentApplications.length} recent applications`);
+    } catch (err) {
+      console.error('Error fetching recent applications:', err);
+    }
+    
+    try {
+      // Recently approved loans
+      recentApprovals = await Loan.find({ 
+        lender: lender._id, 
+        status: 'approved',
+        decisionDate: { $exists: true }
+      })
+      .sort({ decisionDate: -1 })
+      .limit(5);
+      
+      console.log(`Found ${recentApprovals.length} approved loans`);
+    } catch (err) {
+      console.error('Error fetching approved loans:', err);
+    }
+    
+    try {
+      // Recently rejected loans
+      recentRejections = await Loan.find({ 
+        lender: lender._id, 
+        status: 'rejected',
+        decisionDate: { $exists: true }
+      })
+      .sort({ decisionDate: -1 })
+      .limit(5);
+      
+      console.log(`Found ${recentRejections.length} rejected loans`);
+    } catch (err) {
+      console.error('Error fetching rejected loans:', err);
+    }
+    
+    try {
+      // Recent document verifications needed
+      documentVerifications = await Loan.find({
+        lender: lender._id,
+        status: 'pending_documents'
+      })
+      .sort({ updatedAt: -1 })
+      .limit(5);
+      
+      console.log(`Found ${documentVerifications.length} document verifications`);
+    } catch (err) {
+      console.error('Error fetching document verifications:', err);
+    }
+    
+    try {
+      // Recent credit check failures or issues
+      creditChecks = await Loan.find({
+        lender: lender._id,
+        'underwritingFlags.creditIssues': true
+      })
+      .sort({ updatedAt: -1 })
+      .limit(5);
+      
+      console.log(`Found ${creditChecks.length} credit checks`);
+    } catch (err) {
+      console.error('Error fetching credit checks:', err);
+    }
+    
+    try {
+      // Recently uploaded documents
+      const Document = mongoose.model('Document');
+      
+      // First get loan IDs for this lender
+      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
+      
+      // Then get recent document uploads for these loans
+      if (loanIds && loanIds.length > 0) {
+        recentDocumentUploads = await Document.find({
+          loan: { $in: loanIds },
+          createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+        })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('loan', 'loanNumber')
+        .populate('uploadedBy', 'firstName lastName')
+        .lean();
+        
+        console.log(`Found ${recentDocumentUploads.length} document uploads`);
+        
+        // Add document status changes - find recent document status changes from AuditLog
+        const AuditLog = mongoose.model('AuditLog');
+        recentDocumentStatusChanges = await AuditLog.find({
+          entityType: 'document',
+          'metadata.loanId': { $in: loanIds },
+          eventType: 'document:status_changed',
+          timestamp: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
+        })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean();
+        
+        console.log(`Found ${recentDocumentStatusChanges.length} document status changes`);
+        
+        // If we don't have enough data from audit logs, query documents directly
+        if (recentDocumentStatusChanges.length < 2) {
+          // Find documents with review dates (indicates their status was changed)
+          const reviewedDocuments = await Document.find({
+            loan: { $in: loanIds },
+            reviewDate: { $exists: true, $ne: null },
+            reviewedAt: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
+          })
+          .sort({ reviewDate: -1 })
+          .limit(10)
+          .populate('loan', 'loanNumber')
+          .populate('reviewedBy', 'firstName lastName')
+          .lean();
+          
+          console.log(`Found ${reviewedDocuments.length} reviewed documents`);
+          
+          // Create audit-like entries from reviewed documents
+          reviewedDocuments.forEach(doc => {
+            recentDocumentStatusChanges.push({
+              _id: `doc-status-${doc._id}`,
+              entityId: doc._id,
+              entityType: 'document',
+              timestamp: doc.reviewDate || doc.updatedAt,
+              metadata: {
+                documentName: doc.name,
+                newStatus: doc.status,
+                loanId: doc.loan?._id,
+                loanNumber: doc.loan?.loanNumber,
+                reviewedBy: doc.reviewedBy ? `${doc.reviewedBy.firstName} ${doc.reviewedBy.lastName}` : 'Unknown'
+              }
+            });
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching document uploads or status changes:', err);
+    }
+    
+    try {
+      // Recent status changes (from audit logs)
+      const AuditLog = mongoose.model('AuditLog');
+      
+      // Get loan IDs for this lender
+      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
+      
+      if (loanIds && loanIds.length > 0) {
+        recentStatusChanges = await AuditLog.find({
+          entityType: 'loan',
+          entityId: { $in: loanIds },
+          eventType: { $in: ['loan:status_changed', 'loan:updated'] },
+          timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+        })
+        .sort({ timestamp: -1 })
+        .limit(5)
+        .lean();
+        
+        console.log(`Found ${recentStatusChanges.length} status changes in audit logs`);
+        
+        // If we don't have audit logs, check for loan updates directly
+        if (recentStatusChanges.length === 0) {
+          recentLoanUpdates = await Loan.find({
+            lender: lender._id,
+            updatedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
+            createdAt: { $ne: '$updatedAt' } // Ensure it was actually updated after creation
+          })
+          .sort({ updatedAt: -1 })
+          .limit(5)
+          .populate('borrower', 'firstName lastName')
+          .lean();
+          
+          console.log(`Found ${recentLoanUpdates.length} loan updates`);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching status changes:', err);
+    }
+    
+    // Fetch recent messages from borrowers
+    try {
+      const AuditLog = mongoose.model('AuditLog');
+      
+      // Find recent message audit logs where borrowers sent messages to this lender
+      recentMessages = await AuditLog.find({
+        entityType: 'message',
+        eventType: 'message:received',
+        'metadata.lenderId': lender._id,
+        timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+      })
+      .sort({ timestamp: -1 })
+      .limit(5)
+      .lean();
+      
+      console.log(`Found ${recentMessages.length} recent messages from borrowers`);
+    } catch (err) {
+      console.error('Error fetching recent messages:', err);
+    }
+    
+    // Transform into activities format
+    const activities = [];
+    
+    // Add new loan applications
+    if (!recentApplications || !Array.isArray(recentApplications)) {
+      console.log('recentApplications is not an array:', recentApplications);
+      recentApplications = [];
+    }
+    
+    recentApplications.forEach(loan => {
+      let activityTitle = 'New loan application';
+      let activityStatus = 'New';
+      let activityStatusColor = 'blue';
+      let activityTimestamp = loan.submittedAt || loan.createdAt;
+      
+      // Adjust title and status based on loan status
+      if (loan.status === 'draft') {
+        activityTitle = 'Draft loan application created';
+        activityStatus = 'Draft';
+        activityStatusColor = 'gray';
+      } else if (loan.status === 'pending') {
+        activityTitle = 'New loan application submitted';
+        activityStatus = 'New';
+        activityStatusColor = 'blue';
+      } else if (loan.status === 'in_review') {
+        activityTitle = 'Loan application under review';
+        activityStatus = 'In Review';
+        activityStatusColor = 'purple';
+      }
+      
+      // Add loan number if available
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      
+      // Get borrower name from different possible sources
+      let borrowerName = 'Unknown Borrower';
+      
+      if (loan.borrower && loan.borrower.user) {
+        // If borrower is populated with user
+        borrowerName = `${loan.borrower.user.firstName || ''} ${loan.borrower.user.lastName || ''}`.trim();
+      } else if (loan.borrowerDetails && (loan.borrowerDetails.firstName || loan.borrowerDetails.lastName)) {
+        // If borrowerDetails is available
+        borrowerName = `${loan.borrowerDetails.firstName || ''} ${loan.borrowerDetails.lastName || ''}`.trim();
+      }
+      
+      activities.push({
+        id: `application-${loan._id}`,
+        title: `${activityTitle} ${loanNumber}`,
+        description: borrowerName !== 'Unknown Borrower' ? `From ${borrowerName}` : 'New application',
+        timestamp: activityTimestamp,
+        type: 'application',
+        status: activityStatus,
+        statusColor: activityStatusColor,
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'FileText',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add approved loans
+    if (!recentApprovals || !Array.isArray(recentApprovals)) {
+      console.log('recentApprovals is not an array:', recentApprovals);
+      recentApprovals = [];
+    }
+    
+    recentApprovals.forEach(loan => {
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      activities.push({
+        id: `approval-${loan._id}`,
+        title: `Loan ${loanNumber} approved`,
+        description: loan.loanDetails?.loanAmount ? `Amount: $${loan.loanDetails.loanAmount.toLocaleString()}` : 'Loan approved',
+        timestamp: loan.decisionDate,
+        type: 'approval',
+        status: 'Completed',
+        statusColor: 'green',
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'CheckCircle',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add rejected loans
+    if (!recentRejections || !Array.isArray(recentRejections)) {
+      console.log('recentRejections is not an array:', recentRejections);
+      recentRejections = [];
+    }
+    
+    recentRejections.forEach(loan => {
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      activities.push({
+        id: `rejection-${loan._id}`,
+        title: `Loan ${loanNumber} rejected`,
+        description: loan.rejectionReason || 'Loan application rejected',
+        timestamp: loan.decisionDate,
+        type: 'rejection',
+        status: 'Rejected',
+        statusColor: 'red',
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'XCircle',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add document verifications
+    if (!documentVerifications || !Array.isArray(documentVerifications)) {
+      console.log('documentVerifications is not an array:', documentVerifications);
+      documentVerifications = [];
+    }
+    
+    documentVerifications.forEach(loan => {
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      activities.push({
+        id: `document-${loan._id}`,
+        title: `Document verification pending`,
+        description: `For loan ${loanNumber}`,
+        timestamp: loan.updatedAt,
+        type: 'document',
+        status: 'Pending',
+        statusColor: 'yellow',
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'Clock',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add credit check issues
+    if (!creditChecks || !Array.isArray(creditChecks)) {
+      console.log('creditChecks is not an array:', creditChecks);
+      creditChecks = [];
+    }
+    
+    creditChecks.forEach(loan => {
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      activities.push({
+        id: `credit-${loan._id}`,
+        title: 'Credit check failed',
+        description: `For loan ${loanNumber}`,
+        timestamp: loan.updatedAt,
+        type: 'credit',
+        status: 'Failed',
+        statusColor: 'red',
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'AlertTriangle',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add document uploads
+    if (!recentDocumentUploads || !Array.isArray(recentDocumentUploads)) {
+      console.log('recentDocumentUploads is not an array:', recentDocumentUploads);
+      recentDocumentUploads = [];
+    }
+    
+    recentDocumentUploads.forEach(doc => {
+      const loanNumber = doc.loan?.loanNumber ? `#${doc.loan.loanNumber}` : 
+                         (doc.loan?._id ? `#${doc.loan._id.toString().substr(-5)}` : '');
+      const uploaderInfo = doc.uploadedBy ? `by ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : '';
+      
+      activities.push({
+        id: `document-upload-${doc._id}`,
+        title: `Document uploaded for loan ${loanNumber}`,
+        description: `${doc.name} ${uploaderInfo}`.trim(),
+        timestamp: doc.createdAt,
+        type: 'document_upload',
+        status: 'New',
+        statusColor: 'purple',
+        entityId: doc.loan ? doc.loan._id : null,
+        entityType: 'loan',
+        icon: 'Upload',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add document status changes
+    if (!recentDocumentStatusChanges || !Array.isArray(recentDocumentStatusChanges)) {
+      console.log('recentDocumentStatusChanges is not an array:', recentDocumentStatusChanges);
+      recentDocumentStatusChanges = [];
+    }
+
+    recentDocumentStatusChanges.forEach(log => {
+      let title = 'Document status changed';
+      let statusColor = 'blue';
+      let status = 'Updated';
+      let icon = 'RefreshCw';
+      
+      // Get loan number from metadata if available
+      const loanNumber = log.metadata?.loanNumber ? `#${log.metadata.loanNumber}` : 
+                        (log.metadata?.loanId ? `#${log.metadata.loanId.toString().substr(-5)}` : '');
+      
+      // Format status-specific information
+      if (log.metadata && log.metadata.newStatus) {
+        const newStatus = log.metadata.newStatus;
+        
+        if (newStatus.toLowerCase().includes('approved')) {
+          title = `Document approved for loan ${loanNumber}`;
+          status = 'Approved';
+          statusColor = 'green';
+          icon = 'FileCheck';
+        } else if (newStatus.toLowerCase().includes('rejected')) {
+          title = `Document rejected for loan ${loanNumber}`;
+          status = 'Rejected';
+          statusColor = 'red';
+          icon = 'FileX';
+        } else if (newStatus.toLowerCase().includes('correction')) {
+          title = `Document needs correction for loan ${loanNumber}`;
+          status = 'Correction';
+          statusColor = 'yellow';
+          icon = 'FilePen';
+        }
+      }
+      
+      // Description with document name
+      const description = log.metadata?.documentName ? 
+        `${log.metadata.documentName} status changed from "${log.metadata.previousStatus || 'Unknown'}" to "${log.metadata.newStatus}"` : 
+        `Document status changed from "${log.metadata?.previousStatus || 'Unknown'}" to "${log.metadata?.newStatus}"`;
+      
+      activities.push({
+        id: `doc-status-${log._id}`,
+        title: title,
+        description: description,
+        timestamp: log.timestamp,
+        type: 'document_status',
+        status: status,
+        statusColor: statusColor,
+        entityId: log.metadata?.loanId || null,
+        entityType: 'loan',
+        icon: icon,
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add status changes from audit logs
+    if (!recentStatusChanges || !Array.isArray(recentStatusChanges)) {
+      console.log('recentStatusChanges is not an array:', recentStatusChanges);
+      recentStatusChanges = [];
+    }
+    
+    recentStatusChanges.forEach(log => {
+      let title = 'Loan updated';
+      let statusColor = 'blue';
+      
+      // Try to get loan number from metadata or entityId
+      let loanNumber = '';
+      if (log.metadata && log.metadata.loanNumber) {
+        loanNumber = `#${log.metadata.loanNumber}`;
+      } else if (log.entityId) {
+        loanNumber = `#${log.entityId.toString().substr(-5)}`;
+      }
+      
+      if (log.eventType === 'loan:status_changed') {
+        title = `Loan ${loanNumber} status changed`;
+        if (log.metadata && log.metadata.newStatus) {
+          title = `Loan ${loanNumber} status changed to ${log.metadata.newStatus}`;
+          
+          // Set color based on status
+          if (log.metadata.newStatus.toLowerCase() === 'approved') {
+            statusColor = 'green';
+          } else if (log.metadata.newStatus.toLowerCase() === 'rejected') {
+            statusColor = 'red';
+          } else if (log.metadata.newStatus.toLowerCase().includes('review')) {
+            statusColor = 'yellow';
+          }
+        }
+      } else {
+        title = `Loan ${loanNumber} updated`;
+      }
+      
+      activities.push({
+        id: `status-change-${log._id}`,
+        title: title,
+        description: log.description || 'Status updated',
+        timestamp: log.timestamp,
+        type: 'status_change',
+        status: 'Updated',
+        statusColor: statusColor,
+        entityId: log.entityId,
+        entityType: 'loan',
+        icon: 'RefreshCw',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add loan updates (if no audit logs were found)
+    if (!recentLoanUpdates || !Array.isArray(recentLoanUpdates)) {
+      console.log('recentLoanUpdates is not an array:', recentLoanUpdates);
+      recentLoanUpdates = [];
+    }
+    
+    recentLoanUpdates.forEach(loan => {
+      const borrowerInfo = loan.borrower ? `for ${loan.borrower.firstName} ${loan.borrower.lastName}` : '';
+      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      
+      activities.push({
+        id: `loan-update-${loan._id}-${Date.now()}`,
+        title: `Loan ${loanNumber} updated`,
+        description: borrowerInfo.trim(),
+        timestamp: loan.updatedAt,
+        type: 'loan_update',
+        status: 'Updated',
+        statusColor: 'blue',
+        entityId: loan._id,
+        entityType: 'loan',
+        icon: 'Edit',
+        loanNumber: loanNumber
+      });
+    });
+    
+    // Add recent messages from borrowers
+    if (!recentMessages || !Array.isArray(recentMessages)) {
+      console.log('recentMessages is not an array:', recentMessages);
+      recentMessages = [];
+    }
+    
+    recentMessages.forEach(log => {
+      const borrowerName = log.metadata?.borrowerName || 'Unknown Borrower';
+      
+      activities.push({
+        id: `message-${log._id}`,
+        title: `New message from ${borrowerName}`,
+        description: log.metadata?.content || 'Message received',
+        timestamp: log.timestamp,
+        type: 'message',
+        status: 'New',
+        statusColor: 'blue',
+        entityId: log.metadata?.borrowerId || null,
+        entityType: 'borrower',
+        icon: 'MessageSquare',
+        borrowerId: log.metadata?.borrowerId
+      });
+    });
+    
+    // Sort by timestamp (newest first) and limit
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const limitedActivities = activities.slice(0, limit);
+    
+    // Format timestamps to be more human-readable
+    const formatTimestamp = (timestamp) => {
+      const now = new Date();
+      const date = new Date(timestamp);
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      
+      if (diffDays > 0) {
+        return diffDays === 1 ? 'Yesterday' : `${diffDays} days ago`;
+      } else if (diffHours > 0) {
+        return `${diffHours} hours ago`;
+      } else if (diffMinutes > 0) {
+        return `${diffMinutes} minutes ago`;
+      } else {
+        return 'Just now';
+      }
+    };
+    
+    // Format the response
+    const formattedActivities = limitedActivities.map(activity => ({
+      ...activity,
+      time: formatTimestamp(activity.timestamp)
+    }));
+    
+    res.status(200).json({
+      status: 'success',
+      data: formattedActivities
+    });
+  } catch (error) {
+    console.error('Error in getLenderActivities:', error);
+    
+    // Send a more detailed error response for debugging
+    return res.status(500).json({
+      status: 'error',
+      message: 'Error fetching lender activities',
+      error: {
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      }
+    });
+  }
+};

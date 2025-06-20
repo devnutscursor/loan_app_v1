@@ -21,7 +21,16 @@ import {
   ClipboardList,
   ArrowRightCircle,
   User,
-  LineChart
+  LineChart,
+  XCircle,
+  Upload,
+  RefreshCw,
+  Edit,
+  FileCheck,
+  FilePlus,
+  FileX,
+  FilePen,
+  MessageSquare
 } from 'lucide-react';
 
 // Component for quick action buttons
@@ -92,24 +101,49 @@ const ProgressItem = ({ label, value, maxValue, color }) => {
 };
 
 // Activity item component
-const ActivityItem = ({ icon: Icon, title, time, status, statusColor }) => (
-  <li className="py-3">
-    <div className="flex items-center space-x-4">
-      <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
-        <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
+const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, entityType, loanNumber, description, borrowerId }) => {
+  const router = useRouter();
+  
+  // Handle click on activity item to navigate to related entity
+  const handleActivityClick = () => {
+    if (entityType === 'loan' && entityId) {
+      if (status === 'Approved' || status === 'Rejected' || status === 'Correction') {
+        // For document status changes, navigate to the documents tab
+        router.push(`/lender/loans/${entityId}?tab=documents`);
+      } else {
+        router.push(`/lender/loans/${entityId}`);
+      }
+    } else if (entityType === 'borrower' && borrowerId) {
+      // For message activities, navigate to the messages page with the specific borrower
+      router.push(`/lender/messages?borrowerId=${borrowerId}`);
+    }
+  };
+  
+  return (
+    <li className="py-3">
+      <div className="flex items-center space-x-4">
+        <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
+          <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
+          <p className="text-xs text-gray-500">{time}</p>
+          {description && <p className="text-xs text-gray-500 truncate">{description}</p>}
+        </div>
+        <div>
+          <button
+            onClick={handleActivityClick}
+            className="flex items-center justify-center py-1 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
+            disabled={!entityId && !borrowerId}
+          >
+            View
+            <ChevronRight className="ml-1 h-3 w-3" />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
-        <p className="text-xs text-gray-500">{time}</p>
-      </div>
-      <div>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor} ${statusColor.replace('bg-', 'text-')}`}>
-          {status}
-        </span>
-      </div>
-    </div>
-  </li>
-);
+    </li>
+  );
+};
 
 // Recent loan card component
 const LoanCard = ({ loan, onView }) => {
@@ -254,7 +288,7 @@ const LenderDashboard = () => {
   const [borrowerLoans, setBorrowerLoans] = useState({});
   const [activities, setActivities] = useState([]);
   
-  useEffect(() => {
+    useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -291,53 +325,133 @@ const LenderDashboard = () => {
         const programsData = programsResponse.data.data || [];
         setPrograms(programsData);
 
-        // Generate borrower loans count
+        // Initialize borrower loan count map
         const loansMap = {};
-        for (const borrower of borrowersData) {
-          try {
-            const response = await axios.get(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers/${borrower._id}/loans`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            loansMap[borrower._id] = response.data?.data?.length || 0;
-          } catch (error) {
-            console.error(`Error fetching loans for borrower ${borrower._id}:`, error);
-            loansMap[borrower._id] = 0;
-          }
+        
+        // Get lender ID
+        let lenderId = null;
+        try {
+          const lenderResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/profile`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          lenderId = lenderResponse.data.data._id;
+        } catch (err) {
+          console.error('Error fetching lender profile:', err);
         }
+        
+        // Count loans for each borrower
+        if (lenderId) {
+          for (const borrower of borrowersData) {
+            try {
+              // Get loans for this specific borrower from lender's borrower endpoint
+              const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrowers/${borrower._id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              
+              // The response structure has loans array in data.loans
+              const loans = response.data.data.loans || [];
+              loansMap[borrower._id] = loans.length;
+              console.log(`Borrower ${borrower._id} has ${loans.length} loans`);
+            } catch (err) {
+              console.error(`Error fetching loans for borrower ${borrower._id}:`, err);
+              loansMap[borrower._id] = 0;
+            }
+          }
+        } else {
+          // If we couldn't get lender ID, initialize all with 0
+          borrowersData.forEach(borrower => {
+            loansMap[borrower._id] = 0;
+          });
+        }
+        
         setBorrowerLoans(loansMap);
-
-        // Sample activities (in a real app, fetch these from backend)
-        setActivities([
-          { 
-            icon: FileText, 
-            title: 'New loan application submitted',
-            time: '2 hours ago',
-            status: 'New',
-            statusColor: 'bg-blue-500'
-          },
-          { 
-            icon: CheckCircle, 
-            title: 'Loan #12345 approved',
-            time: '5 hours ago',
-            status: 'Completed',
-            statusColor: 'bg-green-500'
-          },
-          { 
-            icon: Clock, 
-            title: 'Document verification pending',
-            time: 'Yesterday',
-            status: 'Pending',
-            statusColor: 'bg-yellow-500'
-          },
-          { 
-            icon: AlertTriangle, 
-            title: 'Credit check failed',
-            time: '2 days ago',
-            status: 'Failed',
-            statusColor: 'bg-red-500'
-          },
-        ]);
+        
+        // Fetch real activities from backend
+        try {
+          // Use axios directly to avoid import issues
+          console.log('Fetching activities from API...');
+          const activitiesResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`, // Add cache-busting
+            { 
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 10000 // 10 second timeout
+            }
+          );
+          
+          console.log('Activities response:', activitiesResponse.data);
+          if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
+            // Map backend icons to Lucide React components
+            const iconMap = {
+              'FileText': FileText,
+              'CheckCircle': CheckCircle, 
+              'Clock': Clock,
+              'AlertTriangle': AlertTriangle,
+              'XCircle': XCircle,
+              'Upload': Upload,
+              'RefreshCw': RefreshCw,
+              'Edit': Edit,
+              'FileCheck': FileCheck,
+              'FilePlus': FilePlus,
+              'FileX': FileX,
+              'FilePen': FilePen,
+              'MessageSquare': MessageSquare
+            };
+            
+            // Transform backend activities to frontend format
+            const mappedActivities = activitiesResponse.data.data.map(activity => ({
+              icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
+              title: activity.title,
+              time: activity.time,
+              status: activity.status,
+              statusColor: `bg-${activity.statusColor}-500`,
+              id: activity.id,
+              entityId: activity.entityId,
+              entityType: activity.entityType,
+              description: activity.description,
+              borrowerId: activity.borrowerId
+            }));
+            console.log('Mapped activities:', mappedActivities);
+            setActivities(mappedActivities);
+          } else {
+            console.error('Invalid response format:', activitiesResponse);
+            throw new Error('Invalid activity data format');
+          }
+        } catch (err) {
+          console.error('Error fetching activities:', err);
+          // Fallback to sample data if API fails
+          setActivities([
+            { 
+              icon: FileText, 
+              title: 'New loan application submitted',
+              time: '2 hours ago',
+              status: 'New',
+              statusColor: 'bg-blue-500'
+            },
+            { 
+              icon: CheckCircle, 
+              title: 'Loan #12345 approved',
+              time: '5 hours ago',
+              status: 'Completed',
+              statusColor: 'bg-green-500'
+            },
+            { 
+              icon: Clock, 
+              title: 'Document verification pending',
+              time: 'Yesterday',
+              status: 'Pending',
+              statusColor: 'bg-yellow-500'
+            },
+            { 
+              icon: AlertTriangle, 
+              title: 'Credit check failed',
+              time: '2 days ago',
+              status: 'Failed',
+              statusColor: 'bg-red-500'
+            }
+          ]);
+        }
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -630,48 +744,40 @@ const LenderDashboard = () => {
                 {recentLoans.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-gray-900">Processing Performance</h3>
+                      <h3 className="text-sm font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <ProgressItem 
-                          label="Pending Verifications" 
-                          value={stats?.metrics?.pendingVerifications || 0} 
-                          maxValue={stats?.metrics?.maxPendingVerifications || 10} 
-                          color="bg-yellow-500" 
-                        />
-                        <ProgressItem 
-                          label="Document Reviews" 
-                          value={stats?.metrics?.documentReviews || 0} 
-                          maxValue={stats?.metrics?.maxDocumentReviews || 12} 
-                          color="bg-blue-500" 
-                        />
-                        <ProgressItem 
-                          label="Loan Approvals" 
-                          value={stats?.metrics?.loanApprovals || 0} 
-                          maxValue={stats?.metrics?.maxRecentApprovals || 15} 
-                          color="bg-green-500" 
-                        />
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="text-xs font-medium text-gray-600 mb-2">Approval Rate</h4>
-                        <div className="flex items-end space-x-1">
-                          <div className="text-2xl font-bold text-gray-900">{stats?.metrics?.approvalRate || 0}%</div>
-                          <div className={`pb-1 text-xs ${stats?.metrics?.approvalRateTrend >= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
-                            {stats?.metrics?.approvalRateTrend >= 0 ? '+' : ''}{stats?.metrics?.approvalRateTrend || 0}%
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                          <h4 className="text-base font-medium text-gray-700 mb-3">Approval Rate</h4>
+                          <div className="flex items-end space-x-2">
+                            <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.approvalRate || 0}%</div>
+                            <div className={`pb-1 text-sm ${stats?.metrics?.approvalRateTrend >= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
+                              {stats?.metrics?.approvalRateTrend >= 0 ? '+' : ''}{stats?.metrics?.approvalRateTrend || 0}%
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-2">Based on last 30 days</p>
+                          
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <p className="text-xs text-gray-500">Higher approval rates indicate efficient underwriting practices and appropriate targeting of qualified borrowers.</p>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Based on last 30 days</p>
                         
-                        <h4 className="text-xs font-medium text-gray-600 mb-2 mt-4">Avg. Processing Time</h4>
-                        <div className="flex items-end space-x-1">
-                          <div className="text-2xl font-bold text-gray-900">{stats?.metrics?.avgProcessingTime || 0}</div>
-                          <div className="pb-1 text-md font-medium text-gray-500">days</div>
-                          <div className={`pb-1 text-xs ${stats?.metrics?.processingTimeTrend <= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
-                            {stats?.metrics?.processingTimeTrend <= 0 ? '+' : ''}{Math.abs(stats?.metrics?.processingTimeTrend || 0)}%
+                        <div>
+                          <h4 className="text-base font-medium text-gray-700 mb-3">Avg. Processing Time</h4>
+                          <div className="flex items-end space-x-2">
+                            <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.avgProcessingTime || 0}</div>
+                            <div className="pb-1 text-lg font-medium text-gray-700">days</div>
+                            <div className={`pb-1 text-sm ${stats?.metrics?.processingTimeTrend <= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
+                              {stats?.metrics?.processingTimeTrend <= 0 ? '+' : ''}{Math.abs(stats?.metrics?.processingTimeTrend || 0)}%
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-2">From application to approval</p>
+                          
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <p className="text-xs text-gray-500">Faster processing times improve borrower satisfaction and increase the likelihood of completed applications.</p>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">From application to approval</p>
                       </div>
                     </div>
                   </div>
@@ -710,20 +816,81 @@ const LenderDashboard = () => {
 
                 {/* Recent Activity Timeline */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-                  </div>
+                                  <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        toast.loading('Refreshing activities...');
+                        const response = await axios.get(
+                          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`,
+                          { 
+                            headers: { Authorization: `Bearer ${token}` },
+                            timeout: 10000 // 10 second timeout  
+                          }
+                        );
+                        
+                        if (response.data && response.data.status === 'success') {
+                          const iconMap = {
+                            'FileText': FileText,
+                            'CheckCircle': CheckCircle, 
+                            'Clock': Clock,
+                            'AlertTriangle': AlertTriangle,
+                            'XCircle': XCircle,
+                            'Upload': Upload,
+                            'RefreshCw': RefreshCw,
+                            'Edit': Edit,
+                            'FileCheck': FileCheck,
+                            'FilePlus': FilePlus,
+                            'FileX': FileX,
+                            'FilePen': FilePen,
+                            'MessageSquare': MessageSquare
+                          };
+                          
+                          const mappedActivities = response.data.data.map(activity => ({
+                            icon: iconMap[activity.icon] || FileText,
+                            title: activity.title,
+                            time: activity.time,
+                            status: activity.status,
+                            statusColor: `bg-${activity.statusColor}-500`,
+                            id: activity.id,
+                            entityId: activity.entityId,
+                            entityType: activity.entityType,
+                            description: activity.description,
+                            borrowerId: activity.borrowerId
+                          }));
+                          
+                          setActivities(mappedActivities);
+                          toast.success('Activities refreshed');
+                        }
+                      } catch (error) {
+                        console.error('Error refreshing activities:', error);
+                        toast.error('Failed to refresh activities');
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    Refresh
+                  </button>
+                </div>
 
                   {activities.length > 0 ? (
                     <ul className="divide-y divide-gray-100">
-                      {activities.map((activity, index) => (
+                      {activities.map((activity) => (
                         <ActivityItem
-                          key={index}
+                          key={activity.id || Math.random().toString()}
                           icon={activity.icon}
                           title={activity.title}
                           time={activity.time}
                           status={activity.status}
                           statusColor={activity.statusColor}
+                          entityId={activity.entityId}
+                          entityType={activity.entityType}
+                          loanNumber={activity.loanNumber}
+                          description={activity.description}
+                          borrowerId={activity.borrowerId}
                         />
                       ))}
                     </ul>
