@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import { useRouter } from 'next/router';
+import socketService from '../../services/socket.service';
+import ActivityManager from '../../components/dashboard/ActivityManager';
 import { 
   BarChart3, 
   FileText, 
@@ -22,7 +24,15 @@ import {
   Plus,
   LineChart,
   Download,
-  ExternalLink
+  ExternalLink,
+  XCircle,
+  Upload,
+  FilePlus,
+  FileX,
+  FilePen,
+  MessageSquare,
+  RefreshCw,
+  Edit
 } from 'lucide-react';
 
 // Component for stat cards with gradient backgrounds
@@ -166,24 +176,53 @@ const LoanCard = ({ loan, onView }) => {
 };
 
 // Activity item component
-const ActivityItem = ({ icon: Icon, title, time, status, statusColor }) => (
-  <li className="py-3">
-    <div className="flex items-center space-x-4">
-      <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
-        <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
+const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, entityType, loanNumber, description, url }) => {
+  const router = useRouter();
+
+  const handleActivityClick = () => {
+    if (url) {
+      router.push(url);
+    } else if (entityType === 'loan' && entityId) {
+      if (status === 'Approved' || status === 'Rejected' || status === 'Correction') {
+        // For document status changes, navigate to the documents tab
+        router.push(`/borrower/loans/${entityId}?tab=documents`);
+      } else {
+        router.push(`/borrower/loans/${entityId}`);
+      }
+    } else if (entityType === 'document') {
+      router.push('/borrower/documents');
+    } else if (entityType === 'message') {
+      router.push('/borrower/messages');
+    } else if (entityType === 'milestone') {
+      router.push(`/borrower/loans/${entityId}?tab=milestones`);
+    }
+  };
+  
+  return (
+    <li className="py-3">
+      <div className="flex items-center space-x-4">
+        <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
+          <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
+          <p className="text-xs text-gray-500">{time}</p>
+          {description && <p className="text-xs text-gray-500 truncate">{description}</p>}
+        </div>
+        <div>
+          <button
+            onClick={handleActivityClick}
+            className="flex items-center justify-center py-1 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
+            disabled={!entityId && !url}
+          >
+            View
+            <ChevronRight className="ml-1 h-3 w-3" />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
-        <p className="text-xs text-gray-500">{time}</p>
-      </div>
-      <div>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor} ${statusColor.replace('bg-', 'text-')}`}>
-          {status}
-        </span>
-      </div>
-    </div>
-  </li>
-);
+    </li>
+  );
+};
 
 // Progress component for payment tracking
 const ProgressItem = ({ label, value, maxValue, color }) => {
@@ -223,6 +262,7 @@ const SummaryCard = ({ title, value, subtitle, icon: Icon, iconColor }) => (
 const BorrowerDashboard = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState(null);
   const [stats, setStats] = useState({
     totalLoans: 0,
     activeLoans: 0,
@@ -247,6 +287,19 @@ const BorrowerDashboard = () => {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
+        
+        // Extract user ID from token
+        if (token) {
+          const payload = token.split('.')[1];
+          try {
+            const decoded = JSON.parse(atob(payload));
+            if (decoded.id) {
+              setUserId(decoded.id);
+            }
+          } catch (error) {
+            console.error('Failed to decode token:', error);
+          }
+        }
         
         // Fetch dashboard stats
         const statsResponse = await axios.get(
@@ -280,8 +333,53 @@ const BorrowerDashboard = () => {
         const loansData = loansResponse.data.data?.loans || [];
         setRecentLoans(loansData);
         
-        const activitiesData = activitiesResponse.data.data?.activities || [];
-        setActivities(activitiesData);
+        // Process activities with proper icons
+        if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
+          // Map backend icons to Lucide React components
+          const iconMap = {
+            'FileText': FileText,
+            'CheckCircle': CheckCircle, 
+            'Clock': Clock,
+            'AlertTriangle': AlertTriangle,
+            'XCircle': XCircle,
+            'Upload': Upload,
+            'RefreshCw': RefreshCw,
+            'Edit': Edit,
+            'FileCheck': FileCheck,
+            'FilePlus': FilePlus,
+            'FileX': FileX,
+            'FilePen': FilePen,
+            'MessageSquare': MessageSquare,
+            'ArrowRightCircle': ArrowRightCircle,
+            'BadgeDollarSign': BadgeDollarSign,
+            'Calendar': Calendar,
+            'ClipboardList': ClipboardList,
+            'BarChart3': BarChart3,
+            'Bell': Bell,
+            'Wallet': Wallet
+          };
+          
+          // Transform backend activities to frontend format
+          const mappedActivities = activitiesResponse.data.data.activities.map(activity => ({
+            // Convert string icon name to actual component using iconMap
+            icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
+            title: activity.title,
+            time: activity.time,
+            status: activity.status,
+            statusColor: activity.statusColor ? `bg-${activity.statusColor}-500` : 'bg-gray-500',
+            id: activity.id,
+            entityId: activity.entityId,
+            entityType: activity.entityType,
+            description: activity.description,
+            url: activity.url,
+            loanNumber: activity.loanNumber
+          }));
+          
+          setActivities(mappedActivities);
+        } else {
+          // Fallback to empty array if API response is invalid
+          setActivities([]);
+        }
         
         // Calculate payment summary from loans
         let totalPaid = 0;
@@ -305,6 +403,38 @@ const BorrowerDashboard = () => {
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast.error('Failed to load dashboard data');
+        
+        // Fallback to sample data if API fails
+        setActivities([
+          { 
+            icon: FileText, 
+            title: 'New loan application submitted',
+            time: '2 hours ago',
+            status: 'New',
+            statusColor: 'bg-blue-500'
+          },
+          { 
+            icon: CheckCircle, 
+            title: 'Document approved',
+            time: '5 hours ago',
+            status: 'Completed',
+            statusColor: 'bg-green-500'
+          },
+          { 
+            icon: Clock, 
+            title: 'Document verification pending',
+            time: 'Yesterday',
+            status: 'Pending',
+            statusColor: 'bg-yellow-500'
+          },
+          { 
+            icon: AlertTriangle, 
+            title: 'Action required: Missing information',
+            time: '2 days ago',
+            status: 'Failed',
+            statusColor: 'bg-red-500'
+          }
+        ]);
       } finally {
         setLoading(false);
       }
@@ -312,6 +442,36 @@ const BorrowerDashboard = () => {
     
     fetchDashboardData();
   }, []);
+  
+  // Format activity time to match lender UI format
+  const formatActivityTime = (activity) => {
+    if (activity.time) {
+      return activity.time;
+    }
+    
+    // If time is not provided directly, use the timestamp or date
+    if (activity.timestamp) {
+      return new Date(activity.timestamp).toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } else if (typeof activity.date === 'string') {
+      return new Date(activity.date).toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+    
+    return "Unknown time";
+  };
   
   const handleViewLoan = (loanId) => {
     router.push(`/borrower/loans/${loanId}`);
@@ -331,39 +491,71 @@ const BorrowerDashboard = () => {
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
   
-  // Generate sample activities if none exist in the API response
-  const processedActivities = activities.length > 0 ? activities : [
-    { 
-      _id: '1',
-      type: 'application',
-      title: 'New loan application submitted',
-      description: 'Your application was received and is being processed.',
-      date: new Date(Date.now() - 2 * 3600 * 1000),
-      status: 'New',
-      statusColor: 'bg-blue-500'
-    },
-    { 
-      _id: '2',
-      type: 'document',
-      title: 'Document verification requested',
-      description: 'Please upload the required identity verification documents.',
-      date: new Date(Date.now() - 8 * 3600 * 1000),
-      status: 'Pending',
-      statusColor: 'bg-yellow-500'
-    },
-    { 
-      _id: '3',
-      type: 'payment',
-      title: 'Payment reminder',
-      description: 'Your next loan payment is due in 3 days.',
-      date: new Date(Date.now() - 24 * 3600 * 1000),
-      status: 'Upcoming',
-      statusColor: 'bg-blue-500'
-    }
-  ];
+  // Socket event handlers
+  useEffect(() => {
+    // Connect to socket
+    const socket = socketService.connect();
+    
+    const handleSocketEvent = (data) => {
+      // Handle all socket events in one listener
+      console.log('Socket event received:', data);
+      
+      if (data.type === 'message') {
+        toast.success(`New message from ${data.sender || 'Lender'}`);
+        
+        // Add new activity
+        const newActivity = {
+          id: `msg-${Date.now()}`,
+          icon: MessageSquare,
+          title: `New message from ${data.senderName || 'Lender'}`,
+          description: data.content?.substring(0, 30) || 'You have a new message',
+          time: 'Just now',
+          status: 'New',
+          statusColor: 'bg-blue-500',
+          entityType: 'message',
+          url: '/borrower/messages'
+        };
+        
+        setActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+      } 
+      else if (data.type === 'milestone') {
+        toast.success(`Milestone updated: ${data.title || 'Loan milestone'}`);
+        
+        // Add new activity
+        const newActivity = {
+          id: `milestone-${Date.now()}`,
+          icon: CheckCircle,
+          title: `Milestone completed: ${data.title || 'Loan milestone'}`,
+          description: data.description || 'A loan milestone has been updated',
+          time: 'Just now',
+          status: 'Completed',
+          statusColor: 'bg-green-500',
+          entityId: data.loanId,
+          entityType: 'loan',
+          url: `/borrower/loans/${data.loanId}?tab=milestones`
+        };
+        
+        setActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+      }
+    };
+    
+    // Register socket event listener
+    socketService.addMessageListener('dashboard-events', handleSocketEvent);
+    
+    return () => {
+      // Cleanup socket event listener on unmount
+      socketService.removeMessageListener('dashboard-events');
+    };
+  }, []);
+  
+  // The socket connection and event handling is now managed in the first useEffect
+  // and through the ActivityManager component
   
   return (
     <MainLayout title="Borrower Dashboard">
+      {/* Activity Manager for real-time updates */}
+      {userId && <ActivityManager userId={userId} updateActivities={setActivities} />}
+      
       <div className="py-6">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
           <div>
@@ -652,38 +844,96 @@ const BorrowerDashboard = () => {
                 {/* Activity Feed */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                    <h2 className="text-lg font-medium text-gray-900">Notifications</h2>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          toast.loading('Refreshing activities...');
+                          const response = await axios.get(
+                            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/activities?limit=5&_=${Date.now()}`,
+                            { 
+                              headers: { Authorization: `Bearer ${token}` },
+                              timeout: 10000 // 10 second timeout  
+                            }
+                          );
+                          
+                          if (response.data && response.data.status === 'success') {
+                            const iconMap = {
+                              'FileText': FileText,
+                              'CheckCircle': CheckCircle, 
+                              'Clock': Clock,
+                              'AlertTriangle': AlertTriangle,
+                              'XCircle': XCircle,
+                              'Upload': Upload,
+                              'RefreshCw': RefreshCw,
+                              'Edit': Edit,
+                              'FileCheck': FileCheck,
+                              'FilePlus': FilePlus,
+                              'FileX': FileX,
+                              'FilePen': FilePen,
+                              'MessageSquare': MessageSquare,
+                              'ArrowRightCircle': ArrowRightCircle,
+                              'BadgeDollarSign': BadgeDollarSign,
+                              'Calendar': Calendar,
+                              'ClipboardList': ClipboardList,
+                              'BarChart3': BarChart3,
+                              'Bell': Bell,
+                              'Wallet': Wallet
+                            };
+                            
+                            const mappedActivities = response.data.data.activities.map(activity => ({
+                              icon: iconMap[activity.icon] || FileText,
+                              title: activity.title,
+                              time: activity.time,
+                              status: activity.status,
+                              statusColor: activity.statusColor ? `bg-${activity.statusColor}-500` : 'bg-gray-500',
+                              id: activity.id,
+                              entityId: activity.entityId,
+                              entityType: activity.entityType,
+                              description: activity.description,
+                              url: activity.url,
+                              loanNumber: activity.loanNumber
+                            }));
+                            
+                            setActivities(mappedActivities);
+                            toast.dismiss();
+                            toast.success('Activities refreshed');
+                          }
+                        } catch (error) {
+                          console.error('Error refreshing activities:', error);
+                          toast.dismiss();
+                          toast.error('Failed to refresh activities');
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      Refresh
+                    </button>
                   </div>
 
-                  {processedActivities.length > 0 ? (
+                  {activities.length > 0 ? (
                     <ul className="divide-y divide-gray-100">
-                      {processedActivities.map((activity, index) => (
+                      {activities.map((activity) => (
                         <ActivityItem
-                          key={activity._id || index}
-                          icon={
-                            activity.type === 'application' ? FileText :
-                            activity.type === 'payment' ? DollarSign :
-                            activity.type === 'document' ? FileCheck :
-                            activity.type === 'status' ? Bell : 
-                            Clock
-                          }
+                          key={activity.id || Math.random().toString()}
+                          icon={activity.icon}
                           title={activity.title}
-                          time={typeof activity.date === 'string' 
-                            ? new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                            : activity.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                          }
+                          time={activity.time}
                           status={activity.status}
-                          statusColor={activity.statusColor || 'bg-gray-500'}
+                          statusColor={activity.statusColor}
+                          entityId={activity.entityId}
+                          entityType={activity.entityType}
+                          loanNumber={activity.loanNumber}
+                          description={activity.description}
+                          url={activity.url}
                         />
                       ))}
                     </ul>
                   ) : (
-                    <div className="text-center py-8">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No activity</h3>
-                      <p className="mt-1 text-sm text-gray-500">Your recent activities will appear here.</p>
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">No recent activity</p>
                     </div>
                   )}
                 </div>

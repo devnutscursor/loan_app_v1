@@ -544,66 +544,361 @@ exports.getBorrowerActivities = async (req, res, next) => {
     // Get query parameters
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
-    const skip = (page - 1) * limit;
     
-    // For this endpoint, we'll mock activities since we don't have a real activity model yet
-    // In a real application, you would fetch from an Activity model
-    
-    // Mock activities data
-    const mockActivities = [
-      {
-        _id: '1',
-        title: 'Loan Application Submitted',
-        description: 'Your loan application has been successfully submitted.',
-        type: 'application',
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
-      },
-      {
-        _id: '2',
-        title: 'Document Uploaded',
-        description: 'You uploaded your proof of income document.',
-        type: 'document',
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
-      },
-      {
-        _id: '3',
-        title: 'Profile Updated',
-        description: 'You updated your personal information.',
-        type: 'profile',
-        date: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000) // 12 hours ago
-      },
-      {
-        _id: '4',
-        title: 'Application Status Changed',
-        description: 'Your loan application status has been updated to "Under Review".',
-        type: 'status',
-        date: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000) // 4.8 hours ago
-      },
-      {
-        _id: '5',
-        title: 'Message Received',
-        description: 'You received a message from ABC Lenders regarding your application.',
-        type: 'message',
-        date: new Date() // Now
+    // Find all loans associated with this borrower
+    const loans = await Loan.find({
+      $or: [
+        { borrower: borrower._id },
+        { coBorrowers: borrower._id }
+      ]
+    })
+    .populate('lender', 'companyName')
+    .populate({
+      path: 'lender',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName'
       }
-    ];
+    })
+    .lean();
     
-    // In a real app, you'd paginate from the database
-    const activities = mockActivities.slice(0, limit);
+    const loanIds = loans.map(loan => loan._id);
+    const activities = [];
+    const processedActivities = new Set();
+    
+    // Mongoose model references
+    const AuditLog = require('../models/auditLog.model');
+    const Document = require('../models/document.model');
+    const Message = require('../models/message.model');
+    const Milestone = require('../models/milestone.model');
+    
+    // 1. Recent document status changes (approved, rejected, needs correction)
+    let documentStatusChanges = [];
+    try {
+      // Find document status changes in audit logs
+      documentStatusChanges = await AuditLog.find({
+        entityType: 'document',
+        'metadata.loanId': { $in: loanIds },
+        eventType: { $in: ['document:status_changed', 'document:reviewed'] },
+        timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
+      })
+      .sort({ timestamp: -1 })
+      .limit(20)
+      .lean();
+      
+      // Process document status changes
+      documentStatusChanges.forEach(log => {
+        if (!log.metadata) return;
+        
+        const { documentName, newStatus, loanNumber, loanId } = log.metadata;
+        if (!documentName || !newStatus || !loanId) return;
+        
+        let title, statusColor, statusText, icon;
+        
+        switch(newStatus.toLowerCase()) {
+          case 'approved':
+            title = `Document approved for loan ${loanNumber || '#' + loanId.toString().substr(-5)}`;
+            statusColor = 'bg-green-500';
+            statusText = 'Approved';
+            icon = 'FileCheck';
+            break;
+          case 'rejected':
+            title = `Document rejected for loan ${loanNumber || '#' + loanId.toString().substr(-5)}`;
+            statusColor = 'bg-red-500';
+            statusText = 'Rejected';
+            icon = 'FileX';
+            break;
+          case 'needs_correction':
+          case 'needs correction':
+            title = `Document needs correction for loan ${loanNumber || '#' + loanId.toString().substr(-5)}`;
+            statusColor = 'bg-yellow-500';
+            statusText = 'Needs Correction';
+            icon = 'FilePen';
+            break;
+          default:
+            title = `Document status updated for loan ${loanNumber || '#' + loanId.toString().substr(-5)}`;
+            statusColor = 'bg-blue-500';
+            statusText = 'Updated';
+            icon = 'RefreshCw';
+        }
+        
+        const activityKey = `doc-status-${log._id}`;
+        
+        // Skip if already processed
+        if (processedActivities.has(activityKey)) return;
+        processedActivities.add(activityKey);
+        
+        activities.push({
+          id: activityKey,
+          title,
+          description: `${documentName} ${newStatus === 'needs_correction' ? 'requires updates' : `marked as ${newStatus}`}`,
+          timestamp: log.timestamp,
+          type: 'document_status',
+          status: statusText,
+          statusColor,
+          entityId: log.entityId,
+          entityType: 'document',
+          icon,
+          loanNumber: loanNumber || (loanId ? '#' + loanId.toString().substr(-5) : ''),
+          time: new Date(log.timestamp).toLocaleString(),
+          url: `/borrower/documents`
+        });
+      });
+    } catch (err) {
+      console.error('Error fetching document status changes:', err);
+    }
+    
+    // 2. Document requests from lender
+    let documentRequests = [];
+    try {
+      const conditions = await Promise.all(loans.map(async (loan) => {
+        if (!loan.conditions || !loan.conditions.length) return [];
+        
+        // Filter for document-related conditions assigned to this borrower
+        return loan.conditions
+          .filter(condition => 
+            condition.type === 'document' && 
+            condition.status === 'Pending' &&
+            (!condition.assignedTo || condition.assignedTo.toString() === borrower._id.toString())
+          )
+          .map(condition => ({
+            ...condition,
+            loanNumber: loan.loanNumber || loan._id.toString().substr(-5),
+            loanId: loan._id,
+            createdAt: condition.createdAt || loan.updatedAt
+          }));
+      }));
+      
+      // Flatten the array of arrays
+      documentRequests = [].concat(...conditions)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      // Process document requests
+      documentRequests.forEach(request => {
+        const activityKey = `doc-request-${request._id}`;
+        
+        // Skip if already processed
+        if (processedActivities.has(activityKey)) return;
+        processedActivities.add(activityKey);
+        
+        activities.push({
+          id: activityKey,
+          title: `Document requested for loan #${request.loanNumber}`,
+          description: request.title || 'Document required for your loan application',
+          timestamp: request.createdAt,
+          type: 'document_request',
+          status: 'Required',
+          statusColor: 'bg-blue-500',
+          entityId: request.loanId,
+          entityType: 'loan',
+          icon: 'FileText',
+          loanNumber: `#${request.loanNumber}`,
+          time: new Date(request.createdAt).toLocaleString(),
+          url: `/borrower/documents`
+        });
+      });
+    } catch (err) {
+      console.error('Error fetching document requests:', err);
+    }
+    
+    // 3. Completed milestones
+    let completedMilestones = [];
+    try {
+      for (const loan of loans) {
+        if (!loan.milestones || !loan.milestones.length) continue;
+        
+        // Find recently completed milestones (last 30 days)
+        const recentlyCompletedMilestones = loan.milestones
+          .filter(milestone => 
+            milestone.status === 'completed' && 
+            milestone.completedAt && 
+            new Date(milestone.completedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          );
+        
+        for (const milestone of recentlyCompletedMilestones) {
+          const activityKey = `milestone-${loan._id}-${milestone._id || milestone.id}`;
+          
+          // Skip if already processed
+          if (processedActivities.has(activityKey)) continue;
+          processedActivities.add(activityKey);
+          
+          activities.push({
+            id: activityKey,
+            title: `Loan milestone completed`,
+            description: `${milestone.title || 'Milestone'} for loan #${loan.loanNumber || loan._id.toString().substr(-5)}`,
+            timestamp: milestone.completedAt,
+            type: 'milestone',
+            status: 'Completed',
+            statusColor: 'bg-green-500',
+            entityId: loan._id,
+            entityType: 'loan',
+            icon: 'CheckCircle',
+            loanNumber: `#${loan.loanNumber || loan._id.toString().substr(-5)}`,
+            time: new Date(milestone.completedAt).toLocaleString(),
+            url: `/borrower/loans/${loan._id}`
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error processing milestone completions:', err);
+    }
+    
+    // 4. Recent messages from lenders
+    let recentMessages = [];
+    try {
+      // Get recent messages from lenders to this borrower
+      recentMessages = await AuditLog.find({
+        entityType: 'message',
+        eventType: 'message:received',
+        'metadata.borrowerId': borrower._id,
+        timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      })
+      .sort({ timestamp: -1 })
+      .limit(10)
+      .lean();
+      
+      // Process messages
+      recentMessages.forEach(log => {
+        if (!log.metadata) return;
+        
+        const { loanId, loanNumber, senderName, message } = log.metadata;
+        if (!loanId && !senderName) return;
+        
+        const activityKey = `message-${log._id}`;
+        
+        // Skip if already processed
+        if (processedActivities.has(activityKey)) return;
+        processedActivities.add(activityKey);
+        
+        // Determine which loan this message is for
+        const relatedLoan = loanId ? 
+          loans.find(loan => loan._id.toString() === loanId.toString()) : null;
+        
+        activities.push({
+          id: activityKey,
+          title: `New message from ${senderName || 'Lender'}`,
+          description: message ? (message.length > 50 ? `${message.substring(0, 50)}...` : message) : 'You have a new message',
+          timestamp: log.timestamp,
+          type: 'message',
+          status: 'New',
+          statusColor: 'bg-blue-500',
+          entityId: loanId,
+          entityType: 'message',
+          icon: 'MessageSquare',
+          loanNumber: loanNumber || (relatedLoan ? `#${relatedLoan.loanNumber || relatedLoan._id.toString().substr(-5)}` : ''),
+          time: new Date(log.timestamp).toLocaleString(),
+          url: `/borrower/messages`
+        });
+      });
+    } catch (err) {
+      console.error('Error fetching lender messages:', err);
+    }
+    
+    // 5. Loan status changes
+    let loanStatusChanges = [];
+    try {
+      // Find loan status changes in audit logs
+      loanStatusChanges = await AuditLog.find({
+        entityType: 'loan',
+        entityId: { $in: loanIds },
+        eventType: { $in: ['loan:status_changed', 'loan:status_update'] },
+        timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      })
+      .sort({ timestamp: -1 })
+      .limit(10)
+      .lean();
+      
+      // Process loan status changes
+      loanStatusChanges.forEach(log => {
+        if (!log.metadata) return;
+        
+        const { newStatus, loanNumber, loanId } = log.metadata;
+        if (!newStatus || (!loanNumber && !loanId)) return;
+        
+        // Skip if this is for a loan we don't have
+        if (loanId && !loanIds.some(id => id.toString() === loanId.toString())) return;
+        
+        // Find the loan this status change is for
+        const relatedLoan = loanId ? 
+          loans.find(loan => loan._id.toString() === loanId.toString()) : 
+          loans.find(loan => loan.loanNumber === loanNumber);
+        
+        if (!relatedLoan) return;
+        
+        let statusColor, statusText, icon;
+        
+        switch(newStatus.toLowerCase()) {
+          case 'approved':
+          case 'conditional approval':
+          case 'clear to close':
+            statusColor = 'bg-green-500';
+            statusText = 'Approved';
+            icon = 'CheckCircle';
+            break;
+          case 'rejected':
+            statusColor = 'bg-red-500';
+            statusText = 'Rejected';
+            icon = 'XCircle';
+            break;
+          case 'pending':
+          case 'in review':
+          case 'in_review':
+            statusColor = 'bg-blue-500';
+            statusText = 'In Review';
+            icon = 'Clock';
+            break;
+          default:
+            statusColor = 'bg-gray-500';
+            statusText = 'Updated';
+            icon = 'RefreshCw';
+        }
+        
+        const activityKey = `loan-status-${log._id}`;
+        
+        // Skip if already processed
+        if (processedActivities.has(activityKey)) return;
+        processedActivities.add(activityKey);
+        
+        activities.push({
+          id: activityKey,
+          title: `Loan application status changed`,
+          description: `Your loan #${relatedLoan.loanNumber || relatedLoan._id.toString().substr(-5)} status is now ${newStatus}`,
+          timestamp: log.timestamp,
+          type: 'loan_status',
+          status: statusText,
+          statusColor,
+          entityId: relatedLoan._id,
+          entityType: 'loan',
+          icon,
+          loanNumber: `#${relatedLoan.loanNumber || relatedLoan._id.toString().substr(-5)}`,
+          time: new Date(log.timestamp).toLocaleString(),
+          url: `/borrower/loans/${relatedLoan._id}`
+        });
+      });
+    } catch (err) {
+      console.error('Error fetching loan status changes:', err);
+    }
+    
+    // Sort all activities by timestamp (most recent first)
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // Apply pagination
+    const paginatedActivities = activities.slice(0, limit);
     
     res.status(200).json({
       status: 'success',
       data: {
-        activities,
+        activities: paginatedActivities,
         pagination: {
-          total: mockActivities.length,
+          total: activities.length,
           page,
           limit,
-          pages: Math.ceil(mockActivities.length / limit)
+          pages: Math.ceil(activities.length / limit)
         }
       }
     });
   } catch (error) {
+    console.error('Error in getBorrowerActivities:', error);
     next(error);
   }
 };

@@ -58,15 +58,21 @@ const BorrowerMessages = () => {
       
       // Join user's room
       socketService.joinRoom(userData.data.user._id);
+      console.log('Borrower Messages: Joined room', userData.data.user._id);
       
-      // Add message listener
-      socketService.addMessageListener('borrower-messages', (message) => {
-        // Check if this message belongs to the current conversation
-        if (message.borrower && lender?.borrowerId && message.borrower === lender.borrowerId) {
+      // Handle direct message events
+      const handleNewMessage = (message) => {
+        console.log('Borrower Messages: New message received', message);
+        
+        // Check if this message belongs to the current conversation or is a new message
+        if ((message.borrower && lender?.borrowerId && message.borrower === lender.borrowerId) || 
+            (message.sender && message.sender === 'lender')) {
           setMessages((prevMessages) => {
             // Check if message already exists to prevent duplicates
             const exists = prevMessages.some(m => m._id === message._id);
             if (!exists) {
+              // Show notification for new messages
+              toast.success('New message received');
               return [...prevMessages, message];
             }
             return prevMessages;
@@ -79,11 +85,16 @@ const BorrowerMessages = () => {
             }
           }, 100);
         }
-      });
+      };
+      
+      // Register direct event listeners
+      socket.on('receive_message', handleNewMessage);
+      socket.on('new_lender_message', handleNewMessage);
       
       // Clean up on unmount
       return () => {
-        socketService.removeMessageListener('borrower-messages');
+        socket.off('receive_message', handleNewMessage);
+        socket.off('new_lender_message', handleNewMessage);
       };
     }
   }, [userData?.data?.user?._id, lender?.borrowerId]);
