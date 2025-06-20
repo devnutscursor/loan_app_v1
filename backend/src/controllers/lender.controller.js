@@ -169,10 +169,10 @@ exports.getLenderDashboard = async (req, res, next) => {
       status: { $nin: ['closed', 'rejected', 'withdrawn'] }
     });
     
-    // Get approved loans
+    // Get approved loans (include Conditional Approval and other approval statuses)
     const approvedLoans = await Loan.countDocuments({ 
       lender: lender._id,
-      status: 'approved'
+      status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
     });
     
     // Get pending applications
@@ -752,14 +752,68 @@ exports.getLenderActivities = async (req, res, next) => {
     }
     
     try {
-      // Recently approved loans
+      // Recently approved loans - find loans with Conditional Approval status
       recentApprovals = await Loan.find({ 
         lender: lender._id, 
-        status: 'approved',
-        decisionDate: { $exists: true }
+        status: { $in: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] }
       })
-      .sort({ decisionDate: -1 })
+      .sort({ updatedAt: -1 })  // Sort by last update time since we may not have decisionDate
       .limit(5);
+      
+      // We'll retrieve approval events only through audit logs for consistency
+      // and to avoid duplicates (clear existing results from the DB query)
+      recentApprovals = [];
+      
+      const AuditLog = mongoose.model('AuditLog');
+      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
+      
+      if (loanIds && loanIds.length > 0) {
+        // Track loan IDs we've already processed to avoid duplicates
+        const processedLoanIds = new Set();
+        
+        // Get approval events from audit logs
+        const approvalLogs = await AuditLog.find({
+          eventType: { $in: ['loan:status_update', 'loan:status_changed'] },
+          'metadata.newStatus': { $in: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] },
+          entityId: { $in: loanIds },
+          timestamp: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
+        })
+        .sort({ timestamp: -1 })
+        .limit(10) // Get more than needed to handle potential duplicates
+        .populate('entityId', 'loanNumber loanDetails borrowerDetails')
+        .lean();
+
+        // Process approval logs, ensuring unique loan IDs
+        for (const log of approvalLogs) {
+          if (!log.entityId || processedLoanIds.has(log.entityId._id.toString())) {
+            continue;
+          }
+          
+          processedLoanIds.add(log.entityId._id.toString());
+          
+          recentApprovals.push({
+            _id: log.entityId._id,
+            loanNumber: log.entityId.loanNumber || log.metadata?.loanNumber,
+            loanDetails: log.entityId.loanDetails || log.metadata?.loanDetails,
+            borrowerDetails: log.entityId.borrowerDetails,
+            borrowerName: log.metadata?.borrowerName,
+            decisionDate: log.timestamp,
+            fromAuditLog: true,
+            eventId: log._id // Track the specific event ID to avoid duplicates
+          });
+          
+          // Limit to 5 unique loans
+          if (recentApprovals.length >= 5) {
+            break;
+          }
+        }
+      }
+      
+      // Limit to 5 most recent approvals after combining both sources
+      recentApprovals.sort((a, b) => 
+        new Date(b.decisionDate || b.updatedAt) - new Date(a.decisionDate || a.updatedAt)
+      );
+      recentApprovals = recentApprovals.slice(0, 5);
       
       console.log(`Found ${recentApprovals.length} approved loans`);
     } catch (err) {
@@ -890,14 +944,19 @@ exports.getLenderActivities = async (req, res, next) => {
       const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
       
       if (loanIds && loanIds.length > 0) {
+        // We'll exclude loan status changes that became approvals, since we're handling those separately
         recentStatusChanges = await AuditLog.find({
           entityType: 'loan',
           entityId: { $in: loanIds },
-          eventType: { $in: ['loan:status_changed', 'loan:updated'] },
+          eventType: { $in: ['loan:status_changed', 'loan:status_update', 'loan:updated'] },
+          // Exclude the approval statuses we're handling separately
+          'metadata.newStatus': { 
+            $nin: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] 
+          },
           timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
         })
         .sort({ timestamp: -1 })
-        .limit(5)
+        .limit(10) // Get more and filter later
         .lean();
         
         console.log(`Found ${recentStatusChanges.length} status changes in audit logs`);
@@ -944,6 +1003,9 @@ exports.getLenderActivities = async (req, res, next) => {
     // Transform into activities format
     const activities = [];
     
+    // Track unique activity identifiers to prevent duplicates
+    const processedActivities = new Set();
+    
     // Add new loan applications
     if (!recentApplications || !Array.isArray(recentApplications)) {
       console.log('recentApplications is not an array:', recentApplications);
@@ -985,8 +1047,17 @@ exports.getLenderActivities = async (req, res, next) => {
         borrowerName = `${loan.borrowerDetails.firstName || ''} ${loan.borrowerDetails.lastName || ''}`.trim();
       }
       
+      const activityKey = `application-${loan._id}`;
+      
+      // Skip if we've already processed this loan application
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
       activities.push({
-        id: `application-${loan._id}`,
+        id: activityKey,
         title: `${activityTitle} ${loanNumber}`,
         description: borrowerName !== 'Unknown Borrower' ? `From ${borrowerName}` : 'New application',
         timestamp: activityTimestamp,
@@ -1008,13 +1079,40 @@ exports.getLenderActivities = async (req, res, next) => {
     
     recentApprovals.forEach(loan => {
       const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
+      
+      // Create unique activity ID
+      const activityKey = `loan-approval-${loan._id}`;
+      
+      // Skip if we've already processed this loan
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
+      // Extract borrower name if available
+      let borrowerName = "Unknown";
+      if (loan.borrowerDetails) {
+        borrowerName = `${loan.borrowerDetails.firstName || ''} ${loan.borrowerDetails.lastName || ''}`.trim() || 'Unknown';
+      } else if (loan.borrowerName) {
+        borrowerName = loan.borrowerName;
+      }
+      
+      // Create description with loan amount if available
+      let description = 'Loan approved';
+      if (loan.loanDetails?.loanAmount) {
+        description = `Amount: $${parseInt(loan.loanDetails.loanAmount).toLocaleString()}`;
+      } else if (borrowerName !== 'Unknown') {
+        description = `From ${borrowerName}`;
+      }
+      
       activities.push({
-        id: `approval-${loan._id}`,
+        id: activityKey,
         title: `Loan ${loanNumber} approved`,
-        description: loan.loanDetails?.loanAmount ? `Amount: $${loan.loanDetails.loanAmount.toLocaleString()}` : 'Loan approved',
-        timestamp: loan.decisionDate,
+        description: description,
+        timestamp: loan.decisionDate || loan.updatedAt,
         type: 'approval',
-        status: 'Completed',
+        status: 'Approved',
         statusColor: 'green',
         entityId: loan._id,
         entityType: 'loan',
@@ -1161,8 +1259,18 @@ exports.getLenderActivities = async (req, res, next) => {
         `${log.metadata.documentName} status changed from "${log.metadata.previousStatus || 'Unknown'}" to "${log.metadata.newStatus}"` : 
         `Document status changed from "${log.metadata?.previousStatus || 'Unknown'}" to "${log.metadata?.newStatus}"`;
       
+      // Create a unique ID for this document status change
+      const activityKey = `doc-status-${log._id}`;
+      
+      // Skip if we've already processed this activity
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
       activities.push({
-        id: `doc-status-${log._id}`,
+        id: activityKey,
         title: title,
         description: description,
         timestamp: log.timestamp,
@@ -1185,6 +1293,8 @@ exports.getLenderActivities = async (req, res, next) => {
     recentStatusChanges.forEach(log => {
       let title = 'Loan updated';
       let statusColor = 'blue';
+      let status = 'Updated';
+      let icon = 'RefreshCw';
       
       // Try to get loan number from metadata or entityId
       let loanNumber = '';
@@ -1194,35 +1304,77 @@ exports.getLenderActivities = async (req, res, next) => {
         loanNumber = `#${log.entityId.toString().substr(-5)}`;
       }
       
-      if (log.eventType === 'loan:status_changed') {
+      // Create a unique activity key using loan ID for important statuses
+      let activityKey;
+      
+      if (log.eventType === 'loan:status_changed' || log.eventType === 'loan:status_update') {
+        // Default title if we don't have metadata
         title = `Loan ${loanNumber} status changed`;
+        
         if (log.metadata && log.metadata.newStatus) {
-          title = `Loan ${loanNumber} status changed to ${log.metadata.newStatus}`;
+          // Get new status
+          const newStatus = log.metadata.newStatus;
           
-          // Set color based on status
-          if (log.metadata.newStatus.toLowerCase() === 'approved') {
+          // For approved/conditional approval, use a more specific title
+          if (newStatus === 'Conditional Approval' || newStatus.toLowerCase().includes('approved')) {
+            title = `Loan ${loanNumber} approved`;
             statusColor = 'green';
-          } else if (log.metadata.newStatus.toLowerCase() === 'rejected') {
+            status = 'Approved';
+            icon = 'CheckCircle';
+            // Use loan ID for deduplication
+            activityKey = `loan-approval-${log.entityId}`;
+          } else if (newStatus.toLowerCase() === 'rejected' || newStatus.toLowerCase() === 'declined') {
+            title = `Loan ${loanNumber} rejected`;
             statusColor = 'red';
-          } else if (log.metadata.newStatus.toLowerCase().includes('review')) {
+            status = 'Rejected';
+            icon = 'XCircle';
+            activityKey = `loan-rejection-${log.entityId}`;
+          } else if (newStatus.toLowerCase().includes('review') || newStatus.toLowerCase().includes('processing') || newStatus.toLowerCase().includes('underwriting')) {
+            title = `Loan ${loanNumber} in review`;
             statusColor = 'yellow';
+            status = 'In Review';
+            activityKey = `status-change-${log._id}`;
+          } else {
+            // For other status changes
+            title = `Loan ${loanNumber} status changed to ${newStatus}`;
+            activityKey = `status-change-${log._id}`;
           }
+        } else {
+          activityKey = `status-change-${log._id}`;
         }
       } else {
+        // For general loan updates
         title = `Loan ${loanNumber} updated`;
+        activityKey = `status-change-${log._id}`;
+      }
+      
+      // Skip if we've already processed a similar activity for this loan
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
+      // Get description - for approvals, include loan amount if available
+      let description = log.description || 'Status updated';
+      if ((log.metadata?.newStatus === 'Conditional Approval' || log.metadata?.newStatus?.toLowerCase().includes('approved')) && 
+          log.metadata?.loanAmount) {
+        description = `Amount: $${parseInt(log.metadata.loanAmount).toLocaleString()}`;
+      } else if (log.metadata?.borrowerName) {
+        description = `From ${log.metadata.borrowerName}`;
       }
       
       activities.push({
-        id: `status-change-${log._id}`,
+        id: activityKey,
         title: title,
-        description: log.description || 'Status updated',
+        description: description,
         timestamp: log.timestamp,
         type: 'status_change',
-        status: 'Updated',
+        status: status || 'Updated',
         statusColor: statusColor,
         entityId: log.entityId,
         entityType: 'loan',
-        icon: 'RefreshCw',
+        icon: icon || 'RefreshCw',
         loanNumber: loanNumber
       });
     });
@@ -1237,8 +1389,17 @@ exports.getLenderActivities = async (req, res, next) => {
       const borrowerInfo = loan.borrower ? `for ${loan.borrower.firstName} ${loan.borrower.lastName}` : '';
       const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
       
+      const activityKey = `loan-update-${loan._id}`;
+      
+      // Skip if we've already processed this loan update
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
       activities.push({
-        id: `loan-update-${loan._id}-${Date.now()}`,
+        id: activityKey,
         title: `Loan ${loanNumber} updated`,
         description: borrowerInfo.trim(),
         timestamp: loan.updatedAt,
@@ -1261,8 +1422,17 @@ exports.getLenderActivities = async (req, res, next) => {
     recentMessages.forEach(log => {
       const borrowerName = log.metadata?.borrowerName || 'Unknown Borrower';
       
+      const activityKey = `message-${log._id}`;
+      
+      // Skip if we've already processed this message
+      if (processedActivities.has(activityKey)) {
+        return;
+      }
+      
+      processedActivities.add(activityKey);
+      
       activities.push({
-        id: `message-${log._id}`,
+        id: activityKey,
         title: `New message from ${borrowerName}`,
         description: log.metadata?.content || 'Message received',
         timestamp: log.timestamp,

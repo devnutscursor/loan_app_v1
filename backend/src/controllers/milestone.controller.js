@@ -385,6 +385,45 @@ exports.updateMilestone = catchAsync(async (req, res) => {
     await updateMilestoneProgression(milestone.loan);
   }
   
+  // Check if all milestones are completed and update loan status if needed
+  if (milestone.status === 'completed') {
+    // Get all milestones for the loan
+    const allMilestones = await Milestone.find({ loan: milestone.loan });
+    
+    // Check if all milestones are completed
+    const allCompleted = allMilestones.every(m => m.status === 'completed');
+    
+    // If all milestones are completed, update loan status to "Conditional Approval"
+    if (allCompleted) {
+      console.log(`All milestones completed for loan ${loan._id}. Updating status to Conditional Approval.`);
+      
+      // Update the loan status
+      loan.status = 'Conditional Approval';
+      await loan.save();
+      
+      // Log the loan approval
+      await createAuditLog({
+        eventType: 'loan:status_changed', // Changing to match the pattern used in lender.controller
+        description: `Loan ${loan.loanNumber || loan._id} automatically received conditional approval after all milestones completed`,
+        userId: req.user.id,
+        userRole: req.user.role,
+        level: 'info',
+        entityType: 'loan',
+        entityId: loan._id,
+        metadata: { 
+          loanId: loan._id,
+          loanNumber: loan.loanNumber,
+          previousStatus: loan.status,
+          newStatus: 'Conditional Approval',
+          borrowerName: loan.borrowerDetails ? `${loan.borrowerDetails.firstName || ''} ${loan.borrowerDetails.lastName || ''}`.trim() : 'Unknown',
+          loanAmount: loan.loanDetails?.loanAmount || 0
+        }
+      });
+      
+      console.log(`Loan ${loan._id} status updated to Conditional Approval`);
+    }
+  }
+  
   // Log the milestone update for audit
   await createAuditLog({
     eventType: 'milestone:update',
