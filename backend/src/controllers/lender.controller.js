@@ -175,18 +175,18 @@ exports.getLenderDashboard = async (req, res, next) => {
       status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
     });
     
-    // Get pending applications
+    // Get pending applications (status 'Application Submitted')
     const pendingApplications = await Loan.countDocuments({ 
       lender: lender._id,
-      status: 'pending'
+      status: 'Application Submitted'
     });
     
-    // Calculate total loan volume
+    // Calculate total loan volume for loans with 'Conditional Approval' or other approval statuses
     const loanAmountResult = await Loan.aggregate([
       { 
         $match: { 
           lender: lender._id,
-          status: 'approved'
+          status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
         }
       },
       {
@@ -288,13 +288,75 @@ exports.getLenderDashboard = async (req, res, next) => {
     const maxDocumentReviews = Math.max(12, totalDocumentReviews * 1.5);
     const maxRecentApprovals = Math.max(15, recentApprovals * 1.5);
     
-    // Calculate trend percentages
-    // In a real implementation, you would compare current period to previous period
-    // For now, we'll generate some reasonable values based on current stats
+    // Calculate real trend percentages compared to previous month
+    // Get first day of current month and first day of previous month
+    const now = new Date();
+    const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const firstDayTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    
+    // Get total loans for previous month
+    const previousMonthLoans = await Loan.countDocuments({
+      lender: lender._id,
+      createdAt: { 
+        $gte: firstDayPreviousMonth, 
+        $lt: firstDayCurrentMonth 
+      }
+    });
+    
+    // Get pending applications from previous month
+    const previousMonthPendingApplications = await Loan.countDocuments({
+      lender: lender._id,
+      status: 'Application Submitted',
+      createdAt: { 
+        $gte: firstDayPreviousMonth, 
+        $lt: firstDayCurrentMonth
+      }
+    });
+    
+    // Calculate total amount from previous month's approved loans
+    const previousMonthVolumeResult = await Loan.aggregate([
+      {
+        $match: {
+          lender: lender._id,
+          status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] },
+          updatedAt: {
+            $gte: firstDayPreviousMonth,
+            $lt: firstDayCurrentMonth
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$loanDetails.loanAmount" }
+        }
+      }
+    ]);
+    
+    const previousMonthVolume = previousMonthVolumeResult.length > 0 ? previousMonthVolumeResult[0].totalAmount : 0;
+    
+    // Calculate percentage changes
+    let loansChange = 0;
+    if (previousMonthLoans > 0) {
+      loansChange = Math.round(((totalLoans - previousMonthLoans) / previousMonthLoans) * 100);
+    }
+    
+    let applicationsChange = 0;
+    if (previousMonthPendingApplications > 0) {
+      applicationsChange = Math.round(((pendingApplications - previousMonthPendingApplications) / previousMonthPendingApplications) * 100);
+    }
+    
+    let volumeChange = 0;
+    if (previousMonthVolume > 0) {
+      volumeChange = Math.round(((totalAmount - previousMonthVolume) / previousMonthVolume) * 100);
+    }
+    
+    // Prepare percentChanges object
     const percentChanges = {
-      loans: Math.floor(Math.random() * 10) + 1,     // Random 1-10% change in total loans
-      applications: Math.floor(Math.random() * 15) - 5,  // Random -5 to +10% change in pending applications
-      amount: Math.floor(Math.random() * 12) + 1      // Random 1-12% change in total amount
+      loans: loansChange,
+      applications: applicationsChange,
+      amount: volumeChange
     };
     
     // Calculate previous period approval rate for trend 
