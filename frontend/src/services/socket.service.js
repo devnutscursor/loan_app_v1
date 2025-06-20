@@ -32,10 +32,43 @@ class SocketService {
       });
 
       this.socket.on('receive_message', (message) => {
-        console.log('New message received:', message);
+        console.log('SocketService: New message received:', message);
         // Notify all registered listeners
         this.messageListeners.forEach((callback) => {
           callback(message);
+        });
+      });
+      
+      // Add event listeners for other notification types
+      this.socket.on('milestone_updated', (data) => {
+        console.log('SocketService: Milestone updated:', data);
+        // Notify registered listeners with type information
+        this.messageListeners.forEach((callback) => {
+          callback({...data, type: 'milestone'});
+        });
+      });
+      
+      this.socket.on('document_requested', (data) => {
+        console.log('SocketService: Document requested:', data);
+        // Notify registered listeners with type information
+        this.messageListeners.forEach((callback) => {
+          callback({...data, type: 'document_request'});
+        });
+      });
+      
+      this.socket.on('document_status_changed', (data) => {
+        console.log('SocketService: Document status changed:', data);
+        // Notify registered listeners with type information
+        this.messageListeners.forEach((callback) => {
+          callback({...data, type: 'document_status'});
+        });
+      });
+      
+      this.socket.on('new_lender_message', (data) => {
+        console.log('SocketService: New lender message:', data);
+        // Notify registered listeners with type information
+        this.messageListeners.forEach((callback) => {
+          callback({...data, type: 'message'});
         });
       });
     }
@@ -78,4 +111,4 @@ class SocketService {
 // Create singleton instance
 const socketService = new SocketService();
 
-export default socketService; 
+export default socketService;

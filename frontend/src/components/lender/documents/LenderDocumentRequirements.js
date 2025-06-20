@@ -108,28 +108,71 @@ const LenderDocumentRequirements = ({
 
     // Create a map of existing requirement statuses to preserve them
     const existingStatusMap = {};
+    
+    // First load from current requirements
     requirements.forEach(req => {
       if (req.documentId) {
         existingStatusMap[req.documentId] = {
           status: req.status,
-          isSubmitted: req.isSubmitted
+          isSubmitted: req.isSubmitted,
+          requestedUpdate: req.requestedUpdate
         };
       }
       // Also map by matchedDocument._id if available
       if (req.matchedDocument?._id) {
         existingStatusMap[req.matchedDocument._id] = {
           status: req.status,
-          isSubmitted: req.isSubmitted
+          isSubmitted: req.isSubmitted,
+          requestedUpdate: req.requestedUpdate
         };
       }
       // Also map by req.id as fallback
       if (req.id) {
         existingStatusMap[req.id] = {
           status: req.status,
-          isSubmitted: req.isSubmitted
+          isSubmitted: req.isSubmitted,
+          requestedUpdate: req.requestedUpdate
+        };
+      }
+      
+      // Use category and documentType as key too
+      if (req.category && req.documentType) {
+        existingStatusMap[`${req.category}-${req.documentType}`] = {
+          status: req.status,
+          isSubmitted: req.isSubmitted,
+          requestedUpdate: req.requestedUpdate
         };
       }
     });
+    
+    // Then check localStorage for any persisted states
+    try {
+      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+      console.log("Loaded states from localStorage:", storedStates);
+      
+      // For each stored state that matches this loan
+      Object.entries(storedStates).forEach(([key, state]) => {
+        if (key.startsWith(`${loanId}-`)) {
+          // Extract category and document type from key
+          const parts = key.split('-');
+          if (parts.length >= 3) {
+            const category = parts[1];
+            const documentType = parts[2];
+            
+            // Add to the existing status map
+            existingStatusMap[`${category}-${documentType}`] = {
+              status: state.status,
+              isSubmitted: false,
+              requestedUpdate: state.requestedUpdate
+            };
+            
+            console.log(`Restored state for ${category}-${documentType}: ${state.status}`);
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Failed to load persisted document states:", err);
+    }
     
     console.log("Existing status map:", existingStatusMap);
 
@@ -147,17 +190,26 @@ const LenderDocumentRequirements = ({
           req.title
         );
         
-        // Check if we have an existing status for this requirement
-        const existingStatus = existingStatusMap[reqId];
+        // Check if we have an existing status for this requirement, looking at multiple possible keys
+        const existingStatus = 
+          existingStatusMap[reqId] || 
+          existingStatusMap[`${req.category}-${req.documentType}`] ||
+          existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
+        
+        // Determine if this document needs correction (from conditions OR persisted state)
+        const needsCorrection = hasCondition || 
+                               (existingStatus && 
+                                existingStatus.requestedUpdate && 
+                                existingStatus.status === "Needs Correction");
 
         return {
           ...req,
           id: reqId,
           // Preserve existing status if available, otherwise set default
           status: existingStatus ? existingStatus.status : 
-                 (hasCondition ? "Needs Correction" : "Not Submitted"),
+                 (needsCorrection ? "Needs Correction" : "Not Submitted"),
           isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
-          requestedUpdate: hasCondition, // Set based on condition existence
+          requestedUpdate: needsCorrection, // Set based on condition existence or persisted state
         };
       });
 
@@ -182,30 +234,60 @@ const LenderDocumentRequirements = ({
       const assignedDoc = documentAssignments[req.id];
 
       if (assignedDoc) {
-        // Check if we have an existing status for this document
-        const existingStatus = existingStatusMap[assignedDoc._id];
+        // Check if we have an existing status for this document, checking multiple possible keys
+        const existingStatus = 
+          existingStatusMap[assignedDoc._id] || 
+          existingStatusMap[req.id] ||
+          existingStatusMap[`${req.category}-${req.documentType}`] ||
+          existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
+        
+        // Determine if document has a "Needs Correction" status already saved
+        const needsCorrection = 
+          (existingStatus && existingStatus.status === "Needs Correction") ||
+          hasDocumentCondition(loanConditions, req.category, req.documentType, req.title);
         
         return {
           ...req,
           isSubmitted: true,
           // Use existing status if available, otherwise use the assigned doc status or default
-          status: existingStatus ? existingStatus.status : 
-                 (assignedDoc.status || "Pending Review"),
+          status: needsCorrection ? "Needs Correction" : 
+                 (existingStatus ? existingStatus.status : 
+                 (assignedDoc.status || "Pending Review")),
           documentId: assignedDoc._id,
           url: assignedDoc.fileUrl || assignedDoc.url,
           uploadDate: assignedDoc.createdAt || assignedDoc.uploadedAt,
+          requestedUpdate: needsCorrection,
           // Store original document info for debugging
           matchedDocument: assignedDoc,
         };
       }
 
-      // For unassigned documents, check if there's an existing status by req.id
-      const existingStatus = existingStatusMap[req.id];
+      // For unassigned documents, check if there's an existing status, checking multiple possible keys
+      const existingStatus = 
+        existingStatusMap[req.id] || 
+        existingStatusMap[`${req.category}-${req.documentType}`] ||
+        existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
+      
+      // Check if there's a pending document condition for this requirement
+      const hasCondition = hasDocumentCondition(
+        loanConditions,
+        req.category,
+        req.documentType,
+        req.title
+      );
+      
+      // Determine if this document needs correction (from conditions OR persisted state)
+      const needsCorrection = hasCondition || 
+                             (existingStatus && 
+                              existingStatus.requestedUpdate && 
+                              existingStatus.status === "Needs Correction");
       
       return {
         ...req,
         isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
-        status: existingStatus ? existingStatus.status : "Not Submitted",
+        status: needsCorrection ? "Needs Correction" : 
+               (existingStatus ? existingStatus.status : "Not Submitted"),
+        requestedUpdate: needsCorrection,
         matchedDocument: null,
       };
     });
@@ -811,6 +893,32 @@ const LenderDocumentRequirements = ({
         // Manually update the UI to show this document as having an update requested
         // Always call markDocumentForUpdate, not just for updates
         markDocumentForUpdate(category, documentType);
+        
+        // Increment the refresh counter to trigger a fresh fetch of loan conditions
+        // This ensures that when the page is reloaded, the conditions are re-fetched with the new update
+        setRefreshCounter(prev => prev + 1);
+        
+        // Store the update in localStorage to persist it between page reloads
+        try {
+          // Get existing stored document states or initialize empty object
+          const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+          
+          // Create an identifier for this document
+          const docKey = `${loanId}-${category}-${documentType}`;
+          
+          // Store the state
+          storedStates[docKey] = {
+            status: "Needs Correction", 
+            requestedUpdate: true,
+            timestamp: Date.now()
+          };
+          
+          // Save back to localStorage
+          localStorage.setItem('documentStates', JSON.stringify(storedStates));
+          console.log(`Persisted document state: ${docKey} => Needs Correction`);
+        } catch (err) {
+          console.error("Failed to persist document state:", err);
+        }
 
         // Close modal
         closeRequestModal();
@@ -865,12 +973,39 @@ const LenderDocumentRequirements = ({
     if (reqIndex >= 0) {
       console.log(`Found document at index ${reqIndex}:`, reqsCopy[reqIndex]);
       
+      const matchedReq = reqsCopy[reqIndex];
+      const prevStatus = matchedReq.status;
+      
       // Create a new object with updated properties to ensure React detects the change
       reqsCopy[reqIndex] = {
-        ...reqsCopy[reqIndex],
+        ...matchedReq,
         status: newStatus,
-        isSubmitted: true // Ensure it's marked as submitted
+        isSubmitted: true, // Ensure it's marked as submitted
+        requestedUpdate: newStatus === "Needs Correction" // Update requestedUpdate flag based on new status
       };
+      
+      // If the status is changing from "Needs Correction" to something else,
+      // we should clean up the localStorage entry
+      if (prevStatus === "Needs Correction" && newStatus !== "Needs Correction") {
+        try {
+          // Get existing stored document states
+          const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+          
+          // Look for any keys that might match this document
+          Object.keys(storedStates).forEach(key => {
+            // Check if the key contains this loan and the category/type of the document
+            if (key.startsWith(`${loanId}-${matchedReq.category}-${matchedReq.documentType}`)) {
+              console.log(`Removing persisted state for ${key}`);
+              delete storedStates[key];
+            }
+          });
+          
+          // Save the updated states back to localStorage
+          localStorage.setItem('documentStates', JSON.stringify(storedStates));
+        } catch (err) {
+          console.error("Failed to clean up persisted document state:", err);
+        }
+      }
       
       console.log(`Updated document:`, reqsCopy[reqIndex]);
       

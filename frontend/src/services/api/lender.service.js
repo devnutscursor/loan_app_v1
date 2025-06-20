@@ -1,5 +1,4 @@
 import API from '../api';
-import { handleApiError } from '../../utils/errorHandler';
 
 /**
  * Lender Service
@@ -84,7 +83,7 @@ const lenderService = {
 
   verifyDocument: async (documentId, data) => {
     try {
-      return await API.patch(`/lender/documents/${documentId}/verify`, data);
+      return await API.post(`/documents/verify/${documentId}`, data);
     } catch (error) {
       throw handleApiError(error);
     }
@@ -213,6 +212,23 @@ const lenderService = {
       return await API.post('/lender/messages', data);
     } catch (error) {
       throw handleApiError(error);
+    }
+  },
+
+  // Add this function to get lender activities
+
+  /**
+   * Get lender activities
+   * @param {Number} limit - Optional limit for activities to fetch
+   * @returns {Promise} Promise containing activities data
+   */
+  getLenderActivities: async (limit = 10) => {
+    try {
+      const response = await API.get(`/lenders/activities?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching lender activities:', error);
+      throw error;
     }
   }
 };

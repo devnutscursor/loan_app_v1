@@ -17,94 +17,93 @@ const emailService = require('../utils/email/emailService');
  */
 exports.uploadDocument = async (req, res, next) => {
   try {
-    // Log request details for debugging
-    console.log('Upload document request received:');
-    console.log('- User:', req.user ? req.user._id : 'Not authenticated');
-    console.log('- Body keys:', Object.keys(req.body));
-    console.log('- File present:', !!req.file);
-    
-    // The file will be available in req.file after multer middleware processes it
+    // Check if file was uploaded
     if (!req.file) {
-      console.log('Error: No file in request');
       return next(new ApiError('No file uploaded', 400));
     }
 
-    console.log('File details:', {
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      filename: req.file.filename
-    });
-
     const { name, description, category, documentType, loanId, borrowerId } = req.body;
 
-    // Validate required inputs
-    if (!name || !category) {
-      console.log('Error: Missing required fields:', { name, category });
-      return next(new ApiError('Document name and category are required', 400));
+    // Validate required fields
+    if (!name) {
+      return next(new ApiError('Document name is required', 400));
     }
 
-    // Check if loan exists if loanId is provided
+    // Get file details
+    const fileUrl = req.file.filename;
+    const originalFilename = req.file.originalname;
+    const mimeType = req.file.mimetype;
+    const size = req.file.size;
+
+    // Create document object
+    const documentData = {
+      name,
+      description: description || name,
+      fileUrl,
+      originalFilename,
+      mimeType,
+      size,
+      uploadedBy: req.user._id,
+      category: category || 'Other',
+      documentType: documentType || 'Other'
+    };
+
+    // If loanId is provided, validate and associate with loan
     if (loanId) {
       const loan = await Loan.findById(loanId);
       if (!loan) {
         return next(new ApiError('Loan not found', 404));
       }
-
-      // Check permissions for borrowers
-      if (req.user.role === 'borrower') {
-        const borrower = await Borrower.findOne({ user: req.user._id });
-        
-        if (!borrower) {
-          return next(new ApiError('Borrower profile not found', 404));
-        }
-
-        const isPrimaryBorrower = loan.borrower.toString() === borrower._id.toString();
-        const isCoBorrower = loan.coBorrowers.some(coBorrower => 
-          coBorrower.toString() === borrower._id.toString()
-        );
-
-        if (!isPrimaryBorrower && !isCoBorrower) {
-          return next(new ApiError('You are not authorized to upload documents to this loan', 403));
-        }
-      }
+      documentData.loan = loanId;
+      
+      // Log loan association
+      logger.info(`Document associated with loan ID: ${loanId}, loan number: ${loan.loanNumber || 'N/A'}`);
     }
 
-    // Check if borrower exists if borrowerId is provided
+    // If borrowerId is provided, validate and associate with borrower
     if (borrowerId) {
       const borrower = await Borrower.findById(borrowerId);
       if (!borrower) {
         return next(new ApiError('Borrower not found', 404));
       }
-
-      // Check permissions for borrowers
-      if (req.user.role === 'borrower') {
-        const userBorrower = await Borrower.findOne({ user: req.user._id });
-        
-        if (borrowerId !== userBorrower._id.toString()) {
-          return next(new ApiError('You are not authorized to upload documents for this borrower', 403));
-        }
-      }
+      documentData.borrower = borrowerId;
     }
 
-    // Create document record
-    const document = await Document.create({
-      name,
-      description,
-      fileUrl: req.file.filename,
-      originalFilename: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size,
-      uploadedBy: req.user._id,
-      loan: loanId,
-      borrower: borrowerId,
-      category,
-      documentType: documentType || 'Other',
-      status: 'Pending Review'
-    });
+    // Create document
+    const document = await Document.create(documentData);
+    
+    // If this is associated with a loan, populate the loan info for response
+    if (loanId) {
+      await document.populate('loan', 'loanNumber');
+    }
 
     // Log the upload
-    logger.info(`Document uploaded: ${document.name} for ${loanId ? `loan ${loanId}` : `borrower ${borrowerId}`}`);
+    logger.info(`Document uploaded: ${name} by ${req.user._id}`);
+
+    // Create audit log entry
+    try {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.create({
+        eventType: 'document:uploaded',
+        description: `Document "${name}" uploaded`,
+        userId: req.user._id,
+        userRole: req.user.role,
+        level: 'info',
+        entityType: 'document',
+        entityId: document._id,
+        metadata: {
+          documentName: name,
+          documentType: documentType || 'Other',
+          category: category || 'Other',
+          loanId: loanId || null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId || null
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the upload if audit logging fails
+      logger.error(`Failed to create audit log for document upload: ${auditError}`);
+    }
 
     res.status(201).json({
       status: 'success',
@@ -112,8 +111,6 @@ exports.uploadDocument = async (req, res, next) => {
       data: document
     });
   } catch (error) {
-    console.error('Document upload error:', error);
-    logger.error(`Document upload failed: ${error.message}`);
     next(error);
   }
 };
@@ -787,13 +784,13 @@ exports.verifyDocument = async (req, res, next) => {
     }
     
     // Check valid status options
-    const validStatuses = ['Approved', 'Rejected', 'Pending Review', 'Needs Additional Information'];
+    const validStatuses = ['Approved', 'Rejected', 'Pending Review', 'Needs Correction'];
     if (!validStatuses.includes(status)) {
       return next(new ApiError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 400));
     }
     
     // Find document
-    const document = await Document.findById(id);
+    const document = await Document.findById(id).populate('loan', 'loanNumber');
     if (!document) {
       return next(new ApiError('Document not found', 404));
     }
@@ -803,16 +800,47 @@ exports.verifyDocument = async (req, res, next) => {
       return next(new ApiError('You are not authorized to verify documents', 403));
     }
     
+    // Get previous status for audit log
+    const previousStatus = document.status;
+    
     // Update document status and notes
     document.status = status;
-    document.notes = notes || document.notes;
+    document.reviewNotes = notes || document.reviewNotes;
     document.reviewedBy = req.user._id;
-    document.reviewedAt = Date.now();
+    document.reviewDate = new Date();
     
     await document.save();
     
     // Log the verification
     logger.info(`Document ${id} verified with status ${status} by ${req.user.role} ${req.user._id}`);
+    
+    // Create audit log entry for document status change
+    try {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.create({
+        eventType: 'document:status_changed',
+        description: `Document status changed from "${previousStatus}" to "${status}"`,
+        userId: req.user._id,
+        userRole: req.user.role,
+        level: 'info',
+        entityType: 'document',
+        entityId: document._id,
+        metadata: {
+          documentName: document.name,
+          previousStatus: previousStatus,
+          newStatus: status,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          reviewedBy: {
+            id: req.user._id,
+            role: req.user.role
+          }
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the operation if audit logging fails
+      logger.error(`Failed to create audit log for document status change: ${auditError}`);
+    }
     
     res.status(200).json({
       status: 'success',
@@ -987,7 +1015,7 @@ exports.approveDocument = async (req, res, next) => {
     }
     
     // Find document
-    const document = await Document.findById(id);
+    const document = await Document.findById(id).populate('loan', 'loanNumber');
     if (!document) {
       return next(new ApiError('Document not found', 404));
     }
@@ -1016,16 +1044,49 @@ exports.approveDocument = async (req, res, next) => {
     console.log('✅ Authorization passed')
     
     console.log('Document:  ', document);
+    
+    // Get previous status for audit log
+    const previousStatus = document.status;
+    
     // Update document status
     document.status = 'Approved';
     document.notes = notes || document.notes;
     document.reviewedBy = req.user._id;
     document.reviewedAt = Date.now();
+    document.reviewDate = new Date();
     
     await document.save();
     
     // Log the approval
     logger.info(`Document ${id} approved by ${req.user.role} ${req.user._id}`);
+    
+    // Create audit log entry for document status change
+    try {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.create({
+        eventType: 'document:status_changed',
+        description: `Document status changed from "${previousStatus}" to "Approved"`,
+        userId: req.user._id,
+        userRole: req.user.role,
+        level: 'info',
+        entityType: 'document',
+        entityId: document._id,
+        metadata: {
+          documentName: document.name,
+          previousStatus: previousStatus,
+          newStatus: 'Approved',
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          reviewedBy: {
+            id: req.user._id,
+            role: req.user.role
+          }
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the operation if audit logging fails
+      logger.error(`Failed to create audit log for document status change: ${auditError}`);
+    }
     
     res.status(200).json({
       status: 'success',
@@ -1058,7 +1119,7 @@ exports.rejectDocument = async (req, res, next) => {
     }
     
     // Find document
-    const document = await Document.findById(id);
+    const document = await Document.findById(id).populate('loan', 'loanNumber');
     if (!document) {
       return next(new ApiError('Document not found', 404));
     }
@@ -1076,17 +1137,49 @@ exports.rejectDocument = async (req, res, next) => {
       return next(new ApiError('You are not authorized to reject documents', 403));
     }
     
+    // Get previous status for audit log
+    const previousStatus = document.status;
+    
     // Update document status
     document.status = 'Rejected';
     document.notes = notes || document.notes;
     document.rejectionReason = reason || 'Document rejected';
     document.reviewedBy = req.user._id;
     document.reviewedAt = Date.now();
+    document.reviewDate = new Date();
     
     await document.save();
     
     // Log the rejection
     logger.info(`Document ${id} rejected by ${req.user.role} ${req.user._id}`);
+    
+    // Create audit log entry for document status change
+    try {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.create({
+        eventType: 'document:status_changed',
+        description: `Document status changed from "${previousStatus}" to "Rejected"`,
+        userId: req.user._id,
+        userRole: req.user.role,
+        level: 'info',
+        entityType: 'document',
+        entityId: document._id,
+        metadata: {
+          documentName: document.name,
+          previousStatus: previousStatus,
+          newStatus: 'Rejected',
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          reviewedBy: {
+            id: req.user._id,
+            role: req.user.role
+          }
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the operation if audit logging fails
+      logger.error(`Failed to create audit log for document status change: ${auditError}`);
+    }
     
     res.status(200).json({
       status: 'success',
