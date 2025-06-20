@@ -185,6 +185,8 @@ export const calculateDefaultInsurance = (propertyValue) => {
  * @param {Object} selectedProgram - Currently selected program
  * @returns {Object} Calculated values for qualification
  */
+
+ 
 export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) => {
   // Get program-specific default interest rate
   let defaultInterestRate = 6.75; // General default
@@ -215,6 +217,10 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   const defaultDownPaymentPercent = selectedProgram?.restrictions?.downPaymentRestriction?.min || 3.5;
   const defaultDownPayment = defaultLoanAmount * (defaultDownPaymentPercent / 100);
   const defaultLoanTerm = selectedProgram?.loanTerm || 30;
+
+  console.log("---------------------------------");
+  console.log("loanDetails:", loan);
+  console.log("selectedProgram:", selectedProgram);
   
   // Calculate principal and interest
   const principalAndInterest = calculatePrincipalAndInterest(
@@ -272,11 +278,21 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   
   // Calculate monthly payment
   const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoaFees;
-  
-  // Calculate DTI
-  const monthlyIncome = getTotalIncome(loan?.income);
+    // Calculate DTI
+  // Note: getTotalIncome returns yearly income, so divide by 12 for monthly
+  const yearlyIncome = getTotalIncome(loan?.income);
+  const monthlyIncome = yearlyIncome / 12;
   const monthlyDebts = getTotalDebts(loan?.debts);
   const dti = monthlyIncome > 0 ? ((monthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
+  
+  // Add debugging log
+  console.log("[LoanQualificationUtils] Default DTI Calculation:", {
+    yearlyIncome,
+    monthlyIncome,
+    monthlyDebts,
+    monthlyPayment,
+    calculatedDTI: dti
+  });
   
   // Determine qualification
   const dtiLimit = selectedProgram?.restrictions?.dtiRestriction?.max || 43;
