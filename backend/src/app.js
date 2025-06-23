@@ -26,8 +26,6 @@ const loanTypeRoutes = require('./routes/loanType.routes');
 const loanProgramRoutes = require('./routes/loanProgram.routes');
 const loanRateRoutes = require('./routes/loanRate.routes');
 const noteRoutes = require('./routes/note.routes');
-const notificationRoutes = require('./routes/notification.routes');
-const debugRoutes = require('./routes/debug.routes');
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -89,44 +87,49 @@ app.use(xss());
 // Compression middleware
 app.use(compression());
 
-// Serve static files with proper headers
-app.use('/uploads', (req, res, next) => {
-  // Set Cache-Control headers for better performance
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  // Allow cross-origin access to the files
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-  res.setHeader('X-Frame-Options', 'ALLOWALL');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
-  
-  // Set appropriate content types for different file extensions
-  const filePath = req.url.split('?')[0];
-  const ext = path.extname(filePath).toLowerCase();
-  
-  if (ext === '.pdf') {
-    res.setHeader('Content-Type', 'application/pdf');
-  } else if (['.xlsx', '.xls'].includes(ext)) {
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  } else if (['.doc', '.docx'].includes(ext)) {
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  }
-  
-  // Handle OPTIONS requests for CORS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-}, express.static(path.resolve(__dirname, '../uploads'), {
-  setHeaders: (res, path) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('X-Frame-Options', 'ALLOWALL');
-    res.set('Content-Security-Policy', "frame-ancestors 'self' *");
-  }
-}));
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
+
+if (!USE_S3) {
+  // Only serve static files from uploads directory if not using S3
+  app.use('/uploads', (req, res, next) => {
+    // Set Cache-Control headers for better performance
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Allow cross-origin access to the files
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('X-Frame-Options', 'ALLOWALL');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
+    
+    // Set appropriate content types for different file extensions
+    const filePath = req.url.split('?')[0];
+    const ext = path.extname(filePath).toLowerCase();
+    
+    if (ext === '.pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (['.xlsx', '.xls'].includes(ext)) {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    } else if (['.doc', '.docx'].includes(ext)) {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+    
+    // Handle OPTIONS requests for CORS preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    
+    next();
+  }, express.static(path.resolve(__dirname, '../uploads'), {
+    setHeaders: (res, path) => {
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.set('X-Frame-Options', 'ALLOWALL');
+      res.set('Content-Security-Policy', "frame-ancestors 'self' *");
+    }
+  }));
+}
 
 // Create a specific route to check if uploads directory is accessible
 app.get('/api/check-uploads', (req, res) => {
@@ -212,8 +215,6 @@ app.use('/api/v1/loan-types', loanTypeRoutes);
 app.use('/api/v1/loan-programs', loanProgramRoutes);
 app.use('/api/v1/loan-rates', loanRateRoutes);
 app.use('/api/v1/notes', noteRoutes);
-app.use('/api/v1/notifications', notificationRoutes);
-app.use('/api/v1/debug', debugRoutes);
 
 // Root route
 app.get('/', (req, res) => {

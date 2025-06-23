@@ -742,7 +742,7 @@ const LenderDashboard = () => {
 
                 {/* Performance Metrics */}
                 {recentLoans.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-gray-100">
+                  <div className="mt-8 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
@@ -758,9 +758,7 @@ const LenderDashboard = () => {
                           </div>
                           <p className="text-sm text-gray-600 mt-2">Based on last 30 days</p>
                           
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-500">Higher approval rates indicate efficient underwriting practices and appropriate targeting of qualified borrowers.</p>
-                          </div>
+                         
                         </div>
                         
                         <div>
@@ -774,9 +772,7 @@ const LenderDashboard = () => {
                           </div>
                           <p className="text-sm text-gray-600 mt-2">From application to approval</p>
                           
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-500">Faster processing times improve borrower satisfaction and increase the likelihood of completed applications.</p>
-                          </div>
+                         
                         </div>
                       </div>
                     </div>

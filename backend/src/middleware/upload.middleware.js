@@ -3,14 +3,24 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const ApiError = require('../utils/apiError');
+const { uploadSingleToS3, uploadArrayToS3 } = require('../services/s3.service');
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log(`Created uploads directory at: ${uploadDir}`);
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
+
+if (USE_S3) {
+  console.log('Using AWS S3 for file storage');
 } else {
-  console.log(`Using existing uploads directory at: ${uploadDir}`);
+  console.log('Using local file storage');
+  
+  // Create uploads directory if it doesn't exist (for local storage)
+  const uploadDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log(`Created uploads directory at: ${uploadDir}`);
+  } else {
+    console.log(`Using existing uploads directory at: ${uploadDir}`);
+  }
 }
 
 // Define allowed file types
@@ -38,10 +48,10 @@ const ALLOWED_FILE_TYPES = [
   'application/octet-stream'
 ];
 
-// Configure storage
-const storage = multer.diskStorage({
+// Configure storage based on environment
+const storage = USE_S3 ? multer.memoryStorage() : multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, path.join(process.cwd(), 'uploads'));
   },
   filename: (req, file, cb) => {
     // Generate a unique filename to prevent overwriting
@@ -77,7 +87,11 @@ const upload = multer({
 
 // Add error handling wrapper
 const uploadWithErrorHandling = {
-  array: (fieldName, maxCount) => {
+  array: (fieldName, maxCount, folder = 'uploads') => {
+    if (USE_S3) {
+      return uploadArrayToS3(fieldName, maxCount, folder);
+    }
+    
     return (req, res, next) => {
       upload.array(fieldName, maxCount)(req, res, (err) => {
         if (err) {
@@ -87,11 +101,25 @@ const uploadWithErrorHandling = {
           }
           return next(err);
         }
+        
+        // Add local file URLs for compatibility
+        if (req.files) {
+          req.files = req.files.map(file => ({
+            ...file,
+            url: `/uploads/${file.filename}`
+          }));
+        }
+        
         next();
       });
     };
   },
-  single: (fieldName) => {
+  
+  single: (fieldName, folder = 'uploads') => {
+    if (USE_S3) {
+      return uploadSingleToS3(fieldName, folder);
+    }
+    
     return (req, res, next) => {
       upload.single(fieldName)(req, res, (err) => {
         if (err) {
@@ -101,6 +129,12 @@ const uploadWithErrorHandling = {
           }
           return next(err);
         }
+        
+        // Add local file URL for compatibility
+        if (req.file) {
+          req.file.url = `/uploads/${req.file.filename}`;
+        }
+        
         next();
       });
     };

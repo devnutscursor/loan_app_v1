@@ -8,6 +8,10 @@ const fs = require('fs');
 const User = require('../models/user.model');
 const { title } = require('process');
 const emailService = require('../utils/email/emailService');
+const { deleteFromS3, getSignedUrl } = require('../services/s3.service');
+
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
 
 /**
  * Upload a document
@@ -29,8 +33,9 @@ exports.uploadDocument = async (req, res, next) => {
       return next(new ApiError('Document name is required', 400));
     }
 
-    // Get file details
-    const fileUrl = req.file.filename;
+    // Get file details - handle both S3 and local storage
+    const fileUrl = req.file.url || req.file.filename; // S3 URL or local filename
+    const s3Key = req.file.key || null; // S3 key for deletion if using S3
     const originalFilename = req.file.originalname;
     const mimeType = req.file.mimetype;
     const size = req.file.size;
@@ -40,6 +45,7 @@ exports.uploadDocument = async (req, res, next) => {
       name,
       description: description || name,
       fileUrl,
+      s3Key, // Store S3 key for deletion
       originalFilename,
       mimeType,
       size,
@@ -429,10 +435,20 @@ exports.deleteDocument = async (req, res, next) => {
     }
     
     // Delete the file from storage
-    const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      if (USE_S3 && document.s3Key) {
+        // Delete from S3
+        await deleteFromS3(document.s3Key);
+      } else {
+        // Delete from local storage
+        const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    } catch (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continue with database deletion even if file deletion fails
     }
     
     // Delete document from database
@@ -497,19 +513,35 @@ exports.downloadDocument = async (req, res, next) => {
       }
     }
     
-    // Get file path
-    const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return next(new ApiError('File not found on server', 404));
+    // Handle file download based on storage type
+    if (USE_S3 && document.s3Key) {
+      // For S3, redirect to signed URL
+      try {
+        const signedUrl = await getSignedUrl(document.s3Key, 3600); // 1 hour expiry
+        
+        // Log the download
+        logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
+        
+        return res.redirect(signedUrl);
+      } catch (error) {
+        console.error('Error generating signed URL:', error);
+        return next(new ApiError('Failed to generate download link', 500));
+      }
+    } else {
+      // Handle local file download
+      const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return next(new ApiError('File not found on server', 404));
+      }
+      
+      // Log the download
+      logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
+      
+      // Send file
+      res.download(filePath, document.originalFilename);
     }
-    
-    // Log the download
-    logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
-    
-    // Send file
-    res.download(filePath, document.originalFilename);
   } catch (error) {
     next(error);
   }

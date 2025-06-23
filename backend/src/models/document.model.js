@@ -14,6 +14,11 @@ const documentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  s3Key: {
+    type: String,
+    required: false,
+    default: null
+  },
   originalFilename: {
     type: String,
     required: true

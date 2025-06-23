@@ -6,6 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
+
 // Get conversations for a user (lender or borrower)
 exports.getConversations = async (req, res) => {
   try {
@@ -253,25 +256,25 @@ exports.sendMessage = async (req, res) => {
     
     if (req.files && req.files.length > 0) {
       try {
-        // Files are already saved to disk by multer
-        // Just need to create attachment metadata
+        // Files are already processed by multer and uploaded to S3 or local storage
         for (const file of req.files) {
           try {
             // Log file information for debugging
             console.log('File processed by multer:', {
               originalName: file.originalname,
               savedAs: file.filename,
-              path: file.path,
+              url: file.url,
               mimetype: file.mimetype,
               size: file.size
             });
             
-            // Add attachment metadata with absolute URL
+            // Add attachment metadata - use S3 URL or local URL
             attachments.push({
-              url: `/uploads/${file.filename}`,
+              url: file.url, // This will be S3 URL or local path
               fileName: file.originalname,
               fileType: file.mimetype,
-              fileSize: file.size
+              fileSize: file.size,
+              s3Key: file.key || null // Store S3 key if available
             });
           } catch (fileError) {
             console.error('Error processing individual file:', fileError);
