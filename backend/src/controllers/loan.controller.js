@@ -5,6 +5,9 @@ const Lender = require("../models/lender.model");
 const User = require("../models/user.model");
 const ApiError = require("../utils/apiError");
 const logger = require("../utils/logger");
+const xml2js = require('xml2js');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Remove a document from a loan application
@@ -2221,6 +2224,8 @@ exports.createLoanData = async (req, res, next) => {
       loanDetailsData.currentLoanBalance =
         parseFloat(loanDetails?.currentLoanBalance) || 0;
       loanDetailsData.requestedLoanAmount =
+       
+
         parseFloat(loanDetails?.requestedLoanAmount) || 0;
       loanDetailsData.refinanceType = loanDetails?.refinanceType || "Refinance";
     } else if (loanDetails?.loanType === "Construction") {
@@ -2403,3 +2408,490 @@ exports.addDocumentsToLoan = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Import loan from XML file
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.importFromXML = async (req, res, next) => {
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      return next(new ApiError("No XML file uploaded", 400));
+    }
+
+    // Validate file type
+    if (!req.file.originalname.toLowerCase().endsWith('.xml')) {
+      return next(new ApiError("Please upload an XML file", 400));
+    }
+
+    // Read and parse XML file
+    const xmlContent = fs.readFileSync(req.file.path, 'utf8');
+    
+    const parser = new xml2js.Parser({ 
+      explicitArray: false,
+      mergeAttrs: true,
+      normalizeTags: true
+    });
+    
+    const parsedXML = await parser.parseStringPromise(xmlContent);
+    
+    // Extract loan data from parsed XML
+    const extractedData = extractLoanDataFromXML(parsedXML);
+    
+    // Get user and determine permissions
+    let lenderId;
+    if (req.user.role === "lender") {
+      const lender = await Lender.findOne({ user: req.user._id });
+      if (!lender) {
+        return next(new ApiError("Lender profile not found", 404));
+      }
+      lenderId = lender._id;
+    } else if (req.user.role === "admin") {
+      // For admin, require lender ID in request body
+      if (!req.body.lenderId) {
+        return next(new ApiError("Lender ID is required for admin users", 400));
+      }
+      lenderId = req.body.lenderId;
+    } else {
+      return next(new ApiError("Only lenders and admins can import XML loans", 403));
+    }    // Create or find borrower
+    let borrower = await Borrower.findOne({ 
+      email: extractedData.borrowerDetails.email 
+    });
+
+    if (!borrower) {
+      // Generate a temporary password for XML imported users
+      const bcrypt = require('bcryptjs');
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+      // Create new borrower
+      const newUser = new User({
+        email: extractedData.borrowerDetails.email || `imported.${Date.now()}@example.com`,
+        firstName: extractedData.borrowerDetails.firstName || 'Unknown',
+        lastName: extractedData.borrowerDetails.lastName || 'User',
+        password: hashedPassword,
+        role: 'borrower',
+        isEmailVerified: false,
+        isImportedFromXML: true // Flag to identify XML imports
+      });
+      await newUser.save();      borrower = new Borrower({
+        user: newUser._id,
+        lender: lenderId,
+        firstName: extractedData.borrowerDetails.firstName || 'Unknown',
+        lastName: extractedData.borrowerDetails.lastName || 'User',
+        email: extractedData.borrowerDetails.email || `imported.${Date.now()}@example.com`,
+        phone: extractedData.borrowerDetails.phone || '',
+        dateOfBirth: extractedData.borrowerDetails.dateOfBirth ? 
+          new Date(extractedData.borrowerDetails.dateOfBirth) : null,
+        ssn: extractedData.borrowerDetails.ssn || '',
+        maritalStatus: mapMaritalStatus(extractedData.borrowerDetails.maritalStatus),
+        dependents: extractedData.borrowerDetails.dependentCount || 0
+      });
+      await borrower.save();
+    }
+
+    // Create loan with extracted data
+    const newLoan = new Loan({
+      borrower: borrower._id,
+      lender: lenderId,
+      
+      // Borrower details
+      borrowerDetails: extractedData.borrowerDetails,
+      
+      // Loan details
+      loanDetails: extractedData.loanDetails,
+      
+      // Property information
+      property: extractedData.property,
+      
+      // Financial information
+      income: extractedData.income,
+      assets: extractedData.assets,
+      debts: extractedData.debts,
+      
+      // Employment history
+      employmentHistory: extractedData.employmentHistory,
+      
+      // Residence history
+      residenceHistory: extractedData.residenceHistory,
+      
+      // Additional information
+      militaryService: extractedData.militaryService,
+      declarations: extractedData.declarations,
+      demographics: extractedData.demographics,
+        // Metadata
+      source: 'XML_IMPORT',
+      status: 'Application Started',
+      createdBy: req.user._id,
+      
+      // Store original filename for reference
+      originalXMLFile: req.file.originalname,
+    });
+
+    await newLoan.save();
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+
+    logger.info(`Loan imported from XML by user: ${req.user._id}, loan ID: ${newLoan._id}`);
+
+    res.status(201).json({
+      status: "success",
+      message: "Loan imported successfully from XML",
+      data: newLoan
+    });
+
+  } catch (error) {
+    // Clean up uploaded file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    logger.error('Error importing XML loan:', error);
+    next(error);
+  }
+};
+
+/**
+ * Extract loan data from parsed XML
+ * @param {Object} parsedXML - Parsed XML object
+ * @returns {Object} Extracted loan data
+ */
+function extractLoanDataFromXML(parsedXML) {
+  try {
+    // Helper function to safely get nested values
+    const getValue = (obj, path, defaultValue = '') => {
+      return path.split('.').reduce((current, key) => {
+        return current && current[key] !== undefined ? current[key] : defaultValue;
+      }, obj);
+    };
+
+    // Helper function to get number safely
+    const getNumber = (obj, path, defaultValue = 0) => {
+      const value = getValue(obj, path);
+      const num = parseFloat(value);
+      return isNaN(num) ? defaultValue : num;
+    };
+
+    const message = parsedXML.message || parsedXML;
+    const deal = getValue(message, 'deal_sets.deal_set.deals.deal') || 
+                 getValue(message, 'deal_sets.deal_set.deals[0].deal') ||
+                 getValue(message, 'deal_sets[0].deal_set.deals.deal');
+
+    // Extract parties (borrower information)
+    const parties = getValue(deal, 'parties.party') || [];
+    const borrowerParty = Array.isArray(parties) ? 
+      parties.find(party => getValue(party, 'roles.role.role_detail.partyroletype') === 'Borrower') :
+      (getValue(parties, 'roles.role.role_detail.partyroletype') === 'Borrower' ? parties : null);
+
+    // Extract borrower details
+    const individual = getValue(borrowerParty, 'individual') || {};
+    const borrowerRole = getValue(borrowerParty, 'roles.role') || {};
+    const borrowerDetail = getValue(borrowerRole, 'borrower.borrower_detail') || {};
+    
+    const borrowerData = {
+      firstName: getValue(individual, 'name.firstname'),
+      lastName: getValue(individual, 'name.lastname'),
+      fullName: getValue(individual, 'name.fullname'),
+      email: getValue(individual, 'contact_points.contact_point.contact_point_email.contactpointemailvalue') ||
+             getValue(individual, 'contact_points[0].contact_point_email.contactpointemailvalue'),
+      phone: getValue(individual, 'contact_points.contact_point.contact_point_telephone.contactpointtelephonevalue') ||
+             getValue(individual, 'contact_points[1].contact_point_telephone.contactpointtelephonevalue'),
+      dateOfBirth: getValue(borrowerDetail, 'borrowerbirthdate'),
+      ssn: getValue(borrowerParty, 'taxpayer_identifiers.taxpayer_identifier.taxpayeridentifiervalue'),
+      maritalStatus: getValue(borrowerDetail, 'maritalstatustype'),
+      dependentCount: getNumber(borrowerDetail, 'dependentcount'),
+    };
+
+    // Extract employment information
+    const employers = getValue(borrowerRole, 'borrower.employers.employer') || [];
+    const primaryEmployer = Array.isArray(employers) ? employers[0] : employers;
+    
+    const employmentHistory = [];
+    if (primaryEmployer) {
+      employmentHistory.push({
+        employerName: getValue(primaryEmployer, 'legal_entity.legal_entity_detail.fullname'),
+        position: getValue(primaryEmployer, 'employment.employmentpositiondescription'),
+        monthlyIncome: getNumber(primaryEmployer, 'employment.employmentmonthlyincomeamount'),
+        startDate: getValue(primaryEmployer, 'employment.employmentstartdate'),
+        isSelfEmployed: getValue(primaryEmployer, 'employment.employmentborrowerselfemployedindicator') === 'true',
+        employmentType: getValue(primaryEmployer, 'employment.employmentclassificationtype'),
+        workPhone: getValue(primaryEmployer, 'legal_entity.contacts.contact.contact_points.contact_point.contact_point_telephone.contactpointtelephonevalue'),
+        workAddress: {
+          streetAddress: getValue(primaryEmployer, 'address.addresslinetext'),
+          city: getValue(primaryEmployer, 'address.cityname'),
+          state: getValue(primaryEmployer, 'address.statecode'),
+          zipCode: getValue(primaryEmployer, 'address.postalcode'),
+        }
+      });
+    }
+
+    // Extract income information
+    const currentIncomeItems = getValue(borrowerRole, 'borrower.current_income.current_income_items.current_income_item') || [];
+    const incomeItems = Array.isArray(currentIncomeItems) ? currentIncomeItems : [currentIncomeItems];
+    
+    const income = {
+      baseIncome: 0,
+      overtime: 0,
+      commissions: 0,
+      bonuses: 0,
+      militaryEntitlements: 0,
+      otherIncome: []
+    };
+
+    incomeItems.forEach(item => {
+      const incomeType = getValue(item, 'current_income_item_detail.incometype');
+      const amount = getNumber(item, 'current_income_item_detail.currentincomemonthlytotalamount') * 12; // Convert to yearly
+      
+      switch (incomeType?.toLowerCase()) {
+        case 'base':
+          income.baseIncome = amount;
+          break;
+        case 'overtime':
+          income.overtime = amount;
+          break;
+        case 'commissions':
+          income.commissions = amount;
+          break;
+        case 'bonus':
+          income.bonuses = amount;
+          break;
+        default:
+          if (amount > 0) {
+            income.otherIncome.push({
+              type: incomeType || 'Other',
+              amount: amount
+            });
+          }
+      }
+    });
+
+    // Extract assets
+    const assetList = getValue(deal, 'assets.asset') || [];
+    const assets = {
+      checkingAndSavings: [],
+      stocksAndBonds: [],
+      miscellaneous: []
+    };
+
+    const assetArray = Array.isArray(assetList) ? assetList : [assetList];
+    assetArray.forEach(asset => {
+      if (!asset) return;
+      
+      const assetType = getValue(asset, 'asset_detail.assettype');
+      const value = getNumber(asset, 'asset_detail.assetcashormarketvalueamount');
+      const institution = getValue(asset, 'asset_holder.name.fullname');      if (value > 0) {
+        switch (assetType?.toLowerCase()) {
+          case 'checkingaccount':
+          case 'savingsaccount':
+          case 'checking':
+          case 'savings':
+          case 'moneymarket':
+          case 'certificateofdeposit':
+            assets.checkingAndSavings.push({
+              bankName: institution,
+              accountType: mapAccountType(assetType),
+              value: value,
+              isVerified: false,
+              isLiquid: true
+            });
+            break;
+          case 'stock':
+          case 'bond':
+          case 'mutualfund':
+            assets.stocksAndBonds.push({
+              description: assetType || 'Investment',
+              value: value,
+              isVerified: false
+            });
+            break;
+          default:
+            assets.miscellaneous.push({
+              description: assetType || 'Other Asset',
+              value: value,
+              assetType: assetType === 'GiftOfCash' ? 'Gift' : 'Other'
+            });
+        }
+      }
+    });
+
+    // Extract debts/liabilities
+    const liabilityList = getValue(deal, 'liabilities.liability') || [];
+    const debts = [];
+    
+    const liabilityArray = Array.isArray(liabilityList) ? liabilityList : [liabilityList];
+    liabilityArray.forEach(liability => {
+      if (!liability) return;
+      
+      const monthlyPayment = getNumber(liability, 'liability_detail.liabilitymonthlyPaymentamount');
+      if (monthlyPayment > 0) {
+        debts.push({
+          creditorName: getValue(liability, 'liability_holder.name.fullname'),
+          accountNumber: '',
+          debtType: getValue(liability, 'liability_detail.liabilitytype'),
+          monthlyPayment: monthlyPayment,
+          balance: getNumber(liability, 'liability_detail.liabilityunpaidbalanceamount'),
+          willBePaidOff: getValue(liability, 'liability_detail.liabilitypayoffstatusindicator') === 'true'
+        });
+      }
+    });
+
+    // Extract loan details
+    const loan = getValue(deal, 'loans.loan') || {};
+    const termsOfLoan = getValue(loan, 'terms_of_loan') || {};
+    
+    const loanDetails = {
+      loanType: getValue(termsOfLoan, 'loanpurposetype') || 'Purchase',
+      loanAmount: getNumber(termsOfLoan, 'baseloanamount'),
+      interestRate: getNumber(termsOfLoan, 'noteratepercent'),
+      loanTerm: getNumber(loan, 'amortization.amortization_rule.loanamortizationperiodcount') / 12, // Convert months to years
+    };
+
+    // Extract property information
+    const collateral = getValue(deal, 'collaterals.collateral.subject_property') || {};
+    const propertyAddress = getValue(collateral, 'address') || {};
+    
+    const property = {
+      streetAddress: getValue(propertyAddress, 'addresslinetext'),
+      city: getValue(propertyAddress, 'cityname'),
+      state: getValue(propertyAddress, 'statecode'),
+      zipCode: getValue(propertyAddress, 'postalcode'),
+      propertyType: mapPropertyType(getValue(collateral, 'property_detail.propertyusagetype')),
+      propertyValue: getNumber(collateral, 'property_detail.propertyestimatedvalueamount'),
+      occupancyType: 'Primary Residence', // Default
+    };
+
+    // If loan is purchase, set purchase price
+    if (loanDetails.loanType?.toLowerCase() === 'purchase') {
+      loanDetails.purchasePrice = getNumber(collateral, 'sales_contracts.sales_contract.sales_contract_detail.salescontractamount');
+    }
+
+    // Extract residence history
+    const residences = getValue(borrowerRole, 'borrower.residences.residence') || [];
+    const residenceArray = Array.isArray(residences) ? residences : [residences];
+    const residenceHistory = residenceArray.map(residence => ({
+      address: {
+        streetAddress: getValue(residence, 'address.addresslinetext'),
+        city: getValue(residence, 'address.cityname'),
+        state: getValue(residence, 'address.statecode'),
+        zipCode: getValue(residence, 'address.postalcode'),
+      },
+      residencyType: getValue(residence, 'residence_detail.borrowerresidencytype') || 'Current',
+      monthlyRent: getNumber(residence, 'landlord.landlord_detail.monthlyrentamount'),
+      ownOrRent: getValue(residence, 'residence_detail.borrowerresidencybasistype') === 'Own' ? 'Own' : 'Rent'
+    }));
+
+    // Extract military service
+    const militaryServices = getValue(borrowerRole, 'borrower.military_services.military_service') || {};
+    const militaryService = {
+      hasServed: getValue(borrowerDetail, 'selfdeclaredmilitaryserviceindicator') === 'true',
+      serviceType: getValue(militaryServices, 'militarystatustype'),
+      isVeteran: false,
+      isActiveReserve: getValue(militaryServices, 'militarystatustype')?.includes('Reserve') || false
+    };
+
+    // Extract declarations
+    const declarationDetail = getValue(borrowerRole, 'borrower.declaration.declaration_detail') || {};
+    const declarations = {
+      bankruptcyIndicator: getValue(declarationDetail, 'bankruptcyindicator') === 'true',
+      foreclosureIndicator: getValue(declarationDetail, 'priorpropertyforeclosurecompletedIndicator') === 'true',
+      shortSaleIndicator: getValue(declarationDetail, 'priorpropertyshortSalecompletedIndicator') === 'true',
+      lawsuitIndicator: getValue(declarationDetail, 'partytolawsuitindicator') === 'true',
+      delinquentIndicator: getValue(declarationDetail, 'presentlydelinquentindicator') === 'true',
+      judgmentIndicator: getValue(declarationDetail, 'outstandingjudgmentsindicator') === 'true',
+      undisclosedBorrowedFunds: getValue(declarationDetail, 'undisclosedborrowedfundsindicator') === 'true',
+      undisclosedBorrowedFundsAmount: getNumber(declarationDetail, 'undisclosedborrowedfundsamount'),
+    };
+
+    // Extract demographics
+    const governmentMonitoring = getValue(borrowerRole, 'borrower.government_monitoring') || {};
+    const demographics = {
+      ethnicity: getValue(governmentMonitoring, 'hmda_ethnicity_origins.hmda_ethnicity_origin.hmdaethnicityorigintype'),
+      race: getValue(governmentMonitoring, 'hmda_races.hmda_race.hmda_race_detail.hmdaracetype'),
+      sex: getValue(governmentMonitoring, 'government_monitoring_detail.extension.other.government_monitoring_detail_extension.hmdagendertype'),
+    };
+
+    return {
+      borrowerDetails: borrowerData,
+      income,
+      assets,
+      debts,
+      loanDetails,
+      property,
+      employmentHistory,
+      residenceHistory,
+      militaryService,
+      declarations,
+      demographics
+    };
+
+  } catch (error) {
+    logger.error('Error extracting XML data:', error);
+    throw new ApiError('Failed to extract loan data from XML file', 400);
+  }
+}
+
+/**
+ * Map XML property types to system property types
+ */
+function mapPropertyType(xmlPropertyType) {
+  const typeMap = {
+    'PrimaryResidence': 'Single Family Home',
+    'VacationHome': 'Single Family Home',
+    'Investment': 'Single Family Home',
+    'Condominium': 'Condominium',
+    'Townhouse': 'Townhouse',
+    'ManufacturedHome': 'Manufactured Home',
+  };
+  
+  return typeMap[xmlPropertyType] || 'Single Family Home';
+}
+
+/**
+ * Map marital status from XML to valid enum values
+ * @param {string} xmlMaritalStatus - Marital status from XML
+ * @returns {string} Valid marital status enum value
+ */
+function mapMaritalStatus(xmlMaritalStatus) {
+  if (!xmlMaritalStatus) return 'Single'; // Default value
+  
+  const statusMap = {
+    'unmarried': 'Single',
+    'single': 'Single',
+    'married': 'Married',
+    'divorced': 'Divorced',
+    'separated': 'Separated',
+    'widowed': 'Widowed'
+  };
+  
+  const normalized = xmlMaritalStatus.toLowerCase();
+  return statusMap[normalized] || 'Single';
+}
+
+/**
+ * Map asset account type from XML to valid enum values
+ * @param {string} xmlAccountType - Account type from XML
+ * @returns {string} Valid account type enum value
+ */
+function mapAccountType(xmlAccountType) {
+  if (!xmlAccountType) return 'Checking'; // Default value
+  
+  const typeMap = {
+    'checkingaccount': 'Checking',
+    'checking': 'Checking',
+    'savingsaccount': 'Savings',
+    'savings': 'Savings',
+    'moneymarket': 'Money Market',
+    'money market': 'Money Market',
+    'certificateofdeposit': 'Certificate of Deposit',
+    'certificate of deposit': 'Certificate of Deposit',
+    'cd': 'Certificate of Deposit'
+  };
+  
+  const normalized = xmlAccountType.toLowerCase().replace(/[^a-z]/g, '');
+  return typeMap[normalized] || typeMap[xmlAccountType.toLowerCase()] || 'Checking';
+}

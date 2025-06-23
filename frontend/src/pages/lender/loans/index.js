@@ -5,6 +5,7 @@ import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { lenderService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
+import XMLLoanUpload from '../../../components/lender/loans/XMLLoanUpload';
 import {
   FileText,
   User,
@@ -76,6 +77,7 @@ const LenderLoans = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [isXMLUploadOpen, setIsXMLUploadOpen] = useState(false);
 
   useEffect(() => {
     const fetchLoans = async () => {
@@ -191,10 +193,19 @@ const LenderLoans = () => {
 
       const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
       return sortDirection === 'asc' ? compareResult : -compareResult;
-    });
-
-    return results;
+    });    return results;
   }, [loans, searchTerm, activeFilter, sortBy, sortDirection]);
+
+  const handleXMLUploadSuccess = (newLoan) => {
+    // Add the new loan to the list and navigate to it
+    setLoans(prevLoans => [newLoan, ...prevLoans]);
+    toast.success('Loan created successfully from XML!');
+    
+    // Navigate to the new loan details page
+    if (newLoan._id) {
+      router.push(`/lender/loans/${newLoan._id}`);
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={['lender']}>
@@ -210,13 +221,16 @@ const LenderLoans = () => {
               {borrowerId
                 ? 'Manage this borrower\'s loan applications'
                 : 'List of active loan applications from all your borrowers'}
-            </p>
-            </div>
-            
-              <Link href="/lender/loans" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <Plus className="h-4 w-4 mr-2" />
-                New Loan
-              </Link>
+            </p>            </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setIsXMLUploadOpen(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Loan
+                </button>
+              </div>
             
           </div>
 
@@ -301,25 +315,14 @@ const LenderLoans = () => {
                     {borrowerId
                       ? 'This borrower doesn\'t have any active loans. You can create a new loan application for them.'
                       : 'Get started by creating a new loan application for your borrowers.'}
-                  </p>
-                  <div className="mt-6">
-                    {borrowerId ? (
-                      <Link
-                        href={`/lender/loans/new?borrowerId=${borrowerId}`}
-                        className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Plus className="h-5 w-5 mr-2" aria-hidden="true" />
-                        Create Loan Application
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/lender/loans/new"
-                        className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Plus className="h-5 w-5 mr-2" aria-hidden="true" />
-                        Create Loan Application
-                      </Link>
-                    )}
+                  </p>                  <div className="mt-6">
+                    <button
+                      onClick={() => setIsXMLUploadOpen(true)}
+                      className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <Plus className="h-5 w-5 mr-2" aria-hidden="true" />
+                      Create Loan Application
+                    </button>
                   </div>
                 </div>
               ) : filteredLoans.length === 0 ? (
@@ -432,10 +435,16 @@ const LenderLoans = () => {
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
+              )}            </div>
           )}
         </div>
+
+        {/* XML Upload Modal */}
+        <XMLLoanUpload
+          isOpen={isXMLUploadOpen}
+          onClose={() => setIsXMLUploadOpen(false)}
+          onSuccess={handleXMLUploadSuccess}
+        />
       </MainLayout>
     </ProtectedRoute>
   );

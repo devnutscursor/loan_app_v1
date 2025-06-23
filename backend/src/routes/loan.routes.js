@@ -1,6 +1,7 @@
 const express = require('express');
 const loanController = require('../controllers/loan.controller');
 const milestoneController = require('../controllers/milestone.controller');
+const { uploadWithErrorHandling } = require('../middleware/upload.middleware');
 
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
@@ -11,6 +12,9 @@ router.use(authenticate);
 
 // Create a new loan application
 router.post('/', loanController.createLoan);
+
+// Import loan from XML file
+router.post('/import-xml', uploadWithErrorHandling.single('xmlFile'), loanController.importFromXML);
 
 // Get all loans with filters and pagination
 router.get('/', loanController.getAllLoans);

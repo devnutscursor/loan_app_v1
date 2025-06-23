@@ -107,4 +107,4 @@ const uploadWithErrorHandling = {
   }
 };
 
-module.exports = uploadWithErrorHandling;
+module.exports = { uploadWithErrorHandling };
