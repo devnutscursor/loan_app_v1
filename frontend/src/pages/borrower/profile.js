@@ -105,11 +105,6 @@ const Profile = () => {
       if (!profileData.firstName) newErrors.firstName = 'First name is required';
       if (!profileData.lastName) newErrors.lastName = 'Last name is required';
       if (!profileData.phone) newErrors.phone = 'Phone number is required';
-      if (!profileData.address.street) newErrors['address.street'] = 'Street address is required';
-      if (!profileData.address.city) newErrors['address.city'] = 'City is required';
-      if (!profileData.address.state) newErrors['address.state'] = 'State is required';
-      if (!profileData.address.zipCode) newErrors['address.zipCode'] = 'ZIP code is required';
-      if (!profileData.address.country) newErrors['address.country'] = 'Country is required';
     }
     
     // Financial Information Validation

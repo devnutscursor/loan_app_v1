@@ -38,12 +38,14 @@ class UserService {
     try {
       const response = await ApiService.put('/api/v1/users/profile', profileData);
       
-      // Log the profile update
-      await AuditLogService.createLog({
-        eventType: 'user',
-        action: 'update_profile',
-        details: 'User profile updated'
-      });
+      // Log the profile update if audit log service is available
+      if (AuditLogService?.createLog) {
+        AuditLogService.createLog({
+          eventType: 'user',
+          action: 'update_profile',
+          details: 'User profile updated'
+        });
+      }
       
       return {
         success: true,
