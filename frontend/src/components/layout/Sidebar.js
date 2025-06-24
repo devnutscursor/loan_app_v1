@@ -20,7 +20,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Calculators', href: '/borrower/calculators', icon: 'calculator' },
         { name: 'Documents', href: '/borrower/documents', icon: 'document-duplicate' },
         { name: 'Profile', href: '/borrower/profile', icon: 'user' },
-        { name: 'Settings', href: '/borrower/settings', icon: 'cog' }
+        // { name: 'Settings', href: '/borrower/settings', icon: 'cog' }
       ];
     }
 
@@ -34,11 +34,11 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
         { name: 'Messages', href: '/lender/messages', icon: 'chat' },
         { name: 'Referral Links', href: '/lender/referrals', icon: 'link' },
-        { name: 'Profile', href: '/borrower/profile', icon: 'user' },
+        { name: 'Profile', href: '/lender/profile', icon: 'user' },
         
         // { name: 'Documents', href: '/lender/documents', icon: 'document-duplicate' },
         // { name: 'Company', href: '/lender/company', icon: 'office-building' },
-        { name: 'Settings', href: '/lender/settings', icon: 'cog' }
+        // { name: 'Settings', href: '/lender/settings', icon: 'cog' }
       ];
     }
 
