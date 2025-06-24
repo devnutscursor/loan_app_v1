@@ -14,11 +14,11 @@ class UserService {
    */
   async getUserProfile() {
     try {
-      const response = await ApiService.get('/user/profile');
+      const response = await ApiService.get('/api/v1/users/profile');
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Get user profile error:', error);
@@ -36,7 +36,7 @@ class UserService {
    */
   async updateProfile(profileData) {
     try {
-      const response = await ApiService.put('/user/profile', profileData);
+      const response = await ApiService.put('/api/v1/users/profile', profileData);
       
       // Log the profile update
       await AuditLogService.createLog({
@@ -47,7 +47,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Update profile error:', error);
@@ -76,7 +76,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Update settings error:', error);
@@ -105,7 +105,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Change password error:', error);
@@ -126,7 +126,7 @@ class UserService {
       const formData = new FormData();
       formData.append('profilePicture', file);
       
-      const response = await ApiService.post('/user/profile/picture', formData, {
+      const response = await ApiService.post('/api/v1/users/profile/picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -141,7 +141,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Change password error:', error);
@@ -162,7 +162,7 @@ class UserService {
       const formData = new FormData();
       formData.append('profilePicture', imageFile);
       
-      const response = await ApiService.post('/user/profile-picture', formData, {
+      const response = await ApiService.post('/api/v1/users/profile-picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -177,7 +177,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Profile picture upload error:', error);
@@ -198,7 +198,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Get notification preferences error:', error);
@@ -227,7 +227,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Update notification preferences error:', error);
@@ -310,7 +310,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Get activity log error:', error);
@@ -354,7 +354,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Password reset token verification error:', error);
@@ -412,7 +412,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Update security questions error:', error);
@@ -438,7 +438,7 @@ class UserService {
       
       return {
         success: true,
-        data: response.data
+        data: response.data?.data
       };
     } catch (error) {
       console.error('Security questions verification error:', error);
