@@ -6,6 +6,7 @@ import { MessageSquare, CheckCircle, FilePlus, FileX, FileCheck, FileText, Bell,
 
 const ActivityManager = ({ userId, updateActivities }) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [existingActivities, setExistingActivities] = useState([]);
 
   // Generate a unique ID for activities
   const generateActivityId = (type, data) => {
@@ -34,121 +35,78 @@ const ActivityManager = ({ userId, updateActivities }) => {
       setIsConnected(true);
     });
     
-    // Process all notification events with a common handler
-    const processNotificationEvent = (eventType, data) => {
-      console.log(`ActivityManager: Received ${eventType} event:`, data);
+    // Process notification events from socket
+    const processNotificationEvent = (data) => {
+      console.log(`ActivityManager: Received event:`, data);
       
-      // Create a notification based on the event type
       let newActivity = null;
       
       // For message events
-      if (eventType.includes('message')) {
+      if (data.type && data.type.includes('message')) {
         newActivity = createMessageNotification(data);
-        if (newActivity) {
-          toast.success(`New message from ${data.senderName || data.sender || 'Lender'}`);
-        }
       }
       // For milestone events
-      else if (eventType.includes('milestone')) {
+      else if (data.type && data.type.includes('milestone')) {
         newActivity = createMilestoneNotification(data);
-        if (newActivity) {
-          const milestoneName = data.title || data.milestoneName || 'Loan milestone';
-          toast.success(`Milestone completed: ${milestoneName}`);
-        }
       }
       // For document request events
-      else if (eventType.includes('document') && (eventType.includes('request') || data.status === 'pending')) {
+      else if (data.type && data.type === 'document-request') {
+        console.log('ActivityManager: Creating document request notification:', data);
         newActivity = createDocumentRequestNotification(data);
-        if (newActivity) {
-          const documentName = data.documentName || data.title || data.documentType || 'Document';
-          toast.info(`Document requested: ${documentName}`);
-        }
       }
       // For document status change events
-      else if (eventType.includes('document') && eventType.includes('status')) {
+      else if (data.type && data.type === 'document-status') {
+        console.log('ActivityManager: Creating document status notification:', data);
         newActivity = createDocumentStatusNotification(data);
-        if (newActivity && data.status) {
-          const documentName = data.documentName || data.title || 'Document';
-          if (data.status.toLowerCase() === 'approved') {
-            toast.success(`Document approved: ${documentName}`);
-          } else if (data.status.toLowerCase() === 'rejected') {
-            toast.error(`Document rejected: ${documentName}`);
-          } else {
-            toast.info(`Document status updated: ${documentName}`);
-          }
-        }
-      }
-      // For loan status events
-      else if (eventType.includes('loan') && eventType.includes('status')) {
-        newActivity = createLoanStatusNotification(data);
-        if (newActivity) {
-          toast.info(`Loan status updated: ${data.status || 'Status changed'}`);
-        }
-      }
-      // For generic notifications
-      else if (eventType === 'notification') {
-        newActivity = createGenericNotification(data);
-        if (newActivity) {
-          toast.info(newActivity.title);
-        }
       }
       
-      // Add the notification if created
+      // If we have a new activity, update the state
       if (newActivity) {
-        updateActivities(prevActivities => {
-          // Check if this is a duplicate notification
-          const isDuplicate = prevActivities.some(act => 
-            act.id === newActivity.id || 
-            (act.entityType === newActivity.entityType && 
-             act.title === newActivity.title && 
-             act.description === newActivity.description &&
-             Date.now() - new Date(act.timestamp).getTime() < 300000) // 5 minutes
-          );
-          
-          if (isDuplicate) {
-            console.log('ActivityManager: Skipping duplicate notification');
-            return prevActivities;
-          }
-          
-          // Always add new activities at the top of the stack
-          return [newActivity, ...prevActivities];
-        });
+        console.log('ActivityManager: New activity created:', newActivity);
+        
+        // Call the parent component's update function
+        if (updateActivities) {
+          updateActivities(prevActivities => {
+            // Check for duplicates before adding
+            const isDuplicate = prevActivities.some(activity => {
+              return (
+                activity.id === newActivity.id || 
+                (activity.title === newActivity.title && 
+                 activity.description === newActivity.description &&
+                 Math.abs(new Date(activity.timestamp) - new Date(newActivity.timestamp)) < 60000)
+              );
+            });
+            
+            if (isDuplicate) {
+              console.log('ActivityManager: Skipping duplicate notification');
+              return prevActivities;
+            }
+            
+            // Add the new activity to the state (at the top)
+            return [newActivity, ...prevActivities];
+          });
+        }
       }
     };
     
-    // Create notification objects for different event types
-    
-    // Message notifications
+    // Create message notification
     const createMessageNotification = (data) => {
-      // Extract sender name - if an object is provided, get the name property
-      let senderName = 'Lender';
-      if (data.senderName) {
-        senderName = data.senderName;
-      } else if (data.sender) {
-        if (typeof data.sender === 'object' && data.sender !== null) {
-          // If sender is an object, try to get name from it
-          senderName = data.sender.firstName || data.sender.name || data.sender.companyName || 'Lender';
-        } else {
-          senderName = data.sender;
-        }
-      }
-      
       return {
         id: generateActivityId('msg', data),
         icon: MessageSquare,
-        title: `New message from ${senderName}`,
-        description: data.content?.substring(0, 30) || 'You have a new message',
+        title: `New message from ${data.senderName || data.sender?.firstName || 'Lender'}`,
+        description: data.content?.substring(0, 40) + (data.content?.length > 40 ? '...' : '') || 'You have a new message',
         time: 'Just now',
         status: 'New',
         statusColor: 'blue',
         entityType: 'message',
         url: '/borrower/messages',
-        timestamp: new Date().toISOString(),
+        timestamp: data.timestamp || new Date().toISOString(),
         persistent: true
       };
     };
     
-    // Milestone notifications
+    // Create milestone notification
     const createMilestoneNotification = (data) => {
       const milestoneName = data.title || data.milestoneName || 'Loan milestone';
       const loanId = data.loanId || data.entityId;
@@ -166,7 +124,7 @@ const ActivityManager = ({ userId, updateActivities }) => {
         entityType: 'milestone',
         loanNumber,
         url: loanId ? `/borrower/loans/${loanId}?tab=milestones` : '/borrower/dashboard',
-        timestamp: new Date().toISOString(),
+        timestamp: data.timestamp || new Date().toISOString(),
         persistent: true
       };
     };
@@ -177,6 +135,27 @@ const ActivityManager = ({ userId, updateActivities }) => {
       const loanId = data.loanId || data.entityId;
       const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
       
+      // Handle batch requests
+      if (data.isBatch && data.documents && Array.isArray(data.documents)) {
+        const documentList = data.documents.map(doc => doc.title || doc.documentType).join(', ');
+        return {
+          id: generateActivityId('doc-req-batch', data),
+          icon: FilePlus,
+          title: `Multiple documents requested`,
+          description: `${documentList}${loanNumber ? ` for loan ${loanNumber}` : ''}`,
+          time: 'Just now',
+          status: 'Pending',
+          statusColor: 'blue',
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+      }
+      
+      // Single document request
       return {
         id: generateActivityId('doc-req', data),
         icon: FilePlus,
@@ -189,154 +168,110 @@ const ActivityManager = ({ userId, updateActivities }) => {
         entityType: 'document',
         loanNumber,
         url: `/borrower/documents`,
-        timestamp: new Date().toISOString(),
+        timestamp: data.timestamp || new Date().toISOString(),
         persistent: true
       };
     };
     
-    // Document status change notifications
+    // Document status notification
     const createDocumentStatusNotification = (data) => {
       const documentName = data.documentName || data.title || data.documentType || 'Document';
       const loanId = data.loanId || data.entityId;
       const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
+      const status = data.status ? data.status.toLowerCase() : 'updated';
       
-      let status = data.status || 'Updated';
       let icon = FileText;
       let statusColor = 'blue';
+      let title = `Document status updated`;
       
-      if (status.toLowerCase() === 'approved') {
+      if (status === 'approved') {
         icon = FileCheck;
         statusColor = 'green';
-      } else if (status.toLowerCase() === 'rejected') {
-        icon = FileX; 
+        title = `Document approved`;
+      } else if (status === 'rejected') {
+        icon = FileX;
         statusColor = 'red';
-      } else if (status.toLowerCase() === 'correction' || status.toLowerCase() === 'needs_correction') {
-        icon = AlertTriangle;
-        statusColor = 'yellow';
+        title = `Document rejected`;
       }
       
       return {
         id: generateActivityId('doc-status', data),
-        icon,
-        title: `Document ${status}`,
-        description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`,
+        icon: icon,
+        title: title,
+        description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
         time: 'Just now',
-        status,
-        statusColor,
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        statusColor: statusColor,
         entityId: loanId,
         entityType: 'document',
         loanNumber,
         url: `/borrower/documents`,
-        timestamp: new Date().toISOString(),
+        timestamp: data.timestamp || new Date().toISOString(),
         persistent: true
       };
     };
     
-    // Loan status notifications
-    const createLoanStatusNotification = (data) => {
-      const loanId = data.loanId || data.entityId;
-      const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
-      const status = data.status || data.newStatus || 'Updated';
+    // Register socket event listeners
+    const listenerKey = `borrower-${userId}`;
+    socketService.addMessageListener(listenerKey, processNotificationEvent);
+    
+    // Test function to manually trigger document notifications
+    const testDocumentNotifications = () => {
+      console.log('ActivityManager: Testing document notifications...');
       
-      let icon = Bell;
-      let statusColor = 'blue';
-      
-      if (status.toLowerCase().includes('approved')) {
-        icon = CheckCircle;
-        statusColor = 'green';
-      } else if (status.toLowerCase().includes('reject')) {
-        icon = XCircle;
-        statusColor = 'red';
-      }
-      
-      return {
-        id: generateActivityId('loan-status', data),
-        icon,
-        title: `Loan status updated`,
-        description: `Loan ${loanNumber} status is now ${status}`,
-        time: 'Just now',
-        status,
-        statusColor,
-        entityId: loanId,
-        entityType: 'loan',
-        loanNumber,
-        url: loanId ? `/borrower/loans/${loanId}` : '/borrower/loans',
-        timestamp: new Date().toISOString(),
-        persistent: true
+      // Test document request notification
+      const documentRequestData = {
+        type: 'document-request',
+        documentName: 'Bank Statement',
+        documentType: 'Bank Statement',
+        category: 'Financial',
+        description: 'Please upload your most recent bank statement',
+        loanId: '609c1b9f2b068e001f5c7308',
+        loanNumber: '2025061901',
+        borrowerId: userId,
+        requestedBy: 'lender-123',
+        timestamp: new Date().toISOString()
       };
+      
+      // Test document status notification
+      const documentStatusData = {
+        type: 'document-status',
+        documentName: 'Driver License',
+        documentType: 'Driver License',
+        status: 'approved',
+        previousStatus: 'pending',
+        loanId: '609c1b9f2b068e001f5c7308',
+        loanNumber: '2025061901',
+        borrowerId: userId,
+        reviewedBy: 'lender-123',
+        notes: 'Document approved successfully',
+        timestamp: new Date().toISOString()
+      };
+      
+      // Process the test notifications
+      processNotificationEvent(documentRequestData);
+      
+      // Wait 1 second before sending the second notification
+      setTimeout(() => {
+        processNotificationEvent(documentStatusData);
+      }, 1000);
     };
     
-    // Generic notifications
-    const createGenericNotification = (data) => {
-      // Try to determine notification type from content
-      if (!data) return null;
-      
-      if (data.type === 'milestone' || data.eventType === 'milestone-completed' || 
-          (data.title && data.title.toLowerCase().includes('milestone'))) {
-        return createMilestoneNotification(data);
-      } else if (data.type === 'document-request' || data.eventType === 'document-request' || 
-                (data.title && data.title.toLowerCase().includes('document') && 
-                 data.title.toLowerCase().includes('request'))) {
-        return createDocumentRequestNotification(data);
-      } else if (data.type === 'document-status' || data.eventType === 'document-status' || 
-                (data.title && data.title.toLowerCase().includes('document') && 
-                 data.status)) {
-        return createDocumentStatusNotification(data);
-      } else if (data.type === 'loan-status' || data.eventType === 'loan-status-changed' || 
-                (data.title && data.title.toLowerCase().includes('loan') && 
-                 data.status)) {
-        return createLoanStatusNotification(data);
-      }
-      
-      // Fallback to a generic notification
-      return {
-        id: generateActivityId('notification', data),
-        icon: Bell,
-        title: data.title || 'New notification',
-        description: data.description || data.message || '',
-        time: 'Just now',
-        status: data.status || 'Info',
-        statusColor: 'blue',
-        entityId: data.entityId,
-        entityType: data.entityType || 'notification',
-        url: data.url,
-        timestamp: new Date().toISOString(),
-        persistent: true
-      };
-    };
-    
-    // Register socket event handlers for all notification types
-    const eventTypes = [
-      'notification',
-      'message', 
-      'receive_message',
-      'new_lender_message', 
-      'document-request',
-      'document_requested',
-      'milestone-completed',
-      'milestone_updated',
-      'document-status',
-      'document_status_changed',
-      'loan-status',
-      'loan_status_changed'
-    ];
-    
-    eventTypes.forEach(eventType => {
-      socket.on(eventType, data => processNotificationEvent(eventType, data));
-    });
+    // Wait 2 seconds after component mount to trigger the test
+    const timer = setTimeout(() => {
+      testDocumentNotifications();
+    }, 2000);
     
     // Clean up on unmount
     return () => {
       console.log('ActivityManager: Cleaning up socket listeners');
-      eventTypes.forEach(eventType => {
-        socket.off(eventType);
-      });
+      socketService.removeMessageListener(listenerKey);
+      clearTimeout(timer);
       setIsConnected(false);
     };
   }, [userId, updateActivities]);
 
-  // For debugging, uncomment to show connection status
-  /*
+  // For debugging, show connection status
   return (
     <div style={{ 
       position: 'fixed', 
@@ -351,9 +286,6 @@ const ActivityManager = ({ userId, updateActivities }) => {
       Socket: {isConnected ? 'Connected' : 'Disconnected'}
     </div>
   );
-  */
-  
-  return null;
 };
 
 export default ActivityManager;

@@ -499,7 +499,28 @@ const BorrowerDashboard = () => {
         persistent: true
       };
       
-      toast.success(`New message from ${data.senderName || data.sender || 'Lender'}`);
+      toast.custom((t) => (
+        <div className={`${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <MessageSquare className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">New Message</p>
+                <p className="mt-1 text-sm text-gray-500">From: {data.senderName || data.sender || 'Lender'}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ));
     } 
     else if (data.type === 'milestone' || data.eventType === 'milestone-completed') {
       // Milestone notification
@@ -524,7 +545,28 @@ const BorrowerDashboard = () => {
         persistent: true
       };
       
-      toast.success(`Milestone completed: ${milestoneName}`);
+      toast.custom((t) => (
+        <div className={`${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">Milestone Completed</p>
+                <p className="mt-1 text-sm text-gray-500">{milestoneName}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-green-600 hover:text-green-500 focus:outline-none">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ));
     }
     else if (data.type === 'document-request' || data.eventType === 'document-request') {
       // Document request notification
@@ -549,7 +591,28 @@ const BorrowerDashboard = () => {
         persistent: true
       };
       
-      toast.info(`Document requested: ${documentName}`);
+      toast.custom((t) => (
+        <div className={`${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <FileText className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">Document Requested</p>
+                <p className="mt-1 text-sm text-gray-500">{documentName}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ));
     } 
     else if (data.type === 'document-status' || data.eventType === 'document-status') {
       // Document status change notification (approved/rejected)
@@ -566,13 +629,76 @@ const BorrowerDashboard = () => {
       if (status.toLowerCase() === 'approved') {
         statusColor = 'green';
         icon = FileCheck;
-        toast.success(`Document approved: ${documentName}`);
+        toast.custom((t) => (
+          <div className={`${
+            t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+            <div className="flex-1 w-0 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 pt-0.5">
+                  <FileCheck className="h-5 w-5 text-green-500" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-gray-900">Document Approved</p>
+                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-l border-gray-200">
+              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-green-600 hover:text-green-500 focus:outline-none">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ));
       } else if (status.toLowerCase() === 'rejected') {
         statusColor = 'red';
         icon = FileX;
-        toast.error(`Document rejected: ${documentName}`);
+        toast.custom((t) => (
+          <div className={`${
+            t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+            <div className="flex-1 w-0 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 pt-0.5">
+                  <FileX className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-gray-900">Document Rejected</p>
+                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-l border-gray-200">
+              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ));
       } else {
-        toast.info(`Document status updated: ${documentName}`);
+        toast.custom((t) => (
+          <div className={`${
+            t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+            <div className="flex-1 w-0 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 pt-0.5">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-gray-900">Document Status Updated</p>
+                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-l border-gray-200">
+              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ));
       }
       
       newActivity = {
@@ -1069,8 +1195,8 @@ const BorrowerDashboard = () => {
       return dateB - dateA; // Most recent first
     });
     
-    // Limit to 20 notifications to avoid overwhelming the UI
-    const displayActivities = formattedActivities.slice(0, 20);
+    // Limit to 10 notifications to avoid overwhelming the UI
+    const displayActivities = formattedActivities.slice(0, 10);
     
     return (
       <ul className="divide-y divide-gray-100">
@@ -1468,7 +1594,7 @@ const BorrowerDashboard = () => {
                 <QuickActionButton 
                   icon={Download} 
                   label="Download Statements" 
-                  onClick={() => toast.info('Statement download coming soon!')}
+                  onClick={() => toast('Statement download coming soon!')}
                   bgColor="bg-gradient-to-r from-indigo-600 to-indigo-800" 
                 />
               </div>
@@ -1552,13 +1678,15 @@ const BorrowerDashboard = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-medium text-gray-900">Notifications</h2>
-                    <button 
-                      onClick={handleRefreshActivities}
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                      Refresh
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleRefreshActivities}
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                        Refresh
+                      </button>
+                    </div>
                   </div>
 
                   {renderActivities()}

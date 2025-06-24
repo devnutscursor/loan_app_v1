@@ -874,6 +874,38 @@ exports.verifyDocument = async (req, res, next) => {
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Approved',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document approval: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document approval: ${socketError.message}`);
+    }
+    
     res.status(200).json({
       status: 'success',
       message: 'Document verified successfully',
@@ -1010,6 +1042,37 @@ exports.requestDocument = async (req, res, next) => {
       }
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = borrower.user.toString();
+        const notificationData = {
+          type: 'document-request',
+          eventType: 'document-request',
+          documentName: title || documentType,
+          documentType: documentType,
+          category: category,
+          description: description || `Please upload your ${title || documentType} document`,
+          loanId: loanId,
+          loanNumber: loan.loanNumber,
+          borrowerId: borrowerId,
+          requestedBy: req.user._id,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-request directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-request', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-request', notificationData);
+        
+        logger.info(`Socket notification sent for document request: ${title || documentType} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document request: ${socketError.message}`);
+    }
+    
     res.status(201).json({
       status: 'success',
       message: 'Document request created successfully',
@@ -1120,6 +1183,38 @@ exports.approveDocument = async (req, res, next) => {
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Approved',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document approval: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document approval: ${socketError.message}`);
+    }
+    
     res.status(200).json({
       status: 'success',
       message: 'Document approved successfully',
@@ -1211,6 +1306,38 @@ exports.rejectDocument = async (req, res, next) => {
     } catch (auditError) {
       // Don't fail the operation if audit logging fails
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
+    }
+    
+    // Send socket notification to borrower for document rejection
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Rejected',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: reason || notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status (rejection) directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document rejection: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document rejection: ${socketError.message}`);
     }
     
     res.status(200).json({
