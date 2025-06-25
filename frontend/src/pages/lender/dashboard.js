@@ -296,7 +296,7 @@ const LenderDashboard = () => {
         
         // Fetch dashboard stats (includes recent loans)
         const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=6`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -721,13 +721,20 @@ const LenderDashboard = () => {
 
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {recentLoans.map((loan) => (
-                      <LoanCard
-                        key={loan._id}
-                        loan={loan}
-                        onView={handleViewLoan}
-                      />
-                    ))}
+                    {/* Always display exactly 6 cards by duplicating if needed */}
+                    {Array(6)
+                      .fill()
+                      .map((_, index) => {
+                        // Use modulo to cycle through available loans
+                        const loan = recentLoans[index % recentLoans.length];
+                        return (
+                          <LoanCard
+                            key={`${loan._id}-${index}`}
+                            loan={loan}
+                            onView={handleViewLoan}
+                          />
+                        );
+                      })}
                   </div>
                 ) : (
                   <div className="text-center p-6 bg-gray-50 rounded-lg">
@@ -744,7 +751,7 @@ const LenderDashboard = () => {
                 {recentLoans.length > 0 && (
                   <div className="mt-8 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-gray-900">Lending Performance Metrics</h3>
+                      <h3 className="text-lg font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-6">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
