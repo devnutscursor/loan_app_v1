@@ -165,10 +165,25 @@ const LoanCard = ({ loan, onView }) => {
   // Status styling
   const getStatusStyle = (status) => {
     switch(status?.toLowerCase()) {
-      case 'approved': return "bg-green-100 text-green-800";
-      case 'pending': return "bg-yellow-100 text-yellow-800";
-      case 'rejected': return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'application submitted':
+        return "bg-yellow-100 text-yellow-800";
+      case 'approved':
+      case 'clear to close':
+      case 'conditional approval':
+        return "bg-green-100 text-green-800";
+      case 'rejected':
+      case 'declined':
+        return "bg-red-100 text-red-800";
+      case 'funded':
+      case 'closed':
+        return "bg-blue-100 text-blue-800";
+      case 'processing':
+      case 'underwriting':
+        return "bg-purple-100 text-purple-800";
+      case 'pending':
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -182,11 +197,11 @@ const LoanCard = ({ loan, onView }) => {
             </div>
             <div>
               <h4 className="font-medium text-gray-900">{loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}</h4>
-              <p className="text-xs text-gray-500">{loan.loanDetails?.loanType || "Loan"}</p>
+              <p className="text-xs text-gray-500">Loan# {loan.loanNumber || "Loan"}</p>
             </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
+            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || 'Status'}
           </span>
         </div>
         

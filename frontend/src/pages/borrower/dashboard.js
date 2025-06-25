@@ -106,10 +106,25 @@ const LoanCard = ({ loan, onView }) => {
   // Status styling
   const getStatusStyle = (status) => {
     switch(status?.toLowerCase()) {
-      case 'approved': return "bg-green-100 text-green-800";
-      case 'pending': return "bg-yellow-100 text-yellow-800";
-      case 'rejected': return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'application submitted':
+        return "bg-yellow-100 text-yellow-800";
+      case 'approved':
+      case 'clear to close':
+      case 'conditional approval':
+        return "bg-green-100 text-green-800";
+      case 'rejected':
+      case 'declined':
+        return "bg-red-100 text-red-800";
+      case 'funded':
+      case 'closed':
+        return "bg-blue-100 text-blue-800";
+      case 'processing':
+      case 'underwriting':
+        return "bg-purple-100 text-purple-800";
+      case 'pending':
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -118,18 +133,18 @@ const LoanCard = ({ loan, onView }) => {
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
           <div>
-            <h4 className="font-medium text-gray-900">{loan.purpose || "Loan"}</h4>
+            <h4 className="font-medium text-gray-900">Loan# {loan.loanNumber || "Loan"}</h4>
             <p className="text-xs text-gray-500">Applied: {formatDate(loan.createdAt)}</p>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
+            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
           </span>
         </div>
         
         <div className="grid grid-cols-3 gap-3 text-xs mb-4">
           <div>
             <p className="text-gray-500 mb-1">Amount</p>
-            <p className="font-semibold text-gray-900">{formatCurrency(loan.amount)}</p>
+            <p className="font-semibold text-gray-900">{formatCurrency(loan.loanDetails?.loanAmount || loan.amount || 0)}</p>
           </div>
           <div>
             <p className="text-gray-500 mb-1">Interest Rate</p>

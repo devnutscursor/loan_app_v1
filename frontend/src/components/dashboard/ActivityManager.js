@@ -283,7 +283,7 @@ const ActivityManager = ({ userId, updateActivities }) => {
       fontSize: '10px',
       zIndex: 9999
     }}>
-      Socket: {isConnected ? 'Connected' : 'Disconnected'}
+      {/* Socket: {isConnected ? 'Connected' : 'Disconnected'} */}
     </div>
   );
 };

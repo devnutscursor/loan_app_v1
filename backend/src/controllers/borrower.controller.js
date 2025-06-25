@@ -447,7 +447,7 @@ exports.getDashboard = async (req, res, next) => {
     // Get recent loans for the borrower
     const recentLoans = await Loan.find(borrowerFilter)
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(8)
       .populate([
         { path: 'lender', select: 'name companyName email' },
         { path: 'assignedLoanOfficer', select: 'firstName lastName email' }

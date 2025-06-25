@@ -33,7 +33,7 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
         return 'bg-yellow-100 text-yellow-800';
       case 'approved':
       case 'clear to close':
-      case 'conditional approval':
+      case 'Conditional Approval':
         return 'bg-green-100 text-green-800';
       case 'rejected':
       case 'declined':
