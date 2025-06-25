@@ -6,7 +6,7 @@ import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
 import { lenderService } from "../../../services/api";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
-import { MessageCircle, StickyNote, Download } from "lucide-react";
+import { MessageCircle, StickyNote, Download, Settings } from "lucide-react";
 import {
   BarChart2,
   User,
@@ -42,6 +42,9 @@ import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
+import Modal from "../../../components/common/Modal";
+import customAxios from '../../../utils/axios';
+// Settings is now properly imported above with other icons
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -505,13 +508,6 @@ const LoanDetails = () => {
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Add debug for id
-  useEffect(() => {
-    if (id) {
-      debug('Loan ID from router query', { id, type: typeof id });
-    }
-  }, [id]);
-
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
   
@@ -869,10 +865,96 @@ const LoanDetails = () => {
   };
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [editingEnabled, setEditingEnabled] = useState(true);
 
   const handleNoteButtonClick = () => {
     debug('Opening note modal', { loanId: id });
     setIsNoteModalOpen(true);
+  };
+  
+  const handleSettingsButtonClick = () => {
+    debug('Opening settings modal', { loanId: id });
+    setEditingEnabled(loan?.editingEnabled !== false); // Default to true if undefined
+    setIsSettingsModalOpen(true);
+  };
+  
+  const handleToggleEditPermission = async () => {
+    try {
+      // Make sure we're sending the correct value - inverse of current state
+      const newEditingState = !loan?.editingEnabled;
+      
+      // Get the token from localStorage and decode it to check user role
+      const token = localStorage.getItem('token');
+      let userInfo = { role: 'unknown' };
+      
+      if (token) {
+        try {
+          // Basic JWT decoding to check the payload (this doesn't validate the token)
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(window.atob(base64));
+          userInfo = payload;
+          console.log('User info from token:', payload);
+          console.log('User role:', payload.role);
+          
+          // Add toast to show the role for debugging
+          toast.info(`User role from token: ${payload.role || 'unknown'}`);
+        } catch (e) {
+          console.error('Error decoding token:', e);
+        }
+      }
+      
+      if (!token) {
+        toast.error('Authentication required. Please log in again.');
+        return;
+      }
+      
+      // Try direct API call with explicit auth header
+      console.log('Making direct API call with token');
+      const directResponse = await fetch(`http://localhost:5000/api/v1/loans/${id}/toggle-editing`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ editingEnabled: newEditingState })
+      });
+      
+      if (!directResponse.ok) {
+        const errorData = await directResponse.json();
+        console.error('Direct API call failed:', directResponse.status, errorData);
+        throw new Error(`Direct API call failed: ${directResponse.status} ${errorData.message || 'Unknown error'}`);
+      }
+      
+      const responseData = await directResponse.json();
+      console.log('Direct API call success:', responseData);
+      
+      // Update the local state
+      setLoan(prev => ({
+        ...prev,
+        editingEnabled: responseData.data.editingEnabled
+      }));
+      
+      // Update local state for toggle
+      setEditingEnabled(responseData.data.editingEnabled);
+      
+      toast.success(`Borrower editing ${responseData.data.editingEnabled ? 'enabled' : 'disabled'} successfully`);
+      setIsSettingsModalOpen(false);
+    } catch (error) {
+      console.error('Error toggling edit permission:', error);
+      
+      // More detailed error message based on the error
+      if (error.response) {
+        if (error.response.status === 403) {
+          toast.error(`Permission denied (403). Your current role may not be 'lender' or 'admin'. Please check your login credentials.`);
+        } else {
+          toast.error(`Failed to update edit permission: ${error.response?.data?.message || error.message || 'Server error'}`);
+        }
+      } else {
+        toast.error(`Failed to connect to the server: ${error.message}`);
+      }
+    }
   };
 
   // Monitor changes in forms for different tabs
@@ -1185,6 +1267,14 @@ const LoanDetails = () => {
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <FileText className="h-5 w-5" />
+                      </button>
+                      
+                      <button
+                        title="Application Settings"
+                        onClick={handleSettingsButtonClick}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                      >
+                        <Settings className="h-5 w-5" />
                       </button>
 
                       <button
@@ -1949,6 +2039,54 @@ const LoanDetails = () => {
           loanId={id}
         />
         
+        <Modal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          title="Loan Application Settings"
+        >
+          <div className="p-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Borrower Edit Permission</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Allow or restrict the borrower's ability to edit this loan application.
+              </p>
+              
+              <div className="flex items-center">
+                <label className="inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only" 
+                    checked={editingEnabled}
+                    onChange={() => setEditingEnabled(!editingEnabled)}
+                  />
+                  <div className={`relative w-11 h-6 rounded-full transition ${editingEnabled ? 'bg-primary' : 'bg-gray-200'}`}>
+                    <div className={`absolute w-4 h-4 bg-white rounded-full transition-transform transform ${editingEnabled ? 'translate-x-6' : 'translate-x-1'} top-1`}></div>
+                  </div>
+                  <span className="ml-3 text-sm font-medium text-gray-700">
+                    {editingEnabled ? 'Editing Enabled' : 'Editing Disabled'}
+                  </span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                onClick={() => setIsSettingsModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 bg-primary border border-transparent rounded-md font-medium text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                onClick={handleToggleEditPermission}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </Modal>  
         {/* Existing unsaved changes bar */}
         {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
           <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">

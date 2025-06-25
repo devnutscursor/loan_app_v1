@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import { Plus, Filter, ChevronRight } from "lucide-react";
+import { Plus, Filter, ChevronRight, ArrowLeft } from "lucide-react";
 import MainLayout from "../../../components/layout/MainLayout";
 import LoanCard from "../../../components/common/LoanCard";
 import { LoanService } from "../../../services";
@@ -19,9 +19,19 @@ const Loans = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await LoanService.getLoans({
-          status: filter !== "all" ? filter : undefined,
-        });
+        
+        // Special handling for Approved filter to include Conditional Approval
+        let filterParams = {};
+        if (filter !== "all") {
+          if (filter === "Approved") {
+            // Use array of statuses to include both Approved and Conditional Approval
+            filterParams = { status: ["Approved", "Conditional Approval"] };
+          } else {
+            filterParams = { status: filter };
+          }
+        }
+        
+        const response = await LoanService.getLoans(filterParams);
 
         if (response.success) {
           // Carefully extract loans array from the response with proper validation
@@ -252,7 +262,14 @@ const Loans = () => {
         Get started by applying for a loan. Our process is quick, easy, and
         designed to help you meet your financial goals.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 space-x-4">
+        <Link
+          href="/borrower/dashboard"
+          className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+        >
+          <ArrowLeft className="-ml-1 mr-2 h-5 w-5" />
+          Back to Dashboard
+        </Link>
         <Link
           href="/borrower/apply"
           className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
@@ -305,11 +322,16 @@ const Loans = () => {
                         className="block w-full pl-10 pr-10 py-2 text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="all">All Loans</option>
-                        <option value="application submitted">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="closed">Closed</option>
+                        {/* <option value="Application Started">Application Started</option> */}
+                        <option value="Application Submitted">Application Submitted</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        {/* <option value="Underwriting">Underwriting</option> */}
+                        <option value="Approved">Approved</option>
+                        {/* <option value="Clear to Close">Clear to Close</option> */}
+                        {/* <option value="Funded">Funded</option> */}
+                        <option value="Rejected">Rejected</option>
+                        <option value="Closed">Closed</option>
                       </select>
                     </div>
 
