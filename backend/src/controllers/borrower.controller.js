@@ -417,13 +417,13 @@ exports.getDashboard = async (req, res, next) => {
     // Active loans with proper statuses
     const activeLoans = await Loan.countDocuments({
       ...borrowerFilter,
-      status: { $in: ['Approved', 'Funded', 'Closed', 'Clear to Close'] }
+      status: { $in: ['Approved', 'Conditional Approval', 'Funded', 'Closed', 'Clear to Close'] }
     });
     
     // Pending applications with appropriate statuses
     const pendingApplications = await Loan.countDocuments({
       ...borrowerFilter,
-      status: { $in: ['Application Submitted', 'Processing', 'Underwriting', 'Conditional Approval', 'Pre-Qualification', 'Application Started', 'Pending'] }
+      status: { $in: ['Application Submitted', 'Processing', 'Underwriting', 'Pre-Qualification', 'Application Started', 'Pending'] }
     });
     
     // Calculate total borrowed amount
@@ -431,7 +431,7 @@ exports.getDashboard = async (req, res, next) => {
       { 
         $match: { 
           ...borrowerFilter,
-          status: { $in: ['Approved', 'Funded', 'Closed', 'Clear to Close'] }
+          status: { $in: ['Approved', 'Conditional Approval', 'Funded', 'Closed', 'Clear to Close'] }
         }
       },
       {
