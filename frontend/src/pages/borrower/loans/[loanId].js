@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
+import axios from "axios";
 import Link from "next/link";
 import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
@@ -77,6 +78,41 @@ const LoanDetails = () => {
         if (response.success) {
           // Extract loan data, handling different response structures
           const loanData = response.data?.loan || response.data.data;
+          // Enrich interest rate and term from nested loanParameters / program
+          if (loanData?.loanParameters) {
+            const { interestRate, selectedProgramId } = loanData.loanParameters;
+            if (interestRate && !loanData.loanDetails?.interestRate) {
+              loanData.loanDetails = { ...loanData.loanDetails, interestRate };
+            }
+            // Determine loan term
+            if (!loanData.loanDetails?.loanTerm) {
+              let loanTerm = null;
+
+              // 1. Directly from loanParameters
+              if (loanData.loanParameters.loanTerm) {
+                loanTerm = loanData.loanParameters.loanTerm;
+              }
+              // 2. Populated selectedProgramId object
+              else if (selectedProgramId?.loanTerm) {
+                loanTerm = selectedProgramId.loanTerm;
+              }
+              // 3. Fetch LoanProgram by ID
+              else if (selectedProgramId) {
+                try {
+                  const programRes = await axios.get(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs/${selectedProgramId}?_=${Date.now()}`,
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                  );
+                  loanTerm = programRes.data?.data?.loanProgram?.loanTerm || null;
+                } catch (progErr) {
+                  console.warn('Unable to fetch loan program term', progErr);
+                }
+              }
+              if (loanTerm) {
+                loanData.loanDetails = { ...loanData.loanDetails, loanTerm };
+              }
+            }
+          }
           setLoan(loanData);
         } else {
           console.warn("Failed to fetch loan details:", response.message);

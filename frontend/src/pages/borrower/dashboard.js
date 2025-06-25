@@ -86,8 +86,6 @@ const QuickActionButton = ({ icon: Icon, label, onClick, bgColor }) => (
 
 // Loan card component with modern design
 const LoanCard = ({ loan, onView }) => {
-  // Calculate progress percentage
-  const progress = (loan.amountPaid / loan.amount) * 100 || 0;
   
   // Format currency
   const formatCurrency = (amount) => {
@@ -128,39 +126,18 @@ const LoanCard = ({ loan, onView }) => {
           </span>
         </div>
         
-        <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+        <div className="grid grid-cols-3 gap-3 text-xs mb-4">
           <div>
             <p className="text-gray-500 mb-1">Amount</p>
             <p className="font-semibold text-gray-900">{formatCurrency(loan.amount)}</p>
           </div>
           <div>
             <p className="text-gray-500 mb-1">Interest Rate</p>
-            <p className="font-semibold text-gray-900">{loan.interestRate}%</p>
+            <p className="font-semibold text-gray-900">{loan.interestRate ? `${loan.interestRate}%` : 'N/A'}</p>
           </div>
           <div>
             <p className="text-gray-500 mb-1">Term</p>
-            <p className="font-semibold text-gray-900">{loan.term} months</p>
-          </div>
-          <div>
-            <p className="text-gray-500 mb-1">Due Date</p>
-            <p className="font-semibold text-gray-900">{formatDate(loan.dueDate)}</p>
-          </div>
-        </div>
-        
-        <div className="mb-3">
-          <div className="flex justify-between mb-1">
-            <span className="text-xs font-medium text-gray-600">Repayment Progress</span>
-            <span className="text-xs font-medium text-gray-800">{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-700" 
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-gray-500">Paid: {formatCurrency(loan.amountPaid)}</span>
-            <span className="text-xs text-gray-500">Total: {formatCurrency(loan.amount)}</span>
+            <p className="font-semibold text-gray-900">{loan.term ? `${loan.term} months` : 'N/A'}</p>
           </div>
         </div>
         
@@ -881,9 +858,73 @@ const BorrowerDashboard = () => {
         },
         recentLoans: statsData.recentLoans || []
         });
-        
-        // Use the recentLoans from the dashboard API response directly
-        setRecentLoans(statsData.recentLoans || []);
+
+        // Enrich recent loans with dynamic interest rate and term data before placing in state
+        let enrichedLoans = statsData.recentLoans || [];
+        try {
+          // Build unique lists for program types (for rates) and program IDs (for terms)
+          const programTypeSet = new Set();
+          const programIdSet = new Set();
+          enrichedLoans.forEach(l => {
+             // Collect program types for potential rate lookup (fallback only)
+             if (l.programType) programTypeSet.add(l.programType);
+             // Collect selected program IDs from nested loanParameters for term lookup
+             if (l?.loanParameters?.selectedProgramId) {
+               programIdSet.add(l.loanParameters.selectedProgramId.toString());
+             }
+           });
+
+          // Prepare requests
+          const rateRequests = Array.from(programTypeSet).map(pt =>
+            axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-rates/${pt}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(res => ({ programType: pt, rate: res.data?.data?.rate }))
+              .catch(() => ({ programType: pt }))
+          );
+
+          const programRequests = Array.from(programIdSet).map(id =>
+             axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs/${id}`, {
+               headers: { Authorization: `Bearer ${token}` }
+             }).then(res => ({ id, term: res.data?.data?.loanProgram?.loanTerm }))
+               .catch(() => ({ id }))
+           ); // returns { id, term } objects
+
+          // Execute in parallel
+          const [rateResults, programResults] = await Promise.all([
+            Promise.all(rateRequests),
+            Promise.all(programRequests)
+          ]);
+
+          // Build lookup maps
+          const rateMap = {};
+          rateResults.forEach(r => { if (r.programType) rateMap[r.programType] = r.rate; });
+          const termMap = {};
+          programResults.forEach(p => { if (p.id) termMap[p.id] = p.term; });
+
+          // Enrich loan objects
+          enrichedLoans = enrichedLoans.map(l => {
+            let amount = 0;
+            if (l.loanType === 'Purchase') {
+              amount = l.purchasePrice ?? l.amount ?? l.loanAmount ?? 0;
+            } else if (l.loanType === 'Construction' || l.loanType === 'Refinance') {
+              amount = l.loanAmount ?? l.amount ?? 0;
+            } else {
+              amount = l.amount ?? l.loanAmount ?? 0;
+            }
+            const programId = l?.loanParameters?.selectedProgramId?.toString?.() || l?.loanParameters?.selectedProgramId;
+             return {
+               ...l,
+               amount,
+               // Prefer explicit interest rate from loanParameters, fallback to previous enrichment
+               interestRate: l?.loanParameters?.interestRate ?? l.interestRate ?? rateMap[l.programType],
+               term: termMap[programId] ?? l?.loanParameters?.selectedProgramId?.loanTerm ?? l.term
+             };
+          });
+        } catch (enrichErr) {
+          console.warn('Failed to enrich recent loans', enrichErr);
+        }
+
+        setRecentLoans(enrichedLoans);
         
         // Process activities with proper icons
         if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
@@ -1036,8 +1077,8 @@ const BorrowerDashboard = () => {
         let upcomingPayment = 0;
         let nextDueDate = null;
         
-      const loans = statsData.recentLoans || [];
-      loans.forEach(loan => {
+      const loansForSummary = enrichedLoans;
+      loansForSummary.forEach(loan => {
           totalPaid += loan.amountPaid || 0;
           if (loan.status === 'approved' && (!nextDueDate || new Date(loan.dueDate) < new Date(nextDueDate))) {
             nextDueDate = loan.dueDate;
@@ -1545,7 +1586,7 @@ const BorrowerDashboard = () => {
                 bgClass="bg-gradient-to-br from-blue-600 to-blue-800"
               />
               <StatCard 
-                title="Active Loans" 
+                title="Approved Loans" 
                 value={stats?.activeLoans || 0} 
                 icon={CheckCircle}
                 trend={false}
