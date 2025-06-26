@@ -187,12 +187,12 @@ const LoanApplication = () => {
     console.log('Form data:', formData);
   }, [formData]);
 
-  // Load draft on component mount
+  // Load draft when router is ready and draft ID is available
   useEffect(() => {
     const loadDraft = async () => {
       try {
-        // If there's a draft ID in the URL, try to load it
-        if (draft) {
+        // If there's a draft ID in the URL and router is ready, try to load it
+        if (draft && router.isReady) {
           console.log('Loading draft with ID:', draft);
           const result = await LoanService.getDraft(draft);
           if (result.success && result.data) {
@@ -241,9 +241,12 @@ const LoanApplication = () => {
       }
     };
 
-    loadDraft();
-    fetchLoanTypes();
-  }, []);
+    // Only run when router is ready
+    if (router.isReady) {
+      loadDraft();
+      fetchLoanTypes();
+    }
+  }, [router.isReady, draft]); // Re-run when router becomes ready or draft ID changes
 
   // Handle form input changes
   const handleChange = (nameOrEvent, valueOrNull = null) => {
