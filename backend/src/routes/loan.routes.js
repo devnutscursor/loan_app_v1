@@ -49,6 +49,9 @@ router.put('/:id/parameters', loanController.updateLoanParameters);
 // Toggle editing permission - lender/admin only
 router.patch('/:id/toggle-editing', authorize('lender', 'admin'), loanController.toggleEditingPermission);
 
+// Update loan status - lender/admin only
+router.patch('/:id/update-status', authorize('lender', 'admin'), loanController.updateLoanStatus);
+
 // Loan drafts routes
 router.post('/draft', loanController.saveDraft);
 router.get('/draft/recent', loanController.getRecentDrafts);
