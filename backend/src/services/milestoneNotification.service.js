@@ -80,13 +80,13 @@ class MilestoneNotificationService {
       // 1. Have a deadline within next 24 hours OR are already overdue but not more than 24 hours
       // 2. Have not had a notification sent
       // 3. Are not already completed
-      // For milestones due within next 24 hours
+      // For milestones due within exactly 24 hours (not more)
       const approachingMilestones = await Milestone.find({
         deadlineDate: { $exists: true, $ne: null },
         notificationSent: false,
         status: { $ne: 'completed' },
         $or: [
-          // Due within 24 hours (future)
+          // Due within EXACTLY 24 hours (future) - fixed to ensure only 24hr window
           { 
             deadlineDate: { 
               $gte: now,
@@ -178,8 +178,14 @@ class MilestoneNotificationService {
       if (loan.lender && typeof loan.lender === 'object') {
         console.log(`Found lender object ID: ${loan.lender._id}`);
         
+        // Check if the lender has an email field directly
+        if (loan.lender.email) {
+          lenderEmail = loan.lender.email;
+          console.log(`Found lender's email directly: ${lenderEmail}`);
+          logger.info(`Using lender's email directly: ${lenderEmail}`);
+        }
         // Check if the lender has a populated user field
-        if (loan.lender.user && typeof loan.lender.user === 'object') {
+        else if (loan.lender.user && typeof loan.lender.user === 'object') {
           console.log(`Found lender's user: ${JSON.stringify({
             _id: loan.lender.user._id,
             email: loan.lender.user.email || 'undefined'
@@ -267,44 +273,13 @@ class MilestoneNotificationService {
         }
       }
       
-      // STEP 4: Try to get a fallback email from environment or log an error
+      // STEP 4: Log an error if no email was found but don't use fallback
       if (!lenderEmail) {
-        // Check if we have a designated fallback email in the environment
-        if (process.env.NOTIFICATION_FALLBACK_EMAIL) {
-          console.log('STEP 4: No lender email found - using fallback email from environment');
-          lenderEmail = process.env.NOTIFICATION_FALLBACK_EMAIL;
-          console.log(`Using fallback email from environment: ${lenderEmail}`);
-          
-          // Log this as an error even though we have a fallback - we should always find a real lender email
-          logger.error(`Could not find real lender email for milestone ${milestone._id} (loan: ${loan._id}), using fallback`);
-        } else {
-          // In production, log an error but don't use test email
-          console.error(`No lender email found for milestone ${milestone._id} and no fallback configured`);
-          logger.error(`No lender email found for milestone ${milestone._id} and no fallback email configured`);
-          return false; // Cannot proceed without a valid email
-        }
-      }
-      
-      // If we still don't have an email, we can't proceed
-      if (!lenderEmail) {
+        // Do not use fallback email - this would send to the wrong person
         console.error(`No lender email found for milestone ${milestone._id} (loan: ${loan._id})`);
         logger.error(`No lender email found for milestone ${milestone._id} (loan: ${loan._id})`);
-        return false;
+        return false; // Cannot proceed without a valid lender email
       }
-      
-      // Calculate how much time is left until the deadline
-      const now = new Date();
-      const deadline = new Date(milestone.deadlineDate);
-      const hoursLeft = Math.round((deadline - now) / (1000 * 60 * 60) * 10) / 10;
-      
-      const isOverdue = now > deadline;
-      const timeDescription = isOverdue 
-        ? `is ${Math.abs(hoursLeft).toFixed(1)} hours overdue` 
-        : `is due in ${hoursLeft.toFixed(1)} hours`;
-      
-      console.log(`Milestone "${milestone.name}" ${timeDescription}`);
-      console.log(`Preparing to send email to ${lenderEmail}`);
-      logger.info(`Sending deadline notification for milestone "${milestone.name}" (${timeDescription}) to ${lenderEmail}`);
 
       // Check if emailService exists
       if (!emailService || typeof emailService.sendMilestoneDeadlineNotification !== 'function') {
@@ -312,14 +287,34 @@ class MilestoneNotificationService {
         return false;
       }
 
-      // STEP 5: Send notification email
-      console.log('STEP 5: Sending email notification...');
+      // STEP 5: Calculate fresh time until deadline
+      console.log('STEP 5: Calculating fresh time until deadline...');
+      
+      // Explicitly fetch the fresh milestone to ensure we have the latest deadline date
+      const freshMilestone = await Milestone.findById(milestone._id);
+      const deadlineDate = freshMilestone ? new Date(freshMilestone.deadlineDate) : new Date(milestone.deadlineDate);
+      const now = new Date();
+      
+      // Calculate hours until deadline (or since it passed) with precision
+      const hoursUntilDeadline = Math.round((deadlineDate - now) / (1000 * 60 * 60) * 10) / 10;
+      const isOverdue = now > deadlineDate;
+      
+      // Create time description for the email
+      const timeDescription = isOverdue 
+        ? `is ${Math.abs(hoursUntilDeadline).toFixed(1)} hours overdue` 
+        : `is due in ${hoursUntilDeadline.toFixed(1)} hours`;
+      
+      console.log(`Fresh time calculation: Milestone "${milestone.name}" ${timeDescription}`);
+      console.log(`Using deadline date: ${deadlineDate.toISOString()}, Current time: ${now.toISOString()}`);
+      
+      // STEP 6: Send notification email
+      console.log('STEP 6: Sending email notification...');
       try {
-        // Send email
+        // Send email with fresh time calculation
         const emailResult = await emailService.sendMilestoneDeadlineNotification({
           to: lenderEmail,
           milestone: {
-            ...milestone._doc,
+            ...(freshMilestone ? freshMilestone._doc : milestone._doc),
             timeDescription
           },
           loan

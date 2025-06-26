@@ -335,8 +335,19 @@ exports.updateMilestone = catchAsync(async (req, res) => {
     if (req.body.order) milestone.order = req.body.order;
     if (req.body.startDate) milestone.startDate = req.body.startDate;
     if (req.body.deadlineDate) {
+      // Store the original deadline for logging purposes
+      const originalDeadline = milestone.deadlineDate ? new Date(milestone.deadlineDate).toISOString() : 'none';
+      const newDeadline = new Date(req.body.deadlineDate).toISOString();
+      
+      console.log(`[DEADLINE UPDATE] Milestone ${milestone._id}: Updating deadline from ${originalDeadline} to ${newDeadline}`);
+      
+      // Update the milestone with new deadline
       milestone.deadlineDate = req.body.deadlineDate;
       milestone.notificationSent = false; // Reset notification flag when deadline changes
+      
+      // Save the milestone first to ensure the update is persisted
+      await milestone.save();
+      console.log(`[DEADLINE UPDATE] Milestone ${milestone._id}: Saved updated deadline to database`);
       
       // Import the service here to avoid circular dependency
       const milestoneNotificationService = require('../services/milestoneNotification.service');
@@ -349,8 +360,16 @@ exports.updateMilestone = catchAsync(async (req, res) => {
       
       if (hoursUntilDeadline <= 24) {
         try {
-          console.log(`Updated milestone has deadline within 24 hours (${hoursUntilDeadline.toFixed(1)} hours). Sending notification immediately...`);
-          // Force a notification for this specific milestone rather than checking all milestones
+          // Add a small delay to ensure database consistency before fetching again
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          console.log(`[DEADLINE UPDATE] Updated milestone has deadline within 24 hours (${hoursUntilDeadline.toFixed(1)} hours). Sending notification...`);
+          
+          // Check the database record to verify our update is persisted
+          const verifyMilestone = await Milestone.findById(milestoneId);
+          console.log(`[DEADLINE UPDATE] Verification check - milestone deadline in DB: ${new Date(verifyMilestone.deadlineDate).toISOString()}`);
+          
+          // Force a notification for this specific milestone with completely fresh data
           const populatedMilestone = await Milestone.findById(milestoneId).populate({
             path: 'loan',
             populate: [
@@ -366,6 +385,7 @@ exports.updateMilestone = catchAsync(async (req, res) => {
           });
           
           if (populatedMilestone) {
+            console.log(`[DEADLINE UPDATE] Fetched fresh milestone data, sending notification with deadline: ${new Date(populatedMilestone.deadlineDate).toISOString()}`);
             await milestoneNotificationService.sendDeadlineNotification(populatedMilestone);
           } else {
             console.error('Could not find updated milestone with populated data');
