@@ -152,7 +152,7 @@ const LoanCard = ({ loan, onView }) => {
           </div>
           <div>
             <p className="text-gray-500 mb-1">Term</p>
-            <p className="font-semibold text-gray-900">{loan.term ? `${loan.term} months` : 'N/A'}</p>
+            <p className="font-semibold text-gray-900">{loan.loanDetails?.loanTerm ? `${loan.loanDetails.loanTerm} years` : loan.loanParameters?.loanTerm ? `${loan.loanParameters.loanTerm} years` : 'N/A'}</p>
           </div>
         </div>
         
