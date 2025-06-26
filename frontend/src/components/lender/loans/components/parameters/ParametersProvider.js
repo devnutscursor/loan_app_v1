@@ -30,6 +30,7 @@ const ParametersProvider = ({
     assets: 0,
     selectedProgramId: '',
     interestRate: 0,
+    rateAdjustment: 0, // Add rate adjustment field
     loanTerm: 30,
     dtiMax: 43,
     downPaymentMin: 3,
@@ -160,6 +161,13 @@ const ParametersProvider = ({
         downPayment: downPayment
       }));
     }
+    // Special handling for rate adjustment which affects effective interest rate
+    else if (name === 'rateAdjustment') {
+      setLocalParams(prev => ({
+        ...prev,
+        rateAdjustment: numValue
+      }));
+    }
     // For all other fields, just update the value directly
     else {
       setLocalParams(prev => ({
@@ -168,26 +176,31 @@ const ParametersProvider = ({
       }));
     }
     
+    // Check if we're updating fields that affect interest rate calculations
+    const isRateField = name === 'interestRate' || name === 'rateAdjustment';
     // Check if we're updating property taxes, homeowners insurance, or HOA fees
     const isPropertyField = name === 'propertyTaxes' || name === 'homeownersInsurance' || name === 'hoaFees';
 
     // Schedule a state-based recalculation on the next tick
     console.log(`[DEBUG] Field ${name} changed to ${numValue}, scheduling recalculation...`);
     
-    // After state update, explicitly calculate specific values to update qualification
-    // This is the safer approach than trying to call calculateLoanValues directly
+    // Calculate Principal and Interest using combined rate (base + adjustment)
+    const currentRateAdjustment = (name === 'rateAdjustment') ? numValue : (localParams.rateAdjustment || 0);
+    const currentInterestRate = (name === 'interestRate') ? numValue : localParams.interestRate;
+    const effectiveInterestRate = currentInterestRate + currentRateAdjustment;
+    
     const pAndI = calculatePrincipalAndInterest(
       localParams.loanAmount,
       (name === 'downPaymentPercent') ? numValue : localParams.downPaymentPercent,
-      (name === 'interestRate') ? numValue : localParams.interestRate,
+      effectiveInterestRate,
       (name === 'loanTerm') ? numValue : localParams.loanTerm
     );
     
     // Calculate other values and update calculations
     // This performs the same work as calculateLoanValues but inline
     if (selectedProgram) {
-      // Use a shorter timeout (0ms) for property-related fields to make them update immediately
-      const timeoutDelay = isPropertyField ? 0 : 50;
+      // Use a shorter timeout (0ms) for rate and property-related fields to make them update immediately
+      const timeoutDelay = (isPropertyField || isRateField) ? 0 : 50;
       setTimeout(() => {
         // Calculate individual components
         // Use the new value if this property was just changed
@@ -285,11 +298,12 @@ const ParametersProvider = ({
     // Skip if there's no selected program
     if (!selectedProgram) return;
     
-    // Calculate Principal and Interest
+    // Calculate Principal and Interest using combined rate (base + adjustment)
+    const effectiveInterestRate = localParams.interestRate + (localParams.rateAdjustment || 0);
     const pAndI = calculatePrincipalAndInterest(
       localParams.loanAmount,
       localParams.downPaymentPercent,
-      localParams.interestRate,
+      effectiveInterestRate,
       localParams.loanTerm
     );
     

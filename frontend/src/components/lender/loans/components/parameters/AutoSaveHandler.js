@@ -44,7 +44,7 @@ const AutoSaveHandler = ({
         
         // Get important parameter keys to compare
         const paramKeys = [
-          'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate',
+          'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'rateAdjustment',
           'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
           'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
         ];
@@ -80,6 +80,7 @@ const AutoSaveHandler = ({
         hoaFeesUnit: toggleStates.hoaFees.isPercent ? 'percent' : 'dollar',
         hoaFeesFrequency: toggleStates.hoaFees.isYearly ? 'yearly' : 'monthly',
         interestRate: localParams.interestRate,
+        rateAdjustment: localParams.rateAdjustment, // Add rate adjustment to saved parameters
         loanTerm: localParams.loanTerm,
         selectedProgramId: localParams.selectedProgramId,
         propertyType: localParams.propertyType,

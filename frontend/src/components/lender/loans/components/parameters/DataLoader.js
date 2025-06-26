@@ -320,6 +320,10 @@ const DataLoader = ({
               0,
             selectedProgramId: savedProgramId || prev.selectedProgramId,
             interestRate,
+            rateAdjustment: 
+              loanData.loanParameters?.rateAdjustment || 
+              selectedProgramObj?.rateAdjustment || 
+              0,
             loanTerm,
 
             // Financial values

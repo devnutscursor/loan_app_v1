@@ -68,15 +68,19 @@ const ProgramGuidelinesManager = ({
     };
 
     // Get interest rate for the selected program from loanRates
-    let interestRate = localParams.interestRate || 5.5; // Default if no match found
+    let baseInterestRate = localParams.interestRate || 5.5; // Default if no match found
+    let rateAdjustment = selectedProgram?.rateAdjustment || 0; // Get rate adjustment from program
+    
     if (loanRates && loanRates.length > 0) {
       const programRate = loanRates.find(rate => 
         rate.programType === selectedProgram.programType
       );
       
       if (programRate) {
-        console.log(`[DEBUG] Found interest rate ${programRate.rate}% for program type ${selectedProgram.programType}`);
-        interestRate = programRate.rate;
+        console.log(`[DEBUG] Found base interest rate ${programRate.rate}% for program type ${selectedProgram.programType}`);
+        console.log(`[DEBUG] Program rate adjustment: ${rateAdjustment}%`);
+        baseInterestRate = programRate.rate; // Store base rate separately
+        console.log(`[DEBUG] Base interest rate: ${baseInterestRate}%, Rate adjustment: ${rateAdjustment}%`);
       } else {
         console.log(`[DEBUG] No matching interest rate found for program type ${selectedProgram.programType}`);
       }
@@ -87,7 +91,8 @@ const ProgramGuidelinesManager = ({
       const newParams = {
         ...localParams,
         selectedProgramId: programId,
-        interestRate: interestRate, // Set the interest rate based on program
+        interestRate: baseInterestRate, // Set the BASE interest rate (not combined)
+        rateAdjustment: rateAdjustment, // Set the rate adjustment from program
         dtiMax: programGuidelines.dtiMax,
         downPaymentMin: programGuidelines.downPaymentMin,
         downPaymentMax: programGuidelines.downPaymentMax,
@@ -102,7 +107,8 @@ const ProgramGuidelinesManager = ({
       
       // Force an immediate update of all parameters when program changes
       console.log('[DEBUG] Updating parameters with program guidelines for:', selectedProgram.displayName);
-      console.log('[DEBUG] Setting interest rate to:', interestRate, '% based on program type:', selectedProgram.programType);
+      console.log('[DEBUG] Setting BASE interest rate to:', baseInterestRate, '% based on program type:', selectedProgram.programType);
+      console.log('[DEBUG] Setting rate adjustment to:', rateAdjustment, '%');
       setLocalParams(newParams);
       
       // Update the ref to the current program ID to prevent future unnecessary updates

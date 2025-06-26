@@ -80,7 +80,8 @@ const LoanDetailsSection = ({
           <input
             type="number"
             name="rateAdjustment"
-            defaultValue="0.000"
+            value={localParams.rateAdjustment || 0}
+            step="0.001"
             onChange={handleInputChange}
             className="focus:ring-primary focus:border-primary block w-full py-2 px-3 pl-7 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
           />
