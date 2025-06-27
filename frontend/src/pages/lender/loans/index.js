@@ -368,7 +368,7 @@ const LenderLoans = () => {
                       </div>
                       <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('amount')}>
                         <div className="flex items-center">
-                          <span>Loan Details</span>
+                          <span>Loan Amount</span>
                           {getSortIcon('amount')}
                         </div>
                       </div>
