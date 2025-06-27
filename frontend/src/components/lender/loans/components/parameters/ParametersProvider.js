@@ -310,10 +310,19 @@ const ParametersProvider = ({
     // Calculate monthly property taxes (handle both percentage and flat rates)
     let taxes = localParams.propertyTaxes || 0;
     if (toggleStates.propertyTaxes.isPercent) {
+      // Calculate based on percentage of the home value (loan amount)
+      // For example, 1% of a $360,000 home should be $3,600/year or $300/month
       taxes = (taxes / 100) * localParams.loanAmount;
     }
+    
+    // Convert yearly amounts to monthly
     if (toggleStates.propertyTaxes.isYearly) {
       taxes = taxes / 12;
+    }
+    
+    // Ensure a minimum value to avoid extremely small numbers due to calculation errors
+    if (taxes < 0.01) {
+      taxes = 0;
     }
     
     // Calculate monthly homeowners insurance

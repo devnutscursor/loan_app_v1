@@ -487,7 +487,7 @@ exports.getLenderDashboard = async (req, res, next) => {
           approvalRateTrend,
           processingTimeTrend
         },
-        recentLoans: recentLoans.slice(0, 3) // Send first 3 recent loans
+        recentLoans: recentLoans // Send all fetched recent loans, not just the first 3
       }
     });
     

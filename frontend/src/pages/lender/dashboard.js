@@ -311,7 +311,7 @@ const LenderDashboard = () => {
         
         // Fetch dashboard stats (includes recent loans)
         const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=6`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -736,20 +736,14 @@ const LenderDashboard = () => {
 
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Always display exactly 6 cards by duplicating if needed */}
-                    {Array(6)
-                      .fill()
-                      .map((_, index) => {
-                        // Use modulo to cycle through available loans
-                        const loan = recentLoans[index % recentLoans.length];
-                        return (
-                          <LoanCard
-                            key={`${loan._id}-${index}`}
-                            loan={loan}
-                            onView={handleViewLoan}
-                          />
-                        );
-                      })}
+                    {/* Display actual loans without duplication */}
+                    {recentLoans.slice(0, 6).map((loan) => (
+                      <LoanCard
+                        key={loan._id}
+                        loan={loan}
+                        onView={handleViewLoan}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center p-6 bg-gray-50 rounded-lg">

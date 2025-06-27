@@ -50,7 +50,7 @@ export const getTotalIncome = (income) => {
   let total = 0;
   const { baseIncome = 0, overtime = 0, commissions = 0, bonuses = 0, militaryEntitlements = 0 } = income;
 
-  // Add up all income sources (assuming yearly values)
+  // Add up all income sources (already in monthly values)
   total += parseFloat(baseIncome || 0);
   total += parseFloat(overtime || 0);
   total += parseFloat(commissions || 0);
@@ -64,8 +64,8 @@ export const getTotalIncome = (income) => {
     });
   }
 
-  // Income values are yearly, so divide by 12 to get monthly income for DTI calculation
-  return total / 12;
+  // Return total monthly income (values are already in monthly format)
+  return total;
 };
 
 /**
