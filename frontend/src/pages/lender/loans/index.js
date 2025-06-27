@@ -152,23 +152,27 @@ const LenderLoans = () => {
         (loan.loanDetails?.propertyAddress || '').toLowerCase().includes(search)
       );
     }
-
-    // Apply filters
+    
+    // Create local variables for sorting based on the active filter
+    let localSortBy = sortBy;
+    let localSortDirection = sortDirection;
+    
+    // Set appropriate sort parameters based on the active filter
     if (activeFilter === 'recent') {
-      // Filter loans created in the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      results = results.filter(loan => new Date(loan.createdAt) >= thirtyDaysAgo);
+      // For 'Recent' filter: Sort by date (newest first)
+      localSortBy = 'date';
+      localSortDirection = 'desc';
     } else if (activeFilter === 'highValue') {
-      // Filter loans with amount over 100k
-      results = results.filter(loan => (loan.loanDetails?.loanAmount || 0) > 100000);
+      // For 'High Value' filter: Sort by loan amount (highest first)
+      localSortBy = 'amount';
+      localSortDirection = 'desc';
     }
 
     // Apply sorting
     results.sort((a, b) => {
       let compareA, compareB;
 
-      switch (sortBy) {
+      switch (localSortBy) {
         case 'borrower':
           compareA = `${a.borrowerDetails?.firstName || ''} ${a.borrowerDetails?.lastName || ''}`.toLowerCase();
           compareB = `${b.borrowerDetails?.firstName || ''} ${b.borrowerDetails?.lastName || ''}`.toLowerCase();
@@ -190,7 +194,7 @@ const LenderLoans = () => {
       }
 
       const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
-      return sortDirection === 'asc' ? compareResult : -compareResult;
+      return localSortDirection === 'asc' ? compareResult : -compareResult;
     });
 
     return results;
