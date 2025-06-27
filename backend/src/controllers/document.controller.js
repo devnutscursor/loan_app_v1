@@ -1350,3 +1350,39 @@ exports.rejectDocument = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Generate a signed URL for an S3 document
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getSignedDocumentUrl = async (req, res, next) => {
+  try {
+    const { key } = req.body;
+    
+    // Validate required fields
+    if (!key) {
+      return next(new ApiError('Document key is required', 400));
+    }
+    
+    // Check if S3 is enabled
+    if (!USE_S3) {
+      return next(new ApiError('S3 storage is not enabled', 400));
+    }
+    
+    logger.info(`Generating signed URL for S3 document with key: ${key} by user: ${req.user._id}`);
+    
+    // Generate signed URL with 1 hour expiry
+    const signedUrl = await getSignedUrl(key, 3600);
+    
+    return res.status(200).json({
+      status: 'success',
+      signedUrl,
+      expiresIn: 3600 // seconds
+    });
+  } catch (error) {
+    logger.error(`Error generating signed URL: ${error.message}`, { error });
+    return next(new ApiError(`Failed to generate signed URL: ${error.message}`, 500));
+  }
+};

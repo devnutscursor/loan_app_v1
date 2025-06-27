@@ -79,14 +79,17 @@ const uploadToS3 = async (file, folder = 'uploads') => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read', // Make files publicly accessible
+      // ACL removed - modern S3 buckets often use bucket policies instead of ACLs
       Metadata: {
         originalName: file.originalname,
         uploadedAt: new Date().toISOString()
       }
     };
+    
+    // Log the bucket name for debugging
+    console.log(`Using S3 bucket: ${process.env.AWS_S3_BUCKET}`);
 
-    console.log(`Uploading file to S3: ${key}`);
+    console.log(`Uploading file to S3: ${key} (Content-Type: ${file.mimetype}, Size: ${file.size} bytes)`);
     const result = await s3.upload(params).promise();
     
     return {
@@ -100,6 +103,16 @@ const uploadToS3 = async (file, folder = 'uploads') => {
     };
   } catch (error) {
     console.error('Error uploading to S3:', error);
+    console.error('S3 upload error details:', JSON.stringify({
+      bucket: process.env.AWS_S3_BUCKET,
+      region: process.env.AWS_REGION,
+      file: {
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size
+      },
+      error: error.message
+    }));
     throw new ApiError(`Failed to upload file to cloud storage: ${error.message}`, 500);
   }
 };

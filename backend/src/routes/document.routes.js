@@ -92,4 +92,7 @@ router.delete('/:id', documentController.deleteDocument);
 // Download a document
 router.get('/:id/download', documentController.downloadDocument);
 
+// Generate signed URL for S3 document access
+router.post('/signed-url', documentController.getSignedDocumentUrl);
+
 module.exports = router;
