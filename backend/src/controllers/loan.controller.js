@@ -657,8 +657,9 @@ exports.getAllLoans = async (req, res, next) => {
   try {
     // Extract query parameters for filtering and pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const getAllLoans = req.query.all === 'true';
+    const limit = getAllLoans ? 0 : (parseInt(req.query.limit) || 10);
+    const skip = getAllLoans ? 0 : (page - 1) * limit;
 
     // Extract filter parameters
     const { status, loanType, minAmount, maxAmount, fromDate, toDate } =
