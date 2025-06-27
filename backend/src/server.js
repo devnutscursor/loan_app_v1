@@ -55,6 +55,8 @@ io.on('connection', (socket) => {
   socket.on('join', (userId) => {
     socket.join(userId);
     logger.info(`User ${userId} joined their room`);
+    socket.join(`borrower-${userId}`);
+    logger.info(`User ${userId} also joined room borrower-${userId}`);
   });
   
   // Handle new messages
@@ -65,6 +67,54 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Handle document request notifications
+  socket.on('document_request', (data) => {
+    // Broadcast to borrower
+    if (data.borrowerId) {
+      logger.info(`[SOCKET] Emitting document-request to ${data.borrowerId} and borrower-${data.borrowerId}`);
+      io.to(data.borrowerId).emit('document-request', data);
+      io.to(`borrower-${data.borrowerId}`).emit('document-request', data);
+    }
+  });
+  
+  // Also handle the hyphenated version for consistency
+  socket.on('document-request', (data) => {
+    // Broadcast to borrower
+    if (data.borrowerId) {
+      logger.info(`[SOCKET] Emitting document-request to ${data.borrowerId} and borrower-${data.borrowerId}`);
+      io.to(data.borrowerId).emit('document-request', data);
+      io.to(`borrower-${data.borrowerId}`).emit('document-request', data);
+    }
+  });
+  
+  // Handle document status change notifications
+  socket.on('document_status', (data) => {
+    // Broadcast to borrower
+    if (data.borrowerId) {
+      logger.info(`[SOCKET] Emitting document-status to ${data.borrowerId} and borrower-${data.borrowerId}`);
+      io.to(data.borrowerId).emit('document-status', data);
+      io.to(`borrower-${data.borrowerId}`).emit('document-status', data);
+    }
+  });
+  
+  // Also handle the hyphenated version for consistency
+  socket.on('document-status', (data) => {
+    // Broadcast to borrower
+    if (data.borrowerId) {
+      logger.info(`[SOCKET] Emitting document-status to ${data.borrowerId} and borrower-${data.borrowerId}`);
+      io.to(data.borrowerId).emit('document-status', data);
+      io.to(`borrower-${data.borrowerId}`).emit('document-status', data);
+    }
+  });
+  
+  // Handle direct to room events (for testing)
+  socket.on('direct_to_room', (data) => {
+    if (data.room && data.eventName && data.data) {
+      logger.info(`[SOCKET] Direct emit to room ${data.room}: ${data.eventName}`);
+      io.to(data.room).emit(data.eventName, data.data);
+    }
+  });
+
   // Handle disconnect
   socket.on('disconnect', () => {
     logger.info(`Client disconnected: ${socket.id}`);

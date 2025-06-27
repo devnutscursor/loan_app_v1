@@ -8,6 +8,39 @@ import React from 'react';
 const FinancialInfoCard = ({ loan, formatCurrency }) => {
   if (!loan) return null;
   
+  // Calculate total monthly income manually by summing all income sources
+  const calculateTotalMonthlyIncome = () => {
+    const income = loan.income || {};
+    let total = 0;
+    
+    // Add base income
+    total += parseFloat(income.baseIncome || 0);
+    
+    // Add overtime
+    total += parseFloat(income.overtime || 0);
+    
+    // Add bonuses
+    total += parseFloat(income.bonuses || 0);
+    
+    // Add commissions
+    total += parseFloat(income.commissions || 0);
+    
+    // Add military entitlements
+    total += parseFloat(income.militaryEntitlements || 0);
+    
+    // Add other income sources
+    if (Array.isArray(income.otherIncome)) {
+      income.otherIncome.forEach(item => {
+        total += parseFloat(item.amount || 0);
+      });
+    }
+    
+    return total;
+  };
+  
+  // Get the total monthly income
+  const totalMonthlyIncome = calculateTotalMonthlyIncome();
+  
   return (
     <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
       <div className="px-6 py-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100">
@@ -21,7 +54,7 @@ const FinancialInfoCard = ({ loan, formatCurrency }) => {
       </div>
       
       <div className="px-6 py-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Income Information */}
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
             <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Monthly Income</h4>
@@ -73,13 +106,13 @@ const FinancialInfoCard = ({ loan, formatCurrency }) => {
               
               <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between">
                 <span className="text-sm font-medium text-amber-600">Total Monthly Income</span>
-                <span className="text-sm font-bold text-gray-900">{formatCurrency(loan.financialCalculations?.totalIncome || 0)}</span>
+                <span className="text-sm font-bold text-gray-900">{formatCurrency(totalMonthlyIncome)}</span>
               </div>
             </div>
           </div>
           
-          {/* Financial Ratios */}
-          <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+          {/* Financial Ratios - Temporarily commented out as requested */}
+          {/* <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
             <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Financial Analysis</h4>
             
             <div className="space-y-4">
@@ -145,7 +178,7 @@ const FinancialInfoCard = ({ loan, formatCurrency }) => {
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

@@ -124,25 +124,32 @@ class Email {
       console.log(`Milestone deadline: ${new Date(options.milestone.deadlineDate).toISOString()}`);
       console.log(`Sending to: ${options.to}`);
       
-      // Check if timeDescription is available from milestone notification service
-      const timeDescription = options.milestone.timeDescription || 'is approaching its deadline';
-      console.log(`Time description: ${timeDescription}`);
+      // IMPORTANT: Always recalculate the time until deadline to ensure accuracy
+      console.log('Recalculating time until deadline with current time to ensure accuracy');
+      const deadlineDate = new Date(options.milestone.deadlineDate);
+      const now = new Date();
       
-      // Determine a subject based on whether the milestone is overdue or approaching
-      const isOverdue = options.milestone.timeDescription && options.milestone.timeDescription.includes('overdue');
+      // Calculate the precise hours until deadline (or since it passed)
+      const hoursUntilDeadline = Math.round((deadlineDate - now) / (1000 * 60 * 60) * 10) / 10;
+      const isOverdue = now > deadlineDate;
+      
+      // Generate a fresh time description
+      const timeDescription = isOverdue 
+        ? `is ${Math.abs(hoursUntilDeadline).toFixed(1)} hours overdue` 
+        : `is due in ${hoursUntilDeadline.toFixed(1)} hours`;
+      
+      console.log(`Freshly calculated time description: ${timeDescription}`);
+      console.log(`Deadline date used: ${deadlineDate.toISOString()}`);
+      console.log(`Current time used: ${now.toISOString()}`);
       console.log(`Is milestone overdue: ${isOverdue}`);
       
-      // Special case - if today is the deadline date, force it to show as "due today"
-      const deadlineDate = new Date(options.milestone.deadlineDate);
-      const today = new Date();
-      
       // Check if the deadline is today (ignoring time)
-      const isToday = deadlineDate.getFullYear() === today.getFullYear() &&
-                      deadlineDate.getMonth() === today.getMonth() &&
-                      deadlineDate.getDate() === today.getDate();
+      const isToday = deadlineDate.getFullYear() === now.getFullYear() &&
+                     deadlineDate.getMonth() === now.getMonth() &&
+                     deadlineDate.getDate() === now.getDate();
       
       console.log(`Deadline date: ${deadlineDate.toISOString()}`);
-      console.log(`Current date: ${today.toISOString()}`);
+      console.log(`Current date: ${now.toISOString()}`);
       console.log(`Is deadline today: ${isToday}`);
       
       // Set deadline text based on date checks

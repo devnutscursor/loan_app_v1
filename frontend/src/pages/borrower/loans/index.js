@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import { Plus, Filter, ChevronRight } from "lucide-react";
+import { Plus, Filter, ChevronRight, ArrowLeft } from "lucide-react";
 import MainLayout from "../../../components/layout/MainLayout";
 import LoanCard from "../../../components/common/LoanCard";
 import { LoanService } from "../../../services";
@@ -19,9 +19,19 @@ const Loans = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await LoanService.getLoans({
-          status: filter !== "all" ? filter : undefined,
-        });
+        
+        // Special handling for Approved filter to include Conditional Approval
+        let filterParams = {};
+        if (filter !== "all") {
+          if (filter === "Approved") {
+            // Use array of statuses to include both Approved and Conditional Approval
+            filterParams = { status: ["Approved", "Conditional Approval"] };
+          } else {
+            filterParams = { status: filter };
+          }
+        }
+        
+        const response = await LoanService.getLoans(filterParams);
 
         if (response.success) {
           // Carefully extract loans array from the response with proper validation
@@ -249,8 +259,9 @@ const Loans = () => {
       </div>
       <h3 className="mt-2 text-lg font-medium text-gray-900">No loans found</h3>
       <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
-        Get started by applying for a loan. Our process is quick, easy, and
-        designed to help you meet your financial goals.
+        {filter !== 'all' 
+          ? `No loans match the "${filter}" filter. Try another filter or apply for a new loan.`
+          : "Get started by applying for a loan. Our process is quick, easy, and designed to help you meet your financial goals."}
       </p>
       <div className="mt-6">
         <Link
@@ -305,11 +316,16 @@ const Loans = () => {
                         className="block w-full pl-10 pr-10 py-2 text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="all">All Loans</option>
-                        <option value="application submitted">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="closed">Closed</option>
+                        {/* <option value="Application Started">Application Started</option> */}
+                        <option value="Application Submitted">Application Submitted</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        {/* <option value="Underwriting">Underwriting</option> */}
+                        <option value="Approved">Approved</option>
+                        {/* <option value="Clear to Close">Clear to Close</option> */}
+                        {/* <option value="Funded">Funded</option> */}
+                        <option value="Rejected">Rejected</option>
+                        <option value="Closed">Closed</option>
                       </select>
                     </div>
 
@@ -323,104 +339,99 @@ const Loans = () => {
                   </div>
                 </div>
                 <div className="space-y-6">
-                  {filter === "all" ? (
-                    <>
-                      {/* Status Summary Card */}
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200">
-                        <div className="flex justify-between items-center mb-1">
-                          <h3 className="text-sm font-medium text-blue-800">
-                            Loan Status Summary
-                          </h3>
-                          {loading ? (
-                            <span className="text-xs text-blue-600">Loading...</span>
-                          ) : (
-                            <span className="text-xs text-blue-600">
-                              Showing all {loansList.length} loans
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-blue-700">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 mr-2">
-                            Total: {loansList.length}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 mr-2">
-                            Pending: {statusGroups.pending.length}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 mr-2">
-                            Processing: {statusGroups.processing.length}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 mr-2">
-                            Approved: {statusGroups.approved.length}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 mr-2">
-                            Rejected: {statusGroups.rejected.length}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 mr-2">
-                            Closed: {statusGroups.closed.length}
-                          </span>
-                        </p>
-                      </div>
+                {/* Status Summary Card - Always show regardless of filter */}
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200">
+                  <div className="flex justify-between items-center mb-1">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      Loan Status Summary
+                    </h3>
+                    {loading ? (
+                      <span className="text-xs text-blue-600">Loading...</span>
+                    ) : (
+                      <span className="text-xs text-blue-600">
+                        {filter === "all" ? `Showing all ${loansList.length} loans` : `Showing ${loansList.length} ${filter} loans`}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-blue-700">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 mr-2">
+                      Total: {loansList.length}
+                    </span>
+                    {/* <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 mr-2">
+                      Pending: {statusGroups.pending.length}
+                    </span> */}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 mr-2">
+                      Processing: {statusGroups.processing.length}
+                    </span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 mr-2">
+                      Approved: {statusGroups.approved.length}
+                    </span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 mr-2">
+                      Rejected: {statusGroups.rejected.length}
+                    </span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 mr-2">
+                      Closed: {statusGroups.closed.length}
+                    </span>
+                  </p>
+                </div>
 
-                      {/* Loan Categories */}
-                      <LoanCategorySection
-                        title="Pending Applications"
-                        loans={statusGroups.pending}
-                        userRole="borrower"
-                      />
+                {filter === "all" ? (
+                  <>
+                    {/* Loan Categories - Show when "All Loans" is selected */}
+                    <LoanCategorySection
+                      title="Pending Applications"
+                      loans={statusGroups.pending}
+                      userRole="borrower"
+                    />
 
-                      <LoanCategorySection
-                        title="Processing Applications"
-                        loans={statusGroups.processing}
-                        userRole="borrower"
-                      />
+                    <LoanCategorySection
+                      title="Processing Applications"
+                      loans={statusGroups.processing}
+                      userRole="borrower"
+                    />
 
-                      <LoanCategorySection
-                        title="Approved Loans"
-                        loans={statusGroups.approved}
-                        userRole="borrower"
-                      />
+                    <LoanCategorySection
+                      title="Approved Loans"
+                      loans={statusGroups.approved}
+                      userRole="borrower"
+                    />
 
-                      <LoanCategorySection
-                        title="Rejected Applications"
-                        loans={statusGroups.rejected}
-                        userRole="borrower"
-                      />
+                    <LoanCategorySection
+                      title="Rejected Applications"
+                      loans={statusGroups.rejected}
+                      userRole="borrower"
+                    />
 
-                      <LoanCategorySection
-                        title="Closed Loans"
-                        loans={statusGroups.closed}
-                        userRole="borrower"
-                      />
+                    <LoanCategorySection
+                      title="Closed Loans"
+                      loans={statusGroups.closed}
+                      userRole="borrower"
+                    />
 
-                      <LoanCategorySection
-                        title="Other Applications"
-                        loans={statusGroups.other}
-                        userRole="borrower"
-                      />
-                    </>
-                  ) : (
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-medium text-gray-900">
-                          {filter === "application submitted"
-                            ? "Pending"
-                            : filter === "processing"
-                            ? "Processing"
-                            : filter === "approved"
-                            ? "Approved"
-                            : filter === "rejected"
-                            ? "Rejected"
-                            : filter === "closed"
-                            ? "Closed"
-                            : "Filtered"}{" "}
-                          Loans
-                        </h2>
-                        <span className="text-sm text-gray-500 bg-gray-100 rounded-full px-3 py-1">
-                          {loans.length} {loans.length === 1 ? "loan" : "loans"}
-                        </span>
-                      </div>
+                    <LoanCategorySection
+                      title="Other Applications"
+                      loans={statusGroups.other}
+                      userRole="borrower"
+                    />
+                  </>
+                ) : (
+                  // Filtered Results Section
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-medium text-gray-900">
+                        {filter === "Application Submitted" ? "Pending" :
+                         filter === "Processing" ? "Processing" :
+                         filter === "Approved" ? "Approved" :
+                         filter === "Rejected" ? "Rejected" :
+                         filter === "Closed" ? "Closed" : "Filtered"} Loans
+                      </h2>
+                      <span className="text-sm text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+                        {loansList.length} {loansList.length === 1 ? "loan" : "loans"}
+                      </span>
+                    </div>
+                    {loansList.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {loans.map((loan) => (
+                        {loansList.map((loan) => (
                           <LoanCard
                             key={loan._id}
                             loan={loan}
@@ -428,30 +439,33 @@ const Loans = () => {
                           />
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <NoLoansView />
+                    )}
+                  </div>
+                )}
 
-                  {/* Apply CTA at bottom if has loans */}
-                  <div className="border-t border-gray-200 pt-6 mt-8">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Need another loan?
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          Apply for additional financing with just a few clicks
-                        </p>
-                      </div>
-                      <Link
-                        href="/borrower/apply"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                      >
-                        Apply Now <ChevronRight className="ml-1 h-5 w-5" />
-                      </Link>
+                {/* Apply CTA at bottom if has loans */}
+                <div className="border-t border-gray-200 pt-6 mt-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Need another loan?
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Apply for additional financing with just a few clicks
+                      </p>
                     </div>
+                    <Link
+                      href="/borrower/apply"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                    >
+                      Apply Now <ChevronRight className="ml-1 h-5 w-5" />
+                    </Link>
                   </div>
                 </div>
-              </>
+              </div>
+            </>
             ) : (
               <NoLoansView />
             )}

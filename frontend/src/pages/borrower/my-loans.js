@@ -34,13 +34,16 @@ const MyLoans = () => {
       }
       
       const response = await LoanService.getLoans(apiFilters);
+      console.log('Loans response with filters:', apiFilters, response);
       
       if (response.success) {
-        setLoans(response.data);
+        // The API returns data in the format { data: { loans: [...] } }
+        const loansData = response.data.data?.loans || [];
+        setLoans(loansData);
         
         // If there's a selected loan, refresh its data
         if (selectedLoan) {
-          const updatedLoan = response.data.find(loan => loan._id === selectedLoan._id);
+          const updatedLoan = loansData.find(loan => loan._id === selectedLoan._id);
           if (updatedLoan) {
             setSelectedLoan(updatedLoan);
           }
@@ -86,7 +89,12 @@ const MyLoans = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters(prev => {
+      const newFilters = { ...prev, [name]: value };
+      // Apply filters immediately after setting them
+      setTimeout(() => loadLoans(), 0);
+      return newFilters;
+    });
   };
 
   const applyFilters = () => {
@@ -215,14 +223,18 @@ const MyLoans = () => {
                     onChange={handleFilterChange}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    <option value="">All Statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="pending">Pending</option>
-                    <option value="reviewing">Reviewing</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="funded">Funded</option>
-                    <option value="closed">Closed</option>
+                    <option value="">All Loans</option>
+                    <option value="Application Started">Application Started</option>
+                    <option value="Application Submitted">Application Submitted</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Underwriting">Underwriting</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Conditional Approval">Approved (Conditional)</option>
+                    <option value="Clear to Close">Clear to Close</option>
+                    <option value="Funded">Funded</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
                   
                   <select

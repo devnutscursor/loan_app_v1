@@ -8,6 +8,10 @@ const fs = require('fs');
 const User = require('../models/user.model');
 const { title } = require('process');
 const emailService = require('../utils/email/emailService');
+const { deleteFromS3, getSignedUrl } = require('../services/s3.service');
+
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
 
 /**
  * Upload a document
@@ -29,8 +33,9 @@ exports.uploadDocument = async (req, res, next) => {
       return next(new ApiError('Document name is required', 400));
     }
 
-    // Get file details
-    const fileUrl = req.file.filename;
+    // Get file details - handle both S3 and local storage
+    const fileUrl = req.file.url || req.file.filename; // S3 URL or local filename
+    const s3Key = req.file.key || null; // S3 key for deletion if using S3
     const originalFilename = req.file.originalname;
     const mimeType = req.file.mimetype;
     const size = req.file.size;
@@ -40,6 +45,7 @@ exports.uploadDocument = async (req, res, next) => {
       name,
       description: description || name,
       fileUrl,
+      s3Key, // Store S3 key for deletion
       originalFilename,
       mimeType,
       size,
@@ -429,10 +435,20 @@ exports.deleteDocument = async (req, res, next) => {
     }
     
     // Delete the file from storage
-    const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    try {
+      if (USE_S3 && document.s3Key) {
+        // Delete from S3
+        await deleteFromS3(document.s3Key);
+      } else {
+        // Delete from local storage
+        const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    } catch (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continue with database deletion even if file deletion fails
     }
     
     // Delete document from database
@@ -497,19 +513,35 @@ exports.downloadDocument = async (req, res, next) => {
       }
     }
     
-    // Get file path
-    const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return next(new ApiError('File not found on server', 404));
+    // Handle file download based on storage type
+    if (USE_S3 && document.s3Key) {
+      // For S3, redirect to signed URL
+      try {
+        const signedUrl = await getSignedUrl(document.s3Key, 3600); // 1 hour expiry
+        
+        // Log the download
+        logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
+        
+        return res.redirect(signedUrl);
+      } catch (error) {
+        console.error('Error generating signed URL:', error);
+        return next(new ApiError('Failed to generate download link', 500));
+      }
+    } else {
+      // Handle local file download
+      const filePath = path.join(process.cwd(), 'uploads', document.fileUrl);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return next(new ApiError('File not found on server', 404));
+      }
+      
+      // Log the download
+      logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
+      
+      // Send file
+      res.download(filePath, document.originalFilename);
     }
-    
-    // Log the download
-    logger.info(`Document ${id} downloaded by ${req.user.role} ${req.user._id}`);
-    
-    // Send file
-    res.download(filePath, document.originalFilename);
   } catch (error) {
     next(error);
   }
@@ -842,6 +874,38 @@ exports.verifyDocument = async (req, res, next) => {
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Approved',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document approval: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document approval: ${socketError.message}`);
+    }
+    
     res.status(200).json({
       status: 'success',
       message: 'Document verified successfully',
@@ -978,6 +1042,37 @@ exports.requestDocument = async (req, res, next) => {
       }
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = borrower.user.toString();
+        const notificationData = {
+          type: 'document-request',
+          eventType: 'document-request',
+          documentName: title || documentType,
+          documentType: documentType,
+          category: category,
+          description: description || `Please upload your ${title || documentType} document`,
+          loanId: loanId,
+          loanNumber: loan.loanNumber,
+          borrowerId: borrowerId,
+          requestedBy: req.user._id,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-request directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-request', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-request', notificationData);
+        
+        logger.info(`Socket notification sent for document request: ${title || documentType} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document request: ${socketError.message}`);
+    }
+    
     res.status(201).json({
       status: 'success',
       message: 'Document request created successfully',
@@ -1088,6 +1183,38 @@ exports.approveDocument = async (req, res, next) => {
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
     }
     
+    // Send socket notification to borrower
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Approved',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document approval: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document approval: ${socketError.message}`);
+    }
+    
     res.status(200).json({
       status: 'success',
       message: 'Document approved successfully',
@@ -1181,6 +1308,38 @@ exports.rejectDocument = async (req, res, next) => {
       logger.error(`Failed to create audit log for document status change: ${auditError}`);
     }
     
+    // Send socket notification to borrower for document rejection
+    try {
+      const io = req.app.get('io');
+      if (io && document.borrower) {
+        // Emit directly to the borrower's user ID and borrower-specific room
+        const borrowerId = document.borrower.toString();
+        const notificationData = {
+          type: 'document-status',
+          eventType: 'document-status',
+          documentName: document.name,
+          documentType: document.documentType,
+          status: 'Rejected',
+          previousStatus: previousStatus,
+          loanId: document.loan ? document.loan._id : null,
+          loanNumber: document.loan ? document.loan.loanNumber : null,
+          borrowerId: borrowerId,
+          reviewedBy: req.user._id,
+          notes: reason || notes || document.notes,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(`Emitting document-status (rejection) directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        
+        io.to(borrowerId).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        
+        logger.info(`Socket notification sent for document rejection: ${document.name} to borrower ${borrowerId}`);
+      }
+    } catch (socketError) {
+      logger.error(`Failed to send socket notification for document rejection: ${socketError.message}`);
+    }
+    
     res.status(200).json({
       status: 'success',
       message: 'Document rejected successfully',
@@ -1189,5 +1348,41 @@ exports.rejectDocument = async (req, res, next) => {
   } catch (error) {
     logger.error(`Error rejecting document: ${error.message}`);
     next(error);
+  }
+};
+
+/**
+ * Generate a signed URL for an S3 document
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getSignedDocumentUrl = async (req, res, next) => {
+  try {
+    const { key } = req.body;
+    
+    // Validate required fields
+    if (!key) {
+      return next(new ApiError('Document key is required', 400));
+    }
+    
+    // Check if S3 is enabled
+    if (!USE_S3) {
+      return next(new ApiError('S3 storage is not enabled', 400));
+    }
+    
+    logger.info(`Generating signed URL for S3 document with key: ${key} by user: ${req.user._id}`);
+    
+    // Generate signed URL with 1 hour expiry
+    const signedUrl = await getSignedUrl(key, 3600);
+    
+    return res.status(200).json({
+      status: 'success',
+      signedUrl,
+      expiresIn: 3600 // seconds
+    });
+  } catch (error) {
+    logger.error(`Error generating signed URL: ${error.message}`, { error });
+    return next(new ApiError(`Failed to generate signed URL: ${error.message}`, 500));
   }
 };

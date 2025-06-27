@@ -72,6 +72,8 @@ router.get('/debug/uploads', (req, res) => {
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+// Alias for legacy singular path
+router.use('/user', userRoutes);
 router.use('/borrower', borrowerRoutes);
 router.use('/lenders', lenderRoutes);
 router.use('/loans', loanRoutes);

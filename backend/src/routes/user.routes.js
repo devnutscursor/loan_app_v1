@@ -9,5 +9,11 @@ router.use(authenticate);
 
 // Get current user profile
 router.get('/me', userController.getCurrentUser);
+// Update current user profile
+router.put('/me', userController.updateCurrentUser);
+
+// Alias routes expected by frontend
+router.get('/profile', userController.getCurrentUser);
+router.put('/profile', userController.updateCurrentUser);
 
 module.exports = router;

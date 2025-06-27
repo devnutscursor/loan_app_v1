@@ -6,7 +6,7 @@ import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
 import { lenderService } from "../../../services/api";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
-import { MessageCircle, StickyNote, Download } from "lucide-react";
+import { MessageCircle, StickyNote, Download, Settings } from "lucide-react";
 import {  StandardFonts } from 'pdf-lib';
 import {
   BarChart2,
@@ -43,6 +43,9 @@ import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
+import Modal from "../../../components/common/Modal";
+import customAxios from '../../../utils/axios';
+// Settings is now properly imported above with other icons
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -1973,13 +1976,6 @@ const LoanDetails = () => {
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Add debug for id
-  useEffect(() => {
-    if (id) {
-      debug('Loan ID from router query', { id, type: typeof id });
-    }
-  }, [id]);
-
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
   
@@ -2280,28 +2276,8 @@ const LoanDetails = () => {
     });
   };
 
-  // Handle nested field changes
-  const handleNestedFieldChange = (section, nestedSection, field, value) => {
-    console.log(`Updating ${section}.${nestedSection}.${field} with:`, value);
-    setHasUnsavedChanges(true);
-    
-    setLoan((prev) => {
-      // Make sure the section and nested section exist
-      const sectionData = prev[section] || {};
-      const nestedSectionData = sectionData[nestedSection] || {};
-
-      return {
-        ...prev,
-        [section]: {
-          ...sectionData,
-          [nestedSection]: {
-            ...nestedSectionData,
-            [field]: value,
-          },
-        },
-      };
-    });
-  };
+  // First implementation of handleNestedFieldChange is removed to avoid duplication.
+  // Using the second implementation at line ~1068 with debug() instead of console.log()
 
 
   const handleDownloadURLA = async () => {
@@ -2337,19 +2313,261 @@ const LoanDetails = () => {
   };
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [editingEnabled, setEditingEnabled] = useState(true);
+  const [currentStatus, setCurrentStatus] = useState('');
+  
+  // Helper function to get status color based on status
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Approved':
+        return '#16a34a'; // Green
+      case 'Rejected':
+        return '#dc2626'; // Red
+      case 'Processing':
+        return '#2563eb'; // Blue
+      case 'Closed':
+        return '#6b7280'; // Gray
+      case 'Application Submitted':
+        return '#f59e0b'; // Amber
+      default:
+        return 'white';
+    }
+  };
+  
+  // Status options for the dropdown
+  const statusOptions = [
+    'Application Submitted',
+    'Processing',
+    'Approved',
+    'Rejected',
+    'Closed'
+  ];
 
   const handleNoteButtonClick = () => {
     debug('Opening note modal', { loanId: id });
     setIsNoteModalOpen(true);
   };
+  
+  // Map backend status to user-friendly display status
+  const mapBackendToDisplayStatus = (backendStatus) => {
+    const statusMap = {
+      'Declined': 'Rejected',
+      'Conditional Approval': 'Approved'
+    };
+    
+    return statusMap[backendStatus] || backendStatus;
+  };
+  
+  const handleSettingsButtonClick = () => {
+    debug('Opening settings modal', { loanId: id });
+    setEditingEnabled(loan?.editingEnabled !== false); // Default to true if undefined
+    
+    // Map backend status to frontend status for display
+    const displayStatus = mapBackendToDisplayStatus(loan?.status || 'Application Submitted');
+    debug('Setting status dropdown to:', { backendStatus: loan?.status, displayStatus });
+    
+    setCurrentStatus(displayStatus);
+    setIsSettingsModalOpen(true);
+  };
+  
+    // Map between frontend display status and backend status values
+  const mapDisplayToBackendStatus = (displayStatus) => {
+    // The backend strictly validates against these exact values
+    const validBackendStatuses = [
+      'Application Submitted',
+      'Processing',
+      'Approved',
+      'Rejected',
+      'Closed'
+    ];
+    
+    // If the display status is already a valid backend status, return it directly
+    if (validBackendStatuses.includes(displayStatus)) {
+      return displayStatus;
+    }
+    
+    // Otherwise, map to a valid backend status
+    switch (displayStatus) {
+      case 'Conditional Approval':
+        return 'Approved';
+      case 'Declined':
+        return 'Rejected';
+      default:
+        // Default to a safe value and log warning
+        debug(`Warning: Unmapped status value ${displayStatus} - defaulting to 'Processing'`);
+        return 'Processing';
+    }
+  };
 
+  // Handle both edit permission toggle and status change
+  const handleSaveSettings = async () => {
+    try {
+      // Get the token from localStorage
+      const token = localStorage.getItem('token');
+      let userInfo = { role: 'unknown' };
+      
+      if (token) {
+        try {
+          // Basic JWT decoding to check the payload
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(window.atob(base64));
+          userInfo = payload;
+          debug('User info from token:', payload);
+          debug('User role:', payload.role);
+        } catch (e) {
+          console.error('Error decoding token:', e);
+        }
+      }
+      
+      if (!token) {
+        toast.error('Authentication required. Please log in again.');
+        return;
+      }
+      
+      setSaving(true);
+      
+      // Get the current backend status from the loan
+      const currentBackendStatus = loan?.status;
+      
+      // Map the frontend status to backend status
+      const newBackendStatus = mapDisplayToBackendStatus(currentStatus);
+      debug('Status mapping:', { frontend: currentStatus, backend: newBackendStatus });
+      
+      // Check if edit permission or status has changed
+      const newEditingState = editingEnabled !== (loan?.editingEnabled !== false);
+      const statusChanged = newBackendStatus !== currentBackendStatus;
+      
+      // If nothing changed, just close the modal
+      if (!newEditingState && !statusChanged) {
+        setIsSettingsModalOpen(false);
+        setSaving(false);
+        return;
+      }
+      
+      // Update edit permission if changed
+      if (newEditingState) {
+        debug('Making edit permission API call');
+        const editPermissionResponse = await fetch(`http://localhost:5000/api/v1/loans/${id}/toggle-editing`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ editingEnabled: editingEnabled })
+        });
+        
+        if (!editPermissionResponse.ok) {
+          const errorData = await editPermissionResponse.json();
+          console.error('Edit permission API call failed:', editPermissionResponse.status, errorData);
+          throw new Error(`Edit permission API call failed: ${editPermissionResponse.status} ${errorData.message || 'Unknown error'}`);
+        }
+        
+        const editResponseData = await editPermissionResponse.json();
+        debug('Edit permission API call success:', editResponseData);
+        
+        // Update the local state
+        setLoan(prev => ({
+          ...prev,
+          editingEnabled: editResponseData.data.editingEnabled
+        }));
+        
+        toast.success(`Borrower editing ${editResponseData.data.editingEnabled ? 'enabled' : 'disabled'} successfully`);
+      }
+      
+      // Update status if changed
+      if (statusChanged) {
+        debug('Making status update API call, sending:', { status: newBackendStatus });
+        const statusResponse = await fetch(`http://localhost:5000/api/v1/loans/${id}/update-status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newBackendStatus })
+        });
+        
+        if (!statusResponse.ok) {
+          const errorData = await statusResponse.json();
+          console.error('Status update API call failed:', statusResponse.status, errorData);
+          throw new Error(`Status update API call failed: ${statusResponse.status} ${errorData.message || 'Unknown error'}`);
+        }
+        
+        const statusResponseData = await statusResponse.json();
+        debug('Status update API call success:', statusResponseData);
+        
+        // Update the local state
+        setLoan(prev => ({
+          ...prev,
+          status: statusResponseData.data.status
+        }));
+        
+        // Show the user-friendly status name in the toast message
+        const displayStatus = mapBackendToDisplayStatus(statusResponseData.data.status);
+        toast.success(`Loan status updated to ${displayStatus} successfully`);
+      }
+      
+      setIsSettingsModalOpen(false);
+      setSaving(false);
+      
+      // Refresh the loan data
+      fetchLoanDetails();
+      
+    } catch (error) {
+      console.error('Error updating loan settings:', error);
+      setSaving(false);
+      
+      // More detailed error message based on the error
+      if (error.response) {
+        if (error.response.status === 403) {
+          toast.error(`Permission denied (403). Your current role may not be 'lender' or 'admin'. Please check your login credentials.`);
+        } else {
+          toast.error(`Failed to update loan settings: ${error.response?.data?.message || error.message || 'Server error'}`);
+        }
+      } else {
+        toast.error(`Failed to connect to the server: ${error.message}`);
+      }
+    }
+  };
+  
+  // Handle nested field changes
+  const handleNestedFieldChange = (section, nestedSection, field, value) => {
+    debug(`Updating ${section}.${nestedSection}.${field} with:`, value);
+    setHasUnsavedChanges(true);
+    
+    setLoan((prev) => {
+      // Make sure the section and nested section exist
+      const sectionData = prev[section] || {};
+      const nestedSectionData = sectionData[nestedSection] || {};
+      
+      // Create the updated nested section with the new field value
+      const updatedNestedSection = {
+        ...nestedSectionData,
+        [field]: value
+      };
+      
+      // Create the updated section with the new nested section
+      const updatedSection = {
+        ...sectionData,
+        [nestedSection]: updatedNestedSection
+      };
+      
+      // Return the updated loan data
+      return {
+        ...prev,
+        [section]: updatedSection
+      };
+    });
+  };
+  
   // Monitor changes in forms for different tabs
   useEffect(() => {
     // Add event listener for radio button and select element changes when in specific tabs
     const handleFormElementChange = () => {
       // Check if we're in a tab that needs save functionality
       if (SAVE_TABS.includes(activeTab)) {
-        console.log(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
+        debug(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
         setHasUnsavedChanges(true);
       }
     };
@@ -2653,6 +2871,14 @@ const LoanDetails = () => {
                         className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                       >
                         <FileText className="h-5 w-5" />
+                      </button>
+                      
+                      <button
+                        title="Application Settings"
+                        onClick={handleSettingsButtonClick}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                      >
+                        <Settings className="h-5 w-5" />
                       </button>
 
                       <button
@@ -3417,6 +3643,90 @@ const LoanDetails = () => {
           loanId={id}
         />
         
+        <Modal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          title="Loan Application Settings"
+        >
+          <div className="p-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Borrower Edit Permission</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Allow or restrict the borrower's ability to edit this loan application.
+              </p>
+              
+              <div className="flex items-center">
+                <label className="inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only" 
+                    checked={editingEnabled}
+                    onChange={() => setEditingEnabled(!editingEnabled)}
+                  />
+                  <div className={`relative w-11 h-6 rounded-full transition ${editingEnabled ? 'bg-primary' : 'bg-gray-200'}`}>
+                    <div className={`absolute w-4 h-4 bg-white rounded-full transition-transform transform ${editingEnabled ? 'translate-x-6' : 'translate-x-1'} top-1`}></div>
+                  </div>
+                  <span className="ml-3 text-sm font-medium text-gray-700">
+                    {editingEnabled ? 'Editing Enabled' : 'Editing Disabled'}
+                  </span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Loan Status</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Change the status of this loan application.
+              </p>
+              
+              <div className="mt-2 relative">
+                <select
+                  id="status"
+                  name="status"
+                  className="block w-full rounded-md border border-gray-300 py-2.5 pl-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm appearance-none"
+                  value={currentStatus}
+                  onChange={(e) => setCurrentStatus(e.target.value)}
+                  style={{
+                    backgroundColor: getStatusColor(currentStatus),
+                    color: currentStatus === 'Rejected' || currentStatus === 'Approved' ? '#fff' : '#333',
+                    fontWeight: '500',
+                  }}
+                >
+                  {statusOptions.map((option) => (
+                    <option 
+                      key={option} 
+                      value={option}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                onClick={() => setIsSettingsModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
+                onClick={handleSaveSettings}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </Modal>  
         {/* Existing unsaved changes bar */}
         {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
           <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">

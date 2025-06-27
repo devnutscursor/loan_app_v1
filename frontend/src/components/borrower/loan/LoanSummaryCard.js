@@ -39,8 +39,8 @@ const LoanSummaryCard = ({ loan, formatCurrency }) => {
           </div>
           
           <div className="bg-indigo-50 rounded-lg p-3">
-            <div className="text-xs font-medium text-indigo-700 uppercase tracking-wide">Purpose</div>
-            <div className="mt-1 text-xl font-bold text-gray-900 truncate">{loan.loanDetails?.loanPurpose || 'N/A'}</div>
+            <div className="text-xs font-medium text-indigo-700 uppercase tracking-wide">Loan Type</div>
+            <div className="mt-1 text-xl font-bold text-gray-900 truncate">{loan?.loanDetails?.loanType || 'N/A'}</div>
           </div>
         </div>
       </div>

@@ -106,7 +106,7 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
       {/* Status ribbon */}
       <div className="relative">
         <div className={`absolute top-0 right-0 z-10 px-3 py-1.5 rounded-bl-lg font-medium text-xs ${getStatusColorClass(status)}`}>
-          {status}
+          {status === 'Conditional Approval' ? 'Approved' : status}
         </div>
       </div>
 
@@ -115,7 +115,7 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
         {/* Loan info header */}
         <div className="mb-4">
           <h3 className="text-xl font-semibold text-gray-900 truncate">
-            {loanPurpose}
+            Loan# {loan.loanNumber}
           </h3>
           <div className="mt-1 flex items-center text-sm text-gray-500">
             <svg className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

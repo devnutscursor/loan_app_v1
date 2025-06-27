@@ -28,3 +28,35 @@ exports.getCurrentUser = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Update current user profile (firstName, lastName, email, phone)
+ */
+exports.updateCurrentUser = async (req, res, next) => {
+  try {
+    const allowedFields = ['firstName', 'lastName', 'email', 'phone'];
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(updates).length === 0) {
+      return next(new ApiError('No valid fields provided', 400));
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+      context: 'query'
+    }).select('-password');
+
+    res.status(200).json({
+      status: 'success',
+      data: { user }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

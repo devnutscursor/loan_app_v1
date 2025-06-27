@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
+import axios from "axios";
 import Link from "next/link";
 import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
@@ -27,7 +28,7 @@ import PropertyCard from "../../../components/borrower/loan/PropertyCard";
 import FinancialInfoCard from "../../../components/borrower/loan/FinancialInfoCard";
 import PropertiesOwnedCard from "../../../components/borrower/loan/PropertiesOwnedCard";
 import MilitaryServiceCard from "../../../components/borrower/loan/MilitaryServiceCard";
-import DocumentsCard from "../../../components/borrower/loan/DocumentsCard";
+// DocumentsCard is managed through a separate page, not needed here
 import DemographicsCard from "../../../components/borrower/loan/DemographicsCard";
 import DeclarationsCard from "../../../components/borrower/loan/DeclarationsCard";
 import LoanMilestones from "../../../components/borrower/loan/LoanMilestones";
@@ -77,6 +78,41 @@ const LoanDetails = () => {
         if (response.success) {
           // Extract loan data, handling different response structures
           const loanData = response.data?.loan || response.data.data;
+          // Enrich interest rate and term from nested loanParameters / program
+          if (loanData?.loanParameters) {
+            const { interestRate, selectedProgramId } = loanData.loanParameters;
+            if (interestRate && !loanData.loanDetails?.interestRate) {
+              loanData.loanDetails = { ...loanData.loanDetails, interestRate };
+            }
+            // Determine loan term
+            if (!loanData.loanDetails?.loanTerm) {
+              let loanTerm = null;
+
+              // 1. Directly from loanParameters
+              if (loanData.loanParameters.loanTerm) {
+                loanTerm = loanData.loanParameters.loanTerm;
+              }
+              // 2. Populated selectedProgramId object
+              else if (selectedProgramId?.loanTerm) {
+                loanTerm = selectedProgramId.loanTerm;
+              }
+              // 3. Fetch LoanProgram by ID
+              else if (selectedProgramId) {
+                try {
+                  const programRes = await axios.get(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs/${selectedProgramId}?_=${Date.now()}`,
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                  );
+                  loanTerm = programRes.data?.data?.loanProgram?.loanTerm || null;
+                } catch (progErr) {
+                  console.warn('Unable to fetch loan program term', progErr);
+                }
+              }
+              if (loanTerm) {
+                loanData.loanDetails = { ...loanData.loanDetails, loanTerm };
+              }
+            }
+          }
           setLoan(loanData);
         } else {
           console.warn("Failed to fetch loan details:", response.message);
@@ -335,26 +371,49 @@ const LoanDetails = () => {
                       </Link>
                     </div>
 
-                    {/* Keep Edit Application button as is */}
-                    <Link
-                      href={`/borrower/apply?draft=${loan.loanNumber}`}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    >
-                      <svg
-                        className="-ml-1 mr-2 h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                    {/* Edit Application button - disabled if editing is not allowed by lender */}
+                    {loan.editingEnabled !== false ? (
+                      <Link
+                        href={`/borrower/apply?draft=${loan.loanNumber}`}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Edit this Application
-                    </Link>
+                        <svg
+                          className="-ml-1 mr-2 h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Edit this Application
+                      </Link>
+                    ) : (
+                      <button
+                        disabled
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-gray-400 bg-gray-200 cursor-not-allowed transition-colors duration-200"
+                        title="Editing has been disabled by the lender"
+                      >
+                        <svg
+                          className="-ml-1 mr-2 h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Edit this Application
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -519,7 +578,7 @@ const LoanDetails = () => {
                     </div>
                   )}
 
-                  {/* Documents Tab */}
+                  {/* Documents are managed separately via the documents page */}
                 </div>
               </div>
             ) : (

@@ -378,6 +378,32 @@ const LenderDocumentRequirements = ({
 
       toast.success(`${selectedDocuments.length} document requests sent successfully! An email notification has been sent to the borrower.`);
       
+      console.log("Updating UI for batch requested documents...");
+      
+      // Get existing stored document states or initialize empty object for localStorage
+      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+      
+      // Update each document's status in the UI and localStorage
+      selectedDocuments.forEach(doc => {
+        // Update UI - Mark each document as needing correction (same as single document request)
+        markDocumentForUpdate(doc.category, doc.documentType);
+        
+        // Store each document's state in localStorage to persist between page reloads
+        const docKey = `${loanId}-${doc.category}-${doc.documentType}`;
+        storedStates[docKey] = {
+          status: "Needs Correction",
+          requestedUpdate: true,
+          timestamp: Date.now()
+        };
+        console.log(`Persisted batch document state: ${docKey} => Needs Correction`);
+      });
+      
+      // Save all updates back to localStorage
+      localStorage.setItem('documentStates', JSON.stringify(storedStates));
+      
+      // Increment refresh counter to trigger a fresh fetch of loan conditions
+      setRefreshCounter(prev => prev + 1);
+      
       // Clear selections and close modal
       setSelectedDocuments([]);
       setShowBatchModal(false);

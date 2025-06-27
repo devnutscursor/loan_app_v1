@@ -1,9 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { FiUser, FiMail, FiPhone, FiSave, FiBriefcase } from 'react-icons/fi';
 import MainLayout from '../../components/layout/MainLayout';
 import FormField from '../../components/common/FormField';
 import { UserService } from '../../services';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
+
+const ProfileField = ({ label, name, value, onChange, type = 'text', disabled = false, icon: Icon, required = false }) => (
+  <div className="mb-5">
+    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor={name}>
+      {label} {required && <span className="text-primary">*</span>}
+    </label>
+    <div className="relative rounded-md">
+      {Icon && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon className={`h-5 w-5 ${disabled ? 'text-gray-400' : 'text-primary/70'}`} aria-hidden="true" />
+        </div>
+      )}
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={`${Icon ? 'pl-10' : ''} ${
+          disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' : 'bg-white border-gray-300 hover:border-primary/50'
+        } block w-full rounded-lg border py-2.5 px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-200 shadow-sm`}
+      />
+    </div>
+  </div>
+);
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -53,9 +80,12 @@ const Profile = () => {
         const response = await UserService.getUserProfile();
         
         if (response.success) {
-          setProfileData(response.data);
-          if (response.data.profilePicture) {
-            setProfilePicture(response.data.profilePicture);
+          const user = response.data.user;
+          if (user) {
+            setProfileData(prev => ({ ...prev, ...user }));
+            if (user.profilePicture) {
+              setProfilePicture(user.profilePicture);
+            }
           }
         } else {
           toast.error(response.message || 'Failed to load your profile information');
@@ -102,11 +132,6 @@ const Profile = () => {
       if (!profileData.firstName) newErrors.firstName = 'First name is required';
       if (!profileData.lastName) newErrors.lastName = 'Last name is required';
       if (!profileData.phone) newErrors.phone = 'Phone number is required';
-      if (!profileData.address.street) newErrors['address.street'] = 'Street address is required';
-      if (!profileData.address.city) newErrors['address.city'] = 'City is required';
-      if (!profileData.address.state) newErrors['address.state'] = 'State is required';
-      if (!profileData.address.zipCode) newErrors['address.zipCode'] = 'ZIP code is required';
-      if (!profileData.address.country) newErrors['address.country'] = 'Country is required';
     }
     
     // Financial Information Validation
@@ -172,7 +197,9 @@ const Profile = () => {
     setSaving(true);
     
     try {
-      const response = await UserService.updateProfile(profileData);
+      // Only send fields supported by API
+    const { firstName, lastName, email, phone } = profileData;
+    const response = await UserService.updateProfile({ firstName, lastName, email, phone });
       
       if (response.success) {
         toast.success('Profile updated successfully');
@@ -202,328 +229,103 @@ const Profile = () => {
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout title="Profile">
-        <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center mb-6">
-              <div className="relative">
-                <div 
-                  className="h-24 w-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-primary cursor-pointer"
-                  onClick={handleProfilePictureClick}
-                >
-                  {uploadingImage ? (
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-                  ) : profilePicture ? (
-                    <img 
-                      src={profilePicture} 
-                      alt="Profile" 
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <svg className="h-12 w-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  )}
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleProfilePictureChange}
-                  className="hidden"
-                  accept="image/*"
-                />
-                <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 cursor-pointer" onClick={handleProfilePictureClick}>
-                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-6">
-                <h1 className="text-2xl font-semibold text-gray-900">{profileData.firstName || ''} {profileData.lastName || ''}</h1>
-                <p className="text-sm text-gray-500">{profileData.email}</p>
-              </div>
+      <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+             {/* Profile Header */}
+             <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
+              <h2 className="text-2xl font-bold text-gray-800">Profile Settings</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage your personal information and account settings
+              </p>
             </div>
-            
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              {/* Tabs */}
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex" aria-label="Tabs">
-                  <button
-                    onClick={() => setActiveTab('personal')}
-                    className={`${
-                      activeTab === 'personal'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
-                  >
-                    Personal Information
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('financial')}
-                    className={`${
-                      activeTab === 'financial'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
-                  >
-                    Financial Information
-                  </button>
-                </nav>
-              </div>
-              
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6">
-                {activeTab === 'personal' ? (
-                  <div>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <FormField
-                        label="First Name"
-                        name="firstName"
-                        type="text"
-                        value={profileData.firstName}
+            <div className="px-8 py-10">
+              <div className="flex flex-col md:flex-row gap-12">
+                {/* Profile Picture */}
+                <div className="md:w-1/3 flex flex-col items-center">
+                  
+                  <div className="text-center mt-2 space-y-1">
+                    <h3 className="font-medium text-gray-800 text-lg mt-6">{profileData.firstName} {profileData.lastName}</h3>
+                    <div className="capitalize text-sm px-3 py-1 bg-blue-100 text-blue-800 rounded-full inline-flex items-center">
+                      <FiBriefcase className="mr-1" size={14} /> {profileData.role}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profile Form */}
+                <div className="md:w-2/3">
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                      <ProfileField 
+                        label="First Name" 
+                        name="firstName" 
+                        value={profileData.firstName} 
                         onChange={handleChange}
-                        error={errors.firstName}
+                        icon={FiUser}
                         required
                       />
-                      
-                      <FormField
-                        label="Last Name"
-                        name="lastName"
-                        type="text"
-                        value={profileData.lastName}
+                      <ProfileField 
+                        label="Last Name" 
+                        name="lastName" 
+                        value={profileData.lastName} 
                         onChange={handleChange}
-                        error={errors.lastName}
+                        icon={FiUser}
                         required
                       />
-                      
-                      <FormField
-                        label="Email"
-                        name="email"
+                    
+                      <ProfileField 
+                        label="Email" 
+                        name="email" 
                         type="email"
-                        value={profileData.email}
-                        disabled={true}
+                        disabled
+                        value={profileData.email} 
                         onChange={handleChange}
+  
+                        icon={FiMail}
                       />
-                      
-                      <FormField
-                        label="Phone Number"
-                        name="phone"
+                      <ProfileField 
+                        label="Phone" 
+                        name="phone" 
                         type="tel"
-                        value={profileData.phone}
+                        value={profileData.phone} 
                         onChange={handleChange}
-                        error={errors.phone}
+                        icon={FiPhone}
                         required
                       />
                       
-                      <FormField
-                        label="Date of Birth"
-                        name="dateOfBirth"
-                        type="date"
-                        value={profileData.dateOfBirth?.split('T')[0]}
-                        onChange={handleChange}
-                        required
+                      <ProfileField 
+                        label="User Role" 
+                        name="role" 
+                        value={profileData.role}
+                        disabled
+                        icon={FiBriefcase}
                       />
                     </div>
                     
-                    <div className="mt-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Address</h3>
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <FormField
-                          label="Street Address"
-                          name="address.street"
-                          type="text"
-                          value={profileData.address?.street}
-                          onChange={handleChange}
-                          error={errors['address.street']}
-                          required
-                        />
-                        
-                        <FormField
-                          label="City"
-                          name="address.city"
-                          type="text"
-                          value={profileData.address?.city}
-                          onChange={handleChange}
-                          error={errors['address.city']}
-                          required
-                        />
-                        
-                        <FormField
-                          label="State/Province"
-                          name="address.state"
-                          type="text"
-                          value={profileData.address?.state}
-                          onChange={handleChange}
-                          error={errors['address.state']}
-                          required
-                        />
-                        
-                        <FormField
-                          label="ZIP/Postal Code"
-                          name="address.zipCode"
-                          type="text"
-                          value={profileData.address?.zipCode}
-                          onChange={handleChange}
-                          error={errors['address.zipCode']}
-                          required
-                        />
-                        
-                        <FormField
-                          label="Country"
-                          name="address.country"
-                          type="text"
-                          value={profileData.address?.country}
-                          onChange={handleChange}
-                          error={errors['address.country']}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="mt-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Employment Information</h3>
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <FormField
-                          label="Employment Status"
-                          name="employment.status"
-                          type="select"
-                          value={profileData.employment?.status}
-                          onChange={handleChange}
-                          error={errors['employment.status']}
-                          options={[
-                            { value: 'employed', label: 'Employed' },
-                            { value: 'self-employed', label: 'Self-Employed' },
-                            { value: 'unemployed', label: 'Unemployed' },
-                            { value: 'retired', label: 'Retired' },
-                            { value: 'student', label: 'Student' }
-                          ]}
-                          required
-                        />
-                        
-                        {(profileData.employment?.status === 'employed' || profileData.employment?.status === 'self-employed') && (
+                    <div className="pt-8 mt-8 border-t border-gray-100 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                      >
+                        {saving ? (
                           <>
-                            <FormField
-                              label="Employer/Business Name"
-                              name="employment.employer"
-                              type="text"
-                              value={profileData.employment?.employer}
-                              onChange={handleChange}
-                              error={errors['employment.employer']}
-                              required
-                            />
-                            
-                            <FormField
-                              label="Position/Title"
-                              name="employment.position"
-                              type="text"
-                              value={profileData.employment?.position}
-                              onChange={handleChange}
-                              error={errors['employment.position']}
-                              required
-                            />
-                            
-                            <FormField
-                              label="Years Employed/In Business"
-                              name="employment.yearsEmployed"
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={profileData.employment?.yearsEmployed}
-                              onChange={handleChange}
-                              error={errors['employment.yearsEmployed']}
-                              required
-                            />
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <FiSave className="mr-2 h-4 w-4" />
+                            Save Changes
                           </>
                         )}
-                        
-                        <FormField
-                          label="Annual Income ($)"
-                          name="employment.annualIncome"
-                          type="number"
-                          min="0"
-                          value={profileData.employment?.annualIncome}
-                          onChange={handleChange}
-                          error={errors['employment.annualIncome']}
-                          required
-                        />
-                        
-                        <FormField
-                          label="Credit Score (if known)"
-                          name="creditScore"
-                          type="number"
-                          min="300"
-                          max="850"
-                          value={profileData.creditScore}
-                          onChange={handleChange}
-                        />
-                      </div>
+                      </button>
                     </div>
-                    
-                    <div className="mt-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Banking Information</h3>
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <FormField
-                          label="Bank Name"
-                          name="bankAccount.bankName"
-                          type="text"
-                          value={profileData.bankAccount?.bankName}
-                          onChange={handleChange}
-                        />
-                        
-                        <FormField
-                          label="Account Type"
-                          name="bankAccount.accountType"
-                          type="select"
-                          value={profileData.bankAccount?.accountType}
-                          onChange={handleChange}
-                          options={[
-                            { value: 'checking', label: 'Checking' },
-                            { value: 'savings', label: 'Savings' }
-                          ]}
-                        />
-                        
-                        <FormField
-                          label="Account Number (Last 4 digits)"
-                          name="bankAccount.accountNumber"
-                          type="text"
-                          value={profileData.bankAccount?.accountNumber}
-                          onChange={handleChange}
-                        />
-                        
-                        <FormField
-                          label="Routing Number"
-                          name="bankAccount.routingNumber"
-                          type="text"
-                          value={profileData.bankAccount?.routingNumber}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="mt-8 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                  >
-                    {saving ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </button>
+                  </form>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

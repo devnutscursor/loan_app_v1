@@ -660,8 +660,9 @@ exports.getAllLoans = async (req, res, next) => {
   try {
     // Extract query parameters for filtering and pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const getAllLoans = req.query.all === 'true';
+    const limit = getAllLoans ? 0 : (parseInt(req.query.limit) || 10);
+    const skip = getAllLoans ? 0 : (page - 1) * limit;
 
     // Extract filter parameters
     const { status, loanType, minAmount, maxAmount, fromDate, toDate } =
@@ -2895,3 +2896,103 @@ function mapAccountType(xmlAccountType) {
   const normalized = xmlAccountType.toLowerCase().replace(/[^a-z]/g, '');
   return typeMap[normalized] || typeMap[xmlAccountType.toLowerCase()] || 'Checking';
 }
+
+/**
+ * Toggle editing permission for a loan application
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.toggleEditingPermission = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { editingEnabled } = req.body;
+
+    // Find the loan
+    const loan = await Loan.findById(id);
+    
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    // Update editing permission
+    loan.editingEnabled = Boolean(editingEnabled);
+    await loan.save();
+
+    // Log the permission change
+    logger.info(
+      `Editing permission for loan ${loan.loanNumber} ${loan.editingEnabled ? 'enabled' : 'disabled'} by ${req.user.role} ${req.user._id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: `Loan editing ${loan.editingEnabled ? 'enabled' : 'disabled'} successfully`,
+      data: {
+        editingEnabled: loan.editingEnabled
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update loan status
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateLoanStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Frontend status mapping to backend enum values
+    const statusMapping = {
+      'Application Submitted': 'Application Submitted',
+      'Processing': 'Processing',
+      'Approved': 'Conditional Approval', // Map to existing backend enum
+      'Rejected': 'Declined',  // Map "Rejected" to "Declined"
+      'Closed': 'Closed'
+    };
+
+    // Validate the status value from frontend
+    const validFrontendStatuses = Object.keys(statusMapping);
+
+    if (!status || !validFrontendStatuses.includes(status)) {
+      return next(new ApiError(`Invalid status value. Must be one of: ${validFrontendStatuses.join(', ')}`, 400));
+    }
+
+    // Find the loan
+    const loan = await Loan.findById(id);
+    
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    const oldStatus = loan.status;
+    
+    // Map the frontend status to the corresponding backend enum value
+    const backendStatus = statusMapping[status];
+
+    // Update the loan status
+    loan.status = backendStatus;
+    await loan.save();
+
+    // Log the status change
+    logger.info(
+      `Status for loan ${loan.loanNumber} changed from '${oldStatus}' to '${backendStatus}' (frontend: ${status}) by ${req.user.role} ${req.user._id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: `Loan status updated to ${status} successfully`,
+      data: {
+        status: loan.status,
+        frontendStatus: status
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

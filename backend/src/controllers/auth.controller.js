@@ -359,42 +359,135 @@ exports.forgotPassword = async (req, res, next) => {
     const { email } = req.body;
 
     if (!email) {
-      return next(new ApiError('Please provide your email', 400));
+      return next(new ApiError('Please provide an email', 400));
     }
 
-    // Find user
+    // Check if user exists
     const user = await User.findOne({ email });
+
     if (!user) {
       return next(new ApiError('No user found with this email', 404));
     }
 
-    // Generate reset token - in a real app, this would send an email
-    // For this project, we'll just return the token in the response
-    const resetToken = require('crypto').randomBytes(32).toString('hex');
+    // Generate reset token
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = Date.now() + 30 * 60 * 1000; // 30 minutes
+    
+    logger.info(`Generated reset token for ${email}: ${resetToken.substring(0, 5)}... (length: ${resetToken.length})`);
 
     // Store hashed token in database
-    user.resetPasswordToken = require('crypto')
+    const hashedToken = crypto
       .createHash('sha256')
       .update(resetToken)
       .digest('hex');
+      
+    logger.info(`Hashed token for storage: ${hashedToken.substring(0, 10)}... (length: ${hashedToken.length})`);
+    
+    user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = resetTokenExpiry;
     await user.save({ validateBeforeSave: false });
 
-    // Log password reset request
-    logger.info(`Password reset requested for user: ${user.email}`);
+    // Create reset URL
+    const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Password reset token generated',
-      data: {
-        resetToken // In a real app, this would be sent via email
+    try {
+      // Send email with reset link
+      const email = require('../utils/email');
+      
+      const emailText = `
+Forgot your password? Click the link below to reset your password:
+
+${resetURL}
+
+If you didn't request a password reset, please ignore this email.
+
+This password reset link is only valid for 30 minutes.
+`;
+
+      const emailHTML = `
+<div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+  <div style="background-color: #f7f7f7; padding: 20px; text-align: center; border-bottom: 3px solid #0066cc;">
+    <h2 style="margin: 0; color: #333;">Password Reset Request</h2>
+  </div>
+  
+  <div style="padding: 20px;">
+    <p>Hello,</p>
+    <p>We received a request to reset your password for your Loan App account.</p>
+    
+    <div style="margin: 30px 0; text-align: center;">
+      <a href="${resetURL}" 
+         style="background-color: #0066cc; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+         Reset Your Password
+      </a>
+    </div>
+    
+    <p>If the button above doesn't work, copy and paste this link into your browser:</p>
+    <p style="background-color: #f5f5f5; padding: 10px; border-left: 3px solid #0066cc;">
+      <a href="${resetURL}" style="color: #0066cc; word-break: break-all;">${resetURL}</a>
+    </p>
+    
+    <p><strong>Please note:</strong> This link is only valid for 30 minutes.</p>
+    
+    <p>If you didn't request a password reset, you can safely ignore this email.</p>
+    
+    <p style="color: #666; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; text-align: center;">
+      This is an automated message from the Loan Application System.<br>
+      Please do not reply to this email.<br>
+      Sent on: ${new Date().toLocaleString()}
+    </p>
+  </div>
+</div>
+`;
+
+      await email.send({
+        to: user.email,
+        subject: 'Loan App - Password Reset Request (Valid for 30 min)',
+        text: emailText,
+        html: emailHTML
+      });
+
+      // Log password reset request
+      logger.info(`Password reset requested for user: ${user.email}, email sent with instructions`);
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset instructions sent to your email'
+      });
+    } catch (emailError) {
+      // Log the email sending error
+      logger.error(`Failed to send password reset email to ${user.email}: ${emailError.message}`);
+      
+      // Check if we're in development mode
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+      
+      if (isDevelopment) {
+        // In development mode, return the token directly for testing purposes
+        logger.info(`DEV MODE: Returning reset token directly for ${user.email}`);
+        
+        return res.status(200).json({
+          status: 'success',
+          message: 'DEV MODE: Email sending failed, but reset token generated successfully',
+          data: {
+            resetToken,
+            resetUrl: resetURL
+          }
+        });
+      } else {
+        // In production, don't expose the token
+        // Reset the token and expiry since email failed
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+        
+        return next(new ApiError('Error sending password reset email. Please try again later.', 500));
       }
-    });
+    }
   } catch (error) {
     next(error);
   }
 };
+
 
 /**
  * Reset password with token
@@ -405,25 +498,56 @@ exports.forgotPassword = async (req, res, next) => {
 exports.resetPassword = async (req, res, next) => {
   try {
     const { resetToken, newPassword } = req.body;
+    
+    // Log the request details (without sensitive data)
+    logger.info(`Reset password request received with token: ${resetToken ? resetToken.substring(0, 5) + '...' : 'none'}, token length: ${resetToken ? resetToken.length : 0}, new password length: ${newPassword ? newPassword.length : 0}`);
 
     if (!resetToken || !newPassword) {
+      logger.warn('Reset password request missing token or new password');
       return next(new ApiError('Please provide reset token and new password', 400));
     }
+    
+    // IMPORTANT: Debug the raw token
+    logger.info(`Raw token received: ${resetToken}`);
 
     // Hash token for comparison
-    const hashedToken = require('crypto')
+    const crypto = require('crypto');
+    const hashedToken = crypto
       .createHash('sha256')
       .update(resetToken)
       .digest('hex');
+    
+    logger.info(`Computed hashed token: ${hashedToken} (length: ${hashedToken.length})`);
 
-    // Find user with token and check if token is still valid
+    // Debug: Find all users with reset tokens
+    const allUsersWithTokens = await User.find({ resetPasswordToken: { $exists: true, $ne: null } });
+    logger.info(`Found ${allUsersWithTokens.length} users with reset tokens in database`);
+    
+    if (allUsersWithTokens.length > 0) {
+      allUsersWithTokens.forEach(u => {
+        logger.info(`User ${u.email} has token: ${u.resetPasswordToken} (length: ${u.resetPasswordToken.length}), expires: ${new Date(u.resetPasswordExpires).toISOString()}`);
+        
+        // Try to match with case insensitive comparison
+        if (u.resetPasswordToken.toLowerCase() === hashedToken.toLowerCase()) {
+          logger.info(`Found case-insensitive match for user ${u.email}!`);
+        }
+      });
+    }
+
+    // Find user with token and check if token is still valid - try case insensitive search
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordToken: { $regex: new RegExp(`^${hashedToken}$`, 'i') }
     });
-
+    
     if (!user) {
-      return next(new ApiError('Invalid or expired reset token', 400));
+      logger.warn(`No user found with the provided reset token hash: ${hashedToken}`);
+      return next(new ApiError('Invalid reset token', 400));
+    }
+    
+    // Check token expiration separately for better error messages
+    if (user.resetPasswordExpires < Date.now()) {
+      logger.warn(`Reset token expired for user: ${user.email}. Token expired at: ${new Date(user.resetPasswordExpires).toISOString()}`);
+      return next(new ApiError('Reset token has expired', 400));
     }
 
     // Update password

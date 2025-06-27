@@ -50,25 +50,28 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
       
       if (fileType === 'image') {
         setViewerType('direct');
+        // Fetch image content to ensure we get signed URL if needed
+        if (url) {
+          fetchDocument(url, fileType);
+        }
       } else if (fileType === 'pdf') {
         setViewerType('pdf-viewer');
-        // Fetch PDF content if it's a PDF
+        // Fetch PDF content
         if (url) {
           fetchDocument(url, fileType);
         }
       } else if (['word', 'excel', 'powerpoint'].includes(fileType)) {
         setViewerType('google');
+        // Get signed URL for Office documents if needed
+        if (url) {
+          fetchDocument(url, fileType);
+        }
       } else {
         setViewerType('direct');
-      }
-      
-      // Simulate document loading if not a PDF
-      if (fileType !== 'pdf') {
-        const timer = setTimeout(() => {
-          setIsLoading(false);
-        }, 1000);
-        
-        return () => clearTimeout(timer);
+        // Get signed URL for other file types if needed
+        if (url) {
+          fetchDocument(url, fileType);
+        }
       }
     }
   }, [document]);
@@ -76,29 +79,78 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
   // Fetch document content when needed
   const fetchDocument = async (url, fileType) => {
     try {
-      const response = await fetch(url);
+      // Check if this is an S3 document that needs a signed URL
+      let finalUrl = url;
+      const isS3Document = document.key || document.s3Key || 
+                          (url && (url.includes('amazonaws.com') || url.includes('s3.')));
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+      if (isS3Document) {
+        try {
+          // Get the key - either from document or extract from URL
+          let key = document.key || document.s3Key;
+          
+          if (!key && url) {
+            console.log('Extracting key from S3 URL:', url);
+            // Extract key from URL
+            const urlObj = new URL(url);
+            key = urlObj.pathname.substring(1); // Remove leading slash
+            console.log('Extracted key:', key);
+          }
+          
+          if (key) {
+            console.log('Getting signed URL for document with key:', key);
+            finalUrl = await getSignedDocumentUrl(key);
+            console.log('Got signed URL:', finalUrl);
+          } else {
+            console.warn('Could not determine S3 key for document:', document);
+          }
+        } catch (signedUrlError) {
+          console.error('Error getting signed URL:', signedUrlError);
+          // Continue with original URL as fallback
+          console.warn('Using original URL as fallback after signed URL error');
+        }
       }
       
-      // Convert to blob
-      const blob = await response.blob();
-      
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result;
-        setBase64Content(base64data);
+      // Set the final document URL for use in viewer components
+      setDocumentUrl(finalUrl);
+
+      // For Office documents, we just need the signed URL for the viewer
+      if (['word', 'excel', 'powerpoint'].includes(fileType)) {
+        console.log(`Using external viewer for ${fileType} document:`, finalUrl);
         setIsLoading(false);
-      };
-      reader.onerror = () => {
-        console.error("Error reading file");
-        setError("Failed to read document");
-        setUseFallback(true);
+        return;
+      }
+
+      // For PDFs and images, we need to fetch and convert to base64
+      if (fileType === 'pdf' || fileType === 'image') {
+        console.log('Fetching document from URL:', finalUrl);
+        const response = await fetch(finalUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+        }
+        
+        // Convert to blob
+        const blob = await response.blob();
+        
+        // Convert blob to base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result;
+          setBase64Content(base64data);
+          setIsLoading(false);
+        };
+        reader.onerror = () => {
+          console.error("Error reading file");
+          setError("Failed to read document");
+          setUseFallback(true);
+          setIsLoading(false);
+        };
+        reader.readAsDataURL(blob);
+      } else {
+        // For other file types, just set loading to false
         setIsLoading(false);
-      };
-      reader.readAsDataURL(blob);
+      }
     } catch (err) {
       console.error("Error fetching document:", err);
       setError(`Failed to load document: ${err.message}`);
@@ -106,6 +158,7 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
       setIsLoading(false);
     }
   };
+
 
   if (!document) {
     return null;
@@ -196,18 +249,63 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
     return 'other';
   }
 
+  // Function to get a signed URL for an S3 document
+  async function getSignedDocumentUrl(key) {
+    try {
+      console.log('Getting signed URL for key:', key);
+      const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${baseApiUrl}/api/v1/documents/signed-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ key })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get signed URL: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Signed URL response:', data);
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error getting signed URL:', err);
+      throw err;
+    }
+  }
+  
   // Construct document URL with proper error handling and checks
   function constructDocumentUrl(doc) {
     // Check all possible URL-related fields
     const urlPath = doc.url || doc.path || doc.filePath || doc.fileName;
+    // Check for S3 key
+    const s3Key = doc.key || doc.s3Key;
     
-    if (!urlPath) {
-      console.error("No URL path found in document", doc);
+    if (!urlPath && !s3Key) {
+      console.error("No URL path or S3 key found in document", doc);
       return null;
     }
     
+    // If we have an S3 key, we need to get a signed URL
+    if (s3Key) {
+      // For now, return the direct URL, we'll get a signed URL when needed
+      console.log('Document has S3 key, will request signed URL for viewing');
+      return doc.url; // This will be replaced with signed URL before access
+    }
+    
     // Handle case when url is already a complete URL
-    if (urlPath.startsWith('http')) {
+    if (urlPath && urlPath.startsWith('http')) {
+      // Check if it's an S3 URL
+      if (urlPath.includes('amazonaws.com') || urlPath.includes('s3.')) {
+        console.log('S3 URL detected, will request signed URL');
+        // Extract the key from the URL
+        const urlObj = new URL(urlPath);
+        const key = urlObj.pathname.substring(1); // Remove leading slash
+        doc.key = key; // Store the key for later use
+        return urlPath; // This will be replaced with signed URL before access
+      }
       return urlPath;
     }
     
@@ -215,14 +313,16 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
     const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
     
     // Handle different path formats
-    if (urlPath.startsWith('/uploads/')) {
+    if (urlPath && urlPath.startsWith('/uploads/')) {
       return `${baseApiUrl}${urlPath}`;
-    } else if (urlPath.startsWith('uploads/')) {
+    } else if (urlPath && urlPath.startsWith('uploads/')) {
       return `${baseApiUrl}/${urlPath}`;
-    } else {
+    } else if (urlPath) {
       // Assume it's just a filename that needs to be in the uploads directory
       return `${baseApiUrl}/uploads/${urlPath}`;
     }
+    
+    return null;
   }
 
   // Build Google Docs Viewer URL for Office documents
@@ -346,16 +446,27 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
                       {/* Image files */}
                       {fileType === 'image' && !useFallback && (
                         <div className="flex items-center justify-center h-full">
-                          <img 
-                            src={documentUrl} 
-                            alt={document.title || document.name || document.filename}
-                            className="max-h-full max-w-full object-contain"
-                            onError={() => {
-                              console.error("Image failed to load");
-                              setUseFallback(true);
-                              setError('Failed to load image');
-                            }}
-                          />
+                          {base64Content ? (
+                            <img 
+                              src={base64Content} 
+                              alt={document.title || document.name || document.filename}
+                              className="max-h-full max-w-full object-contain"
+                              onError={() => {
+                                console.error("Image failed to load");
+                                setUseFallback(true);
+                                setError('Failed to load image');
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full bg-gray-50">
+                              <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <p className="mt-2 text-sm text-gray-500">
+                                Loading image...
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                       

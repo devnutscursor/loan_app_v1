@@ -165,10 +165,25 @@ const LoanCard = ({ loan, onView }) => {
   // Status styling
   const getStatusStyle = (status) => {
     switch(status?.toLowerCase()) {
-      case 'approved': return "bg-green-100 text-green-800";
-      case 'pending': return "bg-yellow-100 text-yellow-800";
-      case 'rejected': return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'application submitted':
+        return "bg-yellow-100 text-yellow-800";
+      case 'approved':
+      case 'clear to close':
+      case 'conditional approval':
+        return "bg-green-100 text-green-800";
+      case 'rejected':
+      case 'declined':
+        return "bg-red-100 text-red-800";
+      case 'funded':
+      case 'closed':
+        return "bg-blue-100 text-blue-800";
+      case 'processing':
+      case 'underwriting':
+        return "bg-purple-100 text-purple-800";
+      case 'pending':
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -182,11 +197,11 @@ const LoanCard = ({ loan, onView }) => {
             </div>
             <div>
               <h4 className="font-medium text-gray-900">{loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}</h4>
-              <p className="text-xs text-gray-500">{loan.loanDetails?.loanType || "Loan"}</p>
+              <p className="text-xs text-gray-500">Loan# {loan.loanNumber || "Loan"}</p>
             </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
+            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || 'Status'}
           </span>
         </div>
         
@@ -296,7 +311,7 @@ const LenderDashboard = () => {
         
         // Fetch dashboard stats (includes recent loans)
         const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=6`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -721,13 +736,20 @@ const LenderDashboard = () => {
 
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {recentLoans.map((loan) => (
-                      <LoanCard
-                        key={loan._id}
-                        loan={loan}
-                        onView={handleViewLoan}
-                      />
-                    ))}
+                    {/* Always display exactly 6 cards by duplicating if needed */}
+                    {Array(6)
+                      .fill()
+                      .map((_, index) => {
+                        // Use modulo to cycle through available loans
+                        const loan = recentLoans[index % recentLoans.length];
+                        return (
+                          <LoanCard
+                            key={`${loan._id}-${index}`}
+                            loan={loan}
+                            onView={handleViewLoan}
+                          />
+                        );
+                      })}
                   </div>
                 ) : (
                   <div className="text-center p-6 bg-gray-50 rounded-lg">
@@ -742,9 +764,9 @@ const LenderDashboard = () => {
 
                 {/* Performance Metrics */}
                 {recentLoans.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-gray-100">
+                  <div className="mt-8 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-gray-900">Lending Performance Metrics</h3>
+                      <h3 className="text-lg font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-6">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -758,9 +780,7 @@ const LenderDashboard = () => {
                           </div>
                           <p className="text-sm text-gray-600 mt-2">Based on last 30 days</p>
                           
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-500">Higher approval rates indicate efficient underwriting practices and appropriate targeting of qualified borrowers.</p>
-                          </div>
+                         
                         </div>
                         
                         <div>
@@ -774,9 +794,7 @@ const LenderDashboard = () => {
                           </div>
                           <p className="text-sm text-gray-600 mt-2">From application to approval</p>
                           
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-500">Faster processing times improve borrower satisfaction and increase the likelihood of completed applications.</p>
-                          </div>
+                         
                         </div>
                       </div>
                     </div>

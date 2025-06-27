@@ -1,7 +1,7 @@
 const express = require('express');
 const documentController = require('../controllers/document.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
-const { upload } = require('../middleware/fileHandler');
+const upload = require('../middleware/upload.middleware');
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Debug endpoint to test file upload (available to all authenticated users)
-router.post('/debug-upload', upload.single('file'), (req, res) => {
+router.post('/debug-upload', upload.single('file', 'debug'), (req, res) => {
   try {
     // Log request details
     console.log('Debug upload file request:');
@@ -50,7 +50,7 @@ router.post('/debug-upload', upload.single('file'), (req, res) => {
 });
 
 // Upload a document
-router.post('/upload', upload.single('file'), documentController.uploadDocument);
+router.post('/upload', upload.single('file', 'documents'), documentController.uploadDocument);
 
 // Get all documents with filtering and pagination
 router.get('/', documentController.getAllDocuments);
@@ -91,5 +91,8 @@ router.delete('/:id', documentController.deleteDocument);
 
 // Download a document
 router.get('/:id/download', documentController.downloadDocument);
+
+// Generate signed URL for S3 document access
+router.post('/signed-url', documentController.getSignedDocumentUrl);
 
 module.exports = router;

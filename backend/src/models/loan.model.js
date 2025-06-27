@@ -311,10 +311,10 @@ const loanParametersSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  // loanTerm: {
-  //   type: Number,
-  //   default: 30
-  // },
+  loanTerm: {
+    type: Number,
+    default: 30
+  },
   selectedProgramId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'LoanProgram'
@@ -964,6 +964,10 @@ const loanSchema = new mongoose.Schema({
   isSyncedToLOS: {
     type: Boolean,
     default: false
+  },
+  editingEnabled: {
+    type: Boolean,
+    default: true
   },
   completionPercentage: {
     type: Number,

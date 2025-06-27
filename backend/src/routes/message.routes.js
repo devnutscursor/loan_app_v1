@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const messageController = require('../controllers/message.controller');
 const { protect } = require('../middleware/auth');
-const { upload } = require('../middleware/fileHandler');
+const upload = require('../middleware/upload.middleware');
 
 // All routes are protected with auth middleware
 router.use(protect);
@@ -14,10 +14,10 @@ router.get('/conversations', messageController.getConversations);
 router.get('/:borrowerId', messageController.getMessages);
 
 // Send a message to a borrower/lender
-router.post('/send', upload.array('attachments', 10), messageController.sendMessage);
+router.post('/send', upload.array('attachments', 10, 'messages'), messageController.sendMessage);
 
 // Upload attachment
-router.post('/upload-attachment', upload.single('attachment'), messageController.uploadAttachment);
+router.post('/upload-attachment', upload.single('attachment', 'messages'), messageController.uploadAttachment);
 
 // Get unread message count
 router.get('/unread/count', messageController.getUnreadCount);
