@@ -213,21 +213,53 @@ const ActivityManager = ({ userId, updateActivities }) => {
         title = `Document rejected`;
       }
       
-      return {
-        id: generateActivityId('doc-status', data),
-        icon: icon,
-        title: title,
-        description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
-        time: 'Just now',
-        status: status.charAt(0).toUpperCase() + status.slice(1),
-        statusColor: statusColor,
-        entityId: loanId,
-        entityType: 'document',
-        loanNumber,
-        url: `/borrower/documents`,
-        timestamp: data.timestamp || new Date().toISOString(),
-        persistent: true
-      };
+      // Also save this notification to localStorage directly to ensure persistence
+      try {
+        const notification = {
+          id: generateActivityId('doc-status', data),
+          icon: icon,
+          title: title,
+          description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
+          time: 'Just now',
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          statusColor: statusColor,
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+        
+        // Save to document-specific storage
+        const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
+        if (!storedDocuments.some(doc => doc.id === notification.id)) {
+          storedDocuments.push(notification);
+          localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
+          console.log('ActivityManager: Saved document notification to localStorage');
+        }
+        
+        return notification;
+      } catch (e) {
+        console.error('ActivityManager: Failed to save document notification to localStorage', e);
+        
+        // Return the notification even if saving to localStorage failed
+        return {
+          id: generateActivityId('doc-status', data),
+          icon: icon,
+          title: title,
+          description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
+          time: 'Just now',
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          statusColor: statusColor,
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+      }
     };
     
     // Register socket event listeners
