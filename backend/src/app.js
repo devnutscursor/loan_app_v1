@@ -198,6 +198,21 @@ app.get('/api/image-proxy/:filename', (req, res) => {
   }
 });
 
+// Add Vercel-specific headers for serverless deployment
+app.use((req, res, next) => {
+  // Ensure headers work in serverless environments
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
 // API routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/borrower', borrowerRoutes);
