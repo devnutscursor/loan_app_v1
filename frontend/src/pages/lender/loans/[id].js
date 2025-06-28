@@ -2237,22 +2237,22 @@ const LoanDetails = () => {
   };
 
   const getStatusBadgeColor = (status) => {
-    if (!status) return "bg-gray-100 text-gray-800";
+    if (!status) return "bg-gray-50 text-gray-800";
 
     status = status.toLowerCase();
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-50 text-yellow-800";
       case "approved":
-        return "bg-green-100 text-green-800";
+        return "bg-green-50 text-green-800";
       case "rejected":
-        return "bg-red-100 text-red-800";
+        return "bg-red-50 text-red-800";
       case "closed":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-50 text-gray-800";
       case "draft":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-50 text-blue-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-50 text-gray-800";
     }
   };
 
@@ -2314,26 +2314,10 @@ const LoanDetails = () => {
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [editingEnabled, setEditingEnabled] = useState(true);
+  const [editingEnabled, setEditingEnabled] = useState(false);
   const [currentStatus, setCurrentStatus] = useState('');
   
-  // Helper function to get status color based on status
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Approved':
-        return '#16a34a'; // Green
-      case 'Rejected':
-        return '#dc2626'; // Red
-      case 'Processing':
-        return '#2563eb'; // Blue
-      case 'Closed':
-        return '#6b7280'; // Gray
-      case 'Application Submitted':
-        return '#f59e0b'; // Amber
-      default:
-        return 'white';
-    }
-  };
+  // Status colors are now defined directly in the className with Tailwind
   
   // Status options for the dropdown
   const statusOptions = [
@@ -2361,7 +2345,7 @@ const LoanDetails = () => {
   
   const handleSettingsButtonClick = () => {
     debug('Opening settings modal', { loanId: id });
-    setEditingEnabled(loan?.editingEnabled !== false); // Default to true if undefined
+    setEditingEnabled(loan?.editingEnabled === true); // Default to false unless explicitly true
     
     // Map backend status to frontend status for display
     const displayStatus = mapBackendToDisplayStatus(loan?.status || 'Application Submitted');
@@ -3683,14 +3667,16 @@ const LoanDetails = () => {
                 <select
                   id="status"
                   name="status"
-                  className="block w-full rounded-md border border-gray-300 py-2.5 pl-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm appearance-none"
+                  className={`block w-full rounded-md border border-gray-300 py-2.5 pl-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm appearance-none font-medium ${
+                    currentStatus === 'Application Submitted' ? 'bg-yellow-50 text-yellow-800' :
+                    currentStatus === 'Processing' ? 'bg-blue-50 text-blue-800' :
+                    currentStatus === 'Approved' ? 'bg-green-50 text-green-800' :
+                    currentStatus === 'Rejected' ? 'bg-red-50 text-red-800' :
+                    currentStatus === 'Closed' ? 'bg-gray-50 text-gray-800' :
+                    'bg-white text-gray-800'
+                  }`}
                   value={currentStatus}
                   onChange={(e) => setCurrentStatus(e.target.value)}
-                  style={{
-                    backgroundColor: getStatusColor(currentStatus),
-                    color: currentStatus === 'Rejected' || currentStatus === 'Approved' ? '#fff' : '#333',
-                    fontWeight: '500',
-                  }}
                 >
                   {statusOptions.map((option) => (
                     <option 

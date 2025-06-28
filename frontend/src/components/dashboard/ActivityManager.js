@@ -39,6 +39,25 @@ const ActivityManager = ({ userId, updateActivities }) => {
     const processNotificationEvent = (data) => {
       console.log(`ActivityManager: Received event:`, data);
       
+      // Skip notifications without proper data
+      if (!data) {
+        console.log('ActivityManager: Skipping empty notification data');
+        return;
+      }
+      
+      // Validate notification belongs to current user
+      if (data.borrowerId && data.borrowerId !== userId) {
+        console.log(`ActivityManager: Skipping notification - borrowerId ${data.borrowerId} doesn't match current user ${userId}`);
+        return;
+      }
+      
+      // For document notifications, ensure they have a valid loan association
+      if ((data.type === 'document-request' || data.type === 'document-status') && 
+          !data.loanId && !data.loanNumber) {
+        console.log('ActivityManager: Skipping document notification - missing loan association');
+        return;
+      }
+      
       let newActivity = null;
       
       // For message events
@@ -194,80 +213,105 @@ const ActivityManager = ({ userId, updateActivities }) => {
         title = `Document rejected`;
       }
       
-      return {
-        id: generateActivityId('doc-status', data),
-        icon: icon,
-        title: title,
-        description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
-        time: 'Just now',
-        status: status.charAt(0).toUpperCase() + status.slice(1),
-        statusColor: statusColor,
-        entityId: loanId,
-        entityType: 'document',
-        loanNumber,
-        url: `/borrower/documents`,
-        timestamp: data.timestamp || new Date().toISOString(),
-        persistent: true
-      };
+      // Also save this notification to localStorage directly to ensure persistence
+      try {
+        const notification = {
+          id: generateActivityId('doc-status', data),
+          icon: icon,
+          title: title,
+          description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
+          time: 'Just now',
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          statusColor: statusColor,
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+        
+        // Save to document-specific storage
+        const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
+        if (!storedDocuments.some(doc => doc.id === notification.id)) {
+          storedDocuments.push(notification);
+          localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
+          console.log('ActivityManager: Saved document notification to localStorage');
+        }
+        
+        return notification;
+      } catch (e) {
+        console.error('ActivityManager: Failed to save document notification to localStorage', e);
+        
+        // Return the notification even if saving to localStorage failed
+        return {
+          id: generateActivityId('doc-status', data),
+          icon: icon,
+          title: title,
+          description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
+          time: 'Just now',
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          statusColor: statusColor,
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+      }
     };
     
     // Register socket event listeners
     const listenerKey = `borrower-${userId}`;
     socketService.addMessageListener(listenerKey, processNotificationEvent);
     
-    // Test function to manually trigger document notifications
-    const testDocumentNotifications = () => {
-      console.log('ActivityManager: Testing document notifications...');
-      
-      // Test document request notification
-      const documentRequestData = {
-        type: 'document-request',
-        documentName: 'Bank Statement',
-        documentType: 'Bank Statement',
-        category: 'Financial',
-        description: 'Please upload your most recent bank statement',
-        loanId: '609c1b9f2b068e001f5c7308',
-        loanNumber: '2025061901',
-        borrowerId: userId,
-        requestedBy: 'lender-123',
-        timestamp: new Date().toISOString()
-      };
-      
-      // Test document status notification
-      const documentStatusData = {
-        type: 'document-status',
-        documentName: 'Driver License',
-        documentType: 'Driver License',
-        status: 'approved',
-        previousStatus: 'pending',
-        loanId: '609c1b9f2b068e001f5c7308',
-        loanNumber: '2025061901',
-        borrowerId: userId,
-        reviewedBy: 'lender-123',
-        notes: 'Document approved successfully',
-        timestamp: new Date().toISOString()
-      };
-      
-      // Process the test notifications
-      processNotificationEvent(documentRequestData);
-      
-      // Wait 1 second before sending the second notification
-      setTimeout(() => {
-        processNotificationEvent(documentStatusData);
-      }, 1000);
-    };
+    // Register event handlers for all notification types
+    const eventTypes = [
+      'notification', 
+      'message', 
+      'receive_message',
+      'new_lender_message',
+      'document-request', 
+      'document_requested',
+      'milestone-completed', 
+      'milestone_updated',
+      'document-status', 
+      'document_status_changed',
+      'document-approved',
+      'document-rejected',
+      'document_approved',
+      'document_rejected',
+      'document_status_update',
+      'loan-status',
+      'loan_status_changed'
+    ];
+
+    // Register all event types
+    eventTypes.forEach(eventType => {
+      // Instead of using socketService.on directly, we'll use the socket instance
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.on(eventType, processNotificationEvent);
+        console.log(`ActivityManager: Registered listener for ${eventType}`);
+      }
+    });
     
-    // Wait 2 seconds after component mount to trigger the test
-    const timer = setTimeout(() => {
-      testDocumentNotifications();
-    }, 2000);
-    
-    // Clean up on unmount
+    // Cleanup function
     return () => {
       console.log('ActivityManager: Cleaning up socket listeners');
       socketService.removeMessageListener(listenerKey);
-      clearTimeout(timer);
-      setIsConnected(false);
+      
+      // Remove all event listeners
+      eventTypes.forEach(eventType => {
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.off(eventType);
+        }
+      });
+      
+      // Disconnect socket
+      socketService.disconnect();
     };
   }, [userId, updateActivities]);
 
