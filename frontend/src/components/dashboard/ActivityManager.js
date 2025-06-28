@@ -257,8 +257,12 @@ const ActivityManager = ({ userId, updateActivities }) => {
 
     // Register all event types
     eventTypes.forEach(eventType => {
-      socketService.on(eventType, processNotificationEvent);
-      console.log(`ActivityManager: Registered listener for ${eventType}`);
+      // Instead of using socketService.on directly, we'll use the socket instance
+      const socket = socketService.getSocket();
+      if (socket) {
+        socket.on(eventType, processNotificationEvent);
+        console.log(`ActivityManager: Registered listener for ${eventType}`);
+      }
     });
     
     // Cleanup function
@@ -268,7 +272,10 @@ const ActivityManager = ({ userId, updateActivities }) => {
       
       // Remove all event listeners
       eventTypes.forEach(eventType => {
-        socketService.off(eventType);
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.off(eventType);
+        }
       });
       
       // Disconnect socket
