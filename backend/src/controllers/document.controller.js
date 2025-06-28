@@ -1191,7 +1191,7 @@ exports.approveDocument = async (req, res, next) => {
         const borrowerId = document.borrower.toString();
         const notificationData = {
           type: 'document-status',
-          eventType: 'document-status',
+          eventType: 'document-approved', // Use specific event type for approvals
           documentName: document.name,
           documentType: document.documentType,
           status: 'Approved',
@@ -1204,10 +1204,19 @@ exports.approveDocument = async (req, res, next) => {
           timestamp: new Date().toISOString()
         };
         
-        console.log(`Emitting document-status directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        console.log(`Emitting document approval to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
         
+        // Send multiple event types to ensure frontend receives it
         io.to(borrowerId).emit('document-status', notificationData);
+        io.to(borrowerId).emit('document-approved', notificationData);
+        io.to(borrowerId).emit('document_approved', notificationData);
+        io.to(borrowerId).emit('document_status_changed', notificationData);
+        
+        // Also send to borrower-specific room
         io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-approved', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document_approved', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document_status_changed', notificationData);
         
         logger.info(`Socket notification sent for document approval: ${document.name} to borrower ${borrowerId}`);
       }
@@ -1316,7 +1325,7 @@ exports.rejectDocument = async (req, res, next) => {
         const borrowerId = document.borrower.toString();
         const notificationData = {
           type: 'document-status',
-          eventType: 'document-status',
+          eventType: 'document-rejected', // Use specific event type for rejections
           documentName: document.name,
           documentType: document.documentType,
           status: 'Rejected',
@@ -1329,10 +1338,19 @@ exports.rejectDocument = async (req, res, next) => {
           timestamp: new Date().toISOString()
         };
         
-        console.log(`Emitting document-status (rejection) directly to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
+        console.log(`Emitting document rejection to ${borrowerId} and borrower-${borrowerId}:`, notificationData);
         
+        // Send multiple event types to ensure frontend receives it
         io.to(borrowerId).emit('document-status', notificationData);
+        io.to(borrowerId).emit('document-rejected', notificationData);
+        io.to(borrowerId).emit('document_rejected', notificationData);
+        io.to(borrowerId).emit('document_status_changed', notificationData);
+        
+        // Also send to borrower-specific room
         io.to(`borrower-${borrowerId}`).emit('document-status', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document-rejected', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document_rejected', notificationData);
+        io.to(`borrower-${borrowerId}`).emit('document_status_changed', notificationData);
         
         logger.info(`Socket notification sent for document rejection: ${document.name} to borrower ${borrowerId}`);
       }

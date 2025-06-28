@@ -486,6 +486,12 @@ exports.getDashboard = async (req, res, next) => {
     // Add payment summary to dashboard data
     dashboardData.paymentSummary = paymentSummary;
     
+    // Attach loan IDs and loan numbers to help frontend validate notifications
+    dashboardData.loanInfo = {
+      loanIds: recentLoans.map(loan => loan._id.toString()),
+      loanNumbers: recentLoans.map(loan => loan.loanNumber).filter(Boolean)
+    };
+    
     res.status(200).json({
       status: 'success',
       data: dashboardData
@@ -589,7 +595,7 @@ exports.getBorrowerActivities = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
     
-    // Find all loans associated with this borrower
+          // Find all loans associated with this borrower
     const loans = await Loan.find({
       $or: [
         { borrower: borrower._id },
@@ -606,7 +612,32 @@ exports.getBorrowerActivities = async (req, res, next) => {
     })
     .lean();
     
+    // Early exit if borrower has no loans - return empty activities
+    if (!loans || loans.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          activities: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            pages: 0
+          }
+        }
+      });
+    }
+    
+    // Extract loan IDs and loan numbers for filtering activities
     const loanIds = loans.map(loan => loan._id);
+    const loanNumbers = loans.map(loan => loan.loanNumber).filter(Boolean);
+    
+    // Log loan info for debugging
+    console.log(`Found ${loans.length} loans for borrower ${borrower._id}`, {
+      loanIds: loanIds.map(id => id.toString()),
+      loanNumbers
+    });
+    
     const activities = [];
     const processedActivities = new Set(); // Track processed activities to avoid duplicates
     const processedMessageContents = new Set(); // Track message contents to avoid duplicates
@@ -651,13 +682,13 @@ exports.getBorrowerActivities = async (req, res, next) => {
         const { documentId, documentName, loanId, loanNumber, oldStatus, newStatus } = log.metadata;
         if (!documentId && !documentName) return;
         
-        // Check if this refers to an actual loan the borrower has
-        const loanExists = (loanId && loanIdSet.has(loanId.toString())) || 
-                          (loanNumber && loanNumberSet.has(loanNumber));
+        // Enhanced validation: Check if this document belongs to one of this borrower's loans
+        const loanExists = (loanId && loanIds.some(id => id.toString() === loanId.toString())) || 
+                          (loanNumber && loanNumbers.some(num => num === loanNumber));
         
-        // Skip notifications for loans that don't exist
-        if (loanId && !loanExists && loans.length > 0) {
-          console.log(`Skipping document status notification - loan not found: ${loanId}`);
+        // Skip notifications for documents that don't belong to this borrower's loans
+        if (!loanExists) {
+          console.log(`Skipping document status notification - not for this borrower's loans. LoanId: ${loanId}, LoanNumber: ${loanNumber}`);
           return;
         }
         
