@@ -8,7 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
- 
+  
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const borrowerRoutes = require('./routes/borrower.routes');
