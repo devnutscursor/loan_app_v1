@@ -707,51 +707,148 @@ async function checkForNoLoans() {
   }
 }
 
-// On initial mount, load any stored notifications and perform quick loan check
+// Load notifications from localStorage on initial mount
 useEffect(() => {
+  console.log('[DEBUG] Loading notifications from localStorage');
   try {
-    // Instead of clearing notifications, let's load them
-    console.log('[DEBUG] Loading notifications from localStorage');
+    // Load from both storage locations for compatibility
+    const storedActivities = localStorage.getItem(activitiesKey);
+    const storedNotifications = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    const storedDocuments = localStorage.getItem('borrower_documents');
+    const storedMessages = localStorage.getItem('borrower_messages');
     
-    // Load from both storage keys to ensure we get all notifications
-    const storedActivities = JSON.parse(localStorage.getItem(activitiesKey) || '[]');
-    const storedNotifications = JSON.parse(localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) || '[]');
-    const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
-    const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
+    // Collect all notifications from various sources
+    const allSources = [];
     
-    console.log(`[DEBUG] Found ${storedActivities.length} activities, ${storedNotifications.length} notifications, ${storedMessages.length} messages, and ${storedDocuments.length} documents`);
+    // Process stored activities
+    if (storedActivities) {
+      try {
+        const parsed = JSON.parse(storedActivities);
+        if (Array.isArray(parsed)) {
+          console.log(`[DEBUG] Found ${parsed.length} activities in localStorage`);
+          allSources.push(...parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored activities:', e);
+      }
+    }
     
-    // Combine all notifications, ensuring we don't have duplicates
-    const allNotifications = [
-      ...storedActivities,
-      ...storedNotifications,
-      ...storedMessages,
-      ...storedDocuments
-    ];
+    // Process stored notifications
+    if (storedNotifications) {
+      try {
+        const parsed = JSON.parse(storedNotifications);
+        if (Array.isArray(parsed)) {
+          console.log(`[DEBUG] Found ${parsed.length} notifications in localStorage`);
+          allSources.push(...parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored notifications:', e);
+      }
+    }
     
-    // Remove duplicates by ID
+    // Process stored documents
+    if (storedDocuments) {
+      try {
+        const parsed = JSON.parse(storedDocuments);
+        if (Array.isArray(parsed)) {
+          console.log(`[DEBUG] Found ${parsed.length} document notifications in localStorage`);
+          allSources.push(...parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored documents:', e);
+      }
+    }
+    
+    // Process stored messages
+    if (storedMessages) {
+      try {
+        const parsed = JSON.parse(storedMessages);
+        if (Array.isArray(parsed)) {
+          console.log(`[DEBUG] Found ${parsed.length} message notifications in localStorage`);
+          allSources.push(...parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored messages:', e);
+      }
+    }
+    
+    // Deduplicate notifications
     const uniqueNotifications = [];
     const seenIds = new Set();
+    const seenDescriptions = new Set();
     
-    allNotifications.forEach(notification => {
-      // Generate ID if missing
-      const id = notification.id || generateActivityId(notification);
-      
-      // Only add if we haven't seen this ID before
-      if (!seenIds.has(id)) {
-        seenIds.add(id);
-        uniqueNotifications.push({
-          ...notification,
-          id,
-          // Mark document and message notifications as persistent
-          persistent: notification.persistent || 
-                     notification.entityType === 'document' || 
-                     notification.entityType === 'message'
-        });
+    // First pass - process by ID
+    allSources.forEach(notification => {
+      // Skip if no ID or already seen
+      if (!notification || !notification.id || seenIds.has(notification.id)) {
+        return;
       }
+      
+      // Fix icon if it's a string
+      if (typeof notification.icon === 'string') {
+        // Keep the string - we'll convert it to a component in renderActivities
+      }
+      
+      // Add to unique list
+      seenIds.add(notification.id);
+      
+      // Add a normalized description key for document notifications
+      if (notification.entityType === 'document' && notification.description) {
+        const normalizedDesc = normalizeDocumentDescription(notification.description);
+        if (normalizedDesc && normalizedDesc.length > 5) {
+          notification.normalizedDescription = normalizedDesc;
+          seenDescriptions.add(normalizedDesc);
+        }
+      }
+      
+      uniqueNotifications.push({
+        ...notification,
+        // Make sure document and message notifications are marked as persistent
+        persistent: notification.persistent || 
+                   notification.entityType === 'document' || 
+                   notification.entityType === 'message'
+      });
+    });
+    
+    // Second pass - check for duplicate document descriptions
+    allSources.forEach(notification => {
+      // Skip if already processed by ID
+      if (!notification || notification.id && seenIds.has(notification.id)) {
+        return;
+      }
+      
+      // Check for duplicate document notifications by description
+      if (notification.entityType === 'document' && notification.description) {
+        const normalizedDesc = normalizeDocumentDescription(notification.description);
+        if (normalizedDesc && normalizedDesc.length > 5) {
+          if (seenDescriptions.has(normalizedDesc)) {
+            // Skip this duplicate
+            return;
+          }
+          seenDescriptions.add(normalizedDesc);
+        }
+      }
+      
+      // If we get here, it's a new unique notification without an ID
+      // Generate an ID for it
+      notification.id = generateNotificationId(notification.entityType || 'notification', notification);
+      
+      uniqueNotifications.push({
+        ...notification,
+        persistent: notification.persistent || 
+                   notification.entityType === 'document' || 
+                   notification.entityType === 'message'
+      });
     });
     
     console.log(`[DEBUG] Combined ${uniqueNotifications.length} unique notifications`);
+    
+    // Sort by timestamp (newest first)
+    uniqueNotifications.sort((a, b) => {
+      const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+      const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+      return dateB - dateA;
+    });
     
     // Set the activities
     if (uniqueNotifications.length > 0) {
@@ -760,13 +857,21 @@ useEffect(() => {
       // Save to both storage locations for compatibility
       localStorage.setItem(activitiesKey, JSON.stringify(uniqueNotifications));
       localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(uniqueNotifications));
+      
+      // Also save document and message notifications to their specific storage
+      const documentNotifications = uniqueNotifications.filter(n => n.entityType === 'document');
+      if (documentNotifications.length > 0) {
+        localStorage.setItem('borrower_documents', JSON.stringify(documentNotifications));
+      }
+      
+      const messageNotifications = uniqueNotifications.filter(n => n.entityType === 'message');
+      if (messageNotifications.length > 0) {
+        localStorage.setItem('borrower_messages', JSON.stringify(messageNotifications));
+      }
     }
   } catch (error) {
     console.error('Failed to load notifications from localStorage:', error);
   }
-  
-  // Run a quick loan check – this will clear notifications if the user has no loans
-  checkForNoLoans();
 
   // Fetch fresh data from the backend so we stay up-to-date
   fetchDashboardData();
@@ -1014,6 +1119,18 @@ useEffect(() => {
           try {
             localStorage.setItem(activitiesKey, JSON.stringify(combined));
             localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(combined));
+            
+            // Also save document notifications to document-specific storage
+            const documentNotifications = combined.filter(activity => activity.entityType === 'document');
+            if (documentNotifications.length > 0) {
+              localStorage.setItem('borrower_documents', JSON.stringify(documentNotifications));
+            }
+            
+            // Also save message notifications to message-specific storage
+            const messageNotifications = combined.filter(activity => activity.entityType === 'message');
+            if (messageNotifications.length > 0) {
+              localStorage.setItem('borrower_messages', JSON.stringify(messageNotifications));
+            }
           } catch (error) {
             console.error('Failed to save merged activities to localStorage:', error);
           }
@@ -1070,8 +1187,37 @@ useEffect(() => {
     
     // First, ensure all activities have proper formatting and sort by timestamp (newest first)
     const formattedActivities = activities.map(activity => {
-      // Ensure icon is a valid component
-      const icon = typeof activity.icon === 'function' ? activity.icon : FileText;
+      // Ensure icon is a valid component - use string name to look up component or default to FileText
+      let icon = FileText;
+      if (typeof activity.icon === 'function') {
+        icon = activity.icon;
+      } else if (typeof activity.icon === 'string') {
+        // Map string icon names to components
+        const iconMap = {
+          'FileText': FileText,
+          'CheckCircle': CheckCircle, 
+          'Clock': Clock,
+          'AlertTriangle': AlertTriangle,
+          'XCircle': XCircle,
+          'Upload': Upload,
+          'RefreshCw': RefreshCw,
+          'Edit': Edit,
+          'FileCheck': FileCheck,
+          'FilePlus': FilePlus,
+          'FileX': FileX,
+          'FilePen': FilePen,
+          'MessageSquare': MessageSquare,
+          'ArrowRightCircle': ArrowRightCircle,
+          'BadgeDollarSign': BadgeDollarSign,
+          'Calendar': Calendar,
+          'ClipboardList': ClipboardList,
+          'BarChart3': BarChart3,
+          'Bell': Bell,
+          'Wallet': Wallet,
+          'User': User
+        };
+        icon = iconMap[activity.icon] || FileText;
+      }
       
       // Normalize statusColor (remove bg- prefix if present)
       let statusColor = activity.statusColor;
@@ -1094,14 +1240,17 @@ useEffect(() => {
       return dateB - dateA; // Most recent first
     });
     
+    // Log the activities for debugging
+    console.log('[DEBUG] Displaying activities:', formattedActivities.length);
+    
     // Limit to 10 notifications to avoid overwhelming the UI
     const displayActivities = formattedActivities.slice(0, 10);
     
     return (
       <ul className="divide-y divide-gray-100">
-        {displayActivities.map((activity) => (
+        {displayActivities.map((activity, index) => (
           <ActivityItem
-            key={activity.id || Math.random().toString()}
+            key={activity.id || `activity-${index}-${Date.now()}`}
             icon={activity.icon}
             title={activity.title}
             time={activity.time}
