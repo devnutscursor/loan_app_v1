@@ -179,12 +179,7 @@ const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, 
     if (url) {
       router.push(url);
     } else if (entityType === 'loan' && entityId) {
-      if (status === 'Approved' || status === 'Rejected' || status === 'Correction') {
-        // For document status changes, navigate to the documents tab
-        router.push(`/borrower/loans/${entityId}?tab=documents`);
-      } else {
-        router.push(`/borrower/loans/${entityId}`);
-      }
+      router.push(`/borrower/loans/${entityId}`);
     } else if (entityType === 'document') {
       router.push('/borrower/documents');
     } else if (entityType === 'message') {
@@ -194,7 +189,7 @@ const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, 
     }
   };
 
-  // Hardcoded color mapping for consistent display
+  // Determine colors based on notification type
   let iconBgColor = 'bg-blue-100';
   let iconTextColor = 'text-blue-600';
 
@@ -215,17 +210,6 @@ const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, 
   } else if (entityType === 'milestone' || title?.toLowerCase().includes('milestone')) {
     iconBgColor = 'bg-green-100';
     iconTextColor = 'text-green-600';
-  } else if (title?.toLowerCase().includes('status')) {
-    if (status === 'Approved' || description?.toLowerCase().includes('approved')) {
-      iconBgColor = 'bg-green-100';
-      iconTextColor = 'text-green-600';
-    } else if (status === 'Rejected' || description?.toLowerCase().includes('rejected')) {
-      iconBgColor = 'bg-red-100';
-      iconTextColor = 'text-red-600';
-    } else {
-      iconBgColor = 'bg-blue-100';
-      iconTextColor = 'text-blue-600';
-    }
   }
   
   return (
@@ -313,6 +297,90 @@ const BorrowerDashboard = () => {
     nextDueDate: null
   });
   
+  // Storage key for notifications
+  const NOTIFICATIONS_STORAGE_KEY = 'borrower_notifications';
+  
+  // Generate unique ID for notifications
+  const generateNotificationId = (type, data) => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 7);
+    return `${type}-${timestamp}-${random}`;
+  };
+  
+  // Format relative time for notifications
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return "Unknown time";
+    
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "Unknown time";
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+  };
+  
+  // Save notifications to localStorage
+  const saveNotifications = (notificationsList) => {
+    try {
+      localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notificationsList));
+    } catch (error) {
+      console.error('Failed to save notifications to localStorage:', error);
+    }
+  };
+  
+  // Load notifications from localStorage
+  const loadNotifications = () => {
+    try {
+      const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (error) {
+      console.error('Failed to load notifications from localStorage:', error);
+    }
+    return [];
+  };
+  
+  // Add a new notification
+  const addNotification = (notification) => {
+    setActivities(prevActivities => {
+      // Check if notification already exists
+      const exists = prevActivities.some(activity => 
+        activity.id === notification.id ||
+        (activity.entityId === notification.entityId && 
+         activity.title === notification.title && 
+         activity.description === notification.description)
+      );
+      
+      if (exists) return prevActivities;
+      
+      // Add new notification at the beginning
+      const newActivities = [notification, ...prevActivities];
+      
+      // Limit to 50 notifications
+      const limitedActivities = newActivities.slice(0, 50);
+      
+      // Save to localStorage
+      saveNotifications(limitedActivities);
+      
+      return limitedActivities;
+    });
+  };
+  
   const activitySeenKey = 'borrower_activity_seen';
   const activitiesKey = 'borrower_activities';
   
@@ -352,8 +420,12 @@ const BorrowerDashboard = () => {
   const mergeActivities = (existingActivities, newActivities) => {
     // Create a map of existing activities by their ID
     const activityMap = {};
-    const messageContentMap = new Set(); // Track message contents to prevent duplicates
     const activitySet = new Set(); // Track duplicate activity IDs
+    
+    // Create a set to track documents by title+loanId to detect duplicates
+    const documentSet = new Set();
+    // Create a set to track milestones by title+loanId to detect duplicates
+    const milestoneSet = new Set();
     
     // Add all existing activities to the map first
     existingActivities.forEach(activity => {
@@ -365,12 +437,19 @@ const BorrowerDashboard = () => {
       if (activitySet.has(activity.id)) return;
       activitySet.add(activity.id);
       
-      activityMap[activity.id] = activity;
-      
-      // Track message content for duplicate detection
-      if (activity.entityType === 'message' && activity.description) {
-        messageContentMap.add(`${activity.title}-${activity.description?.substring(0, 20)}`);
+      // Track document activities by document name and loan ID
+      if (activity.entityType === 'document' && activity.description) {
+        const docKey = `${activity.title}-${activity.description}`;
+        documentSet.add(docKey);
       }
+      
+      // Track milestone activities by milestone name and loan ID
+      if (activity.entityType === 'milestone' && activity.description) {
+        const milestoneKey = `${activity.title}-${activity.description}`;
+        milestoneSet.add(milestoneKey);
+      }
+      
+      activityMap[activity.id] = activity;
     });
     
     // Add new activities if they don't exist already
@@ -379,17 +458,22 @@ const BorrowerDashboard = () => {
         activity.id = generateActivityId(activity);
       }
       
-      // Skip if we've already seen this activity
+      // Skip if we've already seen this activity ID
       if (activitySet.has(activity.id)) return;
       activitySet.add(activity.id);
       
-      // Skip duplicate messages with similar content
-      if (activity.entityType === 'message' && activity.description) {
-        const contentKey = `${activity.title}-${activity.description?.substring(0, 20)}`;
-        if (messageContentMap.has(contentKey)) {
-          return;
-        }
-        messageContentMap.add(contentKey);
+      // Skip duplicate document activities
+      if (activity.entityType === 'document' && activity.description) {
+        const docKey = `${activity.title}-${activity.description}`;
+        if (documentSet.has(docKey)) return;
+        documentSet.add(docKey);
+      }
+      
+      // Skip duplicate milestone activities
+      if (activity.entityType === 'milestone' && activity.description) {
+        const milestoneKey = `${activity.title}-${activity.description}`;
+        if (milestoneSet.has(milestoneKey)) return;
+        milestoneSet.add(milestoneKey);
       }
       
       // Add or update activity in the map
@@ -427,8 +511,19 @@ const BorrowerDashboard = () => {
           if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
             console.log('Loaded activities from localStorage:', parsedActivities.length);
             
+            // Remove any default activities that might be saved
+            const filteredActivities = parsedActivities.filter(activity => {
+              // Filter out activities that match the pattern of default notifications
+              const isDefaultNotification = 
+                (!activity.loanNumber && !activity.entityId) || 
+                (activity.title && activity.title.includes('Document') && 
+                 !activity.loanNumber && !activity.entityId);
+              
+              return !isDefaultNotification;
+            });
+            
             // Apply any required transformations and set activities
-            const processedActivities = processActivities(parsedActivities);
+            const processedActivities = processActivities(filteredActivities);
             setActivities(processedActivities);
           }
         } catch (parseError) {
@@ -440,6 +535,32 @@ const BorrowerDashboard = () => {
     } catch (error) {
       console.error('Failed to load activities from localStorage:', error);
     }
+    
+    // Initial check to clear localStorage if user has no loans
+    // This will be run before fetchDashboardData completes
+    const checkForNoLoans = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        // Quick check just for loan count
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/dashboard`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        // If there are no loans, clear notifications
+        if (response.data?.data?.totalLoans === 0) {
+          console.log("Quick check found no loans. Clearing notifications.");
+          setActivities([]);
+          localStorage.removeItem(activitiesKey);
+        }
+      } catch (error) {
+        console.error("Error in quick loan check:", error);
+      }
+    };
+    
+    checkForNoLoans();
   }, []);
   
   // Save activities to localStorage whenever they change
@@ -456,281 +577,176 @@ const BorrowerDashboard = () => {
     }
   }, [activities]);
   
-  // Handle socket events for real-time updates
+  // Handle socket events for real-time notifications
   const handleSocketEvent = (data) => {
-    // Handle socket events
     console.log('Socket event received:', data);
     
-    let newActivity = null;
+    // Ensure data has the required fields
+    if (!data) return;
     
-    // Make sure we only use valid React components as icons
-    const ensureValidIcon = (iconComponent) => {
-      return typeof iconComponent === 'function' ? iconComponent : FileText;
-    };
+    const timestamp = new Date().toISOString();
+    let notification = null;
     
-    // Generate a unique ID based on the event type
-    const generateEventId = (type) => {
-      return `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    };
-    
-    if (data.type === 'message' || data.eventType === 'message') {
-      // Message notification
-      const uniqueId = generateEventId('msg');
+    // 1. Handle message notifications
+    if (data.type === 'message' || data.eventType === 'message' || data.eventType === 'new_lender_message') {
+      const senderName = data.senderName || data.sender || 'Lender';
+      const messagePreview = data.content?.substring(0, 30) || 'You have a new message';
       
-      newActivity = {
-        id: uniqueId,
-        icon: ensureValidIcon(MessageSquare),
-        title: `New message from ${data.senderName || data.sender || 'Lender'}`,
-        description: data.content?.substring(0, 30) || 'You have a new message',
-        time: 'Just now',
+      notification = {
+        id: generateNotificationId('message', data),
+        icon: MessageSquare,
+        title: `New message from ${senderName}`,
+        description: messagePreview,
         status: 'New',
         statusColor: 'blue',
         entityType: 'message',
         url: '/borrower/messages',
-        timestamp: new Date().toISOString(),
-        persistent: true
+        timestamp: timestamp
       };
       
-      toast.custom((t) => (
-        <div className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-          <div className="flex-1 w-0 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5">
-                <MessageSquare className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">New Message</p>
-                <p className="mt-1 text-sm text-gray-500">From: {data.senderName || data.sender || 'Lender'}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex border-l border-gray-200">
-            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ));
-    } 
-    else if (data.type === 'milestone' || data.eventType === 'milestone-completed') {
-      // Milestone notification
-      const uniqueId = generateEventId('milestone');
+      // Show toast notification
+      toast(`New Message from ${senderName}: ${messagePreview}`, {
+        duration: 5000
+      });
+    }
+    
+    // 2. Handle milestone notifications
+    else if (data.type === 'milestone' || data.eventType === 'milestone-completed' || data.eventType === 'milestone_updated') {
       const milestoneName = data.title || data.milestoneName || 'Loan milestone';
       const loanId = data.loanId || data.entityId;
       const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
       
-      newActivity = {
-        id: uniqueId,
-        icon: ensureValidIcon(CheckCircle),
+      notification = {
+        id: generateNotificationId('milestone', data),
+        icon: CheckCircle,
         title: `Milestone completed`,
         description: `${milestoneName}${loanNumber ? ` for loan ${loanNumber}` : ''}`,
-        time: 'Just now',
         status: 'Completed',
         statusColor: 'green',
         entityId: loanId,
         entityType: 'milestone',
-        loanNumber,
-        url: loanId ? `/borrower/loans/${loanId}?tab=milestones` : '/borrower/dashboard',
-        timestamp: new Date().toISOString(),
-        persistent: true
+        loanNumber: loanNumber,
+        url: loanId ? `/borrower/loans/${loanId}?tab=milestones` : '/borrower/loans',
+        timestamp: timestamp
       };
       
-      toast.custom((t) => (
-        <div className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-          <div className="flex-1 w-0 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">Milestone Completed</p>
-                <p className="mt-1 text-sm text-gray-500">{milestoneName}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex border-l border-gray-200">
-            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-green-600 hover:text-green-500 focus:outline-none">
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ));
+      // Show toast notification
+      toast(`Milestone Completed: ${milestoneName}${loanNumber ? ` for loan ${loanNumber}` : ''}`, {
+        duration: 5000
+      });
     }
-    else if (data.type === 'document-request' || data.eventType === 'document-request') {
-      // Document request notification
-      const uniqueId = generateEventId('doc-req');
+    
+    // 3. Handle document request notifications
+    else if (data.type === 'document-request' || data.eventType === 'document-request' || data.eventType === 'document_requested') {
       const documentName = data.documentName || data.title || data.documentType || 'Document';
       const loanId = data.loanId || data.entityId;
       const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
       
-      newActivity = {
-        id: uniqueId,
-        icon: ensureValidIcon(FileText),
+      notification = {
+        id: generateNotificationId('document-request', data),
+        icon: FilePlus,
         title: `Document requested`,
         description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`,
-        time: 'Just now',
         status: 'Pending',
         statusColor: 'blue',
         entityId: loanId,
         entityType: 'document',
-        loanNumber,
-        url: `/borrower/documents`,
-        timestamp: new Date().toISOString(),
-        persistent: true
+        loanNumber: loanNumber,
+        url: '/borrower/documents',
+        timestamp: timestamp
       };
       
-      toast.custom((t) => (
-        <div className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-          <div className="flex-1 w-0 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5">
-                <FileText className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">Document Requested</p>
-                <p className="mt-1 text-sm text-gray-500">{documentName}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex border-l border-gray-200">
-            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ));
-    } 
-    else if (data.type === 'document-status' || data.eventType === 'document-status') {
-      // Document status change notification (approved/rejected)
-      const uniqueId = generateEventId('doc-status');
+      // Show toast notification - using standard toast instead of toast.info
+      toast(`Document Requested: ${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`, {
+        duration: 5000
+      });
+    }
+    
+    // 4. Handle document status notifications (approved/rejected)
+    else if (data.type === 'document-status' || data.eventType === 'document-status' || data.eventType === 'document_status_changed') {
       const documentName = data.documentName || data.title || data.documentType || 'Document';
       const loanId = data.loanId || data.entityId;
       const loanNumber = data.loanNumber || (loanId ? `#${loanId.toString().substr(-5)}` : '');
-      const status = data.status || 'Updated';
       
+      // Extract status from various possible properties
+      const statusFromData = data.status || data.newStatus || (data.metadata ? data.metadata.status : null) || 'Updated';
+      
+      // Process status
+      let status = statusFromData;
       let statusColor = 'blue';
       let icon = FileText;
       
-      // Determine status styling
-      if (status.toLowerCase() === 'approved') {
-        statusColor = 'green';
-        icon = FileCheck;
-        toast.custom((t) => (
-          <div className={`${
-            t.visible ? 'animate-enter' : 'animate-leave'
-          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 pt-0.5">
-                  <FileCheck className="h-5 w-5 text-green-500" />
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">Document Approved</p>
-                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-green-600 hover:text-green-500 focus:outline-none">
-                Dismiss
-              </button>
-            </div>
-          </div>
-        ));
-      } else if (status.toLowerCase() === 'rejected') {
-        statusColor = 'red';
-        icon = FileX;
-        toast.custom((t) => (
-          <div className={`${
-            t.visible ? 'animate-enter' : 'animate-leave'
-          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 pt-0.5">
-                  <FileX className="h-5 w-5 text-red-500" />
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">Document Rejected</p>
-                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none">
-                Dismiss
-              </button>
-            </div>
-          </div>
-        ));
-      } else {
-        toast.custom((t) => (
-          <div className={`${
-            t.visible ? 'animate-enter' : 'animate-leave'
-          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 pt-0.5">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">Document Status Updated</p>
-                  <p className="mt-1 text-sm text-gray-500">{documentName}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none">
-                Dismiss
-              </button>
-            </div>
-          </div>
-        ));
+      if (status && typeof status === 'string') {
+        status = status.toLowerCase();
+        
+        if (status.includes('approved') || status === 'approve') {
+          status = 'Approved';
+          statusColor = 'green';
+          icon = FileCheck;
+          
+          toast(`Document Approved: ${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`, {
+            duration: 5000
+          });
+        } 
+        else if (status.includes('rejected') || status.includes('denied') || status === 'reject' || status === 'decline') {
+          status = 'Rejected';
+          statusColor = 'red';
+          icon = FileX;
+          
+          toast(`Document Rejected: ${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`, {
+            duration: 5000
+          });
+        }
+        else if (status.includes('correction') || status.includes('needs correction')) {
+          status = 'Needs Correction';
+          statusColor = 'yellow';
+          icon = FilePen;
+          
+          toast(`Document Needs Correction: ${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`, {
+            duration: 5000
+          });
+        }
       }
       
-      newActivity = {
-        id: uniqueId,
-        icon: ensureValidIcon(icon),
+      notification = {
+        id: generateNotificationId('document-status', data),
+        icon: icon,
         title: `Document ${status}`,
         description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}`,
-        time: 'Just now',
-        status,
-        statusColor,
+        status: status,
+        statusColor: statusColor,
         entityId: loanId,
         entityType: 'document',
-        loanNumber,
-        url: `/borrower/documents`,
-        timestamp: new Date().toISOString(),
-        persistent: true
+        loanNumber: loanNumber,
+        url: '/borrower/documents',
+        timestamp: timestamp
       };
     }
     
-    if (newActivity) {
-      setActivities(prev => {
-        // Add the new activity while preventing duplicates
-        const updated = mergeActivities(prev, [newActivity]);
+    // Add notification if created
+    if (notification) {
+      // Check if this notification is related to a real loan (if we have loan data)
+      if (recentLoans && recentLoans.length > 0 && notification.loanNumber) {
+        const loanExists = recentLoans.some(loan => {
+          const loanNumberMatch = loan.loanNumber && notification.loanNumber.includes(loan.loanNumber);
+          const loanIdMatch = loan._id && notification.entityId === loan._id;
+          return loanNumberMatch || loanIdMatch;
+        });
         
-        try {
-          // Save to localStorage with limitation
-          const limitedActivities = updated.slice(0, 50); // Limit to last 50 activities
-          localStorage.setItem(activitiesKey, JSON.stringify(limitedActivities));
-        } catch (err) {
-          console.error('Failed to save updated activities to localStorage:', err);
+        // Skip notification if it doesn't match any loan
+        if (!loanExists) {
+          console.log(`Skipping notification - no matching loan found`);
+          return;
         }
-        
-        return updated;
-      });
+      }
+      
+      addNotification(notification);
     }
   };
-
+  
   // Socket connection for real-time notifications
   useEffect(() => {
-    // Try to establish socket connection if available
+    // Try to establish socket connection
     try {
       // Use the backend API URL without the path for socket connection
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -747,10 +763,10 @@ const BorrowerDashboard = () => {
         auth: {
           token: localStorage.getItem('token')
         },
-        reconnectionAttempts: 5, // Limit reconnection attempts
-        reconnectionDelay: 1000, // Start with 1 sec delay
-        reconnectionDelayMax: 5000, // Max 5 sec delay
-        timeout: 10000 // Connection timeout in ms
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000
       });
       
       socket.on('connect', () => {
@@ -782,7 +798,7 @@ const BorrowerDashboard = () => {
         console.log('Socket connection error:', error.message);
       });
       
-      // Register all possible notification event types
+      // Register all notification event types
       const eventTypes = [
         'notification', 
         'message', 
@@ -808,7 +824,6 @@ const BorrowerDashboard = () => {
       
       return () => {
         console.log('Cleaning up socket connection');
-        // Unregister all event handlers
         eventTypes.forEach(eventType => {
           socket.off(eventType);
         });
@@ -817,383 +832,214 @@ const BorrowerDashboard = () => {
     } catch (error) {
       console.error('Socket connection failed:', error);
     }
+  }, [recentLoans]);
+  
+  // Forcefully clear default notifications on component mount
+  useEffect(() => {
+    // Clear any default notifications that might be showing
+    const clearDefaultNotifications = () => {
+      // Clear all notifications from localStorage
+      localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
+      localStorage.removeItem(activitiesKey);
+      
+      // Reset activities state
+      setActivities([]);
+      
+      console.log("Forcefully cleared all notifications on component mount");
+    };
+    
+    // Run the cleanup
+    clearDefaultNotifications();
+    
+    // Then fetch fresh data
+    fetchDashboardData();
+    
   }, []);
   
-  // Fetch dashboard data on component mount
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        
-        // Extract user ID from token
-        if (token) {
-          const payload = token.split('.')[1];
-          try {
-            const decoded = JSON.parse(atob(payload));
-            if (decoded.id) {
-              setUserId(decoded.id);
-            }
-          } catch (error) {
-            console.error('Failed to decode token:', error);
+  // Fetch dashboard data and activities
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Extract user ID from token
+      if (token) {
+        const payload = token.split('.')[1];
+        try {
+          const decoded = JSON.parse(atob(payload));
+          if (decoded.id) {
+            setUserId(decoded.id);
           }
+        } catch (error) {
+          console.error('Failed to decode token:', error);
         }
-        
-        // Fetch dashboard stats
-        const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/dashboard`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        // Fetch recent activities
-        const activitiesResponse = await axios.get(
+      }
+      
+      // Fetch dashboard stats
+      const statsResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/dashboard`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Fetch recent activities
+      const activitiesResponse = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/activities?limit=20&_=${Date.now()}`,
         { 
           headers: { Authorization: `Bearer ${token}` },
           timeout: 15000
         }
-        );
-        
-        // Process the data
-        const statsData = statsResponse.data.data || {};
-        
-        // Set the stats data from API response
-        setStats({
+      );
+      
+      // Process the stats data
+      const statsData = statsResponse.data.data || {};
+      
+      setStats({
         totalLoans: statsData.totalLoans || 0,
         activeLoans: statsData.activeLoans || 0,
         pendingApplications: statsData.pendingApplications || 0,
         totalAmount: statsData.totalAmount || 0,
-          percentChanges: statsData.percentChanges || {
-            loans: 0,
-            applications: 0, 
-            amount: 0
-        },
-        recentLoans: statsData.recentLoans || []
-        });
-
-        // Enrich recent loans with dynamic interest rate and term data before placing in state
-        let enrichedLoans = statsData.recentLoans || [];
-        try {
-          // Build unique lists for program types (for rates) and program IDs (for terms)
-          const programTypeSet = new Set();
-          const programIdSet = new Set();
-          enrichedLoans.forEach(l => {
-             // Collect program types for potential rate lookup (fallback only)
-             if (l.programType) programTypeSet.add(l.programType);
-             // Collect selected program IDs from nested loanParameters for term lookup
-             if (l?.loanParameters?.selectedProgramId) {
-               programIdSet.add(l.loanParameters.selectedProgramId.toString());
-             }
-           });
-
-          // Prepare requests
-          const rateRequests = Array.from(programTypeSet).map(pt =>
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-rates/${pt}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(res => ({ programType: pt, rate: res.data?.data?.rate }))
-              .catch(() => ({ programType: pt }))
-          );
-
-          const programRequests = Array.from(programIdSet).map(id =>
-             axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs/${id}`, {
-               headers: { Authorization: `Bearer ${token}` }
-             }).then(res => ({ id, term: res.data?.data?.loanProgram?.loanTerm }))
-               .catch(() => ({ id }))
-           ); // returns { id, term } objects
-
-          // Execute in parallel
-          const [rateResults, programResults] = await Promise.all([
-            Promise.all(rateRequests),
-            Promise.all(programRequests)
-          ]);
-
-          // Build lookup maps
-          const rateMap = {};
-          rateResults.forEach(r => { if (r.programType) rateMap[r.programType] = r.rate; });
-          const termMap = {};
-          programResults.forEach(p => { if (p.id) termMap[p.id] = p.term; });
-
-          // Enrich loan objects
-          enrichedLoans = enrichedLoans.map(l => {
-            let amount = 0;
-            if (l.loanType === 'Purchase') {
-              amount = l.purchasePrice ?? l.amount ?? l.loanAmount ?? 0;
-            } else if (l.loanType === 'Construction' || l.loanType === 'Refinance') {
-              amount = l.loanAmount ?? l.amount ?? 0;
-            } else {
-              amount = l.amount ?? l.loanAmount ?? 0;
-            }
-            const programId = l?.loanParameters?.selectedProgramId?.toString?.() || l?.loanParameters?.selectedProgramId;
-             return {
-               ...l,
-               amount,
-               // Prefer explicit interest rate from loanParameters, fallback to previous enrichment
-               interestRate: l?.loanParameters?.interestRate ?? l.interestRate ?? rateMap[l.programType],
-               term: termMap[programId] ?? l?.loanParameters?.selectedProgramId?.loanTerm ?? l.term
-             };
-          });
-        } catch (enrichErr) {
-          console.warn('Failed to enrich recent loans', enrichErr);
+        percentChanges: statsData.percentChanges || {
+          loans: 0,
+          applications: 0, 
+          amount: 0
         }
-
-        setRecentLoans(enrichedLoans);
+      });
+      
+      // Process recent loans
+      const enrichedLoans = statsData.recentLoans || [];
+      setRecentLoans(enrichedLoans);
+      
+      // Process activities from API
+      if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
+        const apiActivities = activitiesResponse.data.data.activities || [];
         
-        // Process activities with proper icons
-        if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
-        console.log('Received activities from API:', activitiesResponse.data.data.activities.length);
+        // Skip processing if no activities
+        if (apiActivities.length === 0) {
+          console.log('No activities received from API');
+          return;
+        }
         
-          // Map backend icons to Lucide React components
-          const iconMap = {
-            'FileText': FileText,
-            'CheckCircle': CheckCircle, 
-            'Clock': Clock,
-            'AlertTriangle': AlertTriangle,
-            'XCircle': XCircle,
-            'Upload': Upload,
-            'RefreshCw': RefreshCw,
-            'Edit': Edit,
-            'FileCheck': FileCheck,
-            'FilePlus': FilePlus,
-            'FileX': FileX,
-            'FilePen': FilePen,
-            'MessageSquare': MessageSquare,
-            'ArrowRightCircle': ArrowRightCircle,
-            'BadgeDollarSign': BadgeDollarSign,
-            'Calendar': Calendar,
-            'ClipboardList': ClipboardList,
-            'BarChart3': BarChart3,
-            'Bell': Bell,
+        // Map backend icons to Lucide React components
+        const iconMap = {
+          'FileText': FileText,
+          'CheckCircle': CheckCircle, 
+          'Clock': Clock,
+          'AlertTriangle': AlertTriangle,
+          'XCircle': XCircle,
+          'Upload': Upload,
+          'RefreshCw': RefreshCw,
+          'Edit': Edit,
+          'FileCheck': FileCheck,
+          'FilePlus': FilePlus,
+          'FileX': FileX,
+          'FilePen': FilePen,
+          'MessageSquare': MessageSquare,
+          'ArrowRightCircle': ArrowRightCircle,
+          'BadgeDollarSign': BadgeDollarSign,
+          'Calendar': Calendar,
+          'ClipboardList': ClipboardList,
+          'BarChart3': BarChart3,
+          'Bell': Bell,
           'Wallet': Wallet,
           'User': User
-          };
-          
-        // Check for activities that should be shown
-        let activitiesToProcess = activitiesResponse.data.data.activities || [];
-        if (!Array.isArray(activitiesToProcess)) {
-          activitiesToProcess = [];
-          console.error('Activities from API is not an array:', activitiesResponse.data.data);
+        };
+        
+        // Filter activities to only those related to existing loans
+        const loanIds = enrichedLoans.map(loan => loan._id);
+        const loanNumbers = enrichedLoans.map(loan => loan.loanNumber).filter(Boolean);
+        
+        let filteredActivities = apiActivities;
+        
+        if (enrichedLoans.length > 0) {
+          filteredActivities = apiActivities.filter(activity => {
+            // Keep activities without loan association
+            if (!activity.entityId && !activity.loanNumber) return true;
+            
+            // Keep activities related to our loans
+            const hasMatchingLoanId = activity.entityId && loanIds.some(id => id === activity.entityId);
+            const hasMatchingLoanNumber = activity.loanNumber && loanNumbers.some(number => 
+              activity.loanNumber.includes(number)
+            );
+            
+            return hasMatchingLoanId || hasMatchingLoanNumber;
+          });
+        } else {
+          // If there are no loans, don't show any document or loan-related notifications
+          filteredActivities = apiActivities.filter(activity => {
+            return activity.entityType !== 'document' && 
+                   activity.entityType !== 'loan' && 
+                   activity.entityType !== 'milestone';
+          });
         }
         
-        // Transform backend activities to frontend format with proper icons
-        const mappedActivities = activitiesToProcess.map(activity => {
-          // Determine which icon to use, with FileText as fallback
+        // Process each activity
+        const processedActivities = filteredActivities.map(activity => {
+          // Get icon
           const iconName = activity.icon || 'FileText';
           const icon = iconMap[iconName] || FileText;
           
-          // Make sure we have a valid icon component
-          if (typeof icon !== 'function') {
-            console.warn(`Invalid icon for activity: ${iconName}`, activity);
-          }
-          
-          // Format the time properly
-          const formattedTime = activity.time || 
-                               (activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Recently');
-          
-          // Normalize statusColor format (remove bg- prefix and -500 suffix if present)
+          // Format status color
           let statusColor = activity.statusColor || 'blue';
-          if (statusColor && statusColor.startsWith('bg-')) {
-            statusColor = statusColor.replace('bg-', '');
-            if (statusColor.endsWith('-500')) {
-              statusColor = statusColor.replace('-500', '');
-            }
-          }
-
-          // Create activity object with properly formatted fields
+          
+          // Create notification object
           return {
+            id: activity.id || generateNotificationId(activity.entityType || 'notification', activity),
             icon: icon,
             title: activity.title || 'Activity update',
-            time: formattedTime,
+            time: formatRelativeTime(activity.timestamp || activity.date),
             status: activity.status || 'Info',
             statusColor: statusColor,
-            id: activity.id || generateActivityId(activity),
             entityId: activity.entityId,
             entityType: activity.entityType || 'notification',
             description: activity.description,
             url: activity.url,
             loanNumber: activity.loanNumber,
-            timestamp: activity.timestamp || new Date().toISOString(),
-            // Set important notifications as persistent so they don't disappear
-            persistent: activity.persistent || 
-                       activity.entityType === 'milestone' || 
-                       activity.entityType === 'document' || 
-                       (activity.title && (
-                         activity.title.toLowerCase().includes('document') || 
-                         activity.title.toLowerCase().includes('milestone')
-                       ))
+            timestamp: activity.timestamp || new Date().toISOString()
           };
         });
         
-        // Merge with existing activities to preserve notifications across refreshes
+        // Merge with existing activities
         setActivities(prevActivities => {
-          const mergedActivities = mergeActivities(prevActivities, mappedActivities);
-          console.log('Merged activities count:', mergedActivities.length);
-          return mergedActivities;
-        });
-        } else {
-        console.warn('Invalid response format from activities API:', activitiesResponse.data);
-        
-        // Don't replace existing activities if API fails
-        if (activities.length === 0) {
-          // Fallback to sample data only if no existing activities
-          const fallbackActivities = [
-            { 
-              icon: FileText, 
-              title: 'New loan application submitted',
-              time: '2 hours ago',
-              status: 'New',
-              statusColor: 'blue',
-              id: 'fallback-1',
-              entityType: 'loan'
-            },
-            { 
-              icon: CheckCircle, 
-              title: 'Document approved',
-              time: '5 hours ago',
-              status: 'Completed',
-              statusColor: 'green',
-              id: 'fallback-2',
-              entityType: 'document'
-            },
-            { 
-              icon: Clock, 
-              title: 'Document verification pending',
-              time: 'Yesterday',
-              status: 'Pending',
-              statusColor: 'yellow',
-              id: 'fallback-3',
-              entityType: 'document'
-            },
-            { 
-              icon: AlertTriangle, 
-              title: 'Action required: Missing information',
-              time: '2 days ago',
-              status: 'Failed',
-              statusColor: 'red',
-              id: 'fallback-4',
-              entityType: 'document'
+          // Create a map of existing activities by ID
+          const existingMap = {};
+          prevActivities.forEach(activity => {
+            if (activity.id) {
+              existingMap[activity.id] = true;
             }
-          ];
+          });
           
-          // Verify icons are valid functions before setting
-          const validatedActivities = fallbackActivities.map(activity => ({
-            ...activity,
-            icon: typeof activity.icon === 'function' ? activity.icon : FileText
-          }));
+          // Filter out duplicates
+          const newActivities = processedActivities.filter(activity => !existingMap[activity.id]);
           
-          setActivities(validatedActivities);
-        }
-        }
-        
-        // Calculate payment summary from loans
-        let totalPaid = 0;
-        let upcomingPayment = 0;
-        let nextDueDate = null;
-        
-      const loansForSummary = enrichedLoans;
-      loansForSummary.forEach(loan => {
-          totalPaid += loan.amountPaid || 0;
-          if (loan.status === 'approved' && (!nextDueDate || new Date(loan.dueDate) < new Date(nextDueDate))) {
-            nextDueDate = loan.dueDate;
-            upcomingPayment = loan.monthlyPayment || 0;
-          }
+          // Combine and sort by timestamp
+          const combined = [...prevActivities, ...newActivities].sort((a, b) => {
+            const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+            const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+            return dateB - dateA; // Most recent first
+          });
+          
+          // Save to localStorage
+          saveNotifications(combined);
+          
+          return combined;
         });
-        
-        setPaymentSummary({
-          totalPaid,
-          upcomingPayment,
-          nextDueDate
-        });
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        toast.error('Failed to load dashboard data');
-        
-      // Don't replace existing activities if API fails
-      if (activities.length === 0) {
-        // Fallback to sample data only if no existing activities
-        const fallbackActivities = [
-          { 
-            icon: FileText, 
-            title: 'New loan application submitted',
-            time: '2 hours ago',
-            status: 'New',
-            statusColor: 'blue',
-            id: 'fallback-1',
-            entityType: 'loan'
-          },
-          { 
-            icon: CheckCircle, 
-            title: 'Document approved',
-            time: '5 hours ago',
-            status: 'Completed',
-            statusColor: 'green',
-            id: 'fallback-2',
-            entityType: 'document'
-          },
-          { 
-            icon: Clock, 
-            title: 'Document verification pending',
-            time: 'Yesterday',
-            status: 'Pending',
-            statusColor: 'yellow',
-            id: 'fallback-3',
-            entityType: 'document'
-          },
-          { 
-            icon: AlertTriangle, 
-            title: 'Action required: Missing information',
-            time: '2 days ago',
-            status: 'Failed',
-            statusColor: 'red',
-            id: 'fallback-4',
-            entityType: 'document'
-          }
-        ];
-        
-        // Verify icons are valid functions before setting
-        const validatedActivities = fallbackActivities.map(activity => ({
-          ...activity,
-          icon: typeof activity.icon === 'function' ? activity.icon : FileText
-        }));
-        
-        setActivities(validatedActivities);
       }
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-  // Format activity time to match lender UI format
-  const formatActivityTime = (activity) => {
-    if (activity.time) {
-      return activity.time;
+      
+      // Process payment summary
+      const paymentSummary = {
+        totalPaid: statsData.paymentSummary?.totalPaid || 0,
+        upcomingPayment: statsData.paymentSummary?.upcomingPayment || 0,
+        nextDueDate: statsData.paymentSummary?.nextDueDate || null
+      };
+      
+      setPaymentSummary(paymentSummary);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
-    
-    // If time is not provided directly, use the timestamp or date
-    if (activity.timestamp) {
-      return new Date(activity.timestamp).toLocaleDateString('en-US', {
-        month: 'numeric',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } else if (typeof activity.date === 'string') {
-      return new Date(activity.date).toLocaleDateString('en-US', {
-        month: 'numeric',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    }
-    
-    return "Unknown time";
   };
   
   const handleViewLoan = (loanId) => {
@@ -1243,7 +1089,7 @@ const BorrowerDashboard = () => {
         ...activity,
         icon,
         statusColor,
-        time: formatActivityTime(activity)
+        time: formatRelativeTime(activity.timestamp || activity.date)
       };
     }).sort((a, b) => {
       const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);

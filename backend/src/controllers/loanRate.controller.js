@@ -4,6 +4,40 @@ const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 
 /**
+ * Create default loan rates for a new lender (utility, not an Express handler)
+ * @param {ObjectId} userId - The user ID creating the lender (updatedBy)
+ * @param {ObjectId} lenderId - The newly created lender's ID
+ */
+exports.createDefaultLoanRates = async (userId, lenderId) => {
+  try {
+    if (!userId || !lenderId) {
+      throw new Error('userId and lenderId are required to create default loan rates');
+    }
+
+    // Define sensible default interest rates – adjust if business rules change
+    const defaultRates = [
+      { programType: 'conventional', rate: 6 },
+      { programType: 'fha', rate: 7 },
+      { programType: 'va', rate: 7 },
+      { programType: 'usda', rate: 7 },
+      { programType: 'jumbo', rate: 7 }
+    ];
+
+    // Build docs with lender / updatedBy metadata
+    const docs = defaultRates.map(r => ({
+      ...r,
+      lender: lenderId,
+      updatedBy: userId
+    }));
+
+    await LoanRate.insertMany(docs);
+    logger.info(`Created default loan rates for lender ID: ${lenderId}`);
+  } catch (error) {
+    logger.error(`Error creating default loan rates for lender ${lenderId}: ${error.message}`);
+  }
+};
+
+/**
  * Get all loan rates
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object

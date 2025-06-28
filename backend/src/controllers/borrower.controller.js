@@ -625,7 +625,7 @@ exports.getBorrowerActivities = async (req, res, next) => {
       documentStatusChanges = await AuditLog.find({
         $or: [
           {
-        entityType: 'document',
+            entityType: 'document',
             eventType: { $in: ['document:approved', 'document:rejected', 'document:need_correction', 'document:status-changed'] },
             'metadata.borrowerId': borrower._id
           },
@@ -641,11 +641,25 @@ exports.getBorrowerActivities = async (req, res, next) => {
       .limit(20)
       .lean();
       
+      // Make a set of loan IDs for quick checking if a loan exists
+      const loanIdSet = new Set(loans.map(loan => loan._id.toString()));
+      const loanNumberSet = new Set(loans.map(loan => loan.loanNumber).filter(Boolean));
+      
       documentStatusChanges.forEach(log => {
         if (!log.metadata) return;
         
         const { documentId, documentName, loanId, loanNumber, oldStatus, newStatus } = log.metadata;
         if (!documentId && !documentName) return;
+        
+        // Check if this refers to an actual loan the borrower has
+        const loanExists = (loanId && loanIdSet.has(loanId.toString())) || 
+                          (loanNumber && loanNumberSet.has(loanNumber));
+        
+        // Skip notifications for loans that don't exist
+        if (loanId && !loanExists && loans.length > 0) {
+          console.log(`Skipping document status notification - loan not found: ${loanId}`);
+          return;
+        }
         
         // Determine the new status
         let statusValue = '';
@@ -1210,6 +1224,19 @@ exports.getBorrowerActivities = async (req, res, next) => {
     
     // Sort all activities by timestamp (most recent first)
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // Format time strings consistently
+    activities.forEach(activity => {
+      if (activity.timestamp) {
+        const timestamp = new Date(activity.timestamp);
+        
+        // Save ISO string for accurate sorting on frontend
+        activity.timestamp = timestamp.toISOString();
+        
+        // Also provide formatted time string
+        activity.time = timestamp.toLocaleString();
+      }
+    });
     
     // Apply pagination
     const paginatedActivities = activities.slice(0, limit);

@@ -4,6 +4,7 @@ const Lender = require('../models/lender.model');
 const ApiError = require('../utils/apiError');
 const { generateToken, generateRefreshToken } = require('../config/auth');
 const logger = require('../utils/logger');
+const { createDefaultLoanRates } = require('./loanRate.controller');
 const mongoose = require('mongoose');
 
 /**
@@ -43,8 +44,9 @@ exports.register = async (req, res, next) => {
         user: user._id
       });
       
-      // Create default loan programs for the new lender
+      // Create default loan programs and default loan rates for the new lender
       await exports.createDefaultLoanPrograms(user._id, lender._id);
+      await createDefaultLoanRates(user._id, lender._id);
     }
 
     // Generate tokens
