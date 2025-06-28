@@ -967,7 +967,7 @@ const loanSchema = new mongoose.Schema({
   },
   editingEnabled: {
     type: Boolean,
-    default: true
+    default: false
   },
   completionPercentage: {
     type: Number,

@@ -10,11 +10,11 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
   const [updating, setUpdating] = useState(false);
   
   const statusColors = {
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'approved': 'bg-green-100 text-green-800',
-    'rejected': 'bg-red-100 text-red-800',
-    'under_review': 'bg-blue-100 text-blue-800',
-    'funded': 'bg-purple-100 text-purple-800'
+    'pending': 'bg-yellow-50 text-yellow-800',
+    'approved': 'bg-green-50 text-green-800',
+    'rejected': 'bg-red-50 text-red-800',
+    'under_review': 'bg-blue-50 text-blue-800',
+    'funded': 'bg-purple-50 text-purple-800'
   };
   
   const formatDate = (dateString) => {
@@ -197,7 +197,7 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
                 disabled={updating || application.status === 'under_review'}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md ${
                   application.status === 'under_review'
-                    ? 'bg-blue-100 text-blue-800 cursor-default'
+                    ? 'bg-blue-50 text-blue-800 cursor-default'
                     : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -208,7 +208,7 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
                 disabled={updating || application.status === 'approved'}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md ${
                   application.status === 'approved'
-                    ? 'bg-green-100 text-green-800 cursor-default'
+                    ? 'bg-green-50 text-green-800 cursor-default'
                     : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -219,7 +219,7 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
                 disabled={updating || application.status === 'rejected'}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md ${
                   application.status === 'rejected'
-                    ? 'bg-red-100 text-red-800 cursor-default'
+                    ? 'bg-red-50 text-red-800 cursor-default'
                     : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -230,7 +230,7 @@ const LoanApplicationCard = ({ application, onStatusChange }) => {
                 disabled={updating || application.status === 'funded' || application.status === 'rejected'}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md ${
                   application.status === 'funded'
-                    ? 'bg-purple-100 text-purple-800 cursor-default'
+                    ? 'bg-purple-50 text-purple-800 cursor-default'
                     : application.status === 'rejected'
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
