@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import toast from 'react-hot-toast';
 import AnalyticsService from '../../services/analytics.service';
-import LenderLayout from '../../components/layouts/LenderLayout';
+import LenderLayout from '../../components/layout/LenderLayout';
 import ReportSummary from '../../components/analytics/ReportSummary';
 import LoanPipelineChart from '../../components/analytics/LoanPipelineChart';
 import LoanDistributionChart from '../../components/analytics/LoanDistributionChart';
