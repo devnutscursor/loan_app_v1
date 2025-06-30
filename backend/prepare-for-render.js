@@ -32,16 +32,19 @@ if (!process.env.MONGODB_URI) {
 
 console.log('\n✅ Backend is ready for Render deployment!');
 console.log('\n🔗 Deployment steps:');
-console.log('1. Create a new Web Service in Render dashboard');
-console.log('2. Connect your GitHub repository');
-console.log('3. Configure with these settings:');
+console.log('1. Push your repository to GitHub');
+console.log('2. Create a new Web Service in Render dashboard');
+console.log('3. Connect your GitHub repository');
+console.log('4. Configure with these settings:');
 console.log('   - Name: loan-app-backend');
 console.log('   - Build Command: npm install');
 console.log('   - Start Command: npm start');
-console.log('4. Add environment variables:');
+console.log('5. Add environment variables:');
 console.log('   - NODE_ENV: production');
 console.log('   - PORT: 10000');
 console.log('   - MONGODB_URI: (your MongoDB connection string)');
 console.log('   - JWT_SECRET: (generate a secure string)');
-console.log('   - FRONTEND_URL: (your Vercel frontend URL)');
-console.log('   - USE_S3: false'); 
+console.log('   - FRONTEND_URL: https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app');
+console.log('   - USE_S3: false');
+console.log('\n6. Once deployed, update the frontend Vercel env variable:');
+console.log('   - NEXT_PUBLIC_API_URL: https://your-render-backend-url.onrender.com'); 

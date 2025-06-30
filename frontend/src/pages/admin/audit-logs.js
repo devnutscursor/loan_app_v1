@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { AuditLogService } from '../../services';
-import AdminLayout from '../../components/layouts/AdminLayout';
+import AdminLayout from '../../components/layout/AdminLayout';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Event type options for filtering

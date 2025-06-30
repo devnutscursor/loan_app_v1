@@ -3,6 +3,7 @@ services:
     name: loan-app-backend
     env: node
     plan: free
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -13,6 +14,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://loan-app-system.vercel.app
+        value: https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app
       - key: USE_S3
         value: false 
