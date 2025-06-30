@@ -2,7 +2,7 @@ const Borrower = require('../models/borrower.model');
 const Document = require('../models/document.model');
 const Loan = require('../models/loan.model');
 const User = require('../models/user.model');
-const ApiError = require('../utils/ApiError');
+const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 const emailService = require('../utils/email/emailService');
 
