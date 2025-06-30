@@ -203,13 +203,35 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                           </Link>
                         )}
                         
-                        <Link 
-                          href="/profile" 
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          Your Profile
-                        </Link>
+                        {user.role === 'borrower' && (
+                          <Link 
+                            href="/borrower/profile" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Your Profile
+                          </Link>
+                        )}
+                        
+                        {user.role === 'lender' && (
+                          <Link 
+                            href="/lender/profile" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Your Profile
+                          </Link>
+                        )}
+                        
+                        {user.role === 'admin' && (
+                          <Link 
+                            href="/admin/dashboard" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Your Profile
+                          </Link>
+                        )}
                         
                         {/* <Link 
                           href="/settings" 
