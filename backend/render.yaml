@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: loan-app-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://loan-app-system.vercel.app
+      - key: USE_S3
+        value: false 

@@ -40,10 +40,12 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = socketIo(server, {
   cors: {
-    origin: ['http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean),
+    origin: process.env.NODE_ENV === 'production'
+      ? [process.env.FRONTEND_URL, 'https://loan-app-system.vercel.app']
+      : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false
+    credentials: true
   }
 });
 
