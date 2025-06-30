@@ -9,6 +9,9 @@ const xml2js = require('xml2js');
 const fs = require('fs');
 const path = require('path');
 
+// Check if we should use S3 or local storage
+const USE_S3 = process.env.USE_S3 === 'true' || false;
+
 /**
  * Remove a document from a loan application
  * @param {Object} req - Express request object
@@ -2225,8 +2228,6 @@ exports.createLoanData = async (req, res, next) => {
       loanDetailsData.currentLoanBalance =
         parseFloat(loanDetails?.currentLoanBalance) || 0;
       loanDetailsData.requestedLoanAmount =
-       
-
         parseFloat(loanDetails?.requestedLoanAmount) || 0;
       loanDetailsData.refinanceType = loanDetails?.refinanceType || "Refinance";
     } else if (loanDetails?.loanType === "Construction") {
@@ -2423,14 +2424,45 @@ exports.importFromXML = async (req, res, next) => {
       return next(new ApiError("No XML file uploaded", 400));
     }
 
+    // Log file information to help debug
+    logger.info(`Processing XML file: ${JSON.stringify({
+      filename: req.file.originalname,
+      path: req.file.path,
+      s3Key: req.file.key,
+      s3Bucket: req.file.bucket,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    })}`);
+
+    // Validate file for both S3 and local storage
+    const USE_S3 = process.env.USE_S3 === 'true' || false;
+    
+    // For S3 storage, we need key and bucket (or buffer)
+    // For local storage, we need path
+    if (USE_S3 && !req.file.key && !req.file.buffer) {
+      return next(new ApiError(`Missing S3 file key or buffer`, 400));
+    } else if (!USE_S3 && (!req.file.path || !fs.existsSync(req.file.path))) {
+      return next(new ApiError(`Invalid file path: ${req.file.path}`, 400));
+    }
+
     // Validate file type
     if (!req.file.originalname.toLowerCase().endsWith('.xml')) {
       return next(new ApiError("Please upload an XML file", 400));
     }
 
     // Read and parse XML file
-    const xmlContent = fs.readFileSync(req.file.path, 'utf8');
-    
+    let xmlContent;
+
+    try {
+      const { readFile } = require('../services/s3.service');
+      const fileBuffer = await readFile(req.file);
+      xmlContent = fileBuffer.toString('utf8');
+      logger.info('Successfully read XML file content');
+    } catch (readError) {
+      logger.error('Error reading XML file:', readError);
+      return next(new ApiError(`Failed to read XML file: ${readError.message}`, 500));
+    }
+
     const parser = new xml2js.Parser({ 
       explicitArray: false,
       mergeAttrs: true,
@@ -2458,41 +2490,192 @@ exports.importFromXML = async (req, res, next) => {
       lenderId = req.body.lenderId;
     } else {
       return next(new ApiError("Only lenders and admins can import XML loans", 403));
-    }    // Create or find borrower
-    let borrower = await Borrower.findOne({ 
-      email: extractedData.borrowerDetails.email 
-    });
+    }
 
-    if (!borrower) {
-      // Generate a temporary password for XML imported users
-      const bcrypt = require('bcryptjs');
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    // Handle borrower selection from frontend
+    let borrower;
+    
+    // If a specific borrower ID was provided, use that
+    if (req.body.borrowerId) {
+      borrower = await Borrower.findById(req.body.borrowerId);
+      
+      if (!borrower) {
+        return next(new ApiError("Selected borrower not found", 404));
+      }
+      
+      // Log that we're using an existing borrower
+      logger.info(`Using existing borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
+    }
+    // If explicitly requested to create a new borrower
+    else if (req.body.createNewBorrower === 'true') {
+      // Parse borrower data if provided
+      let borrowerData = extractedData.borrowerDetails;
+      if (req.body.borrowerData) {
+        try {
+          const providedData = JSON.parse(req.body.borrowerData);
+          // Merge provided data with extracted data, preferring provided data
+          borrowerData = { ...borrowerData, ...providedData };
+        } catch (error) {
+          logger.error('Error parsing borrower data JSON:', error);
+        }
+      }
+      
+      // First check if a user with this email already exists
+      let existingUser = null;
+      if (borrowerData.email) {
+        existingUser = await User.findOne({ email: borrowerData.email });
+        if (existingUser) {
+          logger.info(`User with email ${borrowerData.email} already exists. Using existing user.`);
+          
+          // Check if this user already has a borrower profile
+          borrower = await Borrower.findOne({ user: existingUser._id });
+          
+          if (borrower) {
+            logger.info(`Existing borrower found for user ${existingUser._id}. Using existing borrower.`);
+            return next(new ApiError(`A borrower with email ${borrowerData.email} already exists. Please select that borrower instead of creating a new one.`, 400));
+          }
+        }
+      }
 
-      // Create new borrower
-      const newUser = new User({
-        email: extractedData.borrowerDetails.email || `imported.${Date.now()}@example.com`,
-        firstName: extractedData.borrowerDetails.firstName || 'Unknown',
-        lastName: extractedData.borrowerDetails.lastName || 'User',
-        password: hashedPassword,
-        role: 'borrower',
-        isEmailVerified: false,
-        isImportedFromXML: true // Flag to identify XML imports
-      });
-      await newUser.save();      borrower = new Borrower({
-        user: newUser._id,
+      // If no existing user, create a new one
+      if (!existingUser) {
+        // Generate a temporary password for XML imported users
+        const bcrypt = require('bcryptjs');
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+        // Create new user with a unique email if needed
+        const newUser = new User({
+          email: borrowerData.email || `imported.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@example.com`,
+          firstName: borrowerData.firstName || 'Unknown',
+          lastName: borrowerData.lastName || 'User',
+          password: hashedPassword,
+          role: 'borrower',
+          isEmailVerified: false,
+          isImportedFromXML: true // Flag to identify XML imports
+        });
+        
+        try {
+          await newUser.save();
+          existingUser = newUser;
+        } catch (userError) {
+          logger.error('Error creating user:', userError);
+          return next(new ApiError(`Failed to create user: ${userError.message}`, 400));
+        }
+      }
+      
+      // Validate date fields before saving
+      let dateOfBirth = null;
+      if (borrowerData.dateOfBirth) {
+        try {
+          const parsedDate = new Date(borrowerData.dateOfBirth);
+          dateOfBirth = isNaN(parsedDate.getTime()) ? null : parsedDate;
+        } catch (dateError) {
+          logger.warn(`Invalid date format for dateOfBirth: ${borrowerData.dateOfBirth}`);
+          dateOfBirth = null;
+        }
+      }
+      
+      // Create the borrower record
+      borrower = new Borrower({
+        user: existingUser._id,
         lender: lenderId,
-        firstName: extractedData.borrowerDetails.firstName || 'Unknown',
-        lastName: extractedData.borrowerDetails.lastName || 'User',
-        email: extractedData.borrowerDetails.email || `imported.${Date.now()}@example.com`,
-        phone: extractedData.borrowerDetails.phone || '',
-        dateOfBirth: extractedData.borrowerDetails.dateOfBirth ? 
-          new Date(extractedData.borrowerDetails.dateOfBirth) : null,
-        ssn: extractedData.borrowerDetails.ssn || '',
-        maritalStatus: mapMaritalStatus(extractedData.borrowerDetails.maritalStatus),
-        dependents: extractedData.borrowerDetails.dependentCount || 0
+        firstName: borrowerData.firstName || 'Unknown',
+        lastName: borrowerData.lastName || 'User',
+        email: borrowerData.email || existingUser.email,
+        phone: borrowerData.phone || '',
+        dateOfBirth: dateOfBirth,
+        ssn: borrowerData.ssn || '',
+        maritalStatus: mapMaritalStatus(borrowerData.maritalStatus),
+        dependents: borrowerData.dependentCount || 0
       });
-      await borrower.save();
+      
+      try {
+        await borrower.save();
+        logger.info(`Created new borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
+      } catch (borrowerError) {
+        logger.error('Error creating borrower:', borrowerError);
+        return next(new ApiError(`Failed to create borrower: ${borrowerError.message}`, 400));
+      }
+    }
+    // If no selection was made, try to find matching borrower by email
+    else {
+      borrower = await Borrower.findOne({ 
+        email: extractedData.borrowerDetails.email,
+        lender: lenderId 
+      });
+      
+      // If no matching borrower found, create a new one
+      if (!borrower) {
+        // Check if user with email exists already
+        let existingUser = null;
+        if (extractedData.borrowerDetails.email) {
+          existingUser = await User.findOne({ email: extractedData.borrowerDetails.email });
+        }
+        
+        if (!existingUser) {
+          // Generate a temporary password for XML imported users
+          const bcrypt = require('bcryptjs');
+          const tempPassword = Math.random().toString(36).slice(-8);
+          const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+          // Create new user with a unique email
+          const newUser = new User({
+            email: extractedData.borrowerDetails.email || `imported.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@example.com`,
+            firstName: extractedData.borrowerDetails.firstName || 'Unknown',
+            lastName: extractedData.borrowerDetails.lastName || 'User',
+            password: hashedPassword,
+            role: 'borrower',
+            isEmailVerified: false,
+            isImportedFromXML: true // Flag to identify XML imports
+          });
+          
+          try {
+            await newUser.save();
+            existingUser = newUser;
+          } catch (userError) {
+            logger.error('Error creating user:', userError);
+            return next(new ApiError(`Failed to create user: ${userError.message}`, 400));
+          }
+        } else {
+          logger.info(`Using existing user with email ${existingUser.email} for XML import`);
+        }
+        
+        // Validate date fields before saving
+        let dateOfBirth = null;
+        if (extractedData.borrowerDetails.dateOfBirth) {
+          try {
+            const parsedDate = new Date(extractedData.borrowerDetails.dateOfBirth);
+            dateOfBirth = isNaN(parsedDate.getTime()) ? null : parsedDate;
+          } catch (dateError) {
+            logger.warn(`Invalid date format for dateOfBirth: ${extractedData.borrowerDetails.dateOfBirth}`);
+            dateOfBirth = null;
+          }
+        }
+        
+        borrower = new Borrower({
+          user: existingUser._id,
+          lender: lenderId,
+          firstName: extractedData.borrowerDetails.firstName || 'Unknown',
+          lastName: extractedData.borrowerDetails.lastName || 'User',
+          email: extractedData.borrowerDetails.email || existingUser.email,
+          phone: extractedData.borrowerDetails.phone || '',
+          dateOfBirth: dateOfBirth,
+          ssn: extractedData.borrowerDetails.ssn || '',
+          maritalStatus: mapMaritalStatus(extractedData.borrowerDetails.maritalStatus),
+          dependents: extractedData.borrowerDetails.dependentCount || 0
+        });
+        
+        try {
+          await borrower.save();
+          logger.info(`Created new borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id} (no matching email found)`);
+        } catch (borrowerError) {
+          logger.error('Error creating borrower:', borrowerError);
+          return next(new ApiError(`Failed to create borrower: ${borrowerError.message}`, 400));
+        }
+      } else {
+        logger.info(`Found matching borrower by email (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
+      }
     }
 
     // Create loan with extracted data
@@ -2531,12 +2714,21 @@ exports.importFromXML = async (req, res, next) => {
       
       // Store original filename for reference
       originalXMLFile: req.file.originalname,
+      // If using S3, store the S3 key for reference
+      s3Key: req.file.key,
+      s3Bucket: req.file.bucket
     });
 
     await newLoan.save();
 
-    // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
+    // Clean up uploaded file only if it's a local file
+    if (req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {
+      logger.info(`Removing temporary file: ${req.file.path}`);
+      fs.unlinkSync(req.file.path);
+    } else if (USE_S3) {
+      // For S3 uploads, we don't need to delete the file as it serves as a backup
+      logger.info(`S3 file preserved as backup`);
+    }
 
     logger.info(`Loan imported from XML by user: ${req.user._id}, loan ID: ${newLoan._id}`);
 
@@ -2547,8 +2739,9 @@ exports.importFromXML = async (req, res, next) => {
     });
 
   } catch (error) {
-    // Clean up uploaded file on error
-    if (req.file && fs.existsSync(req.file.path)) {
+    // Clean up uploaded file on error, but only for local files
+    if (req.file && req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {
+      logger.info(`Removing temporary file due to error: ${req.file.path}`);
       fs.unlinkSync(req.file.path);
     }
     
@@ -2993,6 +3186,123 @@ exports.updateLoanStatus = async (req, res, next) => {
       },
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Send a pre-approval letter to the borrower
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.sendPreApprovalLetter = async (req, res, next) => {
+  try {
+    const { loanId } = req.params;
+    
+    // Find the loan with borrower and lender details
+    const loan = await Loan.findById(loanId)
+      .populate({
+        path: 'borrower',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName email'
+        }
+      })
+      .populate({
+        path: 'lender',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName email phone'
+        }
+      });
+
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    // Check permissions - only lenders and admins can send pre-approval letters
+    if (req.user.role !== "lender" && req.user.role !== "admin") {
+      return next(new ApiError("You are not authorized to send pre-approval letters", 403));
+    }
+
+    // If lender, ensure they own this loan
+    if (req.user.role === "lender") {
+      const lender = await Lender.findOne({ user: req.user._id });
+      if (!lender || !loan.lender.equals(lender._id)) {
+        return next(new ApiError("You are not authorized to access this loan", 403));
+      }
+    }
+
+    // Ensure borrower has an email
+    if (!loan.borrower || !loan.borrower.user || !loan.borrower.user.email) {
+      return next(new ApiError("Borrower email not found", 400));
+    }
+
+    // Get the borrower's email and name
+    const borrowerEmail = loan.borrower.user.email;
+    const borrowerName = `${loan.borrower.firstName || loan.borrower.user.firstName || ''} ${loan.borrower.lastName || loan.borrower.user.lastName || ''}`.trim();
+    
+    // Get lender information
+    const lenderName = loan.lender?.companyName || 'Our Lending Company';
+    const loanOfficerName = `${loan.lender?.user?.firstName || ''} ${loan.lender?.user?.lastName || ''}`.trim() || 'Your Loan Officer';
+    const loanOfficerEmail = loan.lender?.user?.email || req.user.email || '';
+    const loanOfficerPhone = loan.lender?.user?.phone || loan.lender?.phone || '';
+
+    // Set approval date and expiration date (90 days from now)
+    const approvalDate = new Date();
+    const expirationDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days from now
+
+    // Get loan details
+    const loanAmount = loan.loanDetails?.loanAmount || loan.loanDetails?.requestedLoanAmount || 0;
+    const loanType = loan.loanDetails?.loanType || 'Mortgage';
+    
+    // Import email service
+    const emailService = require('../utils/email/emailService');
+    
+    // Send pre-approval letter
+    const emailResult = await emailService.sendPreApprovalLetter({
+      email: borrowerEmail,
+      borrowerName,
+      loanNumber: loan.loanNumber,
+      loanAmount,
+      loanType,
+      lenderName,
+      loanOfficerName,
+      loanOfficerEmail,
+      loanOfficerPhone,
+      approvalDate,
+      expirationDate
+    });
+
+    if (!emailResult.success) {
+      return next(new ApiError(`Failed to send pre-approval letter: ${emailResult.error}`, 500));
+    }
+
+    // Update loan status to 'Conditional Approval' if not already approved
+    if (!['Approved', 'Conditional Approval', 'Clear to Close', 'Funded', 'Closed'].includes(loan.status)) {
+      loan.status = 'Conditional Approval';
+      await loan.save();
+      
+      // Log the status change
+      logger.info(`Loan ${loan.loanNumber} status updated to Conditional Approval after sending pre-approval letter`);
+    }
+
+    // Log the pre-approval letter sending
+    logger.info(`Pre-approval letter sent for loan ${loan.loanNumber} to ${borrowerEmail}`);
+
+    // Return success response
+    res.status(200).json({
+      status: 'success',
+      message: 'Pre-approval letter sent successfully',
+      data: {
+        sentTo: borrowerEmail,
+        loanNumber: loan.loanNumber,
+        loanStatus: loan.status
+      }
+    });
+  } catch (error) {
+    logger.error('Error sending pre-approval letter:', error);
     next(error);
   }
 };

@@ -4,22 +4,23 @@ const fs = require('fs');
 const crypto = require('crypto');
 const ApiError = require('../utils/apiError');
 const { uploadSingleToS3, uploadArrayToS3 } = require('../services/s3.service');
+const logger = require('../utils/logger');
 
-// Check if we should use S3 or local storage
+// Check if we should use S3 or local storage - get directly from env
 const USE_S3 = process.env.USE_S3 === 'true' || false;
 
 if (USE_S3) {
-  console.log('Using AWS S3 for file storage');
+  logger.info('Using AWS S3 for file storage');
 } else {
-  console.log('Using local file storage');
+  logger.info('Using local file storage');
   
   // Create uploads directory if it doesn't exist (for local storage)
   const uploadDir = path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`Created uploads directory at: ${uploadDir}`);
+    logger.info(`Created uploads directory at: ${uploadDir}`);
   } else {
-    console.log(`Using existing uploads directory at: ${uploadDir}`);
+    logger.info(`Using existing uploads directory at: ${uploadDir}`);
   }
 }
 
@@ -63,12 +64,12 @@ const storage = USE_S3 ? multer.memoryStorage() : multer.diskStorage({
 
 // File filter function
 const fileFilter = (req, file, cb) => {
-  console.log(`Processing file: ${file.originalname}, mimetype: ${file.mimetype}`);
+  logger.info(`Processing file: ${file.originalname}, mimetype: ${file.mimetype}`);
   
   if (ALLOWED_FILE_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    console.warn(`Rejected file: ${file.originalname}, mimetype: ${file.mimetype}`);
+    logger.warn(`Rejected file: ${file.originalname}, mimetype: ${file.mimetype}`);
     // Accept the file but log a warning - this is more permissive for testing
     cb(null, true);
     // In production, use this instead:
@@ -95,7 +96,7 @@ const uploadWithErrorHandling = {
     return (req, res, next) => {
       upload.array(fieldName, maxCount)(req, res, (err) => {
         if (err) {
-          console.error('File upload error:', err);
+          logger.error('File upload error:', err);
           if (err instanceof multer.MulterError) {
             return next(new ApiError(`File upload error: ${err.message}`, 400));
           }
@@ -123,16 +124,34 @@ const uploadWithErrorHandling = {
     return (req, res, next) => {
       upload.single(fieldName)(req, res, (err) => {
         if (err) {
-          console.error('File upload error:', err);
+          logger.error('File upload error:', err);
           if (err instanceof multer.MulterError) {
             return next(new ApiError(`File upload error: ${err.message}`, 400));
           }
           return next(err);
         }
         
-        // Add local file URL for compatibility
+        // Enhanced logging for debugging file upload issues
         if (req.file) {
+          logger.info(`File uploaded: ${JSON.stringify({
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            path: req.file.path,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+          })}`);
+          
+          // Add local file URL for compatibility
           req.file.url = `/uploads/${req.file.filename}`;
+          
+          // Ensure path is valid for XML processing
+          if (!req.file.path) {
+            // If somehow path is missing, set it explicitly
+            req.file.path = path.join(process.cwd(), 'uploads', req.file.filename);
+            logger.info(`File path was missing, set to: ${req.file.path}`);
+          }
+        } else {
+          logger.info(`No file uploaded for field: ${fieldName}`);
         }
         
         next();

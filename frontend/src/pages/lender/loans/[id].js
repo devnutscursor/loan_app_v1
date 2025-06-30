@@ -5,6 +5,7 @@ import Link from "next/link";
 import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
 import { lenderService } from "../../../services/api";
+import loanService from "../../../services/loan.service";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
 import { MessageCircle, StickyNote, Download, Settings } from "lucide-react";
 import {  StandardFonts } from 'pdf-lib';
@@ -2587,6 +2588,35 @@ const LoanDetails = () => {
     });
   }, [hasUnsavedChanges, activeTab]);
 
+  const handleSendPreApprovalLetter = async () => {
+    try {
+      // Show loading toast
+      const loadingToastId = toast.loading('Sending pre-approval letter...');
+      
+      // Use the loan service to send the pre-approval letter
+      const result = await loanService.sendPreApprovalLetter(id);
+      
+      // Dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
+      if (result.success) {
+        // Show success toast
+        toast.success('Pre-approval letter sent successfully!');
+        
+        // If the loan status was updated, refresh the loan details
+        if (result.data?.data?.loanStatus !== loan.status) {
+          fetchLoanDetails();
+        }
+      } else {
+        // Show error toast
+        toast.error(`Failed to send pre-approval letter: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error sending pre-approval letter:', error);
+      toast.error('Failed to send pre-approval letter. Please try again.');
+    }
+  };
+
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
       <MainLayout>
@@ -2866,9 +2896,7 @@ const LoanDetails = () => {
                       </button>
 
                       <button
-                        onClick={() =>
-                          toast.success("Pre-approval letter sent to borrower")
-                        }
+                        onClick={handleSendPreApprovalLetter}
                         className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
                       >
                         <svg

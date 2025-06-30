@@ -33,6 +33,9 @@ router.put('/:id', loanController.updateLoan);
 // Update loan status and processing state - lender/admin only
 router.patch('/:id/status', loanController.updateLoanStatus);
 
+// Send pre-approval letter - lender/admin only
+router.post('/:loanId/send-pre-approval', authorize('lender', 'admin'), loanController.sendPreApprovalLetter);
+
 // Manage loan milestones - lender/admin only
 router.patch('/:id/milestone', loanController.updateMilestone);
 

@@ -107,6 +107,150 @@ class EmailService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Send a pre-approval letter email to a borrower
+   * @param {Object} options - The pre-approval options
+   * @param {string} options.email - The borrower's email address
+   * @param {string} options.borrowerName - The borrower's full name
+   * @param {string} options.loanNumber - The loan number
+   * @param {number} options.loanAmount - The approved loan amount
+   * @param {string} options.loanType - The type of loan (Purchase, Refinance, etc.)
+   * @param {string} options.lenderName - The name of the lending institution
+   * @param {string} options.loanOfficerName - The name of the loan officer
+   * @param {string} options.loanOfficerEmail - The email of the loan officer
+   * @param {string} options.loanOfficerPhone - The phone number of the loan officer
+   * @param {Date} options.approvalDate - The date of approval
+   * @param {Date} options.expirationDate - The expiration date of the pre-approval
+   * @returns {Promise<Object>} - The result of sending the email
+   */
+  async sendPreApprovalLetter(options) {
+    try {
+      const { 
+        email, 
+        borrowerName, 
+        loanNumber, 
+        loanAmount, 
+        loanType,
+        lenderName,
+        loanOfficerName,
+        loanOfficerEmail,
+        loanOfficerPhone,
+        approvalDate,
+        expirationDate
+      } = options;
+      
+      // Format dates
+      const formattedApprovalDate = new Date(approvalDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      const formattedExpirationDate = new Date(expirationDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Format loan amount
+      const formattedLoanAmount = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(loanAmount);
+      
+      // Create email content
+      const subject = `Pre-Approval Letter for Loan #${loanNumber}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #2563eb; margin: 0;">Pre-Approval Letter</h1>
+            <p style="color: #64748b; font-size: 14px;">Loan #${loanNumber}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${formattedApprovalDate}</p>
+            <p style="margin: 5px 0;"><strong>Borrower:</strong> ${borrowerName}</p>
+          </div>
+          
+          <div style="margin-bottom: 30px;">
+            <p>Dear ${borrowerName.split(' ')[0] || 'Borrower'},</p>
+            
+            <p>Congratulations! We are pleased to inform you that you have been pre-approved for a ${loanType} loan in the amount of ${formattedLoanAmount}.</p>
+            
+            <p>This pre-approval is based on the information you have provided and is subject to:</p>
+            <ul>
+              <li>Verification of the information provided in your application</li>
+              <li>Satisfactory property appraisal and title examination</li>
+              <li>No significant changes to your credit, employment, or financial situation</li>
+              <li>Final underwriting approval</li>
+            </ul>
+            
+            <p>This pre-approval is valid until <strong>${formattedExpirationDate}</strong>.</p>
+            
+            <p>Please note that this is not a commitment to lend and does not guarantee that you will receive a loan. A final loan approval will be issued once all verification processes are complete.</p>
+          </div>
+          
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; color: #334155;">Lender Information</h3>
+            <p style="margin: 5px 0;"><strong>Lending Institution:</strong> ${lenderName}</p>
+            <p style="margin: 5px 0;"><strong>Loan Officer:</strong> ${loanOfficerName}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${loanOfficerEmail}</p>
+            <p style="margin: 5px 0;"><strong>Phone:</strong> ${loanOfficerPhone}</p>
+          </div>
+          
+          <div style="font-size: 14px; color: #64748b; margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p>If you have any questions or need further assistance, please don't hesitate to contact your loan officer.</p>
+            <p>Thank you for choosing ${lenderName} for your mortgage needs.</p>
+          </div>
+        </div>
+      `;
+      
+      const text = `
+PRE-APPROVAL LETTER
+Loan #${loanNumber}
+
+Date: ${formattedApprovalDate}
+Borrower: ${borrowerName}
+
+Dear ${borrowerName.split(' ')[0] || 'Borrower'},
+
+Congratulations! We are pleased to inform you that you have been pre-approved for a ${loanType} loan in the amount of ${formattedLoanAmount}.
+
+This pre-approval is based on the information you have provided and is subject to:
+- Verification of the information provided in your application
+- Satisfactory property appraisal and title examination
+- No significant changes to your credit, employment, or financial situation
+- Final underwriting approval
+
+This pre-approval is valid until ${formattedExpirationDate}.
+
+Please note that this is not a commitment to lend and does not guarantee that you will receive a loan. A final loan approval will be issued once all verification processes are complete.
+
+LENDER INFORMATION
+Lending Institution: ${lenderName}
+Loan Officer: ${loanOfficerName}
+Email: ${loanOfficerEmail}
+Phone: ${loanOfficerPhone}
+
+If you have any questions or need further assistance, please don't hesitate to contact your loan officer.
+
+Thank you for choosing ${lenderName} for your mortgage needs.
+      `;
+      
+      return await this.sendEmail({
+        to: email,
+        subject,
+        html,
+        text
+      });
+    } catch (error) {
+      logger.error(`Failed to send pre-approval letter email`, { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

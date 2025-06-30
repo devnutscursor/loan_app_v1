@@ -95,6 +95,29 @@ class LoanService {
   }
   
   /**
+   * Send a pre-approval letter to the borrower
+   * @param {string} loanId - The ID of the loan
+   * @returns {Promise<Object>} Response with status of sending the pre-approval letter
+   */
+  async sendPreApprovalLetter(loanId) {
+    try {
+      const response = await ApiService.post(`/api/v1/loans/${loanId}/send-pre-approval`);
+      
+      return {
+        success: true,
+        data: response.data,
+        message: 'Pre-approval letter sent successfully'
+      };
+    } catch (error) {
+      console.error('Error sending pre-approval letter:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send pre-approval letter'
+      };
+    }
+  }
+  
+  /**
    * Save loan application as draft
    * @param {Object} draftData - Loan application draft data
    * @returns {Promise<Object>} Response with save status and draft details
