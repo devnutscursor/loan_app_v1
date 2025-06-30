@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: false,
+  withCredentials: true,  // Enable sending credentials with cross-origin requests
   timeout: 30000 // 30 seconds timeout
 });
 
