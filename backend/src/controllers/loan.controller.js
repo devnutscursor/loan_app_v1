@@ -2503,6 +2503,11 @@ exports.importFromXML = async (req, res, next) => {
         return next(new ApiError("Selected borrower not found", 404));
       }
       
+      // Verify the borrower belongs to this lender
+      if (!borrower.lender.equals(lenderId)) {
+        return next(new ApiError("Selected borrower does not belong to your organization", 403));
+      }
+      
       // Log that we're using an existing borrower
       logger.info(`Using existing borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
     }
@@ -2598,83 +2603,24 @@ exports.importFromXML = async (req, res, next) => {
         return next(new ApiError(`Failed to create borrower: ${borrowerError.message}`, 400));
       }
     }
-    // If no selection was made, try to find matching borrower by email
+    // If no selection was made, check if a borrower with matching email exists
     else {
-      borrower = await Borrower.findOne({ 
-        email: extractedData.borrowerDetails.email,
-        lender: lenderId 
-      });
-      
-      // If no matching borrower found, create a new one
-      if (!borrower) {
-        // Check if user with email exists already
-        let existingUser = null;
-        if (extractedData.borrowerDetails.email) {
-          existingUser = await User.findOne({ email: extractedData.borrowerDetails.email });
-        }
-        
-        if (!existingUser) {
-          // Generate a temporary password for XML imported users
-          const bcrypt = require('bcryptjs');
-          const tempPassword = Math.random().toString(36).slice(-8);
-          const hashedPassword = await bcrypt.hash(tempPassword, 12);
-
-          // Create new user with a unique email
-          const newUser = new User({
-            email: extractedData.borrowerDetails.email || `imported.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@example.com`,
-            firstName: extractedData.borrowerDetails.firstName || 'Unknown',
-            lastName: extractedData.borrowerDetails.lastName || 'User',
-            password: hashedPassword,
-            role: 'borrower',
-            isEmailVerified: false,
-            isImportedFromXML: true // Flag to identify XML imports
-          });
-          
-          try {
-            await newUser.save();
-            existingUser = newUser;
-          } catch (userError) {
-            logger.error('Error creating user:', userError);
-            return next(new ApiError(`Failed to create user: ${userError.message}`, 400));
-          }
-        } else {
-          logger.info(`Using existing user with email ${existingUser.email} for XML import`);
-        }
-        
-        // Validate date fields before saving
-        let dateOfBirth = null;
-        if (extractedData.borrowerDetails.dateOfBirth) {
-          try {
-            const parsedDate = new Date(extractedData.borrowerDetails.dateOfBirth);
-            dateOfBirth = isNaN(parsedDate.getTime()) ? null : parsedDate;
-          } catch (dateError) {
-            logger.warn(`Invalid date format for dateOfBirth: ${extractedData.borrowerDetails.dateOfBirth}`);
-            dateOfBirth = null;
-          }
-        }
-        
-        borrower = new Borrower({
-          user: existingUser._id,
-          lender: lenderId,
-          firstName: extractedData.borrowerDetails.firstName || 'Unknown',
-          lastName: extractedData.borrowerDetails.lastName || 'User',
-          email: extractedData.borrowerDetails.email || existingUser.email,
-          phone: extractedData.borrowerDetails.phone || '',
-          dateOfBirth: dateOfBirth,
-          ssn: extractedData.borrowerDetails.ssn || '',
-          maritalStatus: mapMaritalStatus(extractedData.borrowerDetails.maritalStatus),
-          dependents: extractedData.borrowerDetails.dependentCount || 0
+      // Check if borrower with email exists for this lender
+      if (extractedData.borrowerDetails.email) {
+        borrower = await Borrower.findOne({ 
+          email: extractedData.borrowerDetails.email,
+          lender: lenderId 
         });
         
-        try {
-          await borrower.save();
-          logger.info(`Created new borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id} (no matching email found)`);
-        } catch (borrowerError) {
-          logger.error('Error creating borrower:', borrowerError);
-          return next(new ApiError(`Failed to create borrower: ${borrowerError.message}`, 400));
+        if (borrower) {
+          logger.info(`Found matching borrower by email (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
+        } else {
+          // No matching borrower found - user must select or create one
+          return next(new ApiError("No borrower selected. Please select an existing borrower or create a new one.", 400));
         }
       } else {
-        logger.info(`Found matching borrower by email (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
+        // No email in XML data - user must select a borrower
+        return next(new ApiError("No borrower email found in XML. Please select a borrower to associate with this loan.", 400));
       }
     }
 

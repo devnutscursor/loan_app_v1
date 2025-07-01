@@ -408,90 +408,59 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       // EXACT EMAIL MATCH - Highest priority match
       if (borrowerDetails.email) {
         const emailMatches = allBorrowers.filter(b => 
-          b.email && borrowerDetails.email && 
-          b.email.toLowerCase() === borrowerDetails.email.toLowerCase()
+          (b.user?.email && borrowerDetails.email && 
+           b.user.email.toLowerCase() === borrowerDetails.email.toLowerCase()) ||
+          (b.email && borrowerDetails.email && 
+           b.email.toLowerCase() === borrowerDetails.email.toLowerCase())
         );
         
         if (emailMatches.length > 0) {
           console.log('Found exact email matches:', emailMatches.length);
-          setMatchingBorrowers(emailMatches);
-          setShowBorrowerSelection(true);
-          return;
+          console.log('Sample match structure:', JSON.stringify(emailMatches[0], null, 2));
+          
+          // If we have exactly one match, automatically select it
+          if (emailMatches.length === 1) {
+            const exactMatch = emailMatches[0];
+            
+            // Show success message
+            toast.success(`Found matching borrower: ${exactMatch.user?.firstName || ''} ${exactMatch.user?.lastName || ''}`, {
+              duration: 5000,
+            });
+            
+            // Directly proceed with this borrower
+            handleBorrowerSelected({
+              action: 'select',
+              borrowerId: exactMatch._id,
+              borrower: exactMatch
+            });
+            
+            return;
+          } else {
+            // Multiple matches with same email - let user choose
+            setMatchingBorrowers(emailMatches);
+            setShowBorrowerSelection(true);
+            return;
+          }
         }
       }
       
-      // FULL NAME MATCH - Second priority
-      if (borrowerDetails.firstName && borrowerDetails.lastName) {
-        const nameMatches = allBorrowers.filter(b => 
-          b.firstName && b.lastName && 
-          borrowerDetails.firstName && borrowerDetails.lastName &&
-          b.firstName.toLowerCase() === borrowerDetails.firstName.toLowerCase() && 
-          b.lastName.toLowerCase() === borrowerDetails.lastName.toLowerCase()
-        );
-        
-        if (nameMatches.length > 0) {
-          console.log('Found full name matches:', nameMatches.length);
-          setMatchingBorrowers(nameMatches);
-          setShowBorrowerSelection(true);
-          return;
-        }
-      }
+      // No exact email match - show all borrowers
+      console.log('No exact email match found, showing all borrowers');
       
-      // PARTIAL NAME AND PHONE/EMAIL MATCH - Third priority
-      const partialMatches = allBorrowers.filter(b => {
-        // First name match with email or phone
-        if (borrowerDetails.firstName && b.firstName && 
-            borrowerDetails.firstName.toLowerCase() === b.firstName.toLowerCase()) {
-          // With matching email
-          if (borrowerDetails.email && b.email && 
-              borrowerDetails.email.toLowerCase() === b.email.toLowerCase()) {
-            return true;
-          }
-          
-          // With matching phone (remove non-digits for comparison)
-          if (borrowerDetails.phone && b.phone) {
-            const cleanBorrowerPhone = borrowerDetails.phone.replace(/\D/g, '');
-            const cleanExistingPhone = b.phone.replace(/\D/g, '');
-            if (cleanBorrowerPhone && cleanExistingPhone && 
-                cleanBorrowerPhone === cleanExistingPhone) {
-              return true;
-            }
-          }
-        }
-        
-        // Last name match with email or phone
-        if (borrowerDetails.lastName && b.lastName && 
-            borrowerDetails.lastName.toLowerCase() === b.lastName.toLowerCase()) {
-          // With matching email
-          if (borrowerDetails.email && b.email && 
-              borrowerDetails.email.toLowerCase() === b.email.toLowerCase()) {
-            return true;
-          }
-          
-          // With matching phone (remove non-digits for comparison)
-          if (borrowerDetails.phone && b.phone) {
-            const cleanBorrowerPhone = borrowerDetails.phone.replace(/\D/g, '');
-            const cleanExistingPhone = b.phone.replace(/\D/g, '');
-            if (cleanBorrowerPhone && cleanExistingPhone && 
-                cleanBorrowerPhone === cleanExistingPhone) {
-              return true;
-            }
-          }
-        }
-        
-        return false;
+      // Show toast notification
+      toast('No exact email match found. Please select an existing borrower or create a new one.', {
+        icon: 'ℹ️',
+        style: {
+          borderRadius: '10px',
+          background: '#EFF6FF',
+          color: '#1E40AF',
+          border: '1px solid #DBEAFE',
+        },
+        duration: 5000,
       });
       
-      if (partialMatches.length > 0) {
-        console.log('Found partial matches:', partialMatches.length);
-        setMatchingBorrowers(partialMatches);
-        setShowBorrowerSelection(true);
-        return;
-      }
-      
-      // If making it to this point, show all borrowers but highlight there were no exact matches
-      console.log('No exact matches found, showing all borrowers');
-      setMatchingBorrowers([]);
+      // Show all borrowers in the selection modal
+      setMatchingBorrowers(allBorrowers);
       setShowBorrowerSelection(true);
     } catch (error) {
       console.error('Error checking for matching borrowers:', error);
@@ -548,7 +517,7 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
 
   const handleBorrowerSelected = async (borrowerSelection) => {
     try {
-      console.log('Borrower selection:', borrowerSelection);
+      console.log('Borrower selection:', JSON.stringify(borrowerSelection, null, 2));
       setIsCreatingLoan(true);
       setShowBorrowerSelection(false);
       
@@ -580,6 +549,17 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       if (borrowerSelection.action === 'select') {
         formData.append('borrowerId', borrowerSelection.borrowerId);
         formData.append('createNewBorrower', 'false');
+        
+        // Show success toast with borrower name if available
+        if (borrowerSelection.borrower) {
+          // Get borrower name from user object or directly from borrower
+          const firstName = borrowerSelection.borrower.user?.firstName || borrowerSelection.borrower.firstName || '';
+          const lastName = borrowerSelection.borrower.user?.lastName || borrowerSelection.borrower.lastName || '';
+          const email = borrowerSelection.borrower.user?.email || borrowerSelection.borrower.email || '';
+          
+          const borrowerName = `${firstName} ${lastName}`.trim();
+          toast.success(`Associating loan with borrower: ${borrowerName || email || 'Selected borrower'}`);
+        }
       }
 
       // Get the API base URL
@@ -882,10 +862,13 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       {/* Borrower Selection Modal */}
       <BorrowerSelectionModal
         isOpen={showBorrowerSelection}
-        onClose={() => setShowBorrowerSelection(false)}
+        onClose={() => {
+          setShowBorrowerSelection(false);
+          resetUpload();
+        }}
         onBorrowerSelected={handleBorrowerSelected}
+        initialBorrowers={matchingBorrowers}
         borrowerDataFromXml={parsedData?.borrowerDetails}
-        initialBorrowers={Array.isArray(matchingBorrowers) ? matchingBorrowers : []}
       />
       
       {/* Referral Link Modal */}

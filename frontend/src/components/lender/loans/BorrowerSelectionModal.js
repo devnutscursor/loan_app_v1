@@ -13,10 +13,13 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
 
   useEffect(() => {
     if (isOpen) {
+      // Reset selection when modal opens
+      setSelectedBorrowerId(null);
+      
       // If initialBorrowers are provided and not empty, use them (pre-filtered matches)
       if (initialBorrowers && Array.isArray(initialBorrowers) && initialBorrowers.length > 0) {
-        console.log('Using initial borrowers:', initialBorrowers);
-        console.log('Sample borrower object:', initialBorrowers[0]);
+        console.log('Using initial borrowers:', initialBorrowers.length);
+        console.log('Sample borrower object structure:', JSON.stringify(initialBorrowers[0], null, 2));
         setBorrowers(initialBorrowers);
         setLoading(false);
         
@@ -41,6 +44,7 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
       const token = localStorage.getItem('token');
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       
+      console.log('Fetching borrowers from API endpoint...');
       const response = await axios.get(
         `${API_URL}/api/v1/lenders/borrowers`, 
         { headers: { Authorization: `Bearer ${token}` } }
@@ -48,9 +52,11 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
 
       if (response.data.status === 'success') {
         const borrowerList = response.data.data || [];
-        console.log('Fetched borrowers:', borrowerList);
+        console.log('Fetched borrowers:', borrowerList.length);
         if (borrowerList.length > 0) {
-          console.log('Sample fetched borrower:', borrowerList[0]);
+          console.log('Sample fetched borrower structure:', JSON.stringify(borrowerList[0], null, 2));
+        } else {
+          console.log('No borrowers found in API response');
         }
         
         setBorrowers(borrowerList);
@@ -58,7 +64,10 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
         // Check if there's a matching borrower in the list
         if (borrowerDataFromXml && borrowerDataFromXml.email) {
           const match = borrowerList.find(
-            b => b.email && b.email.toLowerCase() === borrowerDataFromXml.email.toLowerCase()
+            b => (b.user?.email && borrowerDataFromXml.email && 
+                 b.user.email.toLowerCase() === borrowerDataFromXml.email.toLowerCase()) ||
+                 (b.email && borrowerDataFromXml.email && 
+                 b.email.toLowerCase() === borrowerDataFromXml.email.toLowerCase())
           );
           
           if (match) {
@@ -83,15 +92,18 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
   const filteredBorrowers = borrowers.filter(borrower => {
     if (!borrower) return false;
     
-    const firstName = borrower.firstName || '';
-    const lastName = borrower.lastName || '';
+    // Get values from user object or borrower object
+    const firstName = borrower.user?.firstName || borrower.firstName || '';
+    const lastName = borrower.user?.lastName || borrower.lastName || '';
     const fullName = `${firstName} ${lastName}`.toLowerCase().trim();
-    const email = (borrower.email || '').toLowerCase();
+    const email = (borrower.user?.email || borrower.email || '').toLowerCase();
+    const phone = borrower.user?.phone || borrower.phone || '';
+    
     const searchLower = searchTerm.toLowerCase();
     
     return fullName.includes(searchLower) || 
            email.includes(searchLower) ||
-           (borrower.phone && borrower.phone.includes(searchTerm));
+           (phone && phone.includes(searchTerm));
   });
 
   // Handle creating a new borrower from XML data
@@ -154,24 +166,44 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
   const getBorrowerDisplayName = (borrower) => {
     if (!borrower) return 'Unknown';
     
-    // If we have first and last name, use them
+    // Access user object for name
+    if (borrower.user) {
+      // If we have first and last name in user object
+      if (borrower.user.firstName && borrower.user.lastName) {
+        return `${borrower.user.firstName} ${borrower.user.lastName}`;
+      }
+      
+      // If we only have first name
+      if (borrower.user.firstName) {
+        return borrower.user.firstName;
+      }
+      
+      // If we only have last name
+      if (borrower.user.lastName) {
+        return borrower.user.lastName;
+      }
+      
+      // If we have email but no name
+      if (borrower.user.email) {
+        return borrower.user.email.split('@')[0]; // Use part before @ as name
+      }
+    }
+    
+    // Fallback to borrower direct properties (in case they exist)
     if (borrower.firstName && borrower.lastName) {
       return `${borrower.firstName} ${borrower.lastName}`;
     }
     
-    // If we only have first name
     if (borrower.firstName) {
       return borrower.firstName;
     }
     
-    // If we only have last name
     if (borrower.lastName) {
       return borrower.lastName;
     }
     
-    // If we have email but no name
     if (borrower.email) {
-      return borrower.email.split('@')[0]; // Use part before @ as name
+      return borrower.email.split('@')[0];
     }
     
     return 'Unknown';
@@ -181,6 +213,15 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
   const getBorrowerInitials = (borrower) => {
     if (!borrower) return '?';
     
+    // Access user object for initials
+    if (borrower.user) {
+      const firstInitial = borrower.user.firstName ? borrower.user.firstName.charAt(0).toUpperCase() : '?';
+      const lastInitial = borrower.user.lastName ? borrower.user.lastName.charAt(0).toUpperCase() : '';
+      
+      return `${firstInitial}${lastInitial}`;
+    }
+    
+    // Fallback to borrower direct properties
     const firstInitial = borrower.firstName ? borrower.firstName.charAt(0).toUpperCase() : '?';
     const lastInitial = borrower.lastName ? borrower.lastName.charAt(0).toUpperCase() : '';
     
@@ -199,177 +240,157 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X size={20} />
           </button>
         </div>
-
-        {/* Content */}
-        <div className="p-4 max-h-[70vh] overflow-y-auto">
-          {/* Show matched title if using initialBorrowers */}
-          {initialBorrowers && Array.isArray(initialBorrowers) && initialBorrowers.length > 0 && (
-            <div className="mb-4">
-              <div className="text-sm font-medium text-green-700 flex items-center">
-                <Check className="h-4 w-4 mr-1" />
-                <span>{initialBorrowers.length} potential {initialBorrowers.length === 1 ? 'match' : 'matches'} found from XML data</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                We found {initialBorrowers.length} {initialBorrowers.length === 1 ? 'borrower' : 'borrowers'} that might match the information in your XML file.
-              </p>
-            </div>
-          )}
-          
-          {/* Show "no exact matches" message when initialBorrowers is empty array (not null/undefined) */}
-          {initialBorrowers && Array.isArray(initialBorrowers) && initialBorrowers.length === 0 && (
-            <div className="mb-4">
-              <div className="text-sm font-medium text-amber-700 flex items-center">
-                <Search className="h-4 w-4 mr-1" />
-                <span>No exact matches found</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                No borrowers exactly match the information in your XML file. You can select from existing borrowers or create a new one.
-              </p>
-            </div>
-          )}
         
-          {borrowerDataFromXml && (
-            <div className="mb-5 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">Borrower from XML File</h3>
-              <div className="text-sm">
-                <p><span className="font-medium">Name:</span> {borrowerDataFromXml.firstName} {borrowerDataFromXml.lastName}</p>
-                <p><span className="font-medium">Email:</span> {borrowerDataFromXml.email || 'Not provided'}</p>
-                {borrowerDataFromXml.phone && (
-                  <p><span className="font-medium">Phone:</span> {borrowerDataFromXml.phone}</p>
-                )}
-                {matchFound && (
-                  <div className="mt-2 text-green-700 flex items-center">
-                    <Check className="h-4 w-4 mr-1" />
-                    <span>Matching borrower found!</span>
-                  </div>
-                )}
-              </div>
+        {/* Borrower from XML info */}
+        {borrowerDataFromXml && (
+          <div className="bg-blue-50 p-4 border-b border-blue-100">
+            <h3 className="text-sm font-medium text-blue-800 mb-2">Borrower from XML File</h3>
+            <div className="text-sm text-blue-700">
+              <p><strong>Name:</strong> {borrowerDataFromXml.firstName} {borrowerDataFromXml.lastName}</p>
+              <p><strong>Email:</strong> {borrowerDataFromXml.email || 'Not provided'}</p>
+              <p><strong>Phone:</strong> {borrowerDataFromXml.phone || 'Not provided'}</p>
             </div>
-          )}
-
-          {/* Search */}
-          <div className="mb-4 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
+          </div>
+        )}
+        
+        {/* Search input */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="relative">
+            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm"
               placeholder="Search borrowers..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
-          {/* Borrower List */}
-          <div className="space-y-2">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
-                <span className="ml-2 text-gray-500">Loading borrowers...</span>
-              </div>
-            ) : filteredBorrowers.length > 0 ? (
-              <>
-                <p className="text-xs text-gray-500 mb-2">Select an existing borrower or create a new one:</p>
-                {filteredBorrowers.map((borrower) => (
-                  <div
-                    key={borrower._id || Math.random().toString()}
-                    className={`flex items-center p-3 rounded-lg cursor-pointer ${
-                      selectedBorrowerId === borrower._id
-                        ? 'bg-blue-50 border-blue-300 border'
-                        : 'hover:bg-gray-50 border border-gray-100'
-                    }`}
-                    onClick={() => setSelectedBorrowerId(borrower._id)}
-                  >
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                      selectedBorrowerId === borrower._id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {getBorrowerInitials(borrower)}
-                    </div>
-                    <div className="ml-3 flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {getBorrowerDisplayName(borrower)}
-                      </p>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <Mail className="h-3 w-3 mr-1" />
-                        {borrower.email || 'No email'}
-                      </div>
-                    </div>
-                    {selectedBorrowerId === borrower._id && (
-                      <Check className="h-5 w-5 text-blue-600" />
+          <p className="text-sm text-gray-500 mt-2">
+            Select an existing borrower or create a new one:
+          </p>
+        </div>
+        
+        {/* Borrower list */}
+        <div className="overflow-y-auto max-h-[40vh]">
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 size={24} className="animate-spin text-blue-500 mr-2" />
+              <span className="text-gray-600">Loading borrowers...</span>
+            </div>
+          ) : filteredBorrowers.length === 0 && searchTerm === '' ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No borrowers found</p>
+            </div>
+          ) : filteredBorrowers.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No borrowers match your search</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredBorrowers.map(borrower => (
+                <div
+                  key={borrower._id}
+                  className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer ${
+                    selectedBorrowerId === borrower._id ? 'bg-blue-50' : ''
+                  }`}
+                  onClick={() => setSelectedBorrowerId(borrower._id)}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                    selectedBorrowerId === borrower._id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {selectedBorrowerId === borrower._id ? (
+                      <Check size={16} />
+                    ) : (
+                      getBorrowerInitials(borrower)
                     )}
                   </div>
-                ))}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No borrowers found</p>
-              </div>
-            )}
-
-            {/* Create new borrower option */}
-            <div
-              className={`flex items-center p-3 rounded-lg cursor-pointer mt-4 ${
-                selectedBorrowerId === 'new'
-                  ? 'bg-green-50 border-green-300 border'
-                  : 'hover:bg-gray-50 border border-gray-200 border-dashed'
-              }`}
-              onClick={() => setSelectedBorrowerId('new')}
-            >
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                selectedBorrowerId === 'new' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-              }`}>
-                <UserPlus className="h-5 w-5" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900">Create New Borrower</p>
-                <p className="text-xs text-gray-500">
-                  {borrowerDataFromXml 
-                    ? `Create new borrower for ${borrowerDataFromXml.firstName || ''} ${borrowerDataFromXml.lastName || ''}` 
-                    : 'Create borrower from XML data'}
-                </p>
-              </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{getBorrowerDisplayName(borrower)}</h3>
+                    <div className="flex items-center text-sm text-gray-500">
+                      {(borrower.user?.email || borrower.email) && (
+                        <div className="flex items-center mr-4">
+                          <Mail size={14} className="mr-1" />
+                          <span>{borrower.user?.email || borrower.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Create new borrower option */}
+        <div className="border-t border-gray-200 p-4">
+          <div
+            className={`flex items-center p-4 rounded-md cursor-pointer ${
+              selectedBorrowerId === 'new' ? 'bg-green-50 border border-green-200' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+            }`}
+            onClick={() => setSelectedBorrowerId('new')}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+              selectedBorrowerId === 'new' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'
+            }`}>
+              <UserPlus size={16} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900">Create New Borrower</h3>
+              <p className="text-sm text-gray-500">
+                Create new borrower for {borrowerDataFromXml ? `${borrowerDataFromXml.firstName} ${borrowerDataFromXml.lastName}` : 'this loan'}
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-4 border-t border-gray-200 bg-gray-50">
+        
+        {/* Footer with actions */}
+        <div className="border-t border-gray-200 p-4 flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
-          
-          {selectedBorrowerId === 'new' ? (
-            <button
-              onClick={handleCreateNewBorrower}
-              disabled={creatingNewBorrower}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-            >
-              {creatingNewBorrower ? (
-                <>
-                  <Loader2 className="inline-block h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create New Borrower'
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={handleSelectBorrower}
-              disabled={!selectedBorrowerId}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              Use Selected Borrower
-            </button>
-          )}
+          <button
+            onClick={handleSelectBorrower}
+            disabled={!selectedBorrowerId || creatingNewBorrower}
+            className={`px-4 py-2 rounded-md text-white ${
+              !selectedBorrowerId || creatingNewBorrower
+                ? 'bg-blue-300 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {creatingNewBorrower ? (
+              <>
+                <Loader2 size={16} className="animate-spin inline mr-2" />
+                Creating...
+              </>
+            ) : selectedBorrowerId === 'new' ? (
+              'Use Selected Borrower'
+            ) : (
+              'Use Selected Borrower'
+            )}
+          </button>
         </div>
+        
+        {/* Debug info - only visible in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="border-t border-gray-200 p-2 text-xs text-gray-500 text-center">
+            {loading ? (
+              'Loading borrowers...'
+            ) : (
+              <>
+                Loaded {borrowers.length} borrowers
+                {borrowers.length > 0 && (
+                  <> | First borrower: {getBorrowerDisplayName(borrowers[0])}</>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
