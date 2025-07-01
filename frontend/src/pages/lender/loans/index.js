@@ -109,6 +109,15 @@ const LenderLoans = () => {
     }
   }, [borrowerId, router.isReady]);
 
+  // Check for newLoan query parameter to automatically open the XML upload modal
+  useEffect(() => {
+    if (router.isReady && router.query.newLoan === 'true') {
+      setIsXMLUploadOpen(true);
+      // Clean up the URL by removing the query parameter
+      router.replace('/lender/loans', undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query]);
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
