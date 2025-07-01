@@ -1,4 +1,4 @@
-import { LoanService } from './index';
+import LoanService from './loan.service';
 
 /**
  * Draft Management Service

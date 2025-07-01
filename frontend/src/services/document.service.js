@@ -1,6 +1,6 @@
 import ApiService from './api.service';
+import AuditLogService from './auditLog.service';
 import { toast } from 'react-hot-toast';
-import { AuditLogService } from './index';
 import { createFileFormData } from '../utils/formDataHelper';
 
 /**

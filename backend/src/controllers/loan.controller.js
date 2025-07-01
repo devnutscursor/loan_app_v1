@@ -8,6 +8,7 @@ const logger = require("../utils/logger");
 const xml2js = require('xml2js');
 const fs = require('fs');
 const path = require('path');
+const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
 
 // Check if we should use S3 or local storage
 const USE_S3 = process.env.USE_S3 === 'true' || false;
@@ -586,7 +587,6 @@ exports.createLoan = async (req, res, next) => {
 
     // Add default milestones for the new loan
     try {
-      const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
       await createDefaultMilestonesForLoan(loan._id);
       logger.info(`Default milestones created for loan ${loan._id}`);
     } catch (milestoneError) {
@@ -2311,7 +2311,6 @@ exports.createLoanData = async (req, res, next) => {
     await newLoan.save();
     
     // Create default milestones for the new loan
-    const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
     try {
       await createDefaultMilestonesForLoan(newLoan._id);
       console.log(`Default milestones created for loan ${newLoan._id}`);
@@ -2666,6 +2665,15 @@ exports.importFromXML = async (req, res, next) => {
     });
 
     await newLoan.save();
+
+    // Create default milestones for the imported loan
+    try {
+      await createDefaultMilestonesForLoan(newLoan._id);
+      logger.info(`Created default milestones for imported XML loan: ${newLoan._id}`);
+    } catch (milestoneError) {
+      logger.error(`Error creating default milestones for imported XML loan: ${newLoan._id}`, milestoneError);
+      // Don't fail the import if milestone creation fails
+    }
 
     // Clean up uploaded file only if it's a local file
     if (req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {

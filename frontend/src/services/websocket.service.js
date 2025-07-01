@@ -1,5 +1,5 @@
 import AuthService from './auth.service';
-import { NotificationService } from './index';
+import NotificationService from './notification.service';
 import toast from 'react-hot-toast';
 
 /**

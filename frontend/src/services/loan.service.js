@@ -1,5 +1,5 @@
 import ApiService from './api.service';
-import { AuditLogService } from './index';
+import AuditLogService from './auditLog.service';
 
 /**
  * Loan Service
