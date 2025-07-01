@@ -16,24 +16,69 @@ exports.createDefaultLoanRates = async (userId, lenderId) => {
 
     // Define sensible default interest rates – adjust if business rules change
     const defaultRates = [
-      { programType: 'conventional', rate: 6 },
+      { programType: 'conventional', rate: 7 },
       { programType: 'fha', rate: 7 },
       { programType: 'va', rate: 7 },
       { programType: 'usda', rate: 7 },
       { programType: 'jumbo', rate: 7 }
     ];
 
-    // Build docs with lender / updatedBy metadata
-    const docs = defaultRates.map(r => ({
-      ...r,
-      lender: lenderId,
-      updatedBy: userId
+    // Instead of insertMany, use bulkWrite with upsert to handle existing records
+    const operations = defaultRates.map(r => ({
+      updateOne: {
+        filter: {
+          programType: r.programType,
+          lender: lenderId
+        },
+        update: {
+          $set: {
+            rate: r.rate,
+            updatedBy: userId,
+            updatedAt: new Date()
+          }
+        },
+        upsert: true
+      }
     }));
 
-    await LoanRate.insertMany(docs);
-    logger.info(`Created default loan rates for lender ID: ${lenderId}`);
+    const result = await LoanRate.bulkWrite(operations);
+    logger.info(`Created/updated default loan rates for lender ID: ${lenderId} (upserted: ${result.upsertedCount}, modified: ${result.modifiedCount})`);
+    return true;
   } catch (error) {
     logger.error(`Error creating default loan rates for lender ${lenderId}: ${error.message}`);
+    
+    // Try individual operations as fallback
+    try {
+      let successCount = 0;
+      const defaultRates = [
+        { programType: 'conventional', rate: 7 },
+        { programType: 'fha', rate: 7 },
+        { programType: 'va', rate: 7 },
+        { programType: 'usda', rate: 7 },
+        { programType: 'jumbo', rate: 7 }
+      ];
+      
+      for (const r of defaultRates) {
+        await LoanRate.updateOne(
+          { programType: r.programType, lender: lenderId },
+          { 
+            $set: { 
+              rate: r.rate, 
+              updatedBy: userId,
+              updatedAt: new Date()
+            }
+          },
+          { upsert: true }
+        );
+        successCount++;
+      }
+      
+      logger.info(`Fallback: Created/updated ${successCount} default loan rates for lender ID: ${lenderId}`);
+      return true;
+    } catch (fallbackError) {
+      logger.error(`Fallback also failed for lender ${lenderId}: ${fallbackError.message}`);
+      throw error; // Propagate the original error
+    }
   }
 };
 

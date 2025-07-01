@@ -5,7 +5,117 @@ const ApiError = require('../utils/apiError');
 const { generateToken, generateRefreshToken } = require('../config/auth');
 const logger = require('../utils/logger');
 const { createDefaultLoanRates } = require('./loanRate.controller');
+const loanRateController = require('./loanRate.controller');
 const mongoose = require('mongoose');
+
+/**
+ * Helper function to automatically save loan rates for lenders upon login
+ * @param {string} userId - The user ID of the lender
+ * @returns {Promise<boolean>} - Returns true if rates were saved, false otherwise
+ */
+const autoSaveLenderRates = async (userId) => {
+  try {
+    logger.info(`Starting auto-save of loan rates for user ${userId}`);
+    
+    // Find lender profile based on user ID
+    const lender = await Lender.findOne({ user: userId });
+    
+    if (!lender) {
+      logger.warn(`Auto save rates: Lender profile not found for user ${userId}`);
+      return false;
+    }
+    
+    logger.info(`Found lender profile: ${lender._id} for user ${userId}`);
+    
+    // Instead of trying to update existing rates, we'll directly create default rates
+    // Define the default rates that will be created/updated
+    const defaultRates = [
+      { programType: 'conventional', rate: 7.0 },
+      { programType: 'fha', rate: 7.0 },
+      { programType: 'va', rate: 7.0 },
+      { programType: 'usda', rate: 7.0 },
+      { programType: 'jumbo', rate: 7.0 }
+    ];
+    
+    // Instead of using the controller, directly work with the model
+    const LoanRate = mongoose.model('LoanRate');
+    
+    // Use bulkWrite for better performance and atomic operations
+    const operations = [];
+    
+    for (const rateData of defaultRates) {
+      operations.push({
+        updateOne: {
+          filter: { 
+            lender: lender._id,
+            programType: rateData.programType 
+          },
+          update: { 
+            $set: { 
+              rate: rateData.rate,
+              updatedBy: userId,
+              updatedAt: new Date()
+            }
+          },
+          upsert: true // This is key - it will insert if doesn't exist or update if it does
+        }
+      });
+    }
+    
+    logger.info(`Preparing to upsert ${operations.length} loan rates for lender ${lender._id}`);
+    
+    // Execute all operations in one go
+    if (operations.length > 0) {
+      try {
+        const result = await LoanRate.bulkWrite(operations);
+        logger.info(`Auto-saved loan rates for lender ${lender._id}: upserted=${result.upsertedCount}, modified=${result.modifiedCount}`);
+        return true;
+      } catch (bulkError) {
+        logger.error(`Error in bulkWrite operation: ${bulkError.message}`);
+        
+        // Try individual inserts as fallback
+        logger.info(`Falling back to individual rate inserts for lender ${lender._id}`);
+        let successCount = 0;
+        
+        for (const rateData of defaultRates) {
+          try {
+            await LoanRate.updateOne(
+              { lender: lender._id, programType: rateData.programType },
+              { 
+                $set: { 
+                  rate: rateData.rate, 
+                  updatedBy: userId,
+                  updatedAt: new Date()
+                }
+              },
+              { upsert: true }
+            );
+            successCount++;
+          } catch (singleError) {
+            logger.error(`Error saving individual rate (${rateData.programType}): ${singleError.message}`);
+          }
+        }
+        
+        logger.info(`Fallback completed: Successfully saved ${successCount}/${defaultRates.length} rates`);
+        return successCount > 0;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    logger.error(`Error in autoSaveLenderRates: ${error.stack || error.message}`);
+    // Try a direct approach to create rates if all else fails
+    try {
+      await createDefaultLoanRates(userId, lender?._id);
+      logger.info(`Fallback to createDefaultLoanRates successful for user: ${userId}`);
+      return true;
+    } catch (fallbackError) {
+      logger.error(`Even fallback creation failed: ${fallbackError.message}`);
+    }
+    logger.error(`Error auto-saving loan rates for user ${userId}: ${error.message}`);
+    return false;
+  }
+};
 
 /**
  * Register a new user
@@ -204,6 +314,17 @@ exports.login = async (req, res, next) => {
 
     // Log login
     logger.info(`User logged in: ${user.email}`);
+
+    // Auto-save loan rates for lenders
+    if (user.role === 'lender') {
+      try {
+        await autoSaveLenderRates(user._id);
+        logger.info(`Auto-saved loan rates for lender: ${user.email}`);
+      } catch (rateError) {
+        // Don't fail the login process if auto-saving rates fails
+        logger.error(`Failed to auto-save loan rates for lender ${user.email}: ${rateError.message}`);
+      }
+    }
 
     res.status(200).json({
       status: 'success',
@@ -841,3 +962,5 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
     // This is a background task that can be retried later
   }
 };
+
+
