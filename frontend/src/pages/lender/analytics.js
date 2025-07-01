@@ -314,3 +314,13 @@ const LenderAnalytics = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </MainLayout>
+  );
+};
+
+export default LenderAnalytics;

@@ -54,8 +54,10 @@ app.use(helmet({
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean),
-  credentials: false,
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app']
+    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
+  credentials: true,
   exposedHeaders: ['Content-Disposition'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -196,6 +198,31 @@ app.get('/api/image-proxy/:filename', (req, res) => {
       path: filePath
     });
   }
+});
+
+// Add global CORS middleware for Render and Vercel deployment
+app.use((req, res, next) => {
+  const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app']
+    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'];
+    
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app');
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
 });
 
 // API routes

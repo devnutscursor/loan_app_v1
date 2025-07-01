@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MilestoneTimeline } from '../../components/common/milestones/MilestoneTimeline';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import MainLayout from '../../components/layout/MainLayout';
 
 /**
  * Application Confirmation Page
@@ -9,7 +10,8 @@ import { MilestoneTimeline } from '../../components/common/milestones/MilestoneT
  * Shows confirmation details and next steps in the process.
  */
 const ApplicationConfirmationPage = () => {
-  const { id } = useParams();
+  const router = useRouter();
+  const { id } = router.query;
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +58,7 @@ const ApplicationConfirmationPage = () => {
 
   if (loading) {
     return (
+      <MainLayout>
       <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <svg className="animate-spin h-10 w-10 text-primary mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -65,11 +68,13 @@ const ApplicationConfirmationPage = () => {
           <p className="mt-2 text-sm text-gray-500">Loading application details...</p>
         </div>
       </div>
+      </MainLayout>
     );
   }
 
   if (!application) {
     return (
+      <MainLayout>
       <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <svg className="h-16 w-16 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,12 +85,13 @@ const ApplicationConfirmationPage = () => {
             We couldn't find the application you're looking for.
           </p>
           <div className="mt-6">
-            <Link to="/borrower/apply" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+              <Link href="/borrower/apply" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
               Start New Application
             </Link>
           </div>
         </div>
       </div>
+      </MainLayout>
     );
   }
 
@@ -96,6 +102,7 @@ const ApplicationConfirmationPage = () => {
   };
 
   return (
+    <MainLayout title="Application Confirmation">
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       {/* Success Message */}
       <div className="rounded-md bg-green-50 p-4 mb-8">
@@ -164,8 +171,53 @@ const ApplicationConfirmationPage = () => {
           </p>
         </div>
         <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-          <MilestoneTimeline milestones={application.milestones} />
-        </div>
+            {application.milestones && (
+              <div className="flow-root">
+                <ul className="-mb-8">
+                  {application.milestones.map((milestone, index) => {
+                    const isLast = index === application.milestones.length - 1;
+                    return (
+                      <li key={milestone.id || index}>
+                        <div className="relative pb-8">
+                          {!isLast && (
+                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                          )}
+                          <div className="relative flex space-x-3">
+                            <div>
+                              <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white ${
+                                milestone.status === 'completed' ? 'bg-green-100' : 
+                                milestone.status === 'current' ? 'bg-blue-100' : 
+                                'bg-gray-100'
+                              }`}>
+                                {milestone.status === 'completed' ? (
+                                  <svg className="h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <span className={`h-2 w-2 rounded-full ${
+                                    milestone.status === 'current' ? 'bg-blue-600' : 'bg-gray-400'
+                                  }`} />
+                                )}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1 pt-1.5">
+                              <p className="text-sm font-medium text-gray-900">{milestone.name}</p>
+                              {milestone.date && (
+                                <p className="text-sm text-gray-500">
+                                  {new Date(milestone.date).toLocaleDateString()}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 capitalize">{milestone.status}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* Next Steps */}
@@ -209,34 +261,35 @@ const ApplicationConfirmationPage = () => {
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0">
         <Link
-          to="/borrower/dashboard"
+            href="/borrower/dashboard"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         >
           Go to Dashboard
         </Link>
         
         <Link
-          to="/borrower/milestones"
+            href="/borrower/milestones"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         >
           View Milestones
         </Link>
         
         <Link
-          to="/borrower/documents"
+            href="/borrower/documents"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         >
           Upload Additional Documents
         </Link>
         
         <Link
-          to="/borrower/messages"
+            href="/borrower/messages"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         >
           Contact Loan Officer
         </Link>
       </div>
     </div>
+    </MainLayout>
   );
 };
 

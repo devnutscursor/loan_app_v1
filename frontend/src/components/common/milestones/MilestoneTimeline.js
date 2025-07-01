@@ -1,158 +1,71 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import Milestone from './Milestone';
+import React from 'react';
 
 /**
  * MilestoneTimeline Component
  * 
- * Displays a series of milestones in a timeline format with
- * visual connections between milestones and responsive behavior.
+ * Displays a timeline of loan application milestones with their current status
  */
-const MilestoneTimeline = ({ 
-  milestones, 
-  orientation = 'horizontal',
-  expandedByDefault = false,
-  onMilestoneClick
-}) => {
-  // Track which milestone is expanded (for mobile/vertical view)
-  const [expandedIndex, setExpandedIndex] = useState(
-    expandedByDefault ? 
-      milestones.findIndex(m => m.status === 'current') || 0 
-      : -1
-  );
-
-  // Calculate various states about the timeline
-  const currentIndex = milestones.findIndex(m => m.status === 'current');
-  const hasCurrentMilestone = currentIndex !== -1;
-  const allCompleted = milestones.every(m => m.status === 'completed');
-
-  // Handle milestone click to expand/collapse details
-  const handleMilestoneClick = (index) => {
-    // For handler from parent
-    if (onMilestoneClick) {
-      onMilestoneClick(milestones[index], index);
-    }
-    
-    // For internal state (mobile/vertical expand/collapse)
-    if (orientation === 'vertical') {
-      setExpandedIndex(expandedIndex === index ? -1 : index);
-    }
-  };
-
+export const MilestoneTimeline = ({ milestones = [] }) => {
   return (
-    <div className="w-full">
-      {/* Progress summary - shown at the top */}
-      <div className="mb-4 flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Loan Progress</h3>
-          <p className="text-sm text-gray-500">
-            {allCompleted 
-              ? 'All milestones completed' 
-              : hasCurrentMilestone 
-                ? `Currently at step ${currentIndex + 1} of ${milestones.length}` 
-                : 'Not started'}
-          </p>
-        </div>
-        
-        {/* Progress percentage */}
-        <div className="text-right">
-          <span className="text-xl font-bold text-primary">
-            {Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100)}%
-          </span>
-          <p className="text-sm text-gray-500">Complete</p>
-        </div>
-      </div>
-      
-      {/* Progress bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
-        <div 
-          className="bg-primary h-2.5 rounded-full transition-all duration-500" 
-          style={{ width: `${Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100)}%` }}
-        ></div>
-      </div>
-      
-      {/* Timeline content */}
-      <div className={`${orientation === 'horizontal' ? 'hidden sm:flex' : 'flex flex-col'} items-start justify-between w-full`}>
-        {milestones.map((milestone, index) => (
-          <Milestone
-            key={`milestone-${index}`}
-            title={milestone.title}
-            description={milestone.description}
-            status={milestone.status}
-            date={milestone.date}
-            index={index}
-            isActive={orientation === 'horizontal' ? true : expandedIndex === index}
-            isLast={index === milestones.length - 1}
-            onClick={() => handleMilestoneClick(index)}
-          />
-        ))}
-      </div>
-      
-      {/* Mobile timeline view (only shown on smaller screens when in horizontal mode) */}
-      {orientation === 'horizontal' && (
-        <div className="sm:hidden">
-          <ol className="relative border-l border-gray-300">
-            {milestones.map((milestone, index) => (
-              <li key={`mobile-milestone-${index}`} className="mb-6 ml-4">
-                <div className={`absolute w-3 h-3 rounded-full -left-1.5 mt-1.5 border border-white ${
-                  milestone.status === 'completed' ? 'bg-green-500' :
-                  milestone.status === 'current' ? 'bg-blue-500' :
-                  milestone.status === 'overdue' ? 'bg-red-500' :
-                  milestone.status === 'waiting' ? 'bg-yellow-500' : 'bg-gray-300'
-                }`}></div>
-                <div 
-                  className="cursor-pointer" 
-                  onClick={() => handleMilestoneClick(index)}
-                >
-                  <div className="flex items-center mb-1">
-                    <h3 className={`text-lg font-semibold ${
-                      milestone.status === 'completed' ? 'text-green-800' :
-                      milestone.status === 'current' ? 'text-blue-800' :
-                      milestone.status === 'overdue' ? 'text-red-800' :
-                      milestone.status === 'waiting' ? 'text-yellow-800' : 'text-gray-500'
-                    }`}>{milestone.title}</h3>
-                    {milestone.status && (
-                      <span className={`ml-2 text-xs font-medium mr-2 px-2.5 py-0.5 rounded ${
-                        milestone.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        milestone.status === 'current' ? 'bg-blue-100 text-blue-800' :
-                        milestone.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                        milestone.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {milestone.status.charAt(0).toUpperCase() + milestone.status.slice(1)}
+    <div className="flow-root">
+      <ul className="-mb-8">
+        {milestones.map((milestone, index) => {
+          const isLast = index === milestones.length - 1;
+          
+          // Determine the status color
+          let statusColor = 'gray';
+          if (milestone.status === 'completed') statusColor = 'green';
+          else if (milestone.status === 'current') statusColor = 'blue';
+          else if (milestone.status === 'pending') statusColor = 'gray';
+          
+          return (
+            <li key={milestone.id || index}>
+              <div className="relative pb-8">
+                {!isLast && (
+                  <span 
+                    className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="relative flex space-x-3">
+                  <div>
+                    <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white bg-${statusColor}-100`}>
+                      {milestone.status === 'completed' ? (
+                        <svg className={`h-5 w-5 text-${statusColor}-600`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : milestone.status === 'current' ? (
+                        <svg className={`h-5 w-5 text-${statusColor}-600`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <span className={`h-2 w-2 rounded-full bg-${statusColor}-400`} />
+                      )}
                       </span>
-                    )}
                   </div>
-                  {milestone.description && <p className="text-sm text-gray-500">{milestone.description}</p>}
+                  <div className="min-w-0 flex-1 pt-1.5">
+                    <div className="flex justify-between">
+                      <p className={`text-sm font-medium text-gray-800`}>
+                        {milestone.name}
+                      </p>
                   {milestone.date && (
-                    <time className="block mb-3 text-xs font-normal leading-none text-gray-400">
-                      {typeof milestone.date === 'string' 
-                        ? new Date(milestone.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                        : milestone.date
-                      }
-                    </time>
-                  )}
+                        <p className="text-sm text-gray-500">
+                          {new Date(milestone.date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 capitalize">
+                      {milestone.status}
+                    </p>
+                  </div>
+                </div>
                 </div>
               </li>
-            ))}
-          </ol>
-        </div>
-      )}
+          );
+        })}
+      </ul>
     </div>
   );
-};
-
-MilestoneTimeline.propTypes = {
-  milestones: PropTypes.arrayOf(
-    PropTypes.shape({
-      title: PropTypes.string.isRequired,
-      description: PropTypes.string,
-      status: PropTypes.oneOf(['completed', 'current', 'pending', 'overdue', 'waiting']),
-      date: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-    })
-  ).isRequired,
-  orientation: PropTypes.oneOf(['horizontal', 'vertical']),
-  expandedByDefault: PropTypes.bool,
-  onMilestoneClick: PropTypes.func
 };
 
 export default MilestoneTimeline;

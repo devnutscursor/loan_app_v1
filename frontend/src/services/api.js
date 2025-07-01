@@ -1,6 +1,20 @@
 import axios from 'axios';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/v1`;
+// Dynamically determine API URL based on environment
+const getApiUrl = () => {
+  // In browser
+  if (typeof window !== 'undefined') {
+    // If using Vercel deployment
+    if (window.location.hostname.includes('vercel.app')) {
+      return `https://loan-app-tnuk.onrender.com/api/v1`;
+    }
+  }
+  
+  // Development or explicit setting
+  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/v1`;
+};
+
+const API_URL = getApiUrl();
 
 // Create axios instance with default config
 const api = axios.create({

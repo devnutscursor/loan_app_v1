@@ -38,13 +38,19 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is already logged in
     const fetchUser = async () => {
+      // Skip this check on the login page to prevent redirect loops
+      if (router.pathname === '/login') {
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (token) {
         // Set default Authorization header for ALL requests
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
         try {
-          // console.log('Attempting to fetch user profile');
+          console.log('Attempting to fetch user profile');
           const response = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`,
             {
@@ -53,27 +59,31 @@ export const AuthProvider = ({ children }) => {
               timeout: 10000,
             }
           );
-          // console.log('User profile fetched successfully:', response.data);
+          console.log('User profile fetched successfully:', response.data);
 
           // Normalize the user data using our helper function
           const userData = response.data.data;
           const normalizedUser = normalizeUserData(userData);
 
-          // console.log('Normalized user:', normalizedUser);
+          console.log('Normalized user:', normalizedUser);
 
           // Set the normalized user in state
           setUser(normalizedUser);
         } catch (error) {
-          // console.error('Error fetching user:', error);
+          console.error('Error fetching user:', error);
           // Only remove token for authentication errors (401, 403)
           // For network errors or server errors, keep the token
           if (
             error.response &&
             (error.response.status === 401 || error.response.status === 403)
           ) {
-            // console.log('Authentication error, removing token');
+            console.log('Authentication error, removing token');
             localStorage.removeItem("token");
-            toast.error("Your session has expired. Please log in again.");
+            sessionStorage.removeItem("token");
+            // Don't show error on login page
+            if (router.pathname !== '/login') {
+              toast.error("Your session has expired. Please log in again.");
+            }
           } else {
             // Just log other errors but don't sign out the user
             console.warn(
@@ -89,9 +99,11 @@ export const AuthProvider = ({ children }) => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response && error.response.status === 401) {
+        // Skip redirects on login page
+        if (error.response && error.response.status === 401 && router.pathname !== '/login') {
           // Unauthorized, token expired or invalid
           localStorage.removeItem("token");
+          sessionStorage.removeItem("token");
           setUser(null);
           toast.error("Your session has expired. Please log in again.");
           router.push("/login");
