@@ -211,12 +211,28 @@ class NotificationService {
       notification.createdAt = new Date().toISOString();
     }
     
-    // Add to local cache
-    this.localNotifications.unshift(notification);
+    // Generate a unique key for this notification based on content
+    const notificationKey = `${notification.title}-${notification.message || notification.description || ''}`;
     
-    // Limit cache size
-    if (this.localNotifications.length > 50) {
-      this.localNotifications = this.localNotifications.slice(0, 50);
+    // Check if we already have this notification in the cache (prevents duplicates)
+    const isDuplicate = this.localNotifications.some(existingNotification => {
+      const existingKey = `${existingNotification.title}-${existingNotification.message || existingNotification.description || ''}`;
+      return existingKey === notificationKey;
+    });
+    
+    // Only add if it's not a duplicate
+    if (!isDuplicate) {
+      // Add to local cache
+      this.localNotifications.unshift(notification);
+      
+      // Limit cache size
+      if (this.localNotifications.length > 50) {
+        this.localNotifications = this.localNotifications.slice(0, 50);
+      }
+      
+      console.log('Added new notification to local cache:', notification.title);
+    } else {
+      console.log('Skipped duplicate notification:', notification.title);
     }
     
     // Update unread count
