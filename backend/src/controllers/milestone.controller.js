@@ -44,6 +44,9 @@ exports.getLoanMilestones = catchAsync(async (req, res) => {
     ? Math.round((completedMilestones / totalMilestones) * 100)
     : 0;
   
+  // Update the loan's completion percentage
+  await updateLoanCompletionPercentage(loanId);
+  
   // For each milestone, calculate its internal progress
   const milestonesWithProgress = milestones.map(milestone => {
     const milestoneProgress = milestone.calculateProgress();
@@ -174,6 +177,9 @@ exports.createMilestone = catchAsync(async (req, res) => {
     deadlineDate: deadlineDate || null
   });
   
+  // Update the loan's completion percentage
+  await updateLoanCompletionPercentage(loanId);
+  
   // Log the milestone creation for audit
   await createAuditLog({
     eventType: 'milestone:create',
@@ -259,6 +265,38 @@ const updateMilestoneProgression = async (loanId) => {
     }
   } catch (error) {
     console.error('Error updating milestone progression:', error);
+  }
+};
+
+/**
+ * Update the loan's completion percentage based on milestone statuses
+ */
+const updateLoanCompletionPercentage = async (loanId) => {
+  try {
+    // Get all milestones for the loan
+    const milestones = await Milestone.find({ loan: loanId });
+    
+    if (!milestones || milestones.length === 0) return;
+    
+    // Calculate progress
+    const totalMilestones = milestones.length;
+    const completedMilestones = milestones.filter(
+      milestone => milestone.status === 'completed'
+    ).length;
+    const inProgressMilestones = milestones.filter(
+      milestone => milestone.status === 'in_progress'
+    ).length;
+    
+    // Calculate weighted progress (completed = 100%, in_progress = 50%)
+    const progressValue = (completedMilestones + (inProgressMilestones * 0.5)) / totalMilestones;
+    const completionPercentage = Math.round(progressValue * 100);
+    
+    console.log(`Updating loan ${loanId} completion percentage to ${completionPercentage}%`);
+    
+    // Update the loan's completion percentage
+    await Loan.findByIdAndUpdate(loanId, { completionPercentage });
+  } catch (error) {
+    console.error('Error updating loan completion percentage:', error);
   }
 };
 
@@ -405,6 +443,9 @@ exports.updateMilestone = catchAsync(async (req, res) => {
     await updateMilestoneProgression(milestone.loan);
   }
   
+  // Update the loan's completion percentage
+  await updateLoanCompletionPercentage(milestone.loan);
+  
   // Check if all milestones are completed and update loan status if needed
   if (milestone.status === 'completed') {
     // Get all milestones for the loan
@@ -487,8 +528,14 @@ exports.deleteMilestone = catchAsync(async (req, res) => {
   // Check loan access
   const loan = await Loan.findById(milestone.loan);
   
+  // Store the loan ID for updating completion percentage after deletion
+  const loanId = milestone.loan;
+  
   // Delete the milestone
   await Milestone.deleteOne({ _id: milestoneId });
+  
+  // Update the loan's completion percentage
+  await updateLoanCompletionPercentage(loanId);
   
   // Log the milestone deletion for audit
   await createAuditLog({

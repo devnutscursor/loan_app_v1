@@ -3,6 +3,7 @@
  */
 
 const Milestone = require('../models/milestone.model');
+const Loan = require('../models/loan.model');
 
 /**
  * Create default milestones for a newly created loan
@@ -53,6 +54,13 @@ const createDefaultMilestonesForLoan = async (loanId) => {
       
       console.log(`Created milestone "${milestoneName}" for loan ${loanId}`);
     }
+    
+    // Calculate initial completion percentage (first milestone is in progress = 50% of 1/13 = ~4%)
+    const initialCompletionPercentage = Math.round((0.5 / defaultMilestones.length) * 100);
+    
+    // Update the loan with the initial completion percentage
+    await Loan.findByIdAndUpdate(loanId, { completionPercentage: initialCompletionPercentage });
+    console.log(`Set initial completion percentage for loan ${loanId} to ${initialCompletionPercentage}%`);
     
     console.log(`Successfully created ${defaultMilestones.length} default milestones for loan ${loanId}`);
     return true;

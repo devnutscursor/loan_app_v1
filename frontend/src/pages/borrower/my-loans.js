@@ -39,11 +39,48 @@ const MyLoans = () => {
       if (response.success) {
         // The API returns data in the format { data: { loans: [...] } }
         const loansData = response.data.data?.loans || [];
-        setLoans(loansData);
+        
+        // Fetch milestone data for each loan to calculate accurate progress
+        const enhancedLoansPromises = loansData.map(async (loan) => {
+          try {
+            // Fetch milestones for this loan
+            const milestonesResponse = await LoanService.getLoanMilestones(loan._id);
+            
+            // Calculate milestone progress if milestones are available
+            if (milestonesResponse.success && milestonesResponse.data?.milestones?.length > 0) {
+              const milestones = milestonesResponse.data.milestones;
+              
+              // Count completed and in-progress milestones
+              const completedCount = milestones.filter(m => m.status === 'completed' || m.isCompleted).length;
+              const inProgressCount = milestones.filter(m => m.status === 'in_progress').length;
+              
+              // Calculate progress percentage (completed = 100%, in_progress = 50%)
+              const progressValue = (completedCount + (inProgressCount * 0.5)) / milestones.length;
+              const milestoneProgress = Math.round(progressValue * 100);
+              
+              // Return enhanced loan object with milestone progress
+              return {
+                ...loan,
+                milestoneProgress,
+                milestones
+              };
+            }
+            
+            // Return original loan if no milestone data was found
+            return loan;
+          } catch (error) {
+            console.error(`Error fetching milestones for loan ${loan._id}:`, error);
+            return loan; // Return original loan object if there's an error
+          }
+        });
+        
+        // Wait for all milestone data to be fetched
+        const enhancedLoans = await Promise.all(enhancedLoansPromises);
+        setLoans(enhancedLoans);
         
         // If there's a selected loan, refresh its data
         if (selectedLoan) {
-          const updatedLoan = loansData.find(loan => loan._id === selectedLoan._id);
+          const updatedLoan = enhancedLoans.find(loan => loan._id === selectedLoan._id);
           if (updatedLoan) {
             setSelectedLoan(updatedLoan);
           }

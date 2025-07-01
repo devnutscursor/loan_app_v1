@@ -113,6 +113,42 @@ const LoanDetails = () => {
               }
             }
           }
+          
+          // Fetch milestone data to calculate loan progress
+          try {
+            const milestonesResponse = await LoanService.getLoanMilestones(loanId);
+            
+            if (milestonesResponse.success) {
+              // Use either the API-provided overallProgress or calculate it from milestones
+              let milestoneProgress = 0;
+              
+              if (typeof milestonesResponse.data?.overallProgress === 'number') {
+                milestoneProgress = milestonesResponse.data.overallProgress;
+                console.log(`Loan ${loanId}: Using API-provided milestone progress: ${milestoneProgress}%`);
+              } else if (milestonesResponse.data?.milestones?.length > 0) {
+                const milestones = milestonesResponse.data.milestones;
+                milestoneProgress = LoanService.calculateMilestoneProgress(milestones);
+                console.log(`Loan ${loanId}: Calculated milestone progress: ${milestoneProgress}%`);
+              }
+              
+              // Update loan data with milestone progress and milestones
+              loanData.milestoneProgress = milestoneProgress;
+              loanData.milestones = milestonesResponse.data?.milestones || [];
+              
+              // Debug the loan data after enhancing with milestone progress
+              console.log(`Enhanced loan ${loanId} with milestoneProgress=${milestoneProgress}`, {
+                hasLoanData: !!loanData,
+                hasOverallProgressInResponse: typeof milestonesResponse.data?.overallProgress === 'number',
+                overallProgressInResponse: milestonesResponse.data?.overallProgress,
+                milestoneProgressAppliedToLoan: loanData.milestoneProgress
+              });
+            }
+          } catch (milestonesError) {
+            console.error(`Error fetching milestones for loan ${loanId}:`, milestonesError);
+            // Continue with loan data even if milestone fetch fails
+          }
+          
+          // Set the loan data with milestones if available
           setLoan(loanData);
         } else {
           console.warn("Failed to fetch loan details:", response.message);
