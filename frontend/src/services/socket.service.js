@@ -34,10 +34,8 @@ class SocketService {
 
       this.socket.on('receive_message', (message) => {
         console.log('SocketService: New message received:', message);
-        // Notify all registered listeners
-        this.messageListeners.forEach((listener) => {
-          listener.callback({...message, type: 'message'});
-        });
+        // Deduplicate before notifying listeners
+        this.deduplicateAndNotify({...message, type: 'message'});
       });
       
       // Add event listeners for other notification types
@@ -85,10 +83,8 @@ class SocketService {
       
       this.socket.on('new_lender_message', (data) => {
         console.log('SocketService: New lender message:', data);
-        // Notify registered listeners with type information
-        this.messageListeners.forEach((listener) => {
-          listener.callback({...data, type: 'message'});
-        });
+        // Deduplicate before notifying listeners
+        this.deduplicateAndNotify({...data, type: 'message'});
       });
     }
     return this.socket;
@@ -134,6 +130,48 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+  }
+
+  // Helper method to deduplicate messages by content
+  deduplicateAndNotify(message) {
+    // Only deduplicate messages
+    if (message.type !== 'message') {
+      this.messageListeners.forEach((listener) => {
+        listener.callback(message);
+      });
+      return;
+    }
+    
+    try {
+      // Check if this message is already in localStorage
+      const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+      
+      // Generate a content signature
+      const content = message.content || message.message || '';
+      const sender = message.senderName || 
+                    (message.sender?.firstName ? `${message.sender.firstName} ${message.sender.lastName || ''}` : 'Lender');
+      const newSignature = `New message from ${sender}-${content.substring(0, 40)}`.toLowerCase().trim();
+      
+      // Check if a similar message already exists
+      const isDuplicate = storedMessages.some(msg => {
+        const msgContent = msg.description || '';
+        const msgTitle = msg.title || '';
+        const existingSignature = `${msgTitle}-${msgContent}`.toLowerCase().trim();
+        return newSignature === existingSignature;
+      });
+      
+      if (isDuplicate) {
+        console.log('SocketService: Skipping duplicate message notification');
+        return;
+      }
+    } catch (e) {
+      console.error('SocketService: Error checking for duplicates:', e);
+    }
+    
+    // Notify all registered listeners
+    this.messageListeners.forEach((listener) => {
+      listener.callback(message);
+    });
   }
 }
 

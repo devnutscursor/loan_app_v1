@@ -110,11 +110,16 @@ const ActivityManager = ({ userId, updateActivities }) => {
     
     // Create message notification
     const createMessageNotification = (data) => {
-      return {
-        id: generateActivityId('msg', data),
+      const messageId = data.id || generateActivityId('msg', data);
+      const senderName = data.senderName || 
+                        (data.sender?.firstName ? `${data.sender.firstName} ${data.sender.lastName || ''}` : 'Lender');
+      const messageContent = data.content?.substring(0, 40) + (data.content?.length > 40 ? '...' : '') || 'You have a new message';
+      
+      const notification = {
+        id: messageId,
         icon: MessageSquare,
-        title: `New message from ${data.senderName || data.sender?.firstName || 'Lender'}`,
-        description: data.content?.substring(0, 40) + (data.content?.length > 40 ? '...' : '') || 'You have a new message',
+        title: `New message from ${senderName}`,
+        description: messageContent,
         time: 'Just now',
         status: 'New',
         statusColor: 'blue',
@@ -123,6 +128,32 @@ const ActivityManager = ({ userId, updateActivities }) => {
         timestamp: data.timestamp || new Date().toISOString(),
         persistent: true
       };
+      
+      // Also save this notification to localStorage directly to ensure persistence
+      try {
+        const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+        
+        // Generate a content signature for deduplication
+        const newSignature = `${notification.title || ''}-${notification.description || ''}`.toLowerCase().trim();
+        
+        // Check if a similar message already exists
+        const isDuplicate = storedMessages.some(msg => {
+          const existingSignature = `${msg.title || ''}-${msg.description || ''}`.toLowerCase().trim();
+          return newSignature === existingSignature;
+        });
+        
+        if (!isDuplicate) {
+          storedMessages.push(notification);
+          localStorage.setItem('borrower_messages', JSON.stringify(storedMessages));
+          console.log('ActivityManager: Saved message notification to localStorage');
+        } else {
+          console.log('ActivityManager: Skipped duplicate message notification');
+        }
+      } catch (e) {
+        console.error('ActivityManager: Failed to save message notification to localStorage', e);
+      }
+      
+      return notification;
     };
     
     // Create milestone notification

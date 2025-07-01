@@ -240,6 +240,57 @@ class WebSocketService {
    * @param {Object} notification - Notification data
    */
   handleNotification(notification) {
+    // Mark message notifications as persistent
+    if (notification.entityType === 'message' || 
+        notification.type === 'message' ||
+        notification.title?.toLowerCase().includes('message') ||
+        notification.description?.toLowerCase().includes('message')) {
+      notification.persistent = true;
+      
+      // Ensure it has the message entityType for consistent filtering
+      if (!notification.entityType) {
+        notification.entityType = 'message';
+      }
+      
+      // Set icon to MessageSquare if not specified
+      if (!notification.icon) {
+        notification.icon = 'MessageSquare';
+      }
+      
+      // Add timestamp if missing
+      if (!notification.timestamp) {
+        notification.timestamp = new Date().toISOString();
+      }
+      
+      // Generate ID if missing
+      if (!notification.id) {
+        notification.id = `message-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
+      // Save to message-specific storage
+      try {
+        const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+        
+        // Generate a content key for more reliable deduplication
+        const contentKey = `${notification.title}-${notification.message || notification.description || ''}`;
+        
+        // Check if this message already exists in storage based on content
+        if (!storedMessages.some(msg => {
+          const existingKey = `${msg.title}-${msg.message || msg.description || ''}`;
+          return existingKey === contentKey;
+        })) {
+          // Add the message only if it's not a duplicate
+          storedMessages.push(notification);
+          localStorage.setItem('borrower_messages', JSON.stringify(storedMessages));
+          console.log('WebSocketService: Saved message notification to localStorage:', notification.title);
+        } else {
+          console.log('WebSocketService: Skipped duplicate message notification:', notification.title);
+        }
+      } catch (error) {
+        console.error('WebSocketService: Failed to save message to localStorage:', error);
+      }
+    }
+    
     // Store the notification in the notification service
     NotificationService.addLocalNotification(notification);
     
@@ -249,7 +300,7 @@ class WebSocketService {
     // Show toast notification for important notifications
     if (notification.importance === 'high') {
       toast(notification.title, {
-        description: notification.message,
+        description: notification.message || notification.description,
         action: {
           label: 'View',
           onClick: () => {
@@ -263,11 +314,18 @@ class WebSocketService {
                 case 'document':
                   window.location.href = `/borrower/documents?id=${id}`;
                   break;
+                case 'message':
+                  window.location.href = `/borrower/messages`;
+                  break;
                 default:
                   window.location.href = '/notifications';
               }
+            } else if (notification.url) {
+              window.location.href = notification.url;
+            } else if (notification.entityType === 'message') {
+              window.location.href = '/borrower/messages';
             } else {
-              window.location.href = '/notifications';
+              window.location.href = '/borrower/dashboard';
             }
           }
         }

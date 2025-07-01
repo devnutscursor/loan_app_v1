@@ -354,6 +354,27 @@ const BorrowerDashboard = () => {
       return true;
     }
     
+    // For message notifications - check by content and sender
+    if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
+      // Create a content signature for comparison
+      const messageSignature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+      
+      // Skip empty signatures
+      if (messageSignature.length < 5) return false;
+      
+      return existingActivities.some(existing => {
+        // Check if it's a message notification
+        if (existing.entityType === 'message' || existing.title?.toLowerCase().includes('message')) {
+          // Create signature for existing message
+          const existingSignature = `${existing.title || ''}-${existing.description || ''}`.toLowerCase().trim();
+          
+          // Compare signatures
+          return messageSignature === existingSignature;
+        }
+        return false;
+      });
+    }
+    
     // For document notifications
     if (activity.entityType === 'document' && activity.title?.toLowerCase().includes('document') && activity.description) {
       const normalizedNew = normalizeDocumentDescription(activity.description);
@@ -376,8 +397,9 @@ const BorrowerDashboard = () => {
   // Clean up invalid notifications that don't belong to this user's loans
   const cleanupInvalidNotifications = () => {
     // First restore any saved messages from localStorage
+    let storedMessages = [];
     try {
-      const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+      storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
       if (storedMessages.length > 0) {
         console.log('Restoring stored messages:', storedMessages.length);
       }
@@ -388,13 +410,27 @@ const BorrowerDashboard = () => {
     if (!recentLoans || recentLoans.length === 0) {
       // If user has no loans, clear all notifications except messages
       setActivities(prevActivities => {
-        const messages = prevActivities.filter(activity => 
-          activity.entityType === 'message' || activity.persistent === true
+        // Combine existing message notifications with stored ones
+        const existingMessages = prevActivities.filter(activity => 
+          activity.entityType === 'message' || 
+          activity.title?.toLowerCase().includes('message') || 
+          activity.persistent === true
         );
         
-        if (messages.length > 0) {
-          localStorage.setItem(activitiesKey, JSON.stringify(messages));
-          return messages;
+        // Merge existing messages with stored ones
+        const allMessages = [...existingMessages];
+        
+        // Add stored messages that aren't already in the list
+        storedMessages.forEach(message => {
+          if (!allMessages.some(m => m.id === message.id)) {
+            allMessages.push(message);
+          }
+        });
+        
+        if (allMessages.length > 0) {
+          localStorage.setItem(activitiesKey, JSON.stringify(allMessages));
+          localStorage.setItem('borrower_messages', JSON.stringify(allMessages));
+          return allMessages;
         } else {
           localStorage.removeItem(activitiesKey);
           return [];
@@ -412,13 +448,25 @@ const BorrowerDashboard = () => {
     // Filter out notifications that don't match the user's loans, but keep all messages
     setActivities(prevActivities => {
       // Always keep all message notifications
-      const messages = prevActivities.filter(activity => 
-        activity.entityType === 'message' || activity.persistent === true
+      const existingMessages = prevActivities.filter(activity => 
+        activity.entityType === 'message' || 
+        activity.title?.toLowerCase().includes('message') || 
+        activity.persistent === true
       );
+      
+      // Combine with stored messages
+      const allMessages = [...existingMessages];
+      storedMessages.forEach(message => {
+        if (!allMessages.some(m => m.id === message.id)) {
+          allMessages.push(message);
+        }
+      });
       
       // For non-messages, validate against borrower loans
       const nonMessages = prevActivities.filter(activity => 
-        activity.entityType !== 'message' && activity.persistent !== true
+        activity.entityType !== 'message' && 
+        !activity.title?.toLowerCase().includes('message') && 
+        activity.persistent !== true
       );
       
       const validNonMessages = nonMessages.filter(activity => {
@@ -447,7 +495,7 @@ const BorrowerDashboard = () => {
       });
       
       // Combine and deduplicate
-      let combined = [...messages, ...validNonMessages];
+      let combined = [...allMessages, ...validNonMessages];
       
       // Deduplicate document notifications using our normalizer
       const uniqueDocuments = {};
@@ -460,12 +508,21 @@ const BorrowerDashboard = () => {
         return true;
       });
       
-      console.log(`Filtered notifications: ${messages.length} messages, ${validNonMessages.length} valid activities, ${combined.length} total after deduplication`);
+      console.log(`Filtered notifications: ${allMessages.length} messages, ${validNonMessages.length} valid activities, ${combined.length} total after deduplication`);
       
       // Save the valid activities to localStorage
       try {
         if (combined.length > 0) {
           localStorage.setItem(activitiesKey, JSON.stringify(combined.slice(0, 50)));
+          
+          // Also update the messages storage
+          const updatedMessages = combined.filter(activity => 
+            activity.entityType === 'message' || 
+            activity.title?.toLowerCase().includes('message')
+          );
+          if (updatedMessages.length > 0) {
+            localStorage.setItem('borrower_messages', JSON.stringify(updatedMessages));
+          }
         } else {
           localStorage.removeItem(activitiesKey);
         }
@@ -534,7 +591,28 @@ const BorrowerDashboard = () => {
       }
       
       // Mark document and message notifications as persistent
-      if (notification.entityType === 'document' || notification.entityType === 'message') {
+      if (notification.entityType === 'message' || 
+          notification.title?.toLowerCase().includes('message') ||
+          notification.description?.toLowerCase().includes('message')) {
+        notification.persistent = true;
+        
+        // Ensure it has the message entityType for consistent filtering
+        if (!notification.entityType) {
+          notification.entityType = 'message';
+        }
+        
+        // Save to message-specific storage
+        try {
+          const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+          if (!storedMessages.some(msg => msg.id === notification.id)) {
+            storedMessages.push(notification);
+            localStorage.setItem('borrower_messages', JSON.stringify(storedMessages));
+            console.log('[DEBUG] Saved message notification to borrower_messages:', notification.title);
+          }
+        } catch (error) {
+          console.error('Failed to save message to localStorage:', error);
+        }
+      } else if (notification.entityType === 'document') {
         notification.persistent = true;
       }
       
@@ -568,15 +646,6 @@ const BorrowerDashboard = () => {
           if (!storedDocuments.some(doc => doc.id === notification.id)) {
             storedDocuments.push(notification);
             localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
-          }
-        }
-        
-        // For message notifications, also save to message-specific storage
-        if (notification.entityType === 'message') {
-          const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
-          if (!storedMessages.some(msg => msg.id === notification.id)) {
-            storedMessages.push(notification);
-            localStorage.setItem('borrower_messages', JSON.stringify(storedMessages));
           }
         }
         
@@ -640,6 +709,17 @@ const BorrowerDashboard = () => {
     // Create a new array for the merged result
     const mergedActivities = [...existingActivities];
     
+    // Create a set of existing message signatures for better deduplication
+    const existingMessageSignatures = new Set();
+    mergedActivities.forEach(activity => {
+      if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
+        const signature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+        if (signature.length >= 5) {
+          existingMessageSignatures.add(signature);
+        }
+      }
+    });
+    
     // Process new activities
     newActivities.forEach(activity => {
       // Add ID if missing
@@ -648,15 +728,35 @@ const BorrowerDashboard = () => {
       }
       
       // Mark messages as persistent
-      if (activity.entityType === 'message') {
+      if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
         activity.persistent = true;
+        
+        // Check for duplicate message by content before storing
+        const messageSignature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+        if (messageSignature.length >= 5 && existingMessageSignatures.has(messageSignature)) {
+          console.log('Skipping duplicate message by content:', activity.title, activity.description);
+          return;
+        }
+        
+        // Add to signature set to prevent future duplicates
+        if (messageSignature.length >= 5) {
+          existingMessageSignatures.add(messageSignature);
+        }
         
         // Store messages in localStorage separately
         try {
           const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
-          if (!storedMessages.some(m => m.id === activity.id)) {
+          
+          // Check for duplicate in localStorage by content
+          const isDuplicateInStorage = storedMessages.some(msg => {
+            const storedSignature = `${msg.title || ''}-${msg.description || ''}`.toLowerCase().trim();
+            return storedSignature === messageSignature;
+          });
+          
+          if (!isDuplicateInStorage) {
             storedMessages.push(activity);
             localStorage.setItem('borrower_messages', JSON.stringify(storedMessages));
+            console.log('Stored new message in localStorage:', activity.title);
           }
         } catch (e) {
           console.error('Failed to store message in localStorage', e);
@@ -959,6 +1059,17 @@ useEffect(() => {
         return;
       }
       
+      // Load stored messages before fetching new activities
+      let storedMessages = [];
+      try {
+        storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+        if (storedMessages.length > 0) {
+          console.log('[DEBUG] Found stored messages:', storedMessages.length);
+        }
+      } catch (e) {
+        console.error('[DEBUG] Failed to parse stored messages:', e);
+      }
+      
       // Fetch recent activities
       console.log('[DEBUG] Fetching activities...');
       const activitiesResponse = await axios.get(
@@ -975,8 +1086,8 @@ useEffect(() => {
         console.log('[DEBUG] Activities received from API:', apiActivities.length);
         
         // Skip processing if no activities
-        if (apiActivities.length === 0) {
-          console.log('[DEBUG] No activities received from API');
+        if (apiActivities.length === 0 && storedMessages.length === 0) {
+          console.log('[DEBUG] No activities received from API and no stored messages');
           return;
         }
         
@@ -1007,6 +1118,14 @@ useEffect(() => {
         
         // Filter activities to only those related to existing loans
         let filteredActivities = apiActivities.filter(activity => {
+          // Always keep message notifications
+          if (activity.entityType === 'message' || 
+              activity.type === 'message' || 
+              (activity.title && activity.title.toLowerCase().includes('message'))) {
+            console.log('[DEBUG] Keeping message notification:', activity.title);
+            return true;
+          }
+          
           // Skip any notifications without loan information
           if (!activity.entityId && !activity.loanNumber && 
               (!activity.description || !activity.description.includes('loan #'))) {
@@ -1093,6 +1212,58 @@ useEffect(() => {
           };
         });
         
+        // Add stored messages to the processed activities
+        let allActivities = [...processedActivities];
+        
+        // Add stored messages that aren't already in the activities
+        if (storedMessages.length > 0) {
+          // Create a set of existing message signatures for better deduplication
+          const processedSignatures = new Set();
+          processedActivities.forEach(activity => {
+            if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
+              const signature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+              if (signature.length >= 5) {
+                processedSignatures.add(signature);
+              }
+            }
+          });
+          
+          // Filter out duplicate messages based on content
+          const uniqueStoredMessages = storedMessages.filter(message => {
+            // Skip messages without ID
+            if (!message.id) return false;
+            
+            // Check for duplicate by content
+            const messageSignature = `${message.title || ''}-${message.description || ''}`.toLowerCase().trim();
+            if (messageSignature.length >= 5 && processedSignatures.has(messageSignature)) {
+              return false;
+            }
+            
+            // Add signature to set to prevent future duplicates
+            if (messageSignature.length >= 5) {
+              processedSignatures.add(messageSignature);
+            }
+            
+            return true;
+          });
+          
+          // Add unique stored messages to activities
+          uniqueStoredMessages.forEach(message => {
+            // Make sure the message has the proper icon
+            const iconName = message.icon || 'MessageSquare';
+            const icon = typeof iconName === 'string' ? (iconMap[iconName] || MessageSquare) : MessageSquare;
+            
+            allActivities.push({
+              ...message,
+              icon: icon,
+              entityType: 'message',
+              persistent: true
+            });
+          });
+          
+          console.log(`[DEBUG] Added ${allActivities.length - processedActivities.length} stored messages to activities`);
+        }
+        
         // Merge with existing activities instead of replacing them
         setActivities(prevActivities => {
           // Create a map of existing activities by ID
@@ -1104,7 +1275,7 @@ useEffect(() => {
           });
           
           // Filter out duplicates
-          const newActivities = processedActivities.filter(activity => !existingMap[activity.id]);
+          const newActivities = allActivities.filter(activity => !existingMap[activity.id]);
           
           console.log(`[DEBUG] Adding ${newActivities.length} new activities to ${prevActivities.length} existing activities`);
           
@@ -1127,9 +1298,13 @@ useEffect(() => {
             }
             
             // Also save message notifications to message-specific storage
-            const messageNotifications = combined.filter(activity => activity.entityType === 'message');
+            const messageNotifications = combined.filter(activity => 
+              activity.entityType === 'message' || 
+              activity.title?.toLowerCase().includes('message')
+            );
             if (messageNotifications.length > 0) {
               localStorage.setItem('borrower_messages', JSON.stringify(messageNotifications));
+              console.log(`[DEBUG] Saved ${messageNotifications.length} message notifications to localStorage`);
             }
           } catch (error) {
             console.error('Failed to save merged activities to localStorage:', error);
@@ -1287,17 +1462,26 @@ useEffect(() => {
         if (storedMessages.length > 0) {
           console.log('Restoring stored messages before refresh:', storedMessages.length);
           setActivities(prevActivities => {
-            // Get existing message IDs to avoid duplicates
-            const existingMsgIds = new Set();
-            prevActivities.forEach(act => {
-              if (act.entityType === 'message') {
-                existingMsgIds.add(act.id);
+            // Create a set of existing message signatures for better deduplication
+            const existingSignatures = new Set();
+            prevActivities.forEach(activity => {
+              if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
+                const signature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+                if (signature.length >= 5) {
+                  existingSignatures.add(signature);
+                }
               }
             });
             
-            // Add any messages that aren't already in the list
-            const newMsgs = storedMessages.filter(msg => !existingMsgIds.has(msg.id));
+            // Filter out messages that already exist in the activities based on content
+            const newMsgs = storedMessages.filter(msg => {
+              const signature = `${msg.title || ''}-${msg.description || ''}`.toLowerCase().trim();
+              if (signature.length < 5) return true; // Keep messages with short/empty signatures
+              return !existingSignatures.has(signature);
+            });
+            
             if (newMsgs.length > 0) {
+              console.log(`Adding ${newMsgs.length} unique stored messages during refresh`);
               return [...prevActivities, ...newMsgs];
             }
             return prevActivities;
@@ -1500,10 +1684,111 @@ useEffect(() => {
     }
   }, []);
   
+  // Load messages from localStorage on initial render
+  useEffect(() => {
+    try {
+      // First try to load from localStorage
+      const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+      if (storedMessages && storedMessages.length > 0) {
+        console.log('Found stored messages in localStorage:', storedMessages.length);
+        
+        // Add these messages to the activities state
+        setActivities(prevActivities => {
+          // Create a set of existing message signatures to avoid duplicates
+          const existingSignatures = new Set();
+          prevActivities.forEach(activity => {
+            if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
+              const signature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
+              if (signature.length >= 5) {
+                existingSignatures.add(signature);
+              }
+            }
+          });
+          
+          // Filter out messages that already exist in the activities based on content
+          const newMessages = storedMessages.filter(msg => {
+            const signature = `${msg.title || ''}-${msg.description || ''}`.toLowerCase().trim();
+            if (signature.length < 5) return true; // Keep messages with short/empty signatures
+            return !existingSignatures.has(signature);
+          });
+          
+          if (newMessages.length > 0) {
+            console.log(`Adding ${newMessages.length} stored messages to activities`);
+            return [...prevActivities, ...newMessages];
+          }
+          return prevActivities;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load messages from localStorage:', e);
+    }
+  }, []);
+  
+  // Function to clean up duplicate messages in localStorage
+  const cleanupDuplicateMessages = () => {
+    try {
+      const storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
+      if (storedMessages.length === 0) return;
+      
+      console.log(`[DEBUG] Cleaning up messages in localStorage: ${storedMessages.length} messages`);
+      
+      // Use a Map to deduplicate by content signature
+      const uniqueMessages = new Map();
+      
+      // Process each message
+      storedMessages.forEach(message => {
+        if (!message || !message.title) return;
+        
+        // Create a content signature for comparison
+        const signature = `${message.title || ''}-${message.description || ''}`.toLowerCase().trim();
+        if (signature.length < 5) {
+          // For very short signatures, use ID-based deduplication
+          if (message.id) {
+            uniqueMessages.set(message.id, message);
+          }
+          return;
+        }
+        
+        // If this signature already exists, keep the newer message
+        if (uniqueMessages.has(signature)) {
+          const existing = uniqueMessages.get(signature);
+          const existingTime = existing.timestamp ? new Date(existing.timestamp) : new Date(0);
+          const newTime = message.timestamp ? new Date(message.timestamp) : new Date(0);
+          
+          // Replace only if this message is newer
+          if (newTime > existingTime) {
+            uniqueMessages.set(signature, message);
+          }
+        } else {
+          // Add new signature
+          uniqueMessages.set(signature, message);
+        }
+      });
+      
+      // Convert back to array
+      const cleanedMessages = Array.from(uniqueMessages.values());
+      
+      console.log(`[DEBUG] Cleaned up messages: ${storedMessages.length} -> ${cleanedMessages.length}`);
+      
+      // Save back to localStorage
+      localStorage.setItem('borrower_messages', JSON.stringify(cleanedMessages));
+      
+      return cleanedMessages;
+    } catch (e) {
+      console.error('Failed to clean up duplicate messages:', e);
+      return null;
+    }
+  };
+  
+  // Call cleanup on initial mount
+  useEffect(() => {
+    cleanupDuplicateMessages();
+  }, []);
+  
   return (
     <MainLayout title="Borrower Dashboard">
-      {/* Activity Manager for real-time updates */}
-      {userId && <ActivityManager userId={userId} updateActivities={setActivities} />}
+      {/* Activity Manager for real-time updates - ensure it's loaded first */}
+      {userId && <ActivityManager key={userId} userId={userId} updateActivities={setActivities} />}
       
       <div className="py-6">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
