@@ -6,7 +6,7 @@ const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     // If using Vercel deployment
     if (window.location.hostname.includes('vercel.app')) {
-      return `${window.location.origin}/api/v1`;
+      return `https://loan-app-tnuk.onrender.com/api/v1`;
     }
   }
   

@@ -41,14 +41,14 @@ export const MilestoneTimeline = ({ milestones = [] }) => {
                       ) : (
                         <span className={`h-2 w-2 rounded-full bg-${statusColor}-400`} />
                       )}
-                    </span>
+                      </span>
                   </div>
                   <div className="min-w-0 flex-1 pt-1.5">
                     <div className="flex justify-between">
                       <p className={`text-sm font-medium text-gray-800`}>
                         {milestone.name}
                       </p>
-                      {milestone.date && (
+                  {milestone.date && (
                         <p className="text-sm text-gray-500">
                           {new Date(milestone.date).toLocaleDateString()}
                         </p>
@@ -59,8 +59,8 @@ export const MilestoneTimeline = ({ milestones = [] }) => {
                     </p>
                   </div>
                 </div>
-              </div>
-            </li>
+                </div>
+              </li>
           );
         })}
       </ul>
