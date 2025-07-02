@@ -668,10 +668,12 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
                   <div className="flex justify-between">
                     <div className="text-sm font-medium text-gray-900">{req.title}</div>
                     <div className={`px-2 inline-flex text-xs leading-5 font-medium rounded-full 
-                      ${req.status === 'Approved' ? 'bg-green-100 text-green-800' : 
-                        req.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
+                      ${req.status === 'Approved' || req.status === 'Conditional Approval' ? 'bg-green-100 text-green-800' : 
+                        req.status === 'Rejected' || req.status === 'Declined' ? 'bg-red-100 text-red-800' : 
                         'bg-yellow-100 text-yellow-800'}`}>
-                      {req.status}
+                      {req.status === 'Conditional Approval' ? 'Approved' : 
+                       req.status === 'Declined' ? 'Rejected' : 
+                       req.status}
                     </div>
                   </div>
                 </div>

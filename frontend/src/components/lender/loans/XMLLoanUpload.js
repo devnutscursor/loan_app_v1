@@ -238,8 +238,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
     // Helper function to safely get text content
     const getTextContent = (xpath, defaultValue = '') => {
       try {
-        const elements = xmlDoc.querySelectorAll(xpath);
-        return elements.length > 0 ? elements[0].textContent?.trim() || defaultValue : defaultValue;
+      const elements = xmlDoc.querySelectorAll(xpath);
+      return elements.length > 0 ? elements[0].textContent?.trim() || defaultValue : defaultValue;
       } catch (error) {
         console.error(`Error extracting ${xpath}:`, error);
         return defaultValue;
@@ -253,33 +253,77 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       return isNaN(num) ? defaultValue : num;
     };
 
-    // Extract borrower information
+    // Helper function to safely get boolean values
+    const getBoolean = (xpath, defaultValue = false) => {
+      const text = getTextContent(xpath);
+      return text?.toLowerCase() === 'true' || text === '1' || text === 'yes' || defaultValue;
+    };
+
+    // Enhanced XML path extraction with multiple possible paths
+    const getMultiPathContent = (xpaths, defaultValue = '') => {
+      for (const xpath of xpaths) {
+        try {
+          const value = getTextContent(xpath);
+          if (value) return value;
+        } catch (e) {
+          console.log(`Path ${xpath} not found, trying next...`);
+        }
+      }
+      return defaultValue;
+    };
+
+    // Enhanced function to get boolean values from multiple paths
+    const getMultiPathBoolean = (xpaths, defaultValue = false) => {
+      for (const xpath of xpaths) {
+        try {
+          const value = getTextContent(xpath);
+          if (value) {
+            return value.toLowerCase() === 'true' || value === '1' || value === 'yes';
+          }
+        } catch (e) {
+          console.log(`Path ${xpath} not found, trying next...`);
+        }
+      }
+      return defaultValue;
+    };
+
+    // Extract borrower information with enhanced paths
     const borrowerData = {
-      firstName: getTextContent('FirstName'),
-      lastName: getTextContent('LastName'),
-      fullName: getTextContent('FullName'),
-      email: getTextContent('ContactPointEmailValue'),
-      phone: getTextContent('ContactPointTelephoneValue'),
-      dateOfBirth: getTextContent('BorrowerBirthDate'),
-      ssn: getTextContent('TaxpayerIdentifierValue'),
-      maritalStatus: getTextContent('MaritalStatusType'),
-      dependentCount: getNumber('DependentCount'),
+      firstName: getMultiPathContent(['FirstName', 'name firstname', 'individual name firstname']),
+      lastName: getMultiPathContent(['LastName', 'name lastname', 'individual name lastname']),
+      fullName: getMultiPathContent(['FullName', 'name fullname', 'individual name fullname']),
+      email: getMultiPathContent([
+        'ContactPointEmailValue', 
+        'contact_point_email ContactPointEmailValue',
+        'contact_points contact_point contact_point_email contactpointemailvalue'
+      ]),
+      phone: getMultiPathContent([
+        'ContactPointTelephoneValue',
+        'contact_point_telephone ContactPointTelephoneValue',
+        'contact_points contact_point contact_point_telephone contactpointtelephonevalue'
+      ]),
+      dateOfBirth: getMultiPathContent(['BorrowerBirthDate', 'borrower_detail borrowerbirthdate']),
+      ssn: getMultiPathContent(['TaxpayerIdentifierValue', 'taxpayer_identifiers taxpayer_identifier taxpayeridentifiervalue']),
+      maritalStatus: getMultiPathContent(['MaritalStatusType', 'borrower_detail maritalstatustype']),
+      dependentCount: getNumber('DependentCount') || getNumber('borrower_detail dependentcount'),
+      citizenship: getMultiPathContent(['CitizenshipResidencyType', 'declaration_detail citizenshipresidencytype']),
       
       // Address information
       address: {
-        streetAddress: getTextContent('AddressLineText'),
-        city: getTextContent('CityName'),
-        state: getTextContent('StateCode'),
-        zipCode: getTextContent('PostalCode'),
+        streetAddress: getMultiPathContent(['AddressLineText', 'address addresslinetext']),
+        city: getMultiPathContent(['CityName', 'address cityname']),
+        state: getMultiPathContent(['StateCode', 'address statecode']),
+        zipCode: getMultiPathContent(['PostalCode', 'address postalcode']),
       },
 
-      // Employment information (simplified)
+      // Employment information (enhanced)
       employment: {
-        employerName: getTextContent('FullName'),
-        position: getTextContent('EmploymentPositionDescription'),
-        monthlyIncome: getNumber('EmploymentMonthlyIncomeAmount'),
-        startDate: getTextContent('EmploymentStartDate'),
-        isSelfEmployed: getTextContent('EmploymentBorrowerSelfEmployedIndicator') === 'true',
+        employerName: getMultiPathContent(['FullName', 'employer legal_entity legal_entity_detail fullname']),
+        position: getMultiPathContent(['EmploymentPositionDescription', 'employer employment employmentpositiondescription']),
+        monthlyIncome: getNumber('EmploymentMonthlyIncomeAmount') || getNumber('employer employment employmentmonthlyincomeamount'),
+        startDate: getMultiPathContent(['EmploymentStartDate', 'employer employment employmentstartdate']),
+        isSelfEmployed: getMultiPathBoolean(['EmploymentBorrowerSelfEmployedIndicator', 'employer employment employmentborrowerselfemployedindicator']),
+        workPhone: getMultiPathContent(['employer legal_entity contacts contact contact_points contact_point contact_point_telephone contactpointtelephonevalue']),
       }
     };
     
@@ -294,61 +338,129 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       }
     }
 
-    // Extract loan information
+    // Extract loan information - enhanced with multiple paths
     const loanData = {
-      loanType: getTextContent('LoanPurposeType') || 'Purchase',
-      loanAmount: getNumber('LoanAmount'),
-      loanTerm: getNumber('LoanTermMonths') / 12 || 30, // Convert months to years
+      loanType: getMultiPathContent(['LoanPurposeType', 'loan_detail loanpurposetype', 'terms_of_loan loanpurposetype']) || 'Purchase',
+      loanAmount: getNumber('LoanAmount') || getNumber('amount loanamount') || getNumber('terms_of_loan baseloanamount'),
+      loanTerm: getNumber('LoanTermMonths') / 12 || getNumber('terms loantermmonths') / 12 || getNumber('amortization amortization_rule loanamortizationperiodcount') / 12 || 30, // Convert months to years
+      interestRate: getNumber('NoteRatePercent') || getNumber('terms_of_loan noteratepercent') || 0,
+      purchasePrice: getNumber('SalesContractAmount') || getNumber('sales_contracts sales_contract sales_contract_detail salescontractamount')
     };
 
-    // Extract property information
+    // Extract property information - enhanced with multiple paths
     const propertyData = {
-      streetAddress: getTextContent('SUBJECT_PROPERTY AddressLineText'),
-      city: getTextContent('SUBJECT_PROPERTY CityName'),
-      state: getTextContent('SUBJECT_PROPERTY StateCode'),
-      zipCode: getTextContent('SUBJECT_PROPERTY PostalCode'),
-      purchasePrice: getNumber('SalesContractAmount'),
-      estimatedValue: getNumber('SalesContractAmount'), // Use same value if no separate appraisal
+      streetAddress: getMultiPathContent([
+        'SUBJECT_PROPERTY AddressLineText', 
+        'collateral subject_property address addresslinetext'
+      ]),
+      city: getMultiPathContent([
+        'SUBJECT_PROPERTY CityName', 
+        'collateral subject_property address cityname'
+      ]),
+      state: getMultiPathContent([
+        'SUBJECT_PROPERTY StateCode', 
+        'collateral subject_property address statecode'
+      ]),
+      zipCode: getMultiPathContent([
+        'SUBJECT_PROPERTY PostalCode', 
+        'collateral subject_property address postalcode'
+      ]),
+      purchasePrice: getNumber('SalesContractAmount') || getNumber('collateral subject_property sales_contracts sales_contract sales_contract_detail salescontractamount'),
+      estimatedValue: getNumber('PropertyEstimatedValueAmount') || getNumber('collateral subject_property property_detail propertyestimatedvalueamount') || getNumber('SalesContractAmount'),
+      propertyType: getMultiPathContent([
+        'PropertyUsageType', 
+        'PropertyCurrentUsageType', 
+        'collateral subject_property property_detail propertyusagetype',
+        'collateral subject_property property_detail propertycurrentusagetype'
+      ]) || 'Primary Residence',
+      occupancyType: getMultiPathContent(['IntentToOccupyType', 'declaration_detail intenttooccupytype']) === 'Yes' ? 'Primary Residence' : 'Investment'
     };
 
-    // Return structured data
+    // Extract asset information - enhanced
+    const assetData = {
+      checkingAccounts: getNumber('asset asset_detail assetcashormarketvalueamount', 0),
+      savingsAccounts: 0,
+      investments: 0,
+      retirementAccounts: 0,
+    };
+
+    // Try to find assets by type
+    const checkingAsset = xmlDoc.querySelector('asset_detail assettype, AssetType');
+    if (checkingAsset && checkingAsset.textContent.includes('Checking')) {
+      assetData.checkingAccounts = getNumber('asset asset_detail assetcashormarketvalueamount');
+    }
+    
+    const savingsAsset = xmlDoc.querySelector('asset_detail assettype, AssetType');
+    if (savingsAsset && savingsAsset.textContent.includes('Savings')) {
+      assetData.savingsAccounts = getNumber('asset asset_detail assetcashormarketvalueamount');
+    }
+
+    // Extract declarations information - enhanced with multiple paths
+    const declarationsData = {
+      bankruptcyHistory: getMultiPathBoolean(['BankruptcyIndicator', 'declaration_detail bankruptcyindicator']),
+      foreclosureHistory: getMultiPathBoolean(['PriorPropertyForeclosureCompletedIndicator', 'declaration_detail priorpropertyforeclosurecompletedIndicator']),
+      legalProblems: getMultiPathBoolean(['PartyToLawsuitIndicator', 'declaration_detail partytolawsuitindicator']),
+      delinquent: getMultiPathBoolean(['PresentlyDelinquentIndicator', 'declaration_detail presentlydelinquentindicator']),
+      judgments: getMultiPathBoolean(['OutstandingJudgmentsIndicator', 'declaration_detail outstandingjudgmentsindicator']),
+      borrowingMoney: getMultiPathBoolean(['UndisclosedBorrowedFundsIndicator', 'declaration_detail undisclosedborrowedfundsindicator']),
+      coSigner: getMultiPathBoolean(['UndisclosedComakerOfNoteIndicator', 'declaration_detail undisclosedcomakerofnoteindicator']),
+      hadOwnershipInterest: getMultiPathContent(['HomeownerPastThreeYearsType', 'declaration_detail homeownerpastthreeyearstype']) === 'Yes',
+      occupyAsPrimary: getMultiPathContent(['IntentToOccupyType', 'declaration_detail intenttooccupytype']) === 'Yes',
+      applyingForMortgage: getMultiPathBoolean(['UndisclosedMortgageApplicationIndicator', 'declaration_detail undisclosedmortgageapplicationindicator']),
+    };
+
+    // Return structured data with enhanced fields
     return {
       borrowerDetails: borrowerData,
       loanDetails: loanData,
       property: propertyData,
       income: {
         baseIncome: borrowerData.employment.monthlyIncome * 12,
-        overtime: 0,
-        commissions: 0,
-        bonuses: 0,
-        militaryEntitlements: 0,
+        overtime: getNumber('current_income_items current_income_item overtime') * 12,
+        commissions: getNumber('current_income_items current_income_item commissions') * 12,
+        bonuses: getNumber('current_income_items current_income_item bonus') * 12,
+        militaryEntitlements: getNumber('current_income_items current_income_item militaryentitlement') * 12,
       },
       assets: {
-        checkingAccounts: 0,
-        savingsAccounts: 0,
-        investments: 0,
-        retirementAccounts: 0,
+        checkingAccounts: assetData.checkingAccounts,
+        savingsAccounts: assetData.savingsAccounts,
+        investments: assetData.investments,
+        retirementAccounts: assetData.retirementAccounts,
       },
       debts: {
-        creditCards: 0,
-        autoLoans: 0,
-        studentLoans: 0,
-        otherDebts: 0,
+        creditCards: getNumber('liability liability_detail creditcard'),
+        autoLoans: getNumber('liability liability_detail autoloan'),
+        studentLoans: getNumber('liability liability_detail studentloan'),
+        otherDebts: getNumber('liability liability_detail other'),
       },
       militaryService: {
-        isVeteran: false,
-        isActive: false,
+        isVeteran: getMultiPathBoolean(['selfdeclaredmilitaryserviceindicator', 'borrower_detail selfdeclaredmilitaryserviceindicator']),
+        isActive: getMultiPathContent(['militarystatustype', 'military_service_detail militarystatustype'])?.includes('Active') || false,
+        isSurvivingSpouse: getMultiPathBoolean(['SpousalVABenefitsEligibilityIndicator', 'borrower_detail spousalvabenefitseligibilityindicator']),
+        currentlyServing: getMultiPathContent(['militarystatustype', 'military_service_detail militarystatustype']) === 'ActiveDuty',
+        isRetired: getMultiPathContent(['militarystatustype', 'military_service_detail militarystatustype']) === 'Retired',
       },
-      declarations: {
-        bankruptcyHistory: false,
-        foreclosureHistory: false,
-        legalProblems: false,
-      },
+      declarations: declarationsData,
       demographics: {
-        ethnicity: 'Not Provided',
-        race: 'Not Provided',
-        sex: 'Not Provided',
-      }
+        ethnicity: getMultiPathContent(['hmda_ethnicity_origin hmdaethnicityorigintype', 'hmda_ethnicity hmdaethnicitytype']) || 'Not Provided',
+        race: getMultiPathContent(['hmda_race hmda_race_detail hmdaracetype', 'hmda_races hmda_race hmda_race_detail hmdaracetype']) || 'Not Provided',
+        sex: getMultiPathContent(['government_monitoring_detail hmdagendertype', 'government_monitoring_detail extension other government_monitoring_detail_extension hmdagendertype']) || 'Not Provided',
+      },
+      residenceHistory: [
+        {
+          address: {
+            streetAddress: getMultiPathContent(['residence address addresslinetext']),
+            city: getMultiPathContent(['residence address cityname']),
+            state: getMultiPathContent(['residence address statecode']),
+            zipCode: getMultiPathContent(['residence address postalcode']),
+          },
+          residencyType: getMultiPathContent(['residence residence_detail borrowerresidencytype']),
+          monthlyRent: getNumber('residence landlord landlord_detail monthlyrentamount'),
+          ownOrRent: getMultiPathContent(['residence residence_detail borrowerresidencybasistype']) === 'Own' ? 'Own' : 'Rent',
+          yearsAtAddress: Math.floor(getNumber('residence residence_detail borrowerresidencydurationmonthscount') / 12),
+          monthsAtAddress: getNumber('residence residence_detail borrowerresidencydurationmonthscount') % 12
+        }
+      ]
     };
   };
   
@@ -476,7 +588,7 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       toast.error('No XML file selected');
       return;
     }
-    
+
     // Additional validation to ensure file is still valid
     try {
       // Check if file is still accessible
@@ -780,6 +892,10 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                         <div><span className="font-medium">Email:</span> {parsedData.borrowerDetails.email || 'Not provided'}</div>
                         <div><span className="font-medium">Phone:</span> {parsedData.borrowerDetails.phone || 'Not provided'}</div>
                         <div><span className="font-medium">SSN:</span> {parsedData.borrowerDetails.ssn ? '***-**-' + parsedData.borrowerDetails.ssn.slice(-4) : 'Not provided'}</div>
+                        <div><span className="font-medium">Date of Birth:</span> {parsedData.borrowerDetails.dateOfBirth || 'Not provided'}</div>
+                        <div><span className="font-medium">Marital Status:</span> {parsedData.borrowerDetails.maritalStatus || 'Not provided'}</div>
+                        <div><span className="font-medium">Dependents:</span> {parsedData.borrowerDetails.dependentCount || '0'}</div>
+                        <div><span className="font-medium">Citizenship:</span> {parsedData.borrowerDetails.citizenship || 'Not provided'}</div>
                       </div>
                     </div>
 
@@ -793,6 +909,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                         <div><span className="font-medium">Type:</span> {parsedData.loanDetails.loanType}</div>
                         <div><span className="font-medium">Amount:</span> ${parsedData.loanDetails.loanAmount?.toLocaleString() || 'Not specified'}</div>
                         <div><span className="font-medium">Term:</span> {parsedData.loanDetails.loanTerm} years</div>
+                        <div><span className="font-medium">Interest Rate:</span> {parsedData.loanDetails.interestRate}%</div>
+                        <div><span className="font-medium">Purchase Price:</span> ${parsedData.loanDetails.purchasePrice?.toLocaleString() || 'Not specified'}</div>
                       </div>
                     </div>
 
@@ -805,7 +923,11 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                       <div className="space-y-2 text-sm">
                         <div><span className="font-medium">Address:</span> {parsedData.property.streetAddress || 'Not provided'}</div>
                         <div><span className="font-medium">City:</span> {parsedData.property.city || 'Not provided'}</div>
+                        <div><span className="font-medium">State:</span> {parsedData.property.state || 'Not provided'}</div>
+                        <div><span className="font-medium">Zip Code:</span> {parsedData.property.zipCode || 'Not provided'}</div>
                         <div><span className="font-medium">Purchase Price:</span> ${parsedData.property.purchasePrice?.toLocaleString() || 'Not specified'}</div>
+                        <div><span className="font-medium">Property Type:</span> {parsedData.property.propertyType || 'Not specified'}</div>
+                        <div><span className="font-medium">Occupancy Type:</span> {parsedData.property.occupancyType || 'Not specified'}</div>
                       </div>
                     </div>
 
@@ -819,6 +941,38 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                         <div><span className="font-medium">Annual Income:</span> ${parsedData.income.baseIncome?.toLocaleString() || '0'}</div>
                         <div><span className="font-medium">Employer:</span> {parsedData.borrowerDetails.employment?.employerName || 'Not provided'}</div>
                         <div><span className="font-medium">Position:</span> {parsedData.borrowerDetails.employment?.position || 'Not provided'}</div>
+                        <div><span className="font-medium">Checking Accounts:</span> ${parsedData.assets.checkingAccounts?.toLocaleString() || '0'}</div>
+                        <div><span className="font-medium">Savings Accounts:</span> ${parsedData.assets.savingsAccounts?.toLocaleString() || '0'}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Declarations Info */}
+                    <div className="bg-red-50 rounded-lg p-4">
+                      <div className="flex items-center mb-3">
+                        <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+                        <h4 className="font-medium text-gray-900">Declarations</h4>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div><span className="font-medium">Bankruptcy:</span> {parsedData.declarations.bankruptcyHistory ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Foreclosure:</span> {parsedData.declarations.foreclosureHistory ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Legal Problems:</span> {parsedData.declarations.legalProblems ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Outstanding Judgments:</span> {parsedData.declarations.judgments ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Delinquent on Debt:</span> {parsedData.declarations.delinquent ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Intend to Occupy:</span> {parsedData.declarations.occupyAsPrimary ? 'Yes' : 'No'}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Military Service */}
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex items-center mb-3">
+                        <User className="h-5 w-5 text-blue-600 mr-2" />
+                        <h4 className="font-medium text-gray-900">Military Service</h4>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div><span className="font-medium">Military Service:</span> {parsedData.militaryService.isVeteran ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Currently Serving:</span> {parsedData.militaryService.currentlyServing ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Retired:</span> {parsedData.militaryService.isRetired ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Surviving Spouse:</span> {parsedData.militaryService.isSurvivingSpouse ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
                   </div>

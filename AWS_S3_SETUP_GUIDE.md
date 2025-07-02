@@ -135,6 +135,31 @@ Instead of using `AmazonS3FullAccess`, create a custom policy with minimal permi
 }
 ```
 
+## CORS Configuration for Office Online Viewer
+
+To enable viewing Office documents with Office Online viewer, you need to configure CORS on your S3 bucket:
+
+1. Go to your S3 bucket in AWS Console
+2. Click on the "Permissions" tab
+3. Scroll down to "Cross-origin resource sharing (CORS)"
+4. Click "Edit" and paste the following configuration:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Type", "Content-Length", "Content-Disposition"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+5. Click "Save changes"
+
+This configuration is required for Office Online and Google Docs viewer to access the documents from your S3 bucket.
+
 ## Troubleshooting
 
 1. **Upload Fails**: Check AWS credentials and bucket permissions

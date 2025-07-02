@@ -196,6 +196,23 @@ const MessageCenter = ({
   // Handle sending a message
   const handleSendMessage = async (messageData) => {
     try {
+      console.log('Sending message data:', {
+        conversationId: activeConversationId,
+        content: messageData.content,
+        attachmentsCount: messageData.attachments ? messageData.attachments.length : 0
+      });
+      
+      // Check if we have valid attachments
+      const hasValidAttachments = messageData.attachments && 
+                                messageData.attachments.length > 0 &&
+                                messageData.attachments.every(att => att instanceof File || att.type);
+      
+      // Ensure we have either content or valid attachments
+      if (!messageData.content && !hasValidAttachments) {
+        toast.error('Message must contain text or attachments');
+        return;
+      }
+      
       const response = await MessageService.sendMessage(
         activeConversationId,
         messageData.content,
@@ -211,11 +228,11 @@ const MessageCenter = ({
           content: response.data.content,
           timestamp: new Date(response.data.createdAt),
           attachments: response.data.attachments.map(att => ({
-            id: att._id,
-            name: att.fileName,
-            size: formatFileSize(att.fileSize),
-            type: att.fileType,
-            url: att.fileUrl
+            id: att._id || att.id,
+            name: att.fileName || att.name,
+            size: formatFileSize(att.fileSize || att.size),
+            type: att.fileType || att.type,
+            url: att.url || att.fileUrl
           }))
         };
         
@@ -228,9 +245,9 @@ const MessageCenter = ({
             return {
               ...conv, 
               lastMessage: {
-                content: messageData.content,
+                content: messageData.content || (hasValidAttachments ? 'Sent an attachment' : ''),
                 timestamp: new Date(),
-                attachments: messageData.attachments || []
+                attachments: hasValidAttachments ? [{type: 'attachment'}] : []
               }
             };
           }

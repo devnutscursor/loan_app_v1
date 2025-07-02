@@ -151,7 +151,9 @@ const LoanCard = ({ loan, onView }) => {
             <p className="text-xs text-gray-500">Applied: {formatDate(loan.createdAt)}</p>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
+            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : 
+             loan.status?.toLowerCase() === 'declined' ? 'Rejected' :
+             loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
           </span>
         </div>
         
@@ -211,10 +213,16 @@ const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, 
     iconBgColor = 'bg-blue-100';
     iconTextColor = 'text-blue-600';
   } else if (entityType === 'document' || title?.toLowerCase().includes('document')) {
-    if (status === 'Approved' || title?.toLowerCase().includes('approved')) {
+    // Normalize status for comparison
+    const normalizedStatus = status?.toLowerCase() || '';
+    const normalizedTitle = title?.toLowerCase() || '';
+    
+    if (normalizedStatus === 'approved' || normalizedStatus === 'conditional approval' || 
+        normalizedTitle.includes('approved') || normalizedTitle.includes('conditional approval')) {
       iconBgColor = 'bg-green-100';
       iconTextColor = 'text-green-600';
-    } else if (status === 'Rejected' || title?.toLowerCase().includes('rejected')) {
+    } else if (normalizedStatus === 'rejected' || normalizedStatus === 'declined' || 
+              normalizedTitle.includes('rejected') || normalizedTitle.includes('declined')) {
       iconBgColor = 'bg-red-100';
       iconTextColor = 'text-red-600';
     } else {
@@ -1682,6 +1690,51 @@ useEffect(() => {
     } catch (e) {
       console.error('Failed to restore messages from localStorage on startup', e);
     }
+    
+    // Restore saved document notifications from localStorage on initial load
+    try {
+      const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
+      if (storedDocuments.length > 0) {
+        console.log('Restoring stored document notifications on startup:', storedDocuments.length);
+        
+        // Prioritize document approval/rejection notifications
+        const importantDocs = storedDocuments.filter(doc => 
+          doc.title?.toLowerCase().includes('approved') || 
+          doc.title?.toLowerCase().includes('rejected')
+        );
+        
+        const otherDocs = storedDocuments.filter(doc => 
+          !doc.title?.toLowerCase().includes('approved') && 
+          !doc.title?.toLowerCase().includes('rejected')
+        );
+        
+        console.log(`Found ${importantDocs.length} important document notifications`);
+        
+        // Add all notifications to activities state
+        setActivities(prevActivities => {
+          const existingIds = new Set(prevActivities.map(a => a.id));
+          const newDocNotifications = [...importantDocs, ...otherDocs].filter(doc => !existingIds.has(doc.id));
+          return [...prevActivities, ...newDocNotifications];
+        });
+      }
+    } catch (e) {
+      console.error('Failed to restore document notifications from localStorage on startup', e);
+    }
+    
+    // Restore saved milestone notifications from localStorage on initial load
+    try {
+      const storedMilestones = JSON.parse(localStorage.getItem('borrower_milestones') || '[]');
+      if (storedMilestones.length > 0) {
+        console.log('Restoring stored milestone notifications on startup:', storedMilestones.length);
+        setActivities(prevActivities => {
+          const existingIds = new Set(prevActivities.map(a => a.id));
+          const newMilestoneNotifications = storedMilestones.filter(ms => !existingIds.has(ms.id));
+          return [...prevActivities, ...newMilestoneNotifications];
+        });
+      }
+    } catch (e) {
+      console.error('Failed to restore milestone notifications from localStorage on startup', e);
+    }
   }, []);
   
   // Load messages from localStorage on initial render
@@ -1780,9 +1833,109 @@ useEffect(() => {
     }
   };
   
+  // Function to clean up duplicate document notifications in localStorage
+  const cleanupDuplicateDocuments = () => {
+    try {
+      const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
+      if (storedDocuments.length === 0) return;
+      
+      console.log(`[DEBUG] Cleaning up document notifications in localStorage: ${storedDocuments.length} notifications`);
+      
+      // Separate important notifications (approvals/rejections) from others
+      const importantDocs = storedDocuments.filter(doc => 
+        doc.title?.toLowerCase().includes('approved') || 
+        doc.title?.toLowerCase().includes('rejected')
+      );
+      
+      const regularDocs = storedDocuments.filter(doc => 
+        !doc.title?.toLowerCase().includes('approved') && 
+        !doc.title?.toLowerCase().includes('rejected')
+      );
+      
+      console.log(`[DEBUG] Found ${importantDocs.length} important document notifications`);
+      
+      // Use a Map to deduplicate regular documents by content signature
+      const uniqueRegularDocs = new Map();
+      
+      // Process each regular document notification
+      regularDocs.forEach(document => {
+        if (!document || !document.title) return;
+        
+        // Create a content signature for comparison
+        const signature = `${document.title || ''}-${document.description || ''}`.toLowerCase().trim();
+        if (signature.length < 5) {
+          // For very short signatures, use ID-based deduplication
+          if (document.id) {
+            uniqueRegularDocs.set(document.id, document);
+          }
+          return;
+        }
+        
+        // If this signature already exists, keep the newer document
+        if (uniqueRegularDocs.has(signature)) {
+          const existing = uniqueRegularDocs.get(signature);
+          const existingTime = existing.timestamp ? new Date(existing.timestamp) : new Date(0);
+          const newTime = document.timestamp ? new Date(document.timestamp) : new Date(0);
+          
+          // Replace only if this document is newer
+          if (newTime > existingTime) {
+            uniqueRegularDocs.set(signature, document);
+          }
+        } else {
+          // Add new signature
+          uniqueRegularDocs.set(signature, document);
+        }
+      });
+      
+      // Use a Map to deduplicate important documents by document ID
+      const uniqueImportantDocs = new Map();
+      
+      // Process each important document notification
+      importantDocs.forEach(document => {
+        if (!document || !document.title) return;
+        
+        // Use document ID or content as key
+        const key = document.documentId || 
+                   `${document.title || ''}-${document.description || ''}`.toLowerCase().trim();
+        
+        // If this document already exists, keep the newer one
+        if (uniqueImportantDocs.has(key)) {
+          const existing = uniqueImportantDocs.get(key);
+          const existingTime = existing.timestamp ? new Date(existing.timestamp) : new Date(0);
+          const newTime = document.timestamp ? new Date(document.timestamp) : new Date(0);
+          
+          // Replace only if this document is newer
+          if (newTime > existingTime) {
+            uniqueImportantDocs.set(key, document);
+          }
+        } else {
+          // Add new document
+          uniqueImportantDocs.set(key, document);
+        }
+      });
+      
+      // Convert back to array
+      const cleanedRegularDocs = Array.from(uniqueRegularDocs.values());
+      const cleanedImportantDocs = Array.from(uniqueImportantDocs.values());
+      const cleanedDocuments = [...cleanedImportantDocs, ...cleanedRegularDocs];
+      
+      console.log(`[DEBUG] Cleaned up document notifications: ${storedDocuments.length} -> ${cleanedDocuments.length}`);
+      console.log(`[DEBUG] Important documents: ${cleanedImportantDocs.length}, Regular documents: ${cleanedRegularDocs.length}`);
+      
+      // Save back to localStorage
+      localStorage.setItem('borrower_documents', JSON.stringify(cleanedDocuments));
+      
+      return cleanedDocuments;
+    } catch (e) {
+      console.error('Failed to clean up duplicate document notifications:', e);
+      return null;
+    }
+  };
+  
   // Call cleanup on initial mount
   useEffect(() => {
     cleanupDuplicateMessages();
+    cleanupDuplicateDocuments();
   }, []);
   
   return (

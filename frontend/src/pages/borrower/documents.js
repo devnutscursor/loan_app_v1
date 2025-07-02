@@ -234,7 +234,29 @@ const Documents = () => {
           // Filter for document-related conditions with 'Pending' status
           const requests = response.data.data;
           console.log(`Loaded ${requests.length} document requests`);
-          setDocumentRequests(requests);
+          
+          // Group requests by title and keep only the latest one
+          const latestRequests = {};
+          
+          requests.forEach(request => {
+            const key = `${request.title}-${request.documentType || ''}-${request.loanId}`;
+            
+            // If we don't have this request type yet, or this one is newer
+            if (!latestRequests[key] || 
+                // Try to use createdAt if available, otherwise fall back to _id (which contains creation timestamp)
+                (request.createdAt && latestRequests[key].createdAt && 
+                 new Date(request.createdAt) > new Date(latestRequests[key].createdAt)) ||
+                (!request.createdAt && request._id && latestRequests[key]._id &&
+                 request._id > latestRequests[key]._id)) {
+              latestRequests[key] = request;
+            }
+          });
+          
+          // Convert back to array
+          const uniqueRequests = Object.values(latestRequests);
+          console.log(`Filtered to ${uniqueRequests.length} unique document requests`);
+          
+          setDocumentRequests(uniqueRequests);
         } else {
           console.log("No document requests found or invalid response format");
           setDocumentRequests([]);
@@ -297,13 +319,13 @@ const Documents = () => {
                       let statusColor = "bg-gray-100 text-gray-800";
                       if (loan.status) {
                         const status = loan.status.toLowerCase();
-                        if (status.includes("approved"))
+                        if (status.includes("approved") || status.includes("conditional approval"))
                           statusColor = "bg-green-100 text-green-800";
                         else if (status.includes("review"))
                           statusColor = "bg-yellow-100 text-yellow-800";
                         else if (status.includes("submit"))
                           statusColor = "bg-blue-100 text-blue-800";
-                        else if (status.includes("reject"))
+                        else if (status.includes("reject") || status.includes("declined"))
                           statusColor = "bg-red-100 text-red-800";
                       }
 
@@ -350,7 +372,9 @@ const Documents = () => {
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
                             >
-                              {loan.status || "Processing"}
+                              {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' :
+                               loan.status?.toLowerCase() === 'declined' ? 'Rejected' :
+                               loan.status || "Processing"}
                             </span>
                           </div>
                         </div>

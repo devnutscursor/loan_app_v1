@@ -191,9 +191,20 @@ exports.sendMessage = async (req, res) => {
     const userId = req.user.id;
     const { borrowerId, content } = req.body;
     
-    if ((!content || content.trim() === '') && (!req.files || !req.files.attachments)) {
-      return res.status(400).json({ message: 'Message content or attachment is required' });
+    // Check if we have either content or attachments
+    const hasAttachments = req.files && req.files.length > 0;
+    const hasContent = content && content.trim() !== '';
+    
+    if (!hasContent && !hasAttachments) {
+      return res.status(400).json({ message: 'Message must contain either text content or attachments' });
     }
+    
+    console.log('Message request:', {
+      userId,
+      borrowerId,
+      hasContent,
+      hasAttachments: hasAttachments ? req.files.length : 0
+    });
     
     const user = await User.findById(userId);
     
@@ -254,7 +265,7 @@ exports.sendMessage = async (req, res) => {
     // Process file uploads if any (now handled by multer)
     let attachments = [];
     
-    if (req.files && req.files.length > 0) {
+    if (hasAttachments) {
       try {
         // Files are already processed by multer and uploaded to S3 or local storage
         for (const file of req.files) {
@@ -263,14 +274,14 @@ exports.sendMessage = async (req, res) => {
             console.log('File processed by multer:', {
               originalName: file.originalname,
               savedAs: file.filename,
-              url: file.url,
+              url: file.url || file.location,
               mimetype: file.mimetype,
               size: file.size
             });
             
             // Add attachment metadata - use S3 URL or local URL
             attachments.push({
-              url: file.url, // This will be S3 URL or local path
+              url: file.url || file.location, // S3 URL or local path
               fileName: file.originalname,
               fileType: file.mimetype,
               fileSize: file.size,
@@ -293,7 +304,7 @@ exports.sendMessage = async (req, res) => {
       recipient,
       lender: lender._id,
       borrower: borrower._id,
-      content: content || '',
+      content: content || '', // Use empty string if no content
       attachments
     });
     

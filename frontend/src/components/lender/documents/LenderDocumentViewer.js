@@ -79,6 +79,8 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
   // Fetch document content when needed
   const fetchDocument = async (url, fileType) => {
     try {
+      console.log('Fetching document content for:', { url, fileType });
+      
       // Check if this is an S3 document that needs a signed URL
       let finalUrl = url;
       const isS3Document = document.key || document.s3Key || 
@@ -86,6 +88,8 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
       
       if (isS3Document) {
         try {
+          console.log('S3 document detected:', { key: document.key, s3Key: document.s3Key, url });
+          
           // Get the key - either from document or extract from URL
           let key = document.key || document.s3Key;
           
@@ -112,6 +116,7 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
       }
       
       // Set the final document URL for use in viewer components
+      console.log('Setting document URL for viewer:', finalUrl);
       setDocumentUrl(finalUrl);
 
       // For Office documents, we just need the signed URL for the viewer
@@ -332,12 +337,14 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
     
   // Build Microsoft Office Online Viewer URL as an alternative
   const msOfficeViewerUrl = documentUrl
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}` 
     : null;
 
   // Handle iframe load error
   const handleIframeError = () => {
-    console.error("Error loading document preview");
+    console.error("Error loading document preview iframe");
+    console.error("Office viewer URL:", msOfficeViewerUrl);
+    console.error("Document URL:", documentUrl);
     setUseFallback(true);
     setError('Preview failed to load. You can download the file to view it.');
   };
@@ -345,6 +352,8 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
   // Handle iframe load success
   const handleIframeLoad = () => {
     console.log("Iframe loaded successfully");
+    console.log("Office viewer URL:", msOfficeViewerUrl);
+    console.log("Document URL:", documentUrl);
     setIframeLoaded(true);
     setIsLoading(false);
   };
@@ -516,36 +525,73 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
                       {/* Office documents with Google Docs/Office Viewer */}
                       {(fileType === 'word' || fileType === 'excel' || fileType === 'powerpoint') && !useFallback && (
                         <div className="h-full w-full">
-                          <div className="flex flex-col items-center justify-center h-full bg-gray-50">
-                            <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="mt-2 text-sm text-gray-500">
-                              {fileType.charAt(0).toUpperCase() + fileType.slice(1)} files can't be previewed directly
-                            </p>
-                            <div className="mt-4 space-y-2">
-                              <button
-                                type="button"
-                                onClick={() => window.open(documentUrl, '_blank')}
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                Download to View
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => window.open(googleDocsViewerUrl, '_blank')}
-                                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                Open with Google Docs
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => window.open(msOfficeViewerUrl, '_blank')}
-                                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                Open with Office Online
-                              </button>
+                          {isLoading && (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
                             </div>
+                          )}
+                          
+                          {/* Show buttons for Office documents */}
+                          <div className="mb-4 p-4 bg-gray-50 border-b border-gray-200">
+                            <div className="flex flex-col items-center justify-center">
+                              <svg className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-lg font-medium text-gray-900 mb-2">
+                                {fileType.charAt(0).toUpperCase() + fileType.slice(1)} Document
+                              </p>
+                              <p className="text-sm text-gray-500 mb-4">
+                                This document needs to be opened in an external viewer
+                              </p>
+                              <div className="flex space-x-4">
+                                {/* <button
+                                  type="button"
+                                  onClick={() => window.open(documentUrl, '_blank')}
+                                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                  <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  Download
+                                </button> */}
+                                <button
+                                  type="button"
+                                  onClick={() => window.open(msOfficeViewerUrl, '_blank')}
+                                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                  <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                  Open with Office Online
+                                </button>
+                                {/* <button
+                                  type="button"
+                                  onClick={() => window.open(googleDocsViewerUrl, '_blank')}
+                                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                  <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                  Open with Google Docs
+                                </button> */}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Don't try to embed Office Online viewer in iframe - it often fails with CORS or other errors */}
+                          <div className="flex flex-col items-center justify-center h-full bg-gray-100">
+                            <img 
+                              src={fileType === 'excel' ? '/excel-icon.png' : fileType === 'word' ? '/word-icon.png' : '/powerpoint-icon.png'} 
+                              alt={`${fileType} icon`}
+                              className="w-24 h-24 opacity-50"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlMmUyZTIiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjOTk5OTk5Ij5Eb2N1bWVudDwvdGV4dD48L3N2Zz4=";
+                              }}
+                            />
+                            <p className="mt-4 text-sm text-gray-500">
+                              Please use one of the buttons above to view this document
+                            </p>
                           </div>
                         </div>
                       )}
@@ -618,8 +664,11 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
             <button
               type="button"
               onClick={() => window.open(documentUrl, '_blank')}
-              className="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+              className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
             >
+              <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
               Download
             </button>
             <button
