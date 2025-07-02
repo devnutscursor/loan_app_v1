@@ -258,7 +258,9 @@ const DocumentVerification = ({ documents = [], onVerifyDocument, loading = fals
                         ? 'bg-red-100 text-red-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {document.verificationStatus?.charAt(0).toUpperCase() + document.verificationStatus?.slice(1)}
+                      {document.verificationStatus?.toLowerCase() === 'conditional approval' ? 'Approved' :
+                       document.verificationStatus?.toLowerCase() === 'declined' ? 'Rejected' :
+                       document.verificationStatus?.charAt(0).toUpperCase() + document.verificationStatus?.slice(1)}
                     </span>
                     {document.verificationMessage && (
                       <p className="mt-1 text-xs text-gray-500">{document.verificationMessage}</p>

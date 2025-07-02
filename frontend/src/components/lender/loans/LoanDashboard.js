@@ -235,7 +235,9 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
                     loan?.status
                   )}`}
                 >
-                  {loan?.status?.toUpperCase() || "UNKNOWN"}
+                  {loan?.status?.toLowerCase() === 'conditional approval' ? 'APPROVED' : 
+                   loan?.status?.toLowerCase() === 'declined' ? 'REJECTED' :
+                   loan?.status?.toUpperCase() || "UNKNOWN"}
                 </span>
               </div>
             </div>

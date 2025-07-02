@@ -63,9 +63,9 @@ const DocumentRequirementCard = ({
         position: 'relative',
         padding: '0.75rem',
         paddingLeft: req.status ? '1rem' : '0',
-        borderLeft: req.status === "Approved" 
+        borderLeft: req.status === "Approved" || req.status === "Conditional Approval"
           ? '4px solid #22c55e' // Green border for approved
-          : req.status === "Rejected" 
+          : req.status === "Rejected" || req.status === "Declined"
           ? '4px solid #ef4444' // Red border for rejected
           : req.status === "Pending Review"
           ? '4px solid #eab308' // Blue border for pending review

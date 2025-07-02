@@ -331,8 +331,9 @@ const LoanDetails = () => {
                         )}`}
                       >
                         <span className="mr-1.5 h-2 w-2 rounded-full bg-current"></span>
-                        {loan.status.charAt(0).toUpperCase() +
-                          loan.status.slice(1)}
+                        {loan.status.toLowerCase() === 'conditional approval' ? 'Approved' :
+                         loan.status.toLowerCase() === 'declined' ? 'Rejected' :
+                         loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
                       </span>
                     )}
                     {loan && loan.applicationDate && (

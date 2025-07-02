@@ -49,6 +49,17 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
     }
   };
   
+  // Format status for display
+  const formatStatusForDisplay = (status) => {
+    if (!status) return 'Unknown';
+    
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'conditional approval') return 'Approved';
+    if (statusLower === 'declined') return 'Rejected';
+    
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+  
   const getLinkPath = () => {
     switch (userRole) {
       case 'borrower':
@@ -106,7 +117,7 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
       {/* Status ribbon */}
       <div className="relative">
         <div className={`absolute top-0 right-0 z-10 px-3 py-1.5 rounded-bl-lg font-medium text-xs ${getStatusColorClass(status)}`}>
-          {status === 'Conditional Approval' ? 'Approved' : status}
+          {formatStatusForDisplay(status)}
         </div>
       </div>
 

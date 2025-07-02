@@ -63,7 +63,9 @@ const LoanSummaryCard = ({ loan, formatCurrency }) => {
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                 <dd className="mt-0.5 text-sm font-semibold">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {loan?.status || 'N/A'}
+                    {loan?.status?.toLowerCase() === 'conditional approval' ? 'Approved' : 
+                     loan?.status?.toLowerCase() === 'declined' ? 'Rejected' : 
+                     loan?.status || 'N/A'}
                   </span>
                 </dd>
               </div>

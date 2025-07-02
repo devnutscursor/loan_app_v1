@@ -151,7 +151,9 @@ const LoanCard = ({ loan, onView }) => {
             <p className="text-xs text-gray-500">Applied: {formatDate(loan.createdAt)}</p>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
+            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : 
+             loan.status?.toLowerCase() === 'declined' ? 'Rejected' :
+             loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || "Status"}
           </span>
         </div>
         
@@ -211,10 +213,16 @@ const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, 
     iconBgColor = 'bg-blue-100';
     iconTextColor = 'text-blue-600';
   } else if (entityType === 'document' || title?.toLowerCase().includes('document')) {
-    if (status === 'Approved' || title?.toLowerCase().includes('approved')) {
+    // Normalize status for comparison
+    const normalizedStatus = status?.toLowerCase() || '';
+    const normalizedTitle = title?.toLowerCase() || '';
+    
+    if (normalizedStatus === 'approved' || normalizedStatus === 'conditional approval' || 
+        normalizedTitle.includes('approved') || normalizedTitle.includes('conditional approval')) {
       iconBgColor = 'bg-green-100';
       iconTextColor = 'text-green-600';
-    } else if (status === 'Rejected' || title?.toLowerCase().includes('rejected')) {
+    } else if (normalizedStatus === 'rejected' || normalizedStatus === 'declined' || 
+              normalizedTitle.includes('rejected') || normalizedTitle.includes('declined')) {
       iconBgColor = 'bg-red-100';
       iconTextColor = 'text-red-600';
     } else {
