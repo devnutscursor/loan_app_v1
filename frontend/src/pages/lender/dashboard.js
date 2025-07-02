@@ -311,7 +311,7 @@ const LenderDashboard = () => {
         
         // Fetch dashboard stats (includes recent loans)
         const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=12`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -536,14 +536,14 @@ const LenderDashboard = () => {
     {/* Main Content Layout Loading Skeleton */}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Recent Loans Section Loading Skeleton */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2 flex flex-col">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
         <div className="flex items-center justify-between mb-5">
           <div className="h-7 w-48 bg-gray-200 rounded animate-pulse"></div>
           <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          {[1, 2].map(i => (
             <div key={i} className="bg-white rounded-lg border border-gray-100 p-4 animate-pulse">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center space-x-3">
@@ -569,7 +569,7 @@ const LenderDashboard = () => {
         </div>
 
         {/* Performance Metrics Loading Skeleton */}
-        <div className="mt-auto pt-6 border-t border-gray-100">
+        <div className="mt-6 pt-6 border-t border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="h-5 w-36 bg-gray-200 rounded animate-pulse"></div>
           </div>
@@ -726,7 +726,7 @@ const LenderDashboard = () => {
             {/* Main Content 3-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Recent Loans Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2 flex flex-col">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-lg font-medium text-gray-900">Recent Loan Applications</h2>
                   <Link href="/lender/loans" className="text-sm font-medium text-blue-700 hover:text-blue-900 flex items-center">
@@ -737,7 +737,7 @@ const LenderDashboard = () => {
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Display actual loans without duplication */}
-                    {recentLoans.slice(0, 8).map((loan) => (
+                    {recentLoans.slice(0, 6).map((loan) => (
                       <LoanCard
                         key={loan._id}
                         loan={loan}
@@ -758,7 +758,7 @@ const LenderDashboard = () => {
 
                 {/* Performance Metrics */}
                 {recentLoans.length > 0 && (
-                  <div className="mt-auto pt-6 border-t border-gray-100">
+                  <div className="mt-8 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
