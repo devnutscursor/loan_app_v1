@@ -182,10 +182,10 @@ exports.getLenderDashboard = async (req, res, next) => {
       status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
     });
     
-    // Get pending applications (status 'Application Submitted')
+    // Get pending applications - include all applications that are not approved, rejected, or closed
     const pendingApplications = await Loan.countDocuments({ 
       lender: lender._id,
-      status: 'Application Submitted'
+      status: { $nin: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded', 'Rejected', 'Withdrawn'] }
     });
     
     // Calculate total loan volume for loans with 'Conditional Approval' or other approval statuses
@@ -206,29 +206,21 @@ exports.getLenderDashboard = async (req, res, next) => {
     
     const totalAmount = loanAmountResult.length > 0 ? loanAmountResult[0].totalAmount : 0;
     
-    // Calculate approval rate including both Approved and Conditionally Approved statuses
-    const totalProcessed = await Loan.countDocuments({
+    // Calculate approval rate as approved loans divided by total loans (excluding drafts)
+    const totalProcessedLoans = await Loan.countDocuments({
       lender: lender._id,
-      status: { $in: ['Application Submitted', 'Conditionally Approved', 'Clear to Close', 'Closed', 'Funded', 'Rejected'] }
+      status: { $ne: 'draft' }
     });
     
-    const approvalRate = totalProcessed > 0 ? Math.round((approvedLoans / totalProcessed) * 100) : 0;
+    const approvalRate = totalProcessedLoans > 0 ? Math.round((approvedLoans / totalProcessedLoans) * 100) : 0;
     
-    // Calculate average processing time (in days) from creation date to last milestone completion or using fallback
+    // Calculate average processing time (in days) from Application Started status to Approval
     console.log('DEBUG: Finding approved loans for processing time calculation...');
     
-    // Get all approved loans (no milestone requirement since they might be missing)
+    // Get all approved loans
     const approvedLoansForProcessing = await Loan.find({ 
       lender: lender._id,
-      createdAt: { $exists: true },
-      // Include all approval statuses with case-insensitive matching
-      $or: [
-        { status: { $regex: /approved/i } },
-        { status: { $regex: /conditionally approved/i } },
-        { status: { $regex: /clear to close/i } },
-        { status: { $regex: /closed/i } },
-        { status: { $regex: /funded/i } }
-      ]
+      status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
     }).select('_id createdAt milestones status updatedAt');
     
     console.log(`DEBUG: Found ${approvedLoansForProcessing.length} approved loans`);
@@ -243,46 +235,61 @@ exports.getLenderDashboard = async (req, res, next) => {
       let totalDays = 0;
       let loansWithProcessingTime = 0;
       
-      approvedLoansForProcessing.forEach(loan => {
+      for (const loan of approvedLoansForProcessing) {
         console.log(`DEBUG: Processing loan ${loan._id}`);
-        const creationDate = new Date(loan.createdAt);
-        let processingEndDate = null;
         
-        // Try to find end date using milestones first
+        // Try to find when the application was started
+        let applicationStartDate = null;
+        
+        // First check if there's a milestone for application started
         if (loan.milestones && loan.milestones.length > 0) {
-          console.log(`DEBUG: Loan ${loan._id} has ${loan.milestones.length} milestones`);
-          // Find all completed milestones with dates
-          const completedMilestones = loan.milestones.filter(m => m.isCompleted && m.completedDate);
+          const startMilestone = loan.milestones.find(m => 
+            m.title && m.title.toLowerCase().includes('application') && 
+            m.title.toLowerCase().includes('started') && 
+            m.completedDate
+          );
           
-          if (completedMilestones.length > 0) {
-            // Sort milestones by completion date (latest first)
-            const sortedMilestones = [...completedMilestones].sort((a, b) => 
-              new Date(b.completedDate) - new Date(a.completedDate)
-            );
-            
-            processingEndDate = new Date(sortedMilestones[0].completedDate);
-            console.log(`DEBUG: Using milestone completion date: ${processingEndDate}`);
+          if (startMilestone) {
+            applicationStartDate = new Date(startMilestone.completedDate);
+            console.log(`DEBUG: Found application started milestone date: ${applicationStartDate}`);
           }
         }
         
-        // Fallback: If no milestone date, use updatedAt or a generated date
-        if (!processingEndDate) {
-          if (loan.updatedAt) {
-            processingEndDate = new Date(loan.updatedAt);
-            console.log(`DEBUG: Using loan updatedAt as end date: ${processingEndDate}`);
-          } else {
-            // Simulate a random processing time between 15-45 days
-            // This is a fallback when no real data is available
-            const randomDays = 15 + Math.floor(Math.random() * 30);
-            processingEndDate = new Date(creationDate);
-            processingEndDate.setDate(processingEndDate.getDate() + randomDays);
-            console.log(`DEBUG: Using simulated end date (${randomDays} days after creation): ${processingEndDate}`);
+        // If no milestone, use createdAt as fallback
+        if (!applicationStartDate) {
+          applicationStartDate = new Date(loan.createdAt);
+          console.log(`DEBUG: Using loan creation date as start: ${applicationStartDate}`);
+        }
+        
+        // Try to find when the application was approved
+        let approvalDate = null;
+        
+        // First check if there's a milestone for approval
+        if (loan.milestones && loan.milestones.length > 0) {
+          const approvalMilestone = loan.milestones.find(m => 
+            m.title && (
+              m.title.toLowerCase().includes('approved') || 
+              m.title.toLowerCase().includes('approval') ||
+              m.title.toLowerCase().includes('conditional')
+            ) && 
+            m.completedDate
+          );
+          
+          if (approvalMilestone) {
+            approvalDate = new Date(approvalMilestone.completedDate);
+            console.log(`DEBUG: Found approval milestone date: ${approvalDate}`);
           }
+        }
+        
+        // If no milestone, use updatedAt as fallback
+        if (!approvalDate && loan.updatedAt) {
+          approvalDate = new Date(loan.updatedAt);
+          console.log(`DEBUG: Using loan updated date as approval: ${approvalDate}`);
         }
         
         // Calculate processing time in days
-        if (processingEndDate > creationDate) {
-          const timeDiff = processingEndDate - creationDate;
+        if (approvalDate && applicationStartDate && approvalDate > applicationStartDate) {
+          const timeDiff = approvalDate - applicationStartDate;
           const processingDays = timeDiff / (1000 * 3600 * 24); // Convert ms to days
           totalDays += processingDays;
           loansWithProcessingTime++;
@@ -294,7 +301,7 @@ exports.getLenderDashboard = async (req, res, next) => {
             $set: { processingTime: processingDays }
           }).catch(err => console.error(`Error updating processing time for loan ${loan._id}:`, err));
         }
-      });
+      }
       
       if (loansWithProcessingTime > 0) {
         avgProcessingTime = parseFloat((totalDays / loansWithProcessingTime).toFixed(1));
