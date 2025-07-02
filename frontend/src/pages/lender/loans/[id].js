@@ -1685,11 +1685,11 @@ try {
       // Check if any asset is deposited
       const hasDepositedAssets = assets.checkingAndSavings.some(asset => asset.deposited);
       const depositedRadioGroup = 'Group17';
-      form.getRadioGroup(depositedRadioGroup).select(hasDepositedAssets ? 'YES' : 'NO');
+      form.getRadioGroup(depositedRadioGroup).select(hasDepositedAssets ? 'Deposited' : 'Not Deposited');
       // Check if any asset is not deposited
       const hasNotDepositedAssets = assets.checkingAndSavings.some(asset => !asset.deposited);
       const notDepositedRadioGroup = 'Group18';
-      form.getRadioGroup(notDepositedRadioGroup).select(hasNotDepositedAssets ? 'YES' : 'NO');
+      form.getRadioGroup(notDepositedRadioGroup).select(hasNotDepositedAssets ? 'Deposited' : 'Not Deposited');
     } 
     else {
       // If no assets, do nothing
@@ -1732,14 +1732,24 @@ try {
 
     if (declarations.ownedPropertyType) {
       // Dropdown: What type of property did you own? (PR, SR, SH, IP)
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]')
-          .select(declarations.ownedPropertyType);
+      try {
+        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]')
+            .select(declarations.ownedPropertyType);
+      } catch (error) {
+        console.warn('Property type dropdown field not found in the form:', error.message);
+        // Continue execution without crashing
+      }
     }
 
     if (declarations.titleHoldingType) {
       // Dropdown: How did you hold title to the property? (S, SP, O)
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]')
-          .select(declarations.titleHoldingType);
+      try {
+        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]')
+            .select(declarations.titleHoldingType);
+      } catch (error) {
+        console.warn('Title holding type dropdown field not found in the form:', error.message);
+        // Continue execution without crashing
+      }
     }
   }
 
