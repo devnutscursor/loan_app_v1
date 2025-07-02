@@ -523,7 +523,7 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
                             <p className="mt-2 text-sm text-gray-500">
                               {fileType.charAt(0).toUpperCase() + fileType.slice(1)} files can't be previewed directly
                             </p>
-                            <div className="mt-4 space-y-2">
+                            <div className="mt-4 space-x-2">
                               <button
                                 type="button"
                                 onClick={() => window.open(documentUrl, '_blank')}
@@ -531,13 +531,13 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
                               >
                                 Download to View
                               </button>
-                              <button
+                              {/* <button
                                 type="button"
                                 onClick={() => window.open(googleDocsViewerUrl, '_blank')}
                                 className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                               >
                                 Open with Google Docs
-                              </button>
+                              </button> */}
                               <button
                                 type="button"
                                 onClick={() => window.open(msOfficeViewerUrl, '_blank')}

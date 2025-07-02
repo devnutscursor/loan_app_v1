@@ -318,7 +318,7 @@ const Loans = () => {
                         <option value="all">All Loans</option>
                         {/* <option value="Application Started">Application Started</option> */}
                         <option value="Application Submitted">Application Submitted</option>
-                        <option value="Pending">Pending</option>
+                        {/* <option value="Pending">Pending</option> */}
                         <option value="Processing">Processing</option>
                         {/* <option value="Underwriting">Underwriting</option> */}
                         <option value="Approved">Approved</option>
