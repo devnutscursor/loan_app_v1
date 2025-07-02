@@ -81,6 +81,46 @@ export async function generateURLAPdf(borrowerDetails,assets,income,debts,proper
     }
   };
   
+  // Helper function to safely select dropdown values
+  const safeSelectDropdown = (fieldName, value) => {
+    try {
+      const field = form.getDropdown(fieldName);
+      field.select(value);
+      return true;
+    } catch (e) {
+      console.log(`Error selecting dropdown ${fieldName}: ${e.message}`);
+      return false;
+    }
+  };
+  
+  // Helper function to safely select radio button values
+  const safeSelectRadio = (groupName, value) => {
+    try {
+      const field = form.getRadioGroup(groupName);
+      field.select(value);
+      return true;
+    } catch (e) {
+      console.log(`Error selecting radio group ${groupName}: ${e.message}`);
+      return false;
+    }
+  };
+  
+  // Helper function to safely check/uncheck checkboxes
+  const safeSetCheckBox = (fieldName, checked) => {
+    try {
+      const field = form.getCheckBox(fieldName);
+      if (checked) {
+        field.check();
+      } else {
+        field.uncheck();
+      }
+      return true;
+    } catch (e) {
+      console.log(`Error setting checkbox ${fieldName}: ${e.message}`);
+      return false;
+    }
+  };
+  
   // --- Personal Info ---
   const fullName = `${borrowerDetails.firstName || ''} ${borrowerDetails.middleName || ''} ${borrowerDetails.lastName || ''} ${borrowerDetails.suffix || ''}`.trim();
   safeSetText('3', fullName);
@@ -1685,11 +1725,11 @@ try {
       // Check if any asset is deposited
       const hasDepositedAssets = assets.checkingAndSavings.some(asset => asset.deposited);
       const depositedRadioGroup = 'Group17';
-      form.getRadioGroup(depositedRadioGroup).select(hasDepositedAssets ? 'YES' : 'NO');
+      form.getRadioGroup(depositedRadioGroup).select(hasDepositedAssets ? 'Deposited' : 'Not Deposited');
       // Check if any asset is not deposited
       const hasNotDepositedAssets = assets.checkingAndSavings.some(asset => !asset.deposited);
       const notDepositedRadioGroup = 'Group18';
-      form.getRadioGroup(notDepositedRadioGroup).select(hasNotDepositedAssets ? 'YES' : 'NO');
+      form.getRadioGroup(notDepositedRadioGroup).select(hasNotDepositedAssets ? 'Deposited' : 'Not Deposited');
     } 
     else {
       // If no assets, do nothing
@@ -1732,14 +1772,60 @@ try {
 
     if (declarations.ownedPropertyType) {
       // Dropdown: What type of property did you own? (PR, SR, SH, IP)
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]')
-          .select(declarations.ownedPropertyType);
+      try {
+        // Try different possible field names for the property type dropdown
+        const possibleFieldNames = [
+          'topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]',
+          'topmostSubform[0].Page6[0]._5a_About_A4[0]',
+          'topmostSubform[0].Page6[0].L5a3[0]._5a_About_A4[0]'
+        ];
+        
+        let fieldFound = false;
+        for (const fieldName of possibleFieldNames) {
+          try {
+            form.getDropdown(fieldName).select(declarations.ownedPropertyType);
+            fieldFound = true;
+            break;
+          } catch (e) {
+            // Field not found, try next one
+          }
+        }
+        
+        if (!fieldFound) {
+          console.log("Warning: Could not find property type dropdown field in PDF");
+        }
+      } catch (e) {
+        console.log("Error setting property type:", e.message);
+      }
     }
 
     if (declarations.titleHoldingType) {
       // Dropdown: How did you hold title to the property? (S, SP, O)
-      form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]')
-          .select(declarations.titleHoldingType);
+      try {
+        // Try different possible field names for the title holding type dropdown
+        const possibleFieldNames = [
+          'topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]',
+          'topmostSubform[0].Page6[0]._5a_About_A5[0]',
+          'topmostSubform[0].Page6[0].L5a3[0]._5a_About_A5[0]'
+        ];
+        
+        let fieldFound = false;
+        for (const fieldName of possibleFieldNames) {
+          try {
+            form.getDropdown(fieldName).select(declarations.titleHoldingType);
+            fieldFound = true;
+            break;
+          } catch (e) {
+            // Field not found, try next one
+          }
+        }
+        
+        if (!fieldFound) {
+          console.log("Warning: Could not find title holding type dropdown field in PDF");
+        }
+      } catch (e) {
+        console.log("Error setting title holding type:", e.message);
+      }
     }
   }
 
@@ -2282,14 +2368,20 @@ const LoanDetails = () => {
 
 
   const handleDownloadURLA = async () => {
-    const pdfBytes = await generateURLAPdf(loan.borrowerDetails, loan.assets, loan.income, loan.debts, loan.propertiesOwned, loan.loanDetails, loan.property, loan.declarations, loan.demographics);
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `URLA_${loan.loanNumber || loan._id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const pdfBytes = await generateURLAPdf(loan.borrowerDetails, loan.assets, loan.income, loan.debts, loan.propertiesOwned, loan.loanDetails, loan.property, loan.declarations, loan.demographics);
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `URLA_${loan.loanNumber || loan._id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("URLA PDF downloaded successfully");
+    } catch (error) {
+      console.error("Error generating URLA PDF:", error);
+      toast.error("Failed to generate URLA PDF: " + error.message);
+    }
   };
 
   const handleDownloadMismoXml = () => {

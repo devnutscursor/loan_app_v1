@@ -299,7 +299,8 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
                   onClick={() => setSelectedBorrowerId(borrower._id)}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                    selectedBorrowerId === borrower._id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                    selectedBorrowerId === borrower._id ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white' : 'bg-gray-200 text-gray-700'
+                   
                   }`}>
                     {selectedBorrowerId === borrower._id ? (
                       <Check size={16} />
@@ -359,8 +360,8 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
             disabled={!selectedBorrowerId || creatingNewBorrower}
             className={`px-4 py-2 rounded-md text-white ${
               !selectedBorrowerId || creatingNewBorrower
-                ? 'bg-blue-300 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'
+                ? 'ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 cursor-not-allowed'
+                : 'ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200'
             }`}
           >
             {creatingNewBorrower ? (
