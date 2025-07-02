@@ -1773,13 +1773,6 @@ try {
     if (declarations.ownedPropertyType) {
       // Dropdown: What type of property did you own? (PR, SR, SH, IP)
       try {
-<<<<<<< HEAD
-        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]')
-            .select(declarations.ownedPropertyType);
-      } catch (error) {
-        console.warn('Property type dropdown field not found in the form:', error.message);
-        // Continue execution without crashing
-=======
         // Try different possible field names for the property type dropdown
         const possibleFieldNames = [
           'topmostSubform[0].Page6[0].L5a3[0]._5a32[0]._5a_About_A4[0]',
@@ -1803,20 +1796,12 @@ try {
         }
       } catch (e) {
         console.log("Error setting property type:", e.message);
->>>>>>> post-deployment
       }
     }
 
     if (declarations.titleHoldingType) {
       // Dropdown: How did you hold title to the property? (S, SP, O)
       try {
-<<<<<<< HEAD
-        form.getDropdown('topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]')
-            .select(declarations.titleHoldingType);
-      } catch (error) {
-        console.warn('Title holding type dropdown field not found in the form:', error.message);
-        // Continue execution without crashing
-=======
         // Try different possible field names for the title holding type dropdown
         const possibleFieldNames = [
           'topmostSubform[0].Page6[0].L5a3[0]._5a33[0]._5a_About_A5[0]',
@@ -1840,7 +1825,6 @@ try {
         }
       } catch (e) {
         console.log("Error setting title holding type:", e.message);
->>>>>>> post-deployment
       }
     }
   }
