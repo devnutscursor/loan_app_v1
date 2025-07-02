@@ -92,34 +92,34 @@ const MessageItem = ({
           
           // For non-image files
           return (
-            <div 
-              key={`attach-${idx}`} 
-              className="flex items-center p-2 rounded bg-white border border-gray-200"
-            >
-              {/* File type icon */}
+          <div 
+            key={`attach-${idx}`} 
+            className="flex items-center p-2 rounded bg-white border border-gray-200"
+          >
+            {/* File type icon */}
               {getFileIcon(fileName)}
-              
-              <div className="ml-2 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+            
+            <div className="ml-2 flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
                   {fileName}
-                </p>
-                <p className="text-xs text-gray-500">
+              </p>
+              <p className="text-xs text-gray-500">
                   {fileSize}
-                </p>
-              </div>
-              
-              <a 
-                href={attachmentUrl} 
-                download
-                className="ml-2 p-1 text-primary hover:text-primary-dark"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                </svg>
-              </a>
+              </p>
             </div>
+            
+            <a 
+                href={attachmentUrl} 
+              download
+              className="ml-2 p-1 text-primary hover:text-primary-dark"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+              </svg>
+            </a>
+          </div>
           );
         })}
       </div>

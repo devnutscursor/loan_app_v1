@@ -2461,7 +2461,7 @@ exports.importFromXML = async (req, res, next) => {
       logger.error('Error reading XML file:', readError);
       return next(new ApiError(`Failed to read XML file: ${readError.message}`, 500));
     }
-
+    
     const parser = new xml2js.Parser({ 
       explicitArray: false,
       mergeAttrs: true,
@@ -2497,8 +2497,8 @@ exports.importFromXML = async (req, res, next) => {
     // If a specific borrower ID was provided, use that
     if (req.body.borrowerId) {
       borrower = await Borrower.findById(req.body.borrowerId);
-      
-      if (!borrower) {
+
+    if (!borrower) {
         return next(new ApiError("Selected borrower not found", 404));
       }
       
@@ -2543,21 +2543,21 @@ exports.importFromXML = async (req, res, next) => {
 
       // If no existing user, create a new one
       if (!existingUser) {
-        // Generate a temporary password for XML imported users
-        const bcrypt = require('bcryptjs');
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+      // Generate a temporary password for XML imported users
+      const bcrypt = require('bcryptjs');
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
         // Create new user with a unique email if needed
-        const newUser = new User({
+      const newUser = new User({
           email: borrowerData.email || `imported.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@example.com`,
           firstName: borrowerData.firstName || 'Unknown',
           lastName: borrowerData.lastName || 'User',
-          password: hashedPassword,
-          role: 'borrower',
-          isEmailVerified: false,
-          isImportedFromXML: true // Flag to identify XML imports
-        });
+        password: hashedPassword,
+        role: 'borrower',
+        isEmailVerified: false,
+        isImportedFromXML: true // Flag to identify XML imports
+      });
         
         try {
           await newUser.save();
@@ -2595,7 +2595,7 @@ exports.importFromXML = async (req, res, next) => {
       });
       
       try {
-        await borrower.save();
+      await borrower.save();
         logger.info(`Created new borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
       } catch (borrowerError) {
         logger.error('Error creating borrower:', borrowerError);
@@ -2678,7 +2678,7 @@ exports.importFromXML = async (req, res, next) => {
     // Clean up uploaded file only if it's a local file
     if (req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {
       logger.info(`Removing temporary file: ${req.file.path}`);
-      fs.unlinkSync(req.file.path);
+    fs.unlinkSync(req.file.path);
     } else if (USE_S3) {
       // For S3 uploads, we don't need to delete the file as it serves as a backup
       logger.info(`S3 file preserved as backup`);

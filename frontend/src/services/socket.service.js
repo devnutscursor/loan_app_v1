@@ -91,7 +91,7 @@ class SocketService {
         console.log('SocketService: Document rejected event received:', data);
         // Deduplicate document status updates before notifying listeners
         this.deduplicateAndNotifyDocumentStatus({...data, type: 'document-status', status: 'Rejected'});
-      });
+        });
       
       this.socket.on('document_rejected', (data) => {
         console.log('SocketService: Document rejected event received:', data);

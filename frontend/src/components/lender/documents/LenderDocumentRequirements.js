@@ -241,22 +241,51 @@ const LenderDocumentRequirements = ({
           existingStatusMap[`${req.category}-${req.documentType}`] ||
           existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
         
-        // Determine if document has a "Needs Correction" status already saved
-        const needsCorrection = 
-          (existingStatus && existingStatus.status === "Needs Correction") ||
-          hasDocumentCondition(loanConditions, req.category, req.documentType, req.title);
+        // Check if this document has a condition from the lender
+        const hasCondition = hasDocumentCondition(
+          loanConditions,
+          req.category,
+          req.documentType,
+          req.title
+        );
+        
+        // Check if this is a newly uploaded document by comparing timestamps
+        const isNewlyUploaded = assignedDoc.createdAt && existingStatus?.timestamp && 
+                               new Date(assignedDoc.createdAt) > new Date(existingStatus.timestamp);
+        
+        console.log(`Document ${req.title}: isNewlyUploaded=${isNewlyUploaded}, hasCondition=${hasCondition}`);
+        
+        // If this is a newly uploaded document, clear the requestedUpdate flag in localStorage
+        if (isNewlyUploaded) {
+          try {
+            const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+            const docKey = `${loanId}-${req.category}-${req.documentType}`;
+            
+            if (storedStates[docKey] && storedStates[docKey].requestedUpdate) {
+              console.log(`Clearing requestedUpdate flag for newly uploaded document: ${docKey}`);
+              delete storedStates[docKey];
+              localStorage.setItem('documentStates', JSON.stringify(storedStates));
+            }
+          } catch (err) {
+            console.error("Failed to clear persisted document update state:", err);
+          }
+        }
+        
+        // Determine if document needs correction based on conditions and not being newly uploaded
+        const needsCorrection = hasCondition && !isNewlyUploaded;
         
         return {
           ...req,
           isSubmitted: true,
           // Use existing status if available, otherwise use the assigned doc status or default
           status: needsCorrection ? "Needs Correction" : 
+                 (isNewlyUploaded ? "Pending Review" : // Reset status for newly uploaded docs
                  (existingStatus ? existingStatus.status : 
-                 (assignedDoc.status || "Pending Review")),
+                 (assignedDoc.status || "Pending Review"))),
           documentId: assignedDoc._id,
           url: assignedDoc.fileUrl || assignedDoc.url,
           uploadDate: assignedDoc.createdAt || assignedDoc.uploadedAt,
-          requestedUpdate: needsCorrection,
+          requestedUpdate: needsCorrection && !isNewlyUploaded, // Don't mark as needing update if newly uploaded
           // Store original document info for debugging
           matchedDocument: assignedDoc,
         };
@@ -425,8 +454,29 @@ const LenderDocumentRequirements = ({
     console.log("Loan conditions:", loanConditions);
     // Force refresh of requirements when conditions change
     // This ensures we update the UI based on the latest conditions
-    const reqsCopy = [...requirements];
+    const reqsCopy = JSON.parse(JSON.stringify(requirements)); // Deep copy to avoid reference issues
     console.log("conditions are", loanConditions);
+    
+    // First, check localStorage for any manually set requestedUpdate flags
+    const manuallyRequestedUpdates = {};
+    try {
+      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+      Object.entries(storedStates).forEach(([key, state]) => {
+        if (key.startsWith(`${loanId}-`) && state.requestedUpdate) {
+          const parts = key.split('-');
+          if (parts.length >= 3) {
+            const category = parts[1];
+            const documentType = parts[2];
+            manuallyRequestedUpdates[`${category}-${documentType}`] = true;
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Failed to load persisted document states:", err);
+    }
+    
+    console.log("Manually requested updates:", manuallyRequestedUpdates);
+    
     const updatedReqs = reqsCopy.map((req) => {
       // Check if this document has a condition
       const hasCondition = hasDocumentCondition(
@@ -435,23 +485,35 @@ const LenderDocumentRequirements = ({
         req.documentType,
         req.title
       );
+      
+      // Check if this document has a manually requested update
+      const hasManualUpdate = manuallyRequestedUpdates[`${req.category}-${req.documentType}`] || false;
+      
+      // Check if this is a newly uploaded document
+      const isNewlyUploaded = req.matchedDocument && req.uploadDate && 
+                             new Date(req.uploadDate) > Date.now() - (1000 * 60 * 5); // Uploaded in the last 5 minutes
+      
+      // The document should be marked for update if it has a condition OR was manually requested
+      // BUT not if it was newly uploaded
+      const shouldBeMarkedForUpdate = (hasCondition || hasManualUpdate) && !isNewlyUploaded;
+      
+      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, isNewlyUploaded=${isNewlyUploaded}, current requestedUpdate=${req.requestedUpdate}`);
 
-      console.log("Has condition:", hasCondition);
-
-      // Update the requestedUpdate flag if needed
-      if (req.requestedUpdate !== hasCondition) {
-        // console.log(`${hasCondition ? '➕' : '➖'} Updating status for ${req.documentType}: requestedUpdate=${hasCondition}`);
+      // Only update if the requestedUpdate flag needs to change
+      if (req.requestedUpdate !== shouldBeMarkedForUpdate) {
+        console.log(`Updating status for ${req.documentType}: requestedUpdate=${shouldBeMarkedForUpdate}`);
         return {
           ...req,
-          requestedUpdate: hasCondition,
-          status: hasCondition ? "Needs Correction" : req.status,
+          requestedUpdate: shouldBeMarkedForUpdate,
+          status: isNewlyUploaded ? "Pending Review" : 
+                 (shouldBeMarkedForUpdate ? "Needs Correction" : req.status),
         };
       }
       return req;
     });
 
     setRequirements(updatedReqs);
-  }, [loanConditions]);
+  }, [loanConditions, loanId]);
 
   // Effect for processing documents whenever loanId or documents change
   useEffect(() => {
@@ -636,6 +698,10 @@ const LenderDocumentRequirements = ({
   const openRequestModal = (documentType, category, title, isUpdate = false) => {
     console.log(`Opening request modal for ${documentType} (${category})`);
     
+    // Always set the processing ID to prevent button flicker during modal open
+    const requestId = `${category}-${documentType}`;
+    setProcessingDocId(requestId);
+    
     // Initialize request modal data
     const initialRequestData = {
       documentType,
@@ -653,17 +719,34 @@ const LenderDocumentRequirements = ({
 
   // Close request document modal
   const closeRequestModal = () => {
-    // If this was an update request (not a new document request),
-    // make sure to restore the visibility of the Request Update button
-    if (
-      requestDetails.isUpdate &&
-      requestDetails.category &&
-      requestDetails.documentType
-    ) {
-      const buttonId = `update-btn-${requestDetails.category}-${requestDetails.documentType}`;
-      const updateButton = document.getElementById(buttonId);
-      if (updateButton) {
-        updateButton.classList.remove("hidden");
+    // Get the current document key if we're in update mode
+    const currentDocKey = requestDetails.isUpdate && requestDetails.category && requestDetails.documentType ? 
+      `${requestDetails.category}-${requestDetails.documentType}` : null;
+    
+    // Check if we need to clear the processing state for this document
+    // Only clear if we're canceling (not submitting) the request
+    if (currentDocKey && processingDocId === currentDocKey) {
+      // Check if this document already has an update requested in our requirements state
+      const requirementWithUpdate = requirements.find(
+        req => req.category === requestDetails.category && 
+               req.documentType === requestDetails.documentType && 
+               req.requestedUpdate === true
+      );
+      
+      // Also check localStorage for persisted state
+      let persistedUpdateRequested = false;
+      try {
+        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+        const loanDocKey = `${loanId}-${requestDetails.category}-${requestDetails.documentType}`;
+        persistedUpdateRequested = storedStates[loanDocKey]?.requestedUpdate || false;
+      } catch (err) {
+        console.error("Failed to check localStorage for persisted state:", err);
+      }
+      
+      // Only clear the processing state if there's no update already requested
+      if (!requirementWithUpdate && !persistedUpdateRequested) {
+        console.log("Clearing processing state for canceled update request:", currentDocKey);
+        setProcessingDocId("");
       }
     }
 
@@ -688,18 +771,37 @@ const LenderDocumentRequirements = ({
 
     setProcessingDocId(documentId);
     
-    // Update UI state immediately, but save previous state in case we need to revert
-    const previousState = requirements.find(req => 
+    // Find the document in our requirements
+    const documentReq = requirements.find(req => 
       req.documentId === documentId || 
       req.matchedDocument?._id === documentId || 
       req.id === documentId
-    )?.status || "Pending Review";
+    );
+    
+    // Update UI state immediately, but save previous state in case we need to revert
+    const previousState = documentReq?.status || "Pending Review";
     
     // Apply the new status in the UI
     const updateSuccess = updateDocumentStatus(documentId, "Approved");
     
     if (!updateSuccess) {
       console.log("Could not update document UI state immediately, will try to update after API call");
+    }
+    
+    // If this document had a requestedUpdate flag, clear it from localStorage
+    if (documentReq && documentReq.requestedUpdate) {
+      try {
+        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+        const docKey = `${loanId}-${documentReq.category}-${documentReq.documentType}`;
+        
+        if (storedStates[docKey]) {
+          console.log(`Clearing requestedUpdate flag for approved document: ${docKey}`);
+          delete storedStates[docKey];
+          localStorage.setItem('documentStates', JSON.stringify(storedStates));
+        }
+      } catch (err) {
+        console.error("Failed to clear persisted document update state:", err);
+      }
     }
 
     try {
@@ -798,19 +900,39 @@ const LenderDocumentRequirements = ({
   const markDocumentForUpdate = (category, documentType) => {
     // Update the requirements directly based on the condition we're about to create
     // This gives immediate UI feedback before the next polling cycle
-    const reqsCopy = [...requirements];
+    const reqsCopy = JSON.parse(JSON.stringify(requirements)); // Deep copy to ensure no reference issues
     const requirementIndex = reqsCopy.findIndex(
       (req) => req.category === category && req.documentType === documentType
     );
 
     if (requirementIndex >= 0) {
+      // Create a new object to ensure React detects the change
       reqsCopy[requirementIndex] = {
         ...reqsCopy[requirementIndex],
         requestedUpdate: true,
         status: "Needs Correction",
       };
 
-      setRequirements(reqsCopy);
+      // Store this update in localStorage for persistence
+      try {
+        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
+        const docKey = `${loanId}-${category}-${documentType}`;
+        
+        storedStates[docKey] = {
+          status: "Needs Correction",
+          requestedUpdate: true,
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('documentStates', JSON.stringify(storedStates));
+        console.log(`Persisted document update state: ${docKey}`);
+      } catch (err) {
+        console.error("Failed to persist document update state:", err);
+      }
+
+      // Update the state with the new requirements
+      console.log("Marking document for update:", reqsCopy[requirementIndex]);
+      setRequirements([...reqsCopy]); // Create new array to ensure React detects the change
       return true;
     }
 
@@ -924,29 +1046,7 @@ const LenderDocumentRequirements = ({
         // This ensures that when the page is reloaded, the conditions are re-fetched with the new update
         setRefreshCounter(prev => prev + 1);
         
-        // Store the update in localStorage to persist it between page reloads
-        try {
-          // Get existing stored document states or initialize empty object
-          const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-          
-          // Create an identifier for this document
-          const docKey = `${loanId}-${category}-${documentType}`;
-          
-          // Store the state
-          storedStates[docKey] = {
-            status: "Needs Correction", 
-            requestedUpdate: true,
-            timestamp: Date.now()
-          };
-          
-          // Save back to localStorage
-          localStorage.setItem('documentStates', JSON.stringify(storedStates));
-          console.log(`Persisted document state: ${docKey} => Needs Correction`);
-        } catch (err) {
-          console.error("Failed to persist document state:", err);
-        }
-
-        // Close modal
+        // Close modal - only close here on success
         closeRequestModal();
       } else {
         toast.error(
@@ -960,7 +1060,7 @@ const LenderDocumentRequirements = ({
       toast.error("An error occurred while requesting the document");
     } finally {
       setProcessingDocId("");
-      closeRequestModal();
+      // Don't close the modal here - it's already closed on success or should stay open on failure
     }
   };
 

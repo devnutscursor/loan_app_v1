@@ -1365,10 +1365,14 @@ exports.getLoanConditions = async (req, res, next) => {
         loan.conditions.forEach(condition => {
           // Only include conditions assigned to this user
           if (condition.assignedTo && condition.assignedTo.toString() === req.user._id.toString()) {
+            // Extract timestamp from MongoDB ObjectId
+            const timestamp = condition._id.getTimestamp();
+            
             allConditions.push({
               ...condition.toObject(),
               loanNumber: loan.loanNumber,
-              loanId: loan._id
+              loanId: loan._id,
+              createdAt: timestamp // Add creation timestamp from ObjectId
             });
           }
         });

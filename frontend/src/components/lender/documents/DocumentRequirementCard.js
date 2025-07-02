@@ -342,21 +342,40 @@ const DocumentRequirementCard = ({
                 )}
 
                 {/* Update button */}
-                {!req.requestedUpdate ? (
+                {/* Update Button - Only show if not already requested */}
+                {req.requestedUpdate ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-r -ml-px text-gray-500 bg-gray-100 cursor-not-allowed"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5 mr-0.5 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Update Requested
+                  </button>
+                ) : (
                   <button
                     type="button"
                     onClick={() => {
+                      // Log the current state before opening the modal
+                      console.log("Current document state before update request:", req);
                       openRequestModal(
                         req.documentType,
                         req.category,
                         req.title,
                         true
                       );
-                      document
-                        .getElementById(
-                          `update-btn-${req.category}-${req.documentType}`
-                        )
-                        ?.classList.add("hidden");
                     }}
                     id={`update-btn-${req.category}-${req.documentType}`}
                     disabled={
@@ -379,23 +398,6 @@ const DocumentRequirementCard = ({
                     </svg>
                     Update
                   </button>
-                ) : (
-                  <span className="inline-flex items-center px-2 py-1 border border-orange-300 text-xs font-medium rounded-r -ml-px text-orange-700 bg-orange-50">
-                    <svg
-                      className="h-3.5 w-3.5 mr-0.5 text-orange-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    Update Requested
-                  </span>
                 )}
               </div>
             </div>

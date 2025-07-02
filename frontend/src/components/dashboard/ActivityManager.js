@@ -104,7 +104,7 @@ const ActivityManager = ({ userId, updateActivities }) => {
           }
         } catch (e) {
           console.error('ActivityManager: Failed to save document request notification to localStorage', e);
-        }
+      }
       }
       else if (eventType === 'document-status' || 
                eventType === 'document_status_changed' ||
@@ -122,16 +122,16 @@ const ActivityManager = ({ userId, updateActivities }) => {
         console.log('ActivityManager: Unknown notification type:', eventType);
         return;
       }
-      
+        
       // Update activities state via callback
       if (notification) {
-        updateActivities(prevActivities => {
+          updateActivities(prevActivities => {
           // Check if this notification already exists
           if (prevActivities.some(activity => activity.id === notification.id)) {
-            return prevActivities;
-          }
+              return prevActivities;
+            }
           return [notification, ...prevActivities];
-        });
+          });
       }
     };
     
@@ -290,24 +290,24 @@ const ActivityManager = ({ userId, updateActivities }) => {
       const notificationId = generateActivityId(`doc-${status}`, data);
       
       // Create notification object
-      const notification = {
+        const notification = {
         id: notificationId,
         documentId: data._id || data.documentId,
-        icon: icon,
-        title: title,
-        description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
-        time: 'Just now',
-        status: status.charAt(0).toUpperCase() + status.slice(1),
-        statusColor: statusColor,
-        entityId: loanId,
-        entityType: 'document',
-        loanNumber,
-        url: `/borrower/documents`,
-        timestamp: data.timestamp || new Date().toISOString(),
-        persistent: true
-      };
-      
-      // Save to document-specific storage
+          icon: icon,
+          title: title,
+          description: `${documentName}${loanNumber ? ` for loan ${loanNumber}` : ''}${data.notes ? `: ${data.notes}` : ''}`,
+          time: 'Just now',
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          statusColor: statusColor,
+          entityId: loanId,
+          entityType: 'document',
+          loanNumber,
+          url: `/borrower/documents`,
+          timestamp: data.timestamp || new Date().toISOString(),
+          persistent: true
+        };
+        
+        // Save to document-specific storage
       try {
         const storedDocuments = JSON.parse(localStorage.getItem('borrower_documents') || '[]');
         
@@ -315,7 +315,7 @@ const ActivityManager = ({ userId, updateActivities }) => {
         // to ensure these important notifications are shown
         if (status === 'approved' || status === 'rejected') {
           // Only check for exact duplicates by ID
-          if (!storedDocuments.some(doc => doc.id === notification.id)) {
+        if (!storedDocuments.some(doc => doc.id === notification.id)) {
             storedDocuments.push(notification);
             localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
             console.log(`ActivityManager: Saved document ${status} notification to localStorage`);
@@ -330,9 +330,9 @@ const ActivityManager = ({ userId, updateActivities }) => {
             const existingSignature = `${doc.title || ''}-${doc.description || ''}`.toLowerCase().trim();
             return existingSignature.includes(signature);
           })) {
-            storedDocuments.push(notification);
-            localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
-            console.log('ActivityManager: Saved document notification to localStorage');
+          storedDocuments.push(notification);
+          localStorage.setItem('borrower_documents', JSON.stringify(storedDocuments));
+          console.log('ActivityManager: Saved document notification to localStorage');
           } else {
             console.log('ActivityManager: Skipping duplicate document notification');
           }

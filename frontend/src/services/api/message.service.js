@@ -45,7 +45,7 @@ const messageService = {
         const hasFileObjects = attachments.some(att => att instanceof File || att.file);
         
         if (hasFileObjects) {
-          // Append each attachment to the form data
+        // Append each attachment to the form data
           attachments.forEach(attachment => {
             // If attachment is a File object, use it directly
             if (attachment instanceof File) {
@@ -66,15 +66,15 @@ const messageService = {
         borrowerId,
         hasContent: !!content,
         attachmentsCount: attachments.length
-      });
+        });
+        
+        const response = await api.post('/messages/send', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        });
       
-      const response = await api.post('/messages/send', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      });
-      
-      return response.data;
+        return response.data;
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
