@@ -238,8 +238,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
     // Helper function to safely get text content
     const getTextContent = (xpath, defaultValue = '') => {
       try {
-        const elements = xmlDoc.querySelectorAll(xpath);
-        return elements.length > 0 ? elements[0].textContent?.trim() || defaultValue : defaultValue;
+      const elements = xmlDoc.querySelectorAll(xpath);
+      return elements.length > 0 ? elements[0].textContent?.trim() || defaultValue : defaultValue;
       } catch (error) {
         console.error(`Error extracting ${xpath}:`, error);
         return defaultValue;
@@ -476,7 +476,7 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       toast.error('No XML file selected');
       return;
     }
-    
+
     // Additional validation to ensure file is still valid
     try {
       // Check if file is still accessible

@@ -122,13 +122,7 @@ const MessageInput = ({
     // Call the onSendMessage callback
     onSendMessage({
       content: trimmedContent,
-      attachments: attachments.map(attachment => ({
-        id: attachment.id,
-        name: attachment.name,
-        size: attachment.size,
-        type: attachment.type,
-        url: attachment.url
-      }))
+      attachments: attachments.map(attachment => attachment.file)
     });
     
     // Reset the input

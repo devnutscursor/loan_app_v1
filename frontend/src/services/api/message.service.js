@@ -27,31 +27,54 @@ const messageService = {
   // Send a message to a borrower/lender
   sendMessage: async (borrowerId, content, attachments = []) => {
     try {
-      if (attachments.length === 0) {
-        // Simple text message
-        const response = await api.post('/messages/send', {
-          borrowerId,
-          content
-        });
-        return response.data;
+      // Always use FormData for consistency, whether there are attachments or not
+      const formData = new FormData();
+      formData.append('borrowerId', borrowerId);
+      
+      // Add content if provided (could be empty for image-only messages)
+      if (content) {
+        formData.append('content', content);
       } else {
-        // Message with attachments
-        const formData = new FormData();
-        formData.append('borrowerId', borrowerId);
-        if (content) formData.append('content', content);
-        
-        // Append each attachment to the form data
-        attachments.forEach(file => {
-          formData.append('attachments', file);
-        });
-        
-        const response = await api.post('/messages/send', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          }
-        });
-        return response.data;
+        // Ensure we always have some content, even if empty
+        formData.append('content', '');
       }
+      
+      // Check if we have file objects or just file data
+      if (attachments.length > 0) {
+        // Check if attachments are File objects or just data objects
+        const hasFileObjects = attachments.some(att => att instanceof File || att.file);
+        
+        if (hasFileObjects) {
+          // Append each attachment to the form data
+          attachments.forEach(attachment => {
+            // If attachment is a File object, use it directly
+            if (attachment instanceof File) {
+              formData.append('attachments', attachment);
+            } 
+            // If attachment has a file property (from file input), use that
+            else if (attachment.file) {
+              formData.append('attachments', attachment.file);
+            }
+          });
+        } else {
+          // Just data objects, add as JSON
+          formData.append('attachmentData', JSON.stringify(attachments));
+        }
+      }
+      
+      console.log('Sending message with FormData:', {
+        borrowerId,
+        hasContent: !!content,
+        attachmentsCount: attachments.length
+      });
+      
+      const response = await api.post('/messages/send', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      
+      return response.data;
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;

@@ -37,42 +37,91 @@ const MessageItem = ({
       .toUpperCase();
   };
   
+  // Determine if an attachment is an image
+  const isImageAttachment = (attachment) => {
+    const fileName = attachment.fileName || attachment.name || '';
+    const fileType = attachment.fileType || attachment.type || '';
+    
+    return (
+      fileType.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
+    );
+  };
+  
   // Format display for attachments if any
   const renderAttachments = () => {
     if (!message.attachments || message.attachments.length === 0) return null;
     
     return (
       <div className="mt-2 space-y-2">
-        {message.attachments.map((attachment, idx) => (
-          <div 
-            key={`attach-${idx}`} 
-            className="flex items-center p-2 rounded bg-white border border-gray-200"
-          >
-            {/* File type icon */}
-            {getFileIcon(attachment.fileName)}
-            
-            <div className="ml-2 flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {attachment.fileName}
-              </p>
-              <p className="text-xs text-gray-500">
-                {attachment.fileSize}
-              </p>
-            </div>
-            
-            <a 
-              href={attachment.fileUrl} 
-              download
-              className="ml-2 p-1 text-primary hover:text-primary-dark"
-              onClick={(e) => e.stopPropagation()}
+        {message.attachments.map((attachment, idx) => {
+          const attachmentUrl = attachment.url || attachment.fileUrl;
+          const fileName = attachment.fileName || attachment.name || 'File';
+          const fileSize = attachment.fileSize || attachment.size || '';
+          
+          // Handle image attachments differently
+          if (isImageAttachment(attachment)) {
+            return (
+              <div key={`attach-${idx}`} className="mt-2">
+                <div className="rounded-lg overflow-hidden border border-gray-200">
+                  <img 
+                    src={attachmentUrl} 
+                    alt={fileName}
+                    className="max-w-full max-h-64 object-contain"
+                    onError={(e) => {
+                      console.error(`Failed to load image: ${attachmentUrl}`);
+                      e.target.src = '/placeholder-image-error.png';
+                      e.target.alt = 'Image failed to load';
+                    }}
+                  />
+                </div>
+                <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                  <span>{fileName}</span>
+                  <a 
+                    href={attachmentUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-primary hover:text-primary-dark"
+                  >
+                    View
+                  </a>
+                </div>
+              </div>
+            );
+          }
+          
+          // For non-image files
+          return (
+            <div 
+              key={`attach-${idx}`} 
+              className="flex items-center p-2 rounded bg-white border border-gray-200"
             >
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-              </svg>
-            </a>
-          </div>
-        ))}
+              {/* File type icon */}
+              {getFileIcon(fileName)}
+              
+              <div className="ml-2 flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {fileName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {fileSize}
+                </p>
+              </div>
+              
+              <a 
+                href={attachmentUrl} 
+                download
+                className="ml-2 p-1 text-primary hover:text-primary-dark"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                </svg>
+              </a>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -153,7 +202,7 @@ const MessageItem = ({
           )}
           
           {/* Message content */}
-          <div className="text-sm break-words">{message.content}</div>
+          {message.content && <div className="text-sm break-words">{message.content}</div>}
           
           {/* Attachments if any */}
           {renderAttachments()}
@@ -188,9 +237,13 @@ MessageItem.propTypes = {
       role: PropTypes.string
     }).isRequired,
     attachments: PropTypes.arrayOf(PropTypes.shape({
-      fileName: PropTypes.string.isRequired,
-      fileUrl: PropTypes.string.isRequired,
-      fileSize: PropTypes.string
+      fileName: PropTypes.string,
+      fileUrl: PropTypes.string,
+      fileSize: PropTypes.string,
+      name: PropTypes.string,
+      url: PropTypes.string,
+      size: PropTypes.string,
+      type: PropTypes.string
     }))
   }).isRequired,
   isSender: PropTypes.bool,
