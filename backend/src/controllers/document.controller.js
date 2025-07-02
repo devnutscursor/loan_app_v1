@@ -1389,18 +1389,50 @@ exports.getSignedDocumentUrl = async (req, res, next) => {
       return next(new ApiError('S3 storage is not enabled', 400));
     }
     
-    logger.info(`Generating signed URL for S3 document with key: ${key} by user: ${req.user._id}`);
+    logger.info(`Generating URL for S3 document with key: ${key} by user: ${req.user._id}`);
     
-    // Generate signed URL with 1 hour expiry
-    const signedUrl = await getSignedUrl(key, 3600);
-    
-    return res.status(200).json({
-      status: 'success',
-      signedUrl,
-      expiresIn: 3600 // seconds
-    });
+    try {
+      // Check if the key exists in S3 before generating a URL
+      const headParams = {
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: key
+      };
+      
+      const s3Service = require('../services/s3.service');
+      
+      try {
+        await s3Service.s3.headObject(headParams).promise();
+        logger.info(`File exists in S3: ${key}`);
+      } catch (headError) {
+        logger.error(`File does not exist in S3: ${key}`, { error: headError });
+        return next(new ApiError(`Document not found in storage: ${headError.message}`, 404));
+      }
+      
+      // Get the file extension for logging
+      const path = require('path');
+      const fileExtension = path.extname(key).toLowerCase();
+      logger.info(`File extension: ${fileExtension}`);
+      
+      // Generate direct URL for all documents (since we have a bucket policy allowing public read)
+      const region = process.env.AWS_REGION || 'us-east-1';
+      const bucket = process.env.AWS_S3_BUCKET;
+      const url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+      
+      logger.info(`Generated direct URL for ${key}: ${url}`);
+      
+      return res.status(200).json({
+        status: 'success',
+        signedUrl: url,
+        expiresIn: null, // No expiration for direct URLs
+        key,
+        fileExtension
+      });
+    } catch (urlError) {
+      logger.error(`Error generating URL for key ${key}: ${urlError.message}`, { error: urlError });
+      return next(new ApiError(`Failed to generate URL: ${urlError.message}`, 500));
+    }
   } catch (error) {
-    logger.error(`Error generating signed URL: ${error.message}`, { error });
-    return next(new ApiError(`Failed to generate signed URL: ${error.message}`, 500));
+    logger.error(`Error generating URL: ${error.message}`, { error });
+    return next(new ApiError(`Failed to generate URL: ${error.message}`, 500));
   }
 };

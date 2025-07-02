@@ -79,22 +79,35 @@ const uploadToS3 = async (file, folder = 'uploads') => {
     const fileName = `${Date.now()}-${uniqueSuffix}${fileExtension}`;
     const key = `${folder}/${fileName}`;
 
+    // Determine the correct content type based on file extension
+    let contentType = file.mimetype;
+    
+    // Ensure Office documents have the correct mimetype
+    if (['.xlsx', '.xls'].includes(fileExtension.toLowerCase())) {
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    } else if (['.docx', '.doc'].includes(fileExtension.toLowerCase())) {
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (['.pptx', '.ppt'].includes(fileExtension.toLowerCase())) {
+      contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    }
+
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key,
       Body: file.buffer,
-      ContentType: file.mimetype,
-      // ACL removed - modern S3 buckets often use bucket policies instead of ACLs
+      ContentType: contentType,
+      ContentDisposition: 'inline',
       Metadata: {
         originalName: file.originalname,
         uploadedAt: new Date().toISOString()
       }
     };
     
-    // Log the bucket name for debugging
+    // Log the bucket name and content type for debugging
     console.log(`Using S3 bucket: ${process.env.AWS_S3_BUCKET}`);
+    console.log(`Content type for ${fileExtension}: ${contentType}`);
 
-    console.log(`Uploading file to S3: ${key} (Content-Type: ${file.mimetype}, Size: ${file.size} bytes)`);
+    console.log(`Uploading file to S3: ${key} (Content-Type: ${contentType}, Size: ${file.size} bytes)`);
     const result = await s3.upload(params).promise();
     
     return {
@@ -103,7 +116,7 @@ const uploadToS3 = async (file, folder = 'uploads') => {
       bucket: result.Bucket,
       filename: fileName,
       originalname: file.originalname,
-      mimetype: file.mimetype,
+      mimetype: contentType,  // Use the corrected content type
       size: file.size
     };
   } catch (error) {
@@ -142,13 +155,30 @@ const deleteFromS3 = async (key) => {
 // Function to get signed URL for temporary access
 const getSignedUrl = async (key, expiresIn = 3600) => {
   try {
+    // Get the file extension from the key
+    const fileExtension = path.extname(key).toLowerCase();
+    
+    // Define parameters for the signed URL
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key,
       Expires: expiresIn // URL expires in seconds
     };
 
-    return s3.getSignedUrl('getObject', params);
+    // For Office documents, don't set ResponseContentType or ResponseContentDisposition
+    // as these can interfere with Office Online viewer
+    // Instead, make sure the file was uploaded with the correct ContentType
+    
+    logger.info(`Generating signed URL for file with extension ${fileExtension}`);
+    
+    // Generate the signed URL
+    const signedUrl = s3.getSignedUrl('getObject', params);
+    
+    // Log the generated URL (without sensitive parts)
+    const urlObj = new URL(signedUrl);
+    logger.info(`Generated signed URL: ${urlObj.origin}${urlObj.pathname}?[query-params-redacted]`);
+    
+    return signedUrl;
   } catch (error) {
     console.error('Error generating signed URL:', error);
     throw new ApiError(`Failed to generate file access URL: ${error.message}`, 500);
@@ -200,17 +230,38 @@ const uploadSingleToS3 = (fieldName, folder = 'uploads') => {
         
         logger.info(`Uploading to S3: bucket=${bucket}, key=${key}`);
         
+        // Get file extension and determine the correct content type
+        const fileExtension = path.extname(req.file.originalname).toLowerCase();
+        let contentType = req.file.mimetype;
+        
+        // Ensure Office documents have the correct mimetype
+        if (['.xlsx', '.xls'].includes(fileExtension)) {
+          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else if (['.docx', '.doc'].includes(fileExtension)) {
+          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        } else if (['.pptx', '.ppt'].includes(fileExtension)) {
+          contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        }
+        
         // Upload the file to S3
         const params = {
           Bucket: bucket,
           Key: key,
           Body: req.file.buffer,
-          ContentType: req.file.mimetype,
+          ContentType: contentType,
           ContentDisposition: 'inline',
           Metadata: {
             originalname: encodeURIComponent(req.file.originalname)
           }
         };
+        
+        // Log the upload parameters for debugging
+        logger.info(`S3 upload parameters: ${JSON.stringify({
+          key,
+          contentType,
+          originalFilename: req.file.originalname,
+          size: req.file.size
+        })}`);
         
         const uploadResult = await s3.upload(params).promise();
         logger.info(`File uploaded to S3 successfully: ${uploadResult.Location}`);
@@ -219,6 +270,7 @@ const uploadSingleToS3 = (fieldName, folder = 'uploads') => {
         req.file.bucket = bucket;
         req.file.key = key;
         req.file.url = uploadResult.Location || `https://${bucket}.s3.amazonaws.com/${key}`;
+        req.file.mimetype = contentType; // Update mimetype to the correct one
         
         // For XML files (especially loan imports), keep the buffer for immediate processing
         if (isXMLFile) {
@@ -331,12 +383,22 @@ const readFile = async (fileInfo) => {
   }
 };
 
+// Function to get a public URL for an S3 object (when bucket has public access enabled)
+const getPublicUrl = (key) => {
+  const bucket = process.env.AWS_S3_BUCKET;
+  const region = process.env.AWS_REGION || 'us-east-1';
+  
+  // Format: https://bucket-name.s3.region.amazonaws.com/key
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+};
+
 module.exports = {
   uploadSingleToS3,
   uploadArrayToS3,
   uploadToS3,
   deleteFromS3,
   getSignedUrl,
+  getPublicUrl,
   s3,
   readFile,
   USE_S3
