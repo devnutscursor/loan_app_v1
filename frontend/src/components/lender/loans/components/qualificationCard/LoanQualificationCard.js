@@ -41,7 +41,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     loanTerm: 30,
   });
 
-  // Single optimized effect - fetch everything in parallel
+  // Initial data loading effect - fetch programs and rates
   useEffect(() => {
     const initializeCard = async () => {
       if (!loan?._id) return;
@@ -94,6 +94,30 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
 
     initializeCard();
   }, [loan?._id]); // Only depend on loan ID
+
+  // NEW: Add a dedicated effect to watch for income and debt changes and recalculate
+  useEffect(() => {
+    // Skip if not initialized yet or modal is open (modal handles its own calculations)
+    if (!loan?._id || isLoading || isModalOpen || !loanPrograms.length || !loanRates.length) {
+      return;
+    }
+
+    // Check if we have loan data with income/debts and the card is already initialized
+    if (loan.income || loan.debts) {
+      console.log('[LoanQualificationCard] Income or debts changed, recalculating...');
+      fastCalculateAndSave(loan, loanPrograms, loanRates);
+    }
+  }, [
+    // Dependencies for income and debt recalculation
+    loan?.income, 
+    loan?.debts,
+    // We need these references too
+    loan?._id,
+    isLoading,
+    isModalOpen,
+    loanPrograms,
+    loanRates
+  ]);
 
   // Synchronous display function for immediate rendering
   const displayCalculationsSync = (loanData, programs = loanPrograms) => {

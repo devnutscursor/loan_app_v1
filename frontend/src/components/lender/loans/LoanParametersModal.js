@@ -87,15 +87,6 @@ const LoanParametersModal = ({
       // Update the selected program state
       setSelectedProgram(program);
 
-      // Update the loan term in local parameters
-      // if (localParamsRef.current) {  // Use the ref instead of direct reference
-      //   localParamsRef.current((prevParams) => ({
-      //     ...prevParams,
-      //     loanTerm: program.loanTerm || 30, // Use program's loanTerm or default to 30
-      //     selectedProgramId: program._id // Also ensure program ID is updated
-      //   }));
-      // }
-
       // Find the interest rate for this program from loanRates
       if (loanRates && loanRates.length > 0) {
         // Look up the rate by program type
@@ -113,6 +104,35 @@ const LoanParametersModal = ({
           );
         }
       }
+    }
+  };
+
+  // Enhanced close handler to ensure all changes are properly saved before closing
+  const handleCloseModal = async () => {
+    // Show saving indicator during close
+    updateLoadingState('isSaving', true);
+    
+    try {
+      // Ensure all pending changes are saved before closing
+      // This will be a forced save, even if the auto-save hasn't triggered yet
+      if (loan?._id) {
+        // Force a final save by waiting a moment to ensure any pending changes are processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get the latest loan data to ensure we have up-to-date parameters
+        const response = await fetchAPI(`/loans/${loan._id}`);
+        
+        // Update any component that needs the latest data
+        if (onParametersChange && response.status === 'success' && response.data) {
+          onParametersChange(response.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error during modal close:", error);
+    } finally {
+      // Hide saving indicator and close modal
+      updateLoadingState('isSaving', false);
+      onClose();
     }
   };
 
@@ -139,7 +159,7 @@ const LoanParametersModal = ({
               </span>
             </h2>
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
             >
               <X className="w-6 h-6 text-gray-500" />
@@ -169,7 +189,7 @@ const LoanParametersModal = ({
                 loadingStates
               }) => {
                 // Store setLocalParams in ref for access in handleProgramChange
-                // localParamsRef.current = setLocalParams;
+                localParamsRef.current = setLocalParams;
 
                 return (
                   <>

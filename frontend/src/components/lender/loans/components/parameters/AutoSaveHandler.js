@@ -42,11 +42,12 @@ const AutoSaveHandler = ({
           });
         };
         
-        // Get important parameter keys to compare
+        // Get important parameter keys to compare - adding property taxes and related values
         const paramKeys = [
           'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'rateAdjustment',
           'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
-          'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
+          'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees',
+          'propertyTaxes', 'homeownersInsurance', 'hoaFees' // Explicitly check these fields
         ];
         const calcKeys = ['monthlyPayment', 'principalAndInterest', 'dti'];
         
@@ -54,13 +55,19 @@ const AutoSaveHandler = ({
         const hasParamChanges = isDifferent(lastSavedParams.params, localParams, paramKeys);
         const hasCalcChanges = isDifferent(lastSavedParams.calculations, calculations, calcKeys);
         
+        // Also check for toggle state changes
+        const hasToggleChanges = JSON.stringify(lastSavedParams.toggles) !== JSON.stringify(toggleStates);
+        
         // Skip save if nothing significant changed
-        if (!hasParamChanges && !hasCalcChanges) {
+        if (!hasParamChanges && !hasCalcChanges && !hasToggleChanges) {
           console.log('[DEBUG] Skipping auto-save - no significant changes detected');
           return;
         }
         
-        console.log('[DEBUG] Changes detected - saving:', hasParamChanges ? 'parameter changes' : '', hasCalcChanges ? 'calculation changes' : '');
+        console.log('[DEBUG] Changes detected - saving:', 
+          hasParamChanges ? 'parameter changes' : '', 
+          hasCalcChanges ? 'calculation changes' : '',
+          hasToggleChanges ? 'toggle changes' : '');
       }
 
 
@@ -164,7 +171,8 @@ const AutoSaveHandler = ({
       // Store the parameters we just saved for future comparison
       setLastSavedParams({
         params: {...localParams},
-        calculations: {...calculations}
+        calculations: {...calculations},
+        toggles: {...toggleStates}  // Also store toggle states for comparison
       });
       // Indicate save is complete
       setTimeout(() => {
@@ -180,7 +188,7 @@ const AutoSaveHandler = ({
       // Reset the saving flag so future saves can proceed
       isSavingRef.current = false;
     }
-  }, [loan?._id, localParams, calculations, toggleStates, updateLoadingState]);
+  }, [loan?._id, localParams, calculations, toggleStates, updateLoadingState, selectedProgram, allProgramGuidelines]);
   
   // Track if we're currently in an auto-save operation
   const isSavingRef = useRef(false);
@@ -204,20 +212,24 @@ const AutoSaveHandler = ({
       });
     };
     
-    // Get important parameter keys to compare
+    // Get important parameter keys to compare - include property taxes and related fields
     const paramKeys = [
       'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm',
       'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
-      'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
+      'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees',
+      'propertyTaxes', 'homeownersInsurance', 'hoaFees'  // Explicitly include these
     ];
     const calcKeys = ['monthlyPayment', 'principalAndInterest', 'dti'];
+    
+    // Also check toggle states
+    const toggleStatesDifferent = JSON.stringify(lastSavedParams.toggles) !== JSON.stringify(toggleStates);
     
     // Check if there are changes
     const hasParamChanges = isDifferent(lastSavedParams.params, localParams, paramKeys);
     const hasCalcChanges = isDifferent(lastSavedParams.calculations, calculations, calcKeys);
     
-    return hasParamChanges || hasCalcChanges;
-  }, [lastSavedParams, localParams, calculations]);
+    return hasParamChanges || hasCalcChanges || toggleStatesDifferent;
+  }, [lastSavedParams, localParams, calculations, toggleStates]);
   
   // Auto-save whenever parameters or calculations change
   useEffect(() => {
@@ -249,16 +261,16 @@ const AutoSaveHandler = ({
       autoSaveChanges();
     }, 800); // Wait 800ms after user stops typing
     
-    // Clean up the timer on unmount or when dependencies change
+    // Clean up the timer when component unmounts
     return () => {
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = null;
       }
     };
-  }, [localParams, calculations, autoSaveChanges, hasChanges, loan?._id]);
+  }, [loan?._id, localParams, calculations, toggleStates, autoSaveChanges, hasChanges]);
 
-  return null; // This is a logic-only component, no UI
+  // Return null since this is a behavior component with no UI
+  return null;
 };
 
 export default AutoSaveHandler;
