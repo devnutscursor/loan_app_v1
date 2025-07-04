@@ -5,7 +5,7 @@ import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { lenderService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
-import XMLLoanUpload from '../../../components/lender/loans/XMLLoanUpload';
+import XMLLoanUpload from '../../../components/lender/loans/XMLLoanUpload_new';
 import {
   FileText,
   User,
@@ -234,7 +234,7 @@ const LenderLoans = () => {
             </h1>
             <p className="mt-2 text-gray-600">
               {borrowerId
-                ? 'Manage this borrower\'s loan applications'
+                ? "Manage this borrower's loan applications"
                 : 'List of active loan applications from all your borrowers'}
             </p>            </div>
               <div className="flex space-x-2">
@@ -328,7 +328,7 @@ const LenderLoans = () => {
                   <h3 className="mt-4 text-lg font-medium text-gray-900">No active loans</h3>
                   <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
                     {borrowerId
-                      ? 'This borrower doesn\'t have any active loans. You can create a new loan application for them.'
+                      ? "This borrower doesn't have any active loans. You can create a new loan application for them."
                       : 'Get started by creating a new loan application for your borrowers.'}
                   </p>                  <div className="mt-6">
                     <button

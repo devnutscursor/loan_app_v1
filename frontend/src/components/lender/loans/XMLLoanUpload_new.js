@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/router';
 import { 
   Upload, 
   FileText, 
@@ -14,6 +15,8 @@ import {
   Users,
   CreditCard
 } from 'lucide-react';
+import BorrowerSelectionModal from './BorrowerSelectionModal';
+import ReferralLinkModal from './ReferralLinkModal';
 
 const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState(null);
@@ -21,7 +24,55 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [parsedData, setParsedData] = useState(null);
   const [isCreatingLoan, setIsCreatingLoan] = useState(false);
+  const [showBorrowerSelection, setShowBorrowerSelection] = useState(false);
+  const [showReferralLink, setShowReferralLink] = useState(false);
+  const [matchingBorrowers, setMatchingBorrowers] = useState([]);
+  const [lenderId, setLenderId] = useState('');
   const fileInputRef = useRef(null);
+  const router = useRouter();
+
+  // Get lender ID when component loads
+  useEffect(() => {
+    if (isOpen) {
+      fetchLenderProfile();
+    }
+  }, [isOpen]);
+
+  // Fetch lender profile to get lender ID for referral links
+  const fetchLenderProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(
+        `${API_URL}/api/v1/lenders/profile`, 
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          } 
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch lender profile');
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        setLenderId(data.data?._id || '');
+        console.log('Fetched lender ID:', data.data?._id);
+      } else {
+        console.error('Failed response from API:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching lender profile:', error);
+    }
+  };
 
   const handleFileSelect = (selectedFile) => {
     // Validate file type
@@ -520,24 +571,226 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
     };
   };
 
-  const createLoanFromXML = async () => {
+  const checkForMatchingBorrowers = async () => {
+    if (!file || !parsedData || !parsedData.borrowerDetails) {
+      toast.error('No valid borrower data found in XML file');
+      return;
+    }
+    
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      // Get all borrowers for the lender
+      console.log('Fetching borrowers from API endpoint...');
+      const response = await fetch(
+        `${API_URL}/api/v1/lenders/borrowers`, 
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          } 
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch borrowers');
+      }
+
+      const data = await response.json();
+      console.log('API Response status:', data.status);
+      
+      if (data.status !== 'success') {
+        throw new Error('Failed to fetch borrowers');
+      }
+      
+      const allBorrowers = data.data || [];
+      console.log('Found borrowers:', allBorrowers.length);
+      
+      if (allBorrowers.length === 0) {
+        // No borrowers at all, show referral link
+        toast('No borrowers found. You can invite a new borrower.', {
+          icon: '📝',
+          style: {
+            borderRadius: '10px',
+            background: '#EFF6FF',
+            color: '#1E40AF',
+            border: '1px solid #DBEAFE',
+          },
+        });
+        setShowReferralLink(true);
+        return;
+      }
+      
+      // Extract borrower details from XML
+      const borrowerDetails = parsedData.borrowerDetails;
+      
+      // Log the borrower details we're searching for
+      console.log('Searching for borrower match with:', {
+        firstName: borrowerDetails.firstName,
+        lastName: borrowerDetails.lastName,
+        email: borrowerDetails.email,
+        phone: borrowerDetails.phone
+      });
+      
+      // EXACT EMAIL MATCH - Highest priority match
+      if (borrowerDetails.email) {
+        const emailMatches = allBorrowers.filter(b => 
+          (b.user?.email && borrowerDetails.email && 
+           b.user.email.toLowerCase() === borrowerDetails.email.toLowerCase()) ||
+          (b.email && borrowerDetails.email && 
+           b.email.toLowerCase() === borrowerDetails.email.toLowerCase())
+        );
+        
+        if (emailMatches.length > 0) {
+          console.log('Found exact email matches:', emailMatches.length);
+          
+          // If we have exactly one match, automatically select it
+          if (emailMatches.length === 1) {
+            const exactMatch = emailMatches[0];
+            
+            // Show success message
+            toast.success(`Found matching borrower: ${exactMatch.user?.firstName || ''} ${exactMatch.user?.lastName || ''}`);
+            
+            // Directly proceed with this borrower
+            handleBorrowerSelected({
+              action: 'select',
+              borrowerId: exactMatch._id,
+              borrower: exactMatch
+            });
+            
+            return;
+          } else {
+            // Multiple matches with same email - let user choose
+            setMatchingBorrowers(emailMatches);
+            setShowBorrowerSelection(true);
+            return;
+          }
+        }
+      }
+      
+      // No exact email match - show all borrowers
+      console.log('No exact email match found, showing all borrowers');
+      
+      // Show toast notification
+      toast('No exact email match found. Please select an existing borrower or create a new one.', {
+        icon: 'ℹ️',
+        style: {
+          borderRadius: '10px',
+          background: '#EFF6FF',
+          color: '#1E40AF',
+          border: '1px solid #DBEAFE',
+        },
+        duration: 5000,
+      });
+      
+      // Show all borrowers in the selection modal
+      setMatchingBorrowers(allBorrowers);
+      setShowBorrowerSelection(true);
+    } catch (error) {
+      console.error('Error checking for matching borrowers:', error);
+      toast.error('Failed to check for matching borrowers');
+      // Default to showing borrower selection modal with all borrowers
+      setMatchingBorrowers([]);
+      setShowBorrowerSelection(true);
+    }
+  };
+
+  const handleContinueClick = () => {
     if (!file) {
       toast.error('No XML file selected');
       return;
     }
 
+    // Additional validation to ensure file is still valid
     try {
+      // Check if file is still accessible
+      if (!(file instanceof File)) {
+        toast.error('Invalid file object. Please select the file again.');
+        resetUpload();
+        return;
+      }
+      
+      // Check file size to ensure it's still valid
+      if (file.size === 0) {
+        toast.error('File appears to be empty. Please select again.');
+        resetUpload();
+        return;
+      }
+      
+      console.log('Proceeding with valid file, checking for matching borrowers');
+      
+      // Use a try-catch block when checking for matching borrowers
+      checkForMatchingBorrowers().catch(error => {
+        console.error('Failed to check for matches:', error);
+        toast.error('Could not check for matching borrowers. Showing selection screen.');
+        setShowBorrowerSelection(true);
+      });
+      
+    } catch (error) {
+      console.error('Error validating file:', error);
+      toast.error('There was an issue with the selected file. Please try again.');
+      resetUpload();
+    }
+  };
+
+  const createLoanFromXML = () => {
+    console.log('Creating loan from XML...');
+    handleContinueClick();
+  };
+
+  const handleBorrowerSelected = async (borrowerSelection) => {
+    try {
+      console.log('Borrower selection:', JSON.stringify(borrowerSelection, null, 2));
       setIsCreatingLoan(true);
+      setShowBorrowerSelection(false);
+      
+      // If creating a new borrower, show referral link instead of making API call
+      if (borrowerSelection.action === 'create') {
+        console.log('Selected to create a new borrower, showing referral link');
+        setIsCreatingLoan(false);
+        setShowReferralLink(true);
+        return;
+      }
+      
+      // Continue with existing borrower
+      setShowReferralLink(false);
 
       // Create FormData for file upload
       const formData = new FormData();
+      
+      // Make sure we have the file and it's valid
+      if (!file) {
+        toast.error('XML file not found or invalid');
+        setIsCreatingLoan(false);
+        return;
+      }
+      
+      // Add the file as the first item in the FormData
       formData.append('xmlFile', file);
+      
+      // Add borrower selection details
+      if (borrowerSelection.action === 'select') {
+        formData.append('borrowerId', borrowerSelection.borrowerId);
+        formData.append('createNewBorrower', 'false');
+        
+        // Show success toast with borrower name if available
+        if (borrowerSelection.borrower) {
+          const firstName = borrowerSelection.borrower.user?.firstName || borrowerSelection.borrower.firstName || '';
+          const lastName = borrowerSelection.borrower.user?.lastName || borrowerSelection.borrower.lastName || '';
+          const email = borrowerSelection.borrower.user?.email || borrowerSelection.borrower.email || '';
+          
+          const borrowerName = `${firstName} ${lastName}`.trim();
+          toast.success(`Associating loan with borrower: ${borrowerName || email || 'Selected borrower'}`);
+        }
+      }
 
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      
       // Upload XML file to backend for processing
-      const response = await fetch('/api/v1/loans/import-xml', {
+      const response = await fetch(`${API_URL}/api/v1/loans/import-xml`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: formData
       });
@@ -552,13 +805,20 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       if (result.status === 'success') {
         toast.success('Loan imported successfully from XML!');
         onSuccess && onSuccess(result.data);
-        onClose();
+        
+        // If we have a newly created loan, redirect to it
+        if (result.data && result.data._id) {
+          router.push(`/lender/loans/${result.data._id}`);
+        } else {
+          // Fallback to the loans list page
+          router.push('/lender/loans');
+        }
       } else {
         throw new Error(result.message || 'Failed to import loan from XML');
       }
 
     } catch (error) {
-      console.error('Error importing XML loan:', error);
+      console.error('Error importing loan:', error);
       toast.error('Failed to import loan: ' + error.message);
     } finally {
       setIsCreatingLoan(false);
@@ -569,6 +829,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
     setFile(null);
     setParsedData(null);
     setUploadProgress(0);
+    setShowBorrowerSelection(false);
+    setShowReferralLink(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -577,25 +839,16 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Import Loan from XML
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
+        <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Import Loan from XML</h2>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
           {!file ? (
-            /* File Upload Area */
             <div
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
               onDrop={handleDrop}
@@ -833,8 +1086,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+        {/* Footer - Always visible */}
+        <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -846,23 +1099,36 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
             <button
               onClick={createLoanFromXML}
               disabled={isCreatingLoan}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isCreatingLoan ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating Loan...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Create Loan
-                </>
-              )}
+              {isCreatingLoan && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Continue
             </button>
           )}
         </div>
       </div>
+
+      {/* Borrower Selection Modal */}
+      <BorrowerSelectionModal
+        isOpen={showBorrowerSelection}
+        onClose={() => {
+          setShowBorrowerSelection(false);
+          resetUpload();
+        }}
+        onBorrowerSelected={handleBorrowerSelected}
+        initialBorrowers={matchingBorrowers}
+        borrowerDataFromXml={parsedData?.borrowerDetails}
+      />
+      
+      {/* Referral Link Modal */}
+      <ReferralLinkModal
+        isOpen={showReferralLink}
+        onClose={() => {
+          setShowReferralLink(false);
+          resetUpload();
+        }}
+        lenderId={lenderId}
+      />
     </div>
   );
 };

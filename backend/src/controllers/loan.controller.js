@@ -2518,55 +2518,75 @@ exports.importFromXML = async (req, res, next) => {
     
     const parser = new xml2js.Parser({ 
       explicitArray: false,
-    ignoreAttrs: false,
+      ignoreAttrs: false,
       mergeAttrs: true,
-    normalizeTags: true,
-    charkey: 'value',
-    attrkey: 'attr',
-    xmlns: true,
-    explicitRoot: false
-});
+      normalizeTags: true,
+      charkey: 'value',
+      attrkey: 'attr',
+      xmlns: true,
+      explicitRoot: false
+    });
     const parsedXML = await parser.parseStringPromise(xmlString);
     
     const extractedData = extractLoanDataFromXML(parsedXML);
     
     let borrower;
+    const { email, firstName, lastName } = extractedData.borrowerDetails;
+
+    // If borrowerId is provided, use that borrower
     if (req.body.borrowerId) {
       borrower = await Borrower.findById(req.body.borrowerId);
-    if (!borrower) {
-            return next(new ApiError('Selected borrower not found', 404));
-        }
-        if (borrower.lender.toString() !== lender._id.toString()) {
-            return next(new ApiError('Selected borrower does not belong to this lender', 403));
-        }
-    } else {
-        const { email, firstName, lastName } = extractedData.borrowerDetails;
-        if (email) {
-            borrower = await Borrower.findOne({ email: email.toLowerCase() }).populate('user');
-        }
+      if (!borrower) {
+        return next(new ApiError('Selected borrower not found', 404));
+      }
+      if (borrower.lender.toString() !== lender._id.toString()) {
+        return next(new ApiError('Selected borrower does not belong to this lender', 403));
+      }
+    } 
+    // If createNewBorrower is explicitly set to false, require borrowerId
+    else if (req.body.createNewBorrower === 'false' && !req.body.borrowerId) {
+      return next(new ApiError('Borrower ID is required when createNewBorrower is false', 400));
+    }
+    // If email exists, check for existing borrower
+    else if (email) {
+      // Check for existing borrower with this email
+      borrower = await Borrower.findOne({ 
+        $or: [
+          { email: email.toLowerCase() },
+          { 'user.email': email.toLowerCase() }
+        ],
+        lender: lender._id 
+      }).populate('user');
 
-        if (!borrower) {
-            let user = await User.findOne({ email: email.toLowerCase() });
-            if (!user) {
-                user = new User({
-                    email: email.toLowerCase() || `imported_${Date.now()}@example.com`,
-                    firstName,
-                    lastName,
-        role: 'borrower',
-                    password: `defaultPassword${new Date().getTime()}`
-                });
-                await user.save();
-            }
-            
+      // If borrower exists and createNewBorrower is not explicitly true, return error
+      if (borrower && req.body.createNewBorrower !== 'true') {
+        return next(new ApiError('A borrower with this email already exists. Please select an existing borrower.', 409));
+      }
+    }
+
+    // Create new borrower if needed
+    if (!borrower) {
+      // Create user first
+      let user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        user = new User({
+          email: email.toLowerCase() || `imported_${Date.now()}@example.com`,
+          firstName,
+          lastName,
+          role: 'borrower',
+          password: `defaultPassword${new Date().getTime()}`
+        });
+        await user.save();
+      }
+      
       borrower = new Borrower({
-                user: user._id,
-                lender: lender._id,
-                firstName,
-                lastName,
-                email: email.toLowerCase(),
-            });
+        user: user._id,
+        lender: lender._id,
+        firstName,
+        lastName,
+        email: email.toLowerCase(),
+      });
       await borrower.save();
-        }
     }
 
     const loanData = {
@@ -2578,27 +2598,33 @@ exports.importFromXML = async (req, res, next) => {
     };
 
     const newLoan = await Loan.create(loanData);
-      await createDefaultMilestonesForLoan(newLoan._id);
+    await createDefaultMilestonesForLoan(newLoan._id);
     
     borrower.loans.push(newLoan._id);
     await borrower.save();
     
     if (!USE_S3) {
-    fs.unlinkSync(req.file.path);
+      fs.unlinkSync(req.file.path);
     }
 
     res.status(201).json({
       status: 'success',
-      message: 'Loan imported successfully from XML',
-      data: newLoan,
+      data: newLoan
     });
+
   } catch (error) {
-    logger.error("Error importing loan from XML:", error);
-    // Cleanup logic
+    // Cleanup S3 file if exists
     if (USE_S3 && s3FileKey) {
-        // Optional: Add S3 file deletion logic here if needed
-    } else if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      try {
+        const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+        const s3 = new S3Client({ region: process.env.AWS_REGION });
+        await s3.send(new DeleteObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Key: s3FileKey
+        }));
+      } catch (s3Error) {
+        console.error('Failed to cleanup S3 file:', s3Error);
+      }
     }
     next(error);
   }

@@ -737,7 +737,7 @@ const LenderDashboard = () => {
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Display actual loans without duplication */}
-                    {recentLoans.slice(0, 6).map((loan) => (
+                    {recentLoans.slice(0, 8).map((loan) => (
                       <LoanCard
                         key={loan._id}
                         loan={loan}
@@ -750,7 +750,7 @@ const LenderDashboard = () => {
                     <FileText className="mx-auto h-8 w-8 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No recent applications</h3>
                     <p className="mt-1 text-sm text-gray-500">Get started by creating a new loan application</p>
-                    <Link href="/lender/loans/create" className="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                    <Link href="/lender/loans?newLoan=true" className="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900">
                       New Loan
                     </Link>
                   </div>
