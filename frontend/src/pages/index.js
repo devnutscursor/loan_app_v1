@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import MainLayout from '../components/layout/MainLayout';
 
 const Home = () => {
@@ -63,33 +64,50 @@ const Home = () => {
   return (
     <MainLayout title="Loan Application System - Home">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-b from-blue-50 to-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative z-10 pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-32 lg:pb-28">
-            <div className="text-center lg:text-left">
-              <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                <span className="block">Simplify your</span>{' '}
-                <span className="block bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                  loan process
-                </span>
-              </h1>
-              <p className="mt-3 max-w-md mx-auto text-lg text-gray-500 sm:text-xl md:mt-5 md:max-w-3xl md:mx-0">
-                A comprehensive platform connecting borrowers with lenders. Streamline your loan application, 
-                track its progress, and manage documents all in one place.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start space-y-3 sm:space-y-0 sm:space-x-4">
-                <Link href="/register" className="px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 shadow-sm transition-all duration-200 transform hover:-translate-y-0.5">
-                  Get started
-                </Link>
-                <Link href="/about" className="px-8 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
-                  Learn more
-                </Link>
+      <div className="bg-gradient-to-b from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto lg:grid lg:grid-cols-2 lg:gap-8">
+          <div className="px-4 sm:px-6 lg:px-8 flex flex-col justify-center py-16 sm:py-24 lg:py-32">
+            <div className="mx-auto max-w-md sm:max-w-lg lg:mx-0">
+              <div className="sm:text-center lg:text-left">
+                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                  <span className="block">Simplify your</span>{' '}
+                  <span className="block text-blue-600">
+                    loan process
+                  </span>
+                </h1>
+                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg md:mt-5 md:text-xl">
+                  A comprehensive platform connecting borrowers with lenders. Streamline your loan application, track its progress, and manage documents all in one place.
+                </p>
+                <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
+                  <div className="rounded-md shadow">
+                    <Link
+                      href="/register"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:bg-blue-800"
+                    >
+                      Get started
+                    </Link>
+                  </div>
+                  <div className="mt-3 sm:mt-0 sm:ml-3">
+                    <Link
+                      href="/about"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                    >
+                      Learn more
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-          <div className="h-64 w-full bg-gradient-to-r from-blue-600 to-blue-800 opacity-10 sm:h-72 md:h-96 lg:w-full lg:h-full"></div>
+          <div className="relative h-64 sm:h-72 md:h-96 lg:h-full">
+            <Image
+              src="/images/hero-image.jpg"
+              alt="Person managing finances"
+              className="object-cover"
+              fill
+              priority
+            />
+          </div>
         </div>
       </div>
 
@@ -161,10 +179,10 @@ const Home = () => {
               <span className="block text-blue-100 mt-2">Create your account today.</span>
             </h2>
             <div className="mt-10 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <Link href="/register" className="px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 shadow-sm transition-all duration-200 transform hover:-translate-y-0.5">
+              <Link href="/register" className="px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50">
                 Sign up
               </Link>
-              <Link href="/login" className="px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-blue-700 transition-colors duration-200">
+              <Link href="/login" className="px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-blue-700">
                 Sign in
               </Link>
             </div>

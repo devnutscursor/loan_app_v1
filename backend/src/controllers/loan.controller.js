@@ -2516,10 +2516,10 @@ exports.importFromXML = async (req, res, next) => {
         xmlString = fs.readFileSync(req.file.path, 'utf8');
     }
     
-const parser = new xml2js.Parser({ 
-    explicitArray: false,
+    const parser = new xml2js.Parser({ 
+      explicitArray: false,
     ignoreAttrs: false,
-    mergeAttrs: true,
+      mergeAttrs: true,
     normalizeTags: true,
     charkey: 'value',
     attrkey: 'attr',
@@ -2617,7 +2617,7 @@ function extractLoanDataFromXML(parsedXML) {
       throw new ApiError('Invalid MISMO XML format: DEAL not found', 400);
   }
 
-  const getValue = (obj, path, defaultValue = '') => {
+    const getValue = (obj, path, defaultValue = '') => {
       if (!obj) return defaultValue;
       const keys = path.toLowerCase().split('.');
       let current = obj;
@@ -2636,12 +2636,12 @@ function extractLoanDataFromXML(parsedXML) {
       return current.value || current || defaultValue;
   };
   
-  const getNumber = (obj, path, defaultValue = 0) => {
+    const getNumber = (obj, path, defaultValue = 0) => {
       if (!obj) return defaultValue;
       const value = getValue(obj, path, defaultValue);
-    const num = parseFloat(value);
-    return isNaN(num) ? defaultValue : num;
-  };
+      const num = parseFloat(value);
+      return isNaN(num) ? defaultValue : num;
+    };
 
   const getBoolean = (obj, path, defaultValue = false) => {
       const value = getValue(obj, path, defaultValue);
@@ -2723,13 +2723,13 @@ function extractLoanDataFromXML(parsedXML) {
     })),
 };
 
-
-  const loanDetails = {
+    
+    const loanDetails = {
       loanAmount: getNumber(deal, 'loans.loan.terms_of_loan.baseloanamount'),
       loanType: getValue(deal, 'loans.loan.terms_of_loan.loanpurposetype'),
   };
-  
-  const property = {
+    
+    const property = {
       addressLine1: getValue(deal, 'collaterals.collateral.subject_property.address.addresslinetext'),
       city: getValue(deal, 'collaterals.collateral.subject_property.address.cityname'),
       state: getValue(deal, 'collaterals.collateral.subject_property.address.statecode'),
@@ -2816,7 +2816,7 @@ giftsAndGrants: getArray(deal.assets, 'asset')
       isSurvivingSpouse: getBoolean(borrowerRole, 'borrower.borrower_detail.spousalvabenefitseligibilityindicator'),
   };
 
-  const demographics = {
+    const demographics = {
       ethnicity: mapEthnicity(getValue(borrowerRole, 'borrower.government_monitoring.extension.other.government_monitoring_extension.hmda_ethnicities.hmda_ethnicity.hmdaethnicitytype') || 'NotHispanicOrLatino'),
       race: mapRace(getValue(borrowerRole, 'borrower.government_monitoring.hmda_races.hmda_race.hmda_race_detail.hmdaracetype') || 'Asian'),
       gender: mapGender(getValue(borrowerRole, 'borrower.government_monitoring.government_monitoring_detail.extension.other.government_monitoring_detail_extension.hmdagendertype') || 'InformationNotProvided')
@@ -2827,18 +2827,18 @@ giftsAndGrants: getArray(deal.assets, 'asset')
       amount: getNumber(exp, 'expensemonthlypaymentamount')
   }));
 
-  return {
+    return {
       borrowerDetails,
-    loanDetails,
-    property,
+      loanDetails,
+      property,
       assets,
       debts,
-    declarations,
+      declarations,
       income,
       militaryService,
       demographics,
       expenses,
-  };
+    };
 }
 
 /**
