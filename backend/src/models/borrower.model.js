@@ -272,6 +272,10 @@ const borrowerSchema = new mongoose.Schema({
     ref: 'Lender',
     required: true
   },
+  loans: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Loan'
+  }],
   dateOfBirth: {
     type: Date
   },

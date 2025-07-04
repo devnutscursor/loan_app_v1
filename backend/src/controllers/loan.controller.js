@@ -9,9 +9,79 @@ const xml2js = require('xml2js');
 const fs = require('fs');
 const path = require('path');
 const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
+const { USE_S3, s3Client } = require('../services/s3.service');
 
 // Check if we should use S3 or local storage
-const USE_S3 = process.env.USE_S3 === 'true' || false;
+// const USE_S3 = process.env.USE_S3 === 'true' || false;
+
+
+function mapEthnicity(xmlEthnicity) {
+  const mapping = {
+      'NotHispanicOrLatino': 'Not Hispanic or Latino',
+      'HispanicOrLatino': 'Hispanic or Latino',
+      'InformationNotProvided': 'I do not wish to provide this information'
+  };
+  return mapping[xmlEthnicity] || 'I do not wish to provide this information';
+}
+
+function mapRace(xmlRace) {
+  const mapping = {
+      'Asian': 'Asian',
+      'White': 'White',
+      'BlackOrAfricanAmerican': 'Black or African American',
+      'AmericanIndianOrAlaskaNative': 'American Indian or Alaska Native',
+      'NativeHawaiianOrOtherPacificIslander': 'Native Hawaiian or Other Pacific Islander',
+      'InformationNotProvided': 'I do not wish to provide this information'
+  };
+  return mapping[xmlRace] || 'I do not wish to provide this information';
+}
+
+function mapGender(xmlGender) {
+  const mapping = {
+      'Male': 'Male',
+      'Female': 'Female',
+      'InformationNotProvided': 'I do not wish to provide this information'
+  };
+  return mapping[xmlGender] || 'I do not wish to provide this information';
+}
+
+function mapMaritalStatus(xmlMaritalStatus) {
+  const mapping = {
+      'Married': 'Married',
+      'Unmarried': 'Single',
+      'Separated': 'Separated',
+      'Divorced': 'Divorced',
+      'Widowed': 'Widowed'
+  };
+  return mapping[xmlMaritalStatus] || 'Single';
+}
+
+function mapEmploymentStatus(xmlStatus) {
+  const mapping = {
+      'currentEmployer': 'Current Employer',
+      'pastEmployer': 'Past Employer',
+      
+  };
+  return mapping[xmlStatus] || 'Current Employer';
+}
+
+function mapCitizenship(xmlCitizenship) {
+  const mapping = {
+      'USCitizen': 'U.S. Citizen',
+      'PermanentResidentAlien': 'Permanent Resident Alien',
+      'NonPermanentResidentAlien': 'Non-Permanent Resident Alien'
+  };
+  return mapping[xmlCitizenship] || 'U.S. Citizen';
+}
+
+function mapResidencyBasis(xmlResidencyBasis) {
+  const mapping = {
+      'Own': 'Own',
+      'Rent': 'Rent',
+      'LivingRentFree': 'Living Rent-Free'
+  };
+  return mapping[xmlResidencyBasis] || 'Own';
+}
 
 /**
  * Remove a document from a loan application
@@ -2417,289 +2487,119 @@ exports.addDocumentsToLoan = async (req, res, next) => {
  * @param {Function} next - Express next middleware function
  */
 exports.importFromXML = async (req, res, next) => {
+  const USE_S3 = process.env.USE_S3 === 'true';
+  let s3FileKey; // To store S3 key for cleanup
+
   try {
-    // Check if file was uploaded
     if (!req.file) {
       return next(new ApiError("No XML file uploaded", 400));
     }
 
-    // Log file information to help debug
-    logger.info(`Processing XML file: ${JSON.stringify({
-      filename: req.file.originalname,
-      path: req.file.path,
-      s3Key: req.file.key,
-      s3Bucket: req.file.bucket,
-      mimetype: req.file.mimetype,
-      size: req.file.size
-    })}`);
+    s3FileKey = req.file.key; // Store for potential cleanup
 
-    // Validate file for both S3 and local storage
-    const USE_S3 = process.env.USE_S3 === 'true' || false;
-    
-    // For S3 storage, we need key and bucket (or buffer)
-    // For local storage, we need path
-    if (USE_S3 && !req.file.key && !req.file.buffer) {
-      return next(new ApiError(`Missing S3 file key or buffer`, 400));
-    } else if (!USE_S3 && (!req.file.path || !fs.existsSync(req.file.path))) {
-      return next(new ApiError(`Invalid file path: ${req.file.path}`, 400));
-    }
-
-    // Validate file type
-    if (!req.file.originalname.toLowerCase().endsWith('.xml')) {
-      return next(new ApiError("Please upload an XML file", 400));
-    }
-
-    // Read and parse XML file
-    let xmlContent;
-
-    try {
-      const { readFile } = require('../services/s3.service');
-      const fileBuffer = await readFile(req.file);
-      xmlContent = fileBuffer.toString('utf8');
-      logger.info('Successfully read XML file content');
-    } catch (readError) {
-      logger.error('Error reading XML file:', readError);
-      return next(new ApiError(`Failed to read XML file: ${readError.message}`, 500));
+    const lender = await Lender.findOne({ user: req.user._id });
+    if (!lender) {
+      return next(new ApiError("Lender profile not found", 404));
     }
     
-    const parser = new xml2js.Parser({ 
-      explicitArray: false,
-      mergeAttrs: true,
-      normalizeTags: true
-    });
+    let xmlString;
+    if (USE_S3) {
+        const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+        const s3 = new S3Client({ region: process.env.AWS_REGION });
+        const command = new GetObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: req.file.key,
+        });
+        const { Body } = await s3.send(command);
+        xmlString = await Body.transformToString('utf8');
+    } else {
+        xmlString = fs.readFileSync(req.file.path, 'utf8');
+    }
     
-    const parsedXML = await parser.parseStringPromise(xmlContent);
+const parser = new xml2js.Parser({ 
+    explicitArray: false,
+    ignoreAttrs: false,
+    mergeAttrs: true,
+    normalizeTags: true,
+    charkey: 'value',
+    attrkey: 'attr',
+    xmlns: true,
+    explicitRoot: false
+});
+    const parsedXML = await parser.parseStringPromise(xmlString);
     
-    // Extract loan data from parsed XML
     const extractedData = extractLoanDataFromXML(parsedXML);
     
-    // Get user and determine permissions
-    let lenderId;
-    if (req.user.role === "lender") {
-      const lender = await Lender.findOne({ user: req.user._id });
-      if (!lender) {
-        return next(new ApiError("Lender profile not found", 404));
-      }
-      lenderId = lender._id;
-    } else if (req.user.role === "admin") {
-      // For admin, require lender ID in request body
-      if (!req.body.lenderId) {
-        return next(new ApiError("Lender ID is required for admin users", 400));
-      }
-      lenderId = req.body.lenderId;
-    } else {
-      return next(new ApiError("Only lenders and admins can import XML loans", 403));
-    }
-
-    // Handle borrower selection from frontend
     let borrower;
-    
-    // If a specific borrower ID was provided, use that
     if (req.body.borrowerId) {
       borrower = await Borrower.findById(req.body.borrowerId);
-
     if (!borrower) {
-        return next(new ApiError("Selected borrower not found", 404));
-      }
-      
-      // Verify the borrower belongs to this lender
-      if (!borrower.lender.equals(lenderId)) {
-        return next(new ApiError("Selected borrower does not belong to your organization", 403));
-      }
-      
-      // Log that we're using an existing borrower
-      logger.info(`Using existing borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
-    }
-    // If explicitly requested to create a new borrower
-    else if (req.body.createNewBorrower === 'true') {
-      // Parse borrower data if provided
-      let borrowerData = extractedData.borrowerDetails;
-      if (req.body.borrowerData) {
-        try {
-          const providedData = JSON.parse(req.body.borrowerData);
-          // Merge provided data with extracted data, preferring provided data
-          borrowerData = { ...borrowerData, ...providedData };
-        } catch (error) {
-          logger.error('Error parsing borrower data JSON:', error);
+            return next(new ApiError('Selected borrower not found', 404));
         }
-      }
-      
-      // First check if a user with this email already exists
-      let existingUser = null;
-      if (borrowerData.email) {
-        existingUser = await User.findOne({ email: borrowerData.email });
-        if (existingUser) {
-          logger.info(`User with email ${borrowerData.email} already exists. Using existing user.`);
-          
-          // Check if this user already has a borrower profile
-          borrower = await Borrower.findOne({ user: existingUser._id });
-          
-          if (borrower) {
-            logger.info(`Existing borrower found for user ${existingUser._id}. Using existing borrower.`);
-            return next(new ApiError(`A borrower with email ${borrowerData.email} already exists. Please select that borrower instead of creating a new one.`, 400));
-          }
+        if (borrower.lender.toString() !== lender._id.toString()) {
+            return next(new ApiError('Selected borrower does not belong to this lender', 403));
         }
-      }
+    } else {
+        const { email, firstName, lastName } = extractedData.borrowerDetails;
+        if (email) {
+            borrower = await Borrower.findOne({ email: email.toLowerCase() }).populate('user');
+        }
 
-      // If no existing user, create a new one
-      if (!existingUser) {
-      // Generate a temporary password for XML imported users
-      const bcrypt = require('bcryptjs');
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await bcrypt.hash(tempPassword, 12);
-
-        // Create new user with a unique email if needed
-      const newUser = new User({
-          email: borrowerData.email || `imported.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@example.com`,
-          firstName: borrowerData.firstName || 'Unknown',
-          lastName: borrowerData.lastName || 'User',
-        password: hashedPassword,
+        if (!borrower) {
+            let user = await User.findOne({ email: email.toLowerCase() });
+            if (!user) {
+                user = new User({
+                    email: email.toLowerCase() || `imported_${Date.now()}@example.com`,
+                    firstName,
+                    lastName,
         role: 'borrower',
-        isEmailVerified: false,
-        isImportedFromXML: true // Flag to identify XML imports
-      });
-        
-        try {
-          await newUser.save();
-          existingUser = newUser;
-        } catch (userError) {
-          logger.error('Error creating user:', userError);
-          return next(new ApiError(`Failed to create user: ${userError.message}`, 400));
-        }
-      }
-      
-      // Validate date fields before saving
-      let dateOfBirth = null;
-      if (borrowerData.dateOfBirth) {
-        try {
-          const parsedDate = new Date(borrowerData.dateOfBirth);
-          dateOfBirth = isNaN(parsedDate.getTime()) ? null : parsedDate;
-        } catch (dateError) {
-          logger.warn(`Invalid date format for dateOfBirth: ${borrowerData.dateOfBirth}`);
-          dateOfBirth = null;
-        }
-      }
-      
-      // Create the borrower record
+                    password: `defaultPassword${new Date().getTime()}`
+                });
+                await user.save();
+            }
+            
       borrower = new Borrower({
-        user: existingUser._id,
-        lender: lenderId,
-        firstName: borrowerData.firstName || 'Unknown',
-        lastName: borrowerData.lastName || 'User',
-        email: borrowerData.email || existingUser.email,
-        phone: borrowerData.phone || '',
-        dateOfBirth: dateOfBirth,
-        ssn: borrowerData.ssn || '',
-        maritalStatus: mapMaritalStatus(borrowerData.maritalStatus),
-        dependents: borrowerData.dependentCount || 0
-      });
-      
-      try {
+                user: user._id,
+                lender: lender._id,
+                firstName,
+                lastName,
+                email: email.toLowerCase(),
+            });
       await borrower.save();
-        logger.info(`Created new borrower (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
-      } catch (borrowerError) {
-        logger.error('Error creating borrower:', borrowerError);
-        return next(new ApiError(`Failed to create borrower: ${borrowerError.message}`, 400));
-      }
-    }
-    // If no selection was made, check if a borrower with matching email exists
-    else {
-      // Check if borrower with email exists for this lender
-      if (extractedData.borrowerDetails.email) {
-        borrower = await Borrower.findOne({ 
-          email: extractedData.borrowerDetails.email,
-          lender: lenderId 
-        });
-        
-        if (borrower) {
-          logger.info(`Found matching borrower by email (ID: ${borrower._id}) for XML import by user: ${req.user._id}`);
-        } else {
-          // No matching borrower found - user must select or create one
-          return next(new ApiError("No borrower selected. Please select an existing borrower or create a new one.", 400));
         }
-      } else {
-        // No email in XML data - user must select a borrower
-        return next(new ApiError("No borrower email found in XML. Please select a borrower to associate with this loan.", 400));
-      }
     }
 
-    // Create loan with extracted data
-    const newLoan = new Loan({
+    const loanData = {
+      ...extractedData,
       borrower: borrower._id,
-      lender: lenderId,
-      
-      // Borrower details
-      borrowerDetails: extractedData.borrowerDetails,
-      
-      // Loan details
-      loanDetails: extractedData.loanDetails,
-      
-      // Property information
-      property: extractedData.property,
-      
-      // Financial information
-      income: extractedData.income,
-      assets: extractedData.assets,
-      debts: extractedData.debts,
-      
-      // Employment history
-      employmentHistory: extractedData.employmentHistory,
-      
-      // Residence history
-      residenceHistory: extractedData.residenceHistory,
-      
-      // Additional information
-      militaryService: extractedData.militaryService,
-      declarations: extractedData.declarations,
-      demographics: extractedData.demographics,
-        // Metadata
-      source: 'XML_IMPORT',
+      lender: lender._id,
       status: 'Application Started',
-      createdBy: req.user._id,
-      
-      // Store original filename for reference
-      originalXMLFile: req.file.originalname,
-      // If using S3, store the S3 key for reference
-      s3Key: req.file.key,
-      s3Bucket: req.file.bucket
-    });
+      lastUpdated: new Date()
+    };
 
-    await newLoan.save();
-
-    // Create default milestones for the imported loan
-    try {
+    const newLoan = await Loan.create(loanData);
       await createDefaultMilestonesForLoan(newLoan._id);
-      logger.info(`Created default milestones for imported XML loan: ${newLoan._id}`);
-    } catch (milestoneError) {
-      logger.error(`Error creating default milestones for imported XML loan: ${newLoan._id}`, milestoneError);
-      // Don't fail the import if milestone creation fails
-    }
-
-    // Clean up uploaded file only if it's a local file
-    if (req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {
-      logger.info(`Removing temporary file: ${req.file.path}`);
+    
+    borrower.loans.push(newLoan._id);
+    await borrower.save();
+    
+    if (!USE_S3) {
     fs.unlinkSync(req.file.path);
-    } else if (USE_S3) {
-      // For S3 uploads, we don't need to delete the file as it serves as a backup
-      logger.info(`S3 file preserved as backup`);
     }
-
-    logger.info(`Loan imported from XML by user: ${req.user._id}, loan ID: ${newLoan._id}`);
 
     res.status(201).json({
-      status: "success",
-      message: "Loan imported successfully from XML",
-      data: newLoan
+      status: 'success',
+      message: 'Loan imported successfully from XML',
+      data: newLoan,
     });
-
   } catch (error) {
-    // Clean up uploaded file on error, but only for local files
-    if (req.file && req.file.path && !USE_S3 && fs.existsSync(req.file.path)) {
-      logger.info(`Removing temporary file due to error: ${req.file.path}`);
+    logger.error("Error importing loan from XML:", error);
+    // Cleanup logic
+    if (USE_S3 && s3FileKey) {
+        // Optional: Add S3 file deletion logic here if needed
+    } else if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
-    logger.error('Error importing XML loan:', error);
     next(error);
   }
 };
@@ -2710,277 +2610,235 @@ exports.importFromXML = async (req, res, next) => {
  * @returns {Object} Extracted loan data
  */
 function extractLoanDataFromXML(parsedXML) {
-  try {
-    // Helper function to safely get nested values
-    const getValue = (obj, path, defaultValue = '') => {
-      return path.split('.').reduce((current, key) => {
-        return current && current[key] !== undefined ? current[key] : defaultValue;
-      }, obj);
-    };
+  const message = parsedXML.message || parsedXML;
+  const deal = message?.deal_sets?.deal_set?.deals?.deal;
 
-    // Helper function to get number safely
-    const getNumber = (obj, path, defaultValue = 0) => {
-      const value = getValue(obj, path);
-      const num = parseFloat(value);
-      return isNaN(num) ? defaultValue : num;
-    };
+  if (!deal) {
+      throw new ApiError('Invalid MISMO XML format: DEAL not found', 400);
+  }
 
-    const message = parsedXML.message || parsedXML;
-    const deal = getValue(message, 'deal_sets.deal_set.deals.deal') || 
-                 getValue(message, 'deal_sets.deal_set.deals[0].deal') ||
-                 getValue(message, 'deal_sets[0].deal_set.deals.deal');
-
-    // Extract parties (borrower information)
-    const parties = getValue(deal, 'parties.party') || [];
-    const borrowerParty = Array.isArray(parties) ? 
-      parties.find(party => getValue(party, 'roles.role.role_detail.partyroletype') === 'Borrower') :
-      (getValue(parties, 'roles.role.role_detail.partyroletype') === 'Borrower' ? parties : null);
-
-    // Extract borrower details
-    const individual = getValue(borrowerParty, 'individual') || {};
-    const borrowerRole = getValue(borrowerParty, 'roles.role') || {};
-    const borrowerDetail = getValue(borrowerRole, 'borrower.borrower_detail') || {};
-    
-    const borrowerData = {
-      firstName: getValue(individual, 'name.firstname'),
-      lastName: getValue(individual, 'name.lastname'),
-      fullName: getValue(individual, 'name.fullname'),
-      email: getValue(individual, 'contact_points.contact_point.contact_point_email.contactpointemailvalue') ||
-             getValue(individual, 'contact_points[0].contact_point_email.contactpointemailvalue'),
-      phone: getValue(individual, 'contact_points.contact_point.contact_point_telephone.contactpointtelephonevalue') ||
-             getValue(individual, 'contact_points[1].contact_point_telephone.contactpointtelephonevalue'),
-      dateOfBirth: getValue(borrowerDetail, 'borrowerbirthdate'),
-      ssn: getValue(borrowerParty, 'taxpayer_identifiers.taxpayer_identifier.taxpayeridentifiervalue'),
-      maritalStatus: getValue(borrowerDetail, 'maritalstatustype'),
-      dependentCount: getNumber(borrowerDetail, 'dependentcount'),
-    };
-
-    // Extract employment information
-    const employers = getValue(borrowerRole, 'borrower.employers.employer') || [];
-    const primaryEmployer = Array.isArray(employers) ? employers[0] : employers;
-    
-    const employmentHistory = [];
-    if (primaryEmployer) {
-      employmentHistory.push({
-        employerName: getValue(primaryEmployer, 'legal_entity.legal_entity_detail.fullname'),
-        position: getValue(primaryEmployer, 'employment.employmentpositiondescription'),
-        monthlyIncome: getNumber(primaryEmployer, 'employment.employmentmonthlyincomeamount'),
-        startDate: getValue(primaryEmployer, 'employment.employmentstartdate'),
-        isSelfEmployed: getValue(primaryEmployer, 'employment.employmentborrowerselfemployedindicator') === 'true',
-        employmentType: getValue(primaryEmployer, 'employment.employmentclassificationtype'),
-        workPhone: getValue(primaryEmployer, 'legal_entity.contacts.contact.contact_points.contact_point.contact_point_telephone.contactpointtelephonevalue'),
-        workAddress: {
-          streetAddress: getValue(primaryEmployer, 'address.addresslinetext'),
-          city: getValue(primaryEmployer, 'address.cityname'),
-          state: getValue(primaryEmployer, 'address.statecode'),
-          zipCode: getValue(primaryEmployer, 'address.postalcode'),
-        }
-      });
-    }
-
-    // Extract income information
-    const currentIncomeItems = getValue(borrowerRole, 'borrower.current_income.current_income_items.current_income_item') || [];
-    const incomeItems = Array.isArray(currentIncomeItems) ? currentIncomeItems : [currentIncomeItems];
-    
-    const income = {
-      baseIncome: 0,
-      overtime: 0,
-      commissions: 0,
-      bonuses: 0,
-      militaryEntitlements: 0,
-      otherIncome: []
-    };
-
-    incomeItems.forEach(item => {
-      const incomeType = getValue(item, 'current_income_item_detail.incometype');
-      const amount = getNumber(item, 'current_income_item_detail.currentincomemonthlytotalamount') * 12; // Convert to yearly
-      
-      switch (incomeType?.toLowerCase()) {
-        case 'base':
-          income.baseIncome = amount;
-          break;
-        case 'overtime':
-          income.overtime = amount;
-          break;
-        case 'commissions':
-          income.commissions = amount;
-          break;
-        case 'bonus':
-          income.bonuses = amount;
-          break;
-        default:
-          if (amount > 0) {
-            income.otherIncome.push({
-              type: incomeType || 'Other',
-              amount: amount
-            });
+  const getValue = (obj, path, defaultValue = '') => {
+      if (!obj) return defaultValue;
+      const keys = path.toLowerCase().split('.');
+      let current = obj;
+      for (let i = 0; i < keys.length; i++) {
+          if (current[keys[i]] === undefined || current[keys[i]] === null) {
+              // Try with namespace prefix
+              const nsKey = Object.keys(current).find(k => k.toLowerCase().endsWith(keys[i]));
+              if (!nsKey || current[nsKey] === undefined || current[nsKey] === null) {
+                  return defaultValue;
+              }
+              current = current[nsKey];
+          } else {
+              current = current[keys[i]];
           }
       }
-    });
+      return current.value || current || defaultValue;
+  };
+  
+  const getNumber = (obj, path, defaultValue = 0) => {
+      if (!obj) return defaultValue;
+      const value = getValue(obj, path, defaultValue);
+    const num = parseFloat(value);
+    return isNaN(num) ? defaultValue : num;
+  };
 
-    // Extract assets
-    const assetList = getValue(deal, 'assets.asset') || [];
-    const assets = {
-      checkingAndSavings: [],
-      stocksAndBonds: [],
-      miscellaneous: []
-    };
+  const getBoolean = (obj, path, defaultValue = false) => {
+      const value = getValue(obj, path, defaultValue);
+      return String(value).toLowerCase() === 'true';
+  };
 
-    const assetArray = Array.isArray(assetList) ? assetList : [assetList];
-    assetArray.forEach(asset => {
-      if (!asset) return;
-      
-      const assetType = getValue(asset, 'asset_detail.assettype');
-      const value = getNumber(asset, 'asset_detail.assetcashormarketvalueamount');
-      const institution = getValue(asset, 'asset_holder.name.fullname');      if (value > 0) {
-        switch (assetType?.toLowerCase()) {
-          case 'checkingaccount':
-          case 'savingsaccount':
-          case 'checking':
-          case 'savings':
-          case 'moneymarket':
-          case 'certificateofdeposit':
-            assets.checkingAndSavings.push({
-              bankName: institution,
-              accountType: mapAccountType(assetType),
-              value: value,
-              isVerified: false,
-              isLiquid: true
-            });
-            break;
-          case 'stock':
-          case 'bond':
-          case 'mutualfund':
-            assets.stocksAndBonds.push({
-              description: assetType || 'Investment',
-              value: value,
-              isVerified: false
-            });
-            break;
-          default:
-            assets.miscellaneous.push({
-              description: assetType || 'Other Asset',
-              value: value,
-              assetType: assetType === 'GiftOfCash' ? 'Gift' : 'Other'
-            });
-        }
+  const getArray = (obj, path) => {
+      const value = getValue(obj, path, []);
+      return Array.isArray(value) ? value : [value];
+  }
+  
+  const mapOccupancyType = (xmlOccupancyType) => {
+      const mapping = {
+          'PrimaryResidence': 'Primary Residence',
+          'SecondHome': 'Vacation Home',
+          'Investor': 'Investment'
+      };
+      return mapping[xmlOccupancyType] || 'Other';
+  }
+  
+  const party = getArray(deal.parties, 'party').find(p => getValue(p, 'roles.role.role_detail.partyroletype') === 'Borrower');
+  const borrowerRole = party.roles.role;
+
+  const contactPoints = getArray(party, 'individual.contact_points.contact_point');
+  const emailContact = contactPoints.find(c => getValue(c, 'contact_point_email'));
+  const phoneContact = contactPoints.find(c => getValue(c, 'contact_point_telephone'));
+
+  const borrowerDetails = {
+    firstName: getValue(party, 'individual.name.firstname'),
+    lastName: getValue(party, 'individual.name.lastname'),
+    middleName: getValue(party, 'individual.name.middlename'),
+    suffix: getValue(party, 'individual.name.namesuffix'),
+    email: getValue(emailContact, 'contact_point_email.contactpointemailvalue'),
+    phone: getValue(phoneContact, 'contact_point_telephone.contactpointtelephonevalue'),
+    ssn: getValue(party, 'taxpayer_identifiers.taxpayer_identifier.taxpayeridentifiervalue'),
+    dateOfBirth: getValue(borrowerRole, 'borrower.borrower_detail.borrowerbirthdate'),
+    maritalStatus: mapMaritalStatus(getValue(borrowerRole, 'borrower.borrower_detail.maritalstatustype')),
+    citizenship: mapCitizenship(getValue(borrowerRole, 'borrower.declaration.declaration_detail.citizenshipresidencytype')),
+    dependents: getArray(borrowerRole, 'borrower.dependents.dependent').map(dep => ({
+        name: getValue(dep, 'fullname'),
+        age: getNumber(dep, 'dependentageduration'),
+        relationship: getValue(dep, 'relationshiptype')
+    })),
+    employers: getArray(borrowerRole, 'borrower.employers.employer').map(emp => ({
+      companyName: getValue(emp, 'legal_entity.legal_entity_detail.fullname'),
+      jobTitle: getValue(emp, 'employment.employmentpositiondescription'),
+      startDate: getValue(emp, 'employment.employmentstartdate'),
+      endDate: getValue(emp, 'employment.employmentenddate'),
+      monthlyIncome: getNumber(emp, 'employment.employmentmonthlyincomeamount'),
+      employmentStatus: mapEmploymentStatus(getValue(emp, 'employment.employmentstatustype')),
+      isSelfEmployed: getBoolean(emp, 'employment.employmentborrowerselfemployedindicator') ? 'Yes' : 'No',
+      yearsInProfession: getNumber(emp, 'employment.yearsinprofession'),
+      monthsInProfession: getNumber(emp, 'employment.monthsinprofession'),
+      streetAddress: getValue(emp, 'address.addresslinetext'),
+      aptSteNum: getValue(emp, 'address.addressunitidentifier'),
+      city: getValue(emp, 'address.cityname'),
+      state: getValue(emp, 'address.statecode'),
+      zipCode: getValue(emp, 'address.postalcode'),
+  })),
+    currentAddress: getArray(borrowerRole, 'borrower.residences.residence').filter(r => getValue(r, 'residence_detail.borrowerresidencytype') === 'Current').map(addr => ({
+        streetAddress: getValue(addr, 'address.addresslinetext'),
+        aptSteNum: getValue(addr, 'address.addressunitidentifier'),
+        city: getValue(addr, 'address.cityname'),
+        state: getValue(addr, 'address.statecode'),
+        zipCode: getValue(addr, 'address.postalcode'),
+        housingStatus: mapResidencyBasis(getValue(addr, 'residence_detail.borrowerresidencybasistype')),
+        yearsAtAddress: Math.floor(getNumber(addr, 'residence_detail.borrowerresidencydurationmonthscount') / 12),
+        monthsAtAddress: getNumber(addr, 'residence_detail.borrowerresidencydurationmonthscount') % 12,
+    }))[0],
+    previousAddresses: getArray(borrowerRole, 'borrower.residences.residence').filter(r => getValue(r, 'residence_detail.borrowerresidencytype') === 'Former').map(addr => ({
+        streetAddress: getValue(addr, 'address.addresslinetext'),
+        aptSteNum: getValue(addr, 'address.addressunitidentifier'),
+        city: getValue(addr, 'address.cityname'),
+        state: getValue(addr, 'address.statecode'),
+        zipCode: getValue(addr, 'address.postalcode'),
+        housingStatus: mapResidencyBasis(getValue(addr, 'residence_detail.borrowerresidencybasistype')),
+        yearsAtAddress: Math.floor(getNumber(addr, 'residence_detail.borrowerresidencydurationmonthscount') / 12),
+        monthsAtAddress: getNumber(addr, 'residence_detail.borrowerresidencydurationmonthscount') % 12,
+    })),
+};
+
+
+  const loanDetails = {
+      loanAmount: getNumber(deal, 'loans.loan.terms_of_loan.baseloanamount'),
+      loanType: getValue(deal, 'loans.loan.terms_of_loan.loanpurposetype'),
+  };
+  
+  const property = {
+      addressLine1: getValue(deal, 'collaterals.collateral.subject_property.address.addresslinetext'),
+      city: getValue(deal, 'collaterals.collateral.subject_property.address.cityname'),
+      state: getValue(deal, 'collaterals.collateral.subject_property.address.statecode'),
+      zipCode: getValue(deal, 'collaterals.collateral.subject_property.address.postalcode'),
+      propertyValue: getNumber(deal, 'collaterals.collateral.subject_property.property_detail.propertyestimatedvalueamount'),
+      contractPurchasePrice: getNumber(deal, 'collaterals.collateral.subject_property.sales_contracts.sales_contract.sales_contract_detail.salescontractamount'),
+      occupancyType: mapOccupancyType(getValue(deal, 'collaterals.collateral.subject_property.property_detail.propertyusagetype')),
+  };
+
+  const assets = {
+    checkingAndSavings: getArray(deal.assets, 'asset')
+    .filter(a => ['CheckingAccount', 'SavingsAccount'].includes(getValue(a, 'asset_detail.assettype')))
+    .map(a => ({
+        bankName: getValue(a, 'asset_holder.name.fullname'),
+        value: getNumber(a, 'asset_detail.assetcashormarketvalueamount'),
+        accountType: getValue(a, 'asset_detail.assettype').replace('Account', ''),
+        isVerified: true,
+        isLiquid: true
+    })),
+stocksAndBonds: getArray(deal.assets, 'asset')
+    .filter(a => ['Stock', 'Bond'].includes(getValue(a, 'asset_detail.assettype')))
+    .map(a => ({
+        description: getValue(a, 'asset_detail.assettype'),
+        value: getNumber(a, 'asset_detail.assetcashormarketvalueamount'),
+        isVerified: true,
+        isLiquid: true
+    })),
+giftsAndGrants: getArray(deal.assets, 'asset')
+    .filter(a => getValue(a, 'asset_detail.assettype') === 'GiftOfCash')
+    .map(a => ({
+        source: getValue(a, 'asset_detail.fundssourcetype'),
+        value: getNumber(a, 'asset_detail.assetcashormarketvalueamount'),
+        isVerified: true,
+        isLiquid: true,
+        isDeposited: true
+    })),
+      miscellaneous: {
+          earnestMoney: getNumber(getArray(deal.assets, 'asset').find(a => getValue(a, 'asset_detail.assettypeotherdescription') === 'EarnestMoney'), 'asset_detail.assetcashormarketvalueamount'),
+          lifeInsurance: getNumber(getArray(deal.assets, 'asset').find(a => getValue(a, 'asset_detail.assettype') === 'LifeInsurance'), 'asset_detail.assetcashormarketvalueamount'),
+          vestedInterestInRetirement: getNumber(getArray(deal.assets, 'asset').find(a => getValue(a, 'asset_detail.assettype') === 'RetirementFund'), 'asset_detail.assetcashormarketvalueamount'),
+          otherAssets: getNumber(getArray(deal.assets, 'asset').find(a => getValue(a, 'asset_detail.assettypeotherdescription') === 'OtherLiquidAsset'), 'asset_detail.assetcashormarketvalueamount')
       }
-    });
+  };
+  
+  const debts = getArray(deal.liabilities, 'liability').map(l => ({
+      id: new mongoose.Types.ObjectId().toString(),
+      creditorName: getValue(l, 'liability_holder.name.fullname'),
+      monthlyPayment: getNumber(l, 'liability_detail.liabilitymonthlypaymentamount'),
+      balance: getNumber(l, 'liability_detail.liabilityunpaidbalanceamount'),
+      paidAtClosing: getBoolean(l, 'liability_detail.liabilitypayoffstatusindicator'),
+      debtType: getValue(l, 'liability_detail.liabilitytypeotherdescription') || getValue(l, 'liability_detail.liabilitytype'),
+  }));
+  
+  const declarations = {
+      declaredBankruptcy: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.bankruptcyindicator'),
+      hadOwnershipInterest: getValue(borrowerRole, 'borrower.declaration.declaration_detail.homeownerpastthreeyearstype') === 'Yes',
+      propertyForeclosed: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.priorpropertyforeclosurecompletedindicator'),
+      partyToLawsuit: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.partytolawsuitindicator'),
+      outstandingJudgements: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.outstandingjudgmentsindicator'),
+      delinquent: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.presentlydelinquentindicator'),
+      alimonyChildSupport: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.alimonychildsupportobligationindicator'),
+      borrowingMoney: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.undisclosedborrowedfundsindicator'),
+      coSigner: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.undisclosedcomakerofnoteindicator'),
+      occupyAsPrimary: getValue(borrowerRole, 'borrower.declaration.declaration_detail.intenttooccupytype') === 'Yes',
+      applyingForMortgage: getBoolean(borrowerRole, 'borrower.declaration.declaration_detail.undisclosedmortgageapplicationindicator'),
+  };
 
-    // Extract debts/liabilities
-    const liabilityList = getValue(deal, 'liabilities.liability') || [];
-    const debts = [];
-    
-    const liabilityArray = Array.isArray(liabilityList) ? liabilityList : [liabilityList];
-    liabilityArray.forEach(liability => {
-      if (!liability) return;
-      
-      const monthlyPayment = getNumber(liability, 'liability_detail.liabilitymonthlyPaymentamount');
-      if (monthlyPayment > 0) {
-        debts.push({
-          creditorName: getValue(liability, 'liability_holder.name.fullname'),
-          accountNumber: '',
-          debtType: getValue(liability, 'liability_detail.liabilitytype'),
-          monthlyPayment: monthlyPayment,
-          balance: getNumber(liability, 'liability_detail.liabilityunpaidbalanceamount'),
-          willBePaidOff: getValue(liability, 'liability_detail.liabilitypayoffstatusindicator') === 'true'
-        });
-      }
-    });
+  const income = {
+      baseIncome: getNumber(getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item').find(i => getValue(i, 'current_income_item_detail.incometype') === 'Base'), 'current_income_item_detail.currentincomemonthlytotalamount'),
+      overtime: getNumber(getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item').find(i => getValue(i, 'current_income_item_detail.incometype') === 'Overtime'), 'current_income_item_detail.currentincomemonthlytotalamount'),
+      bonuses: getNumber(getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item').find(i => getValue(i, 'current_income_item_detail.incometype') === 'Bonus'), 'current_income_item_detail.currentincomemonthlytotalamount'),
+      commissions: getNumber(getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item').find(i => getValue(i, 'current_income_item_detail.incometype') === 'Commission'), 'current_income_item_detail.currentincomemonthlytotalamount'),
+      militaryEntitlements: getNumber(getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item').find(i => getValue(i, 'current_income_item_detail.incometype') === 'MilitaryEntitlements'), 'current_income_item_detail.currentincomemonthlytotalamount'),
+      otherIncome: getArray(borrowerRole, 'borrower.current_income.current_income_items.current_income_item')
+          .filter(i => !['Base', 'Overtime', 'Bonus', 'Commission', 'MilitaryEntitlements'].includes(getValue(i, 'current_income_item_detail.incometype')))
+          .map(i => ({
+              incomeType: getValue(i, 'current_income_item_detail.otherincometypedescription') || getValue(i, 'current_income_item_detail.incometype'),
+              amount: getNumber(i, 'current_income_item_detail.currentincomemonthlytotalamount')
+          })),
+  };
 
-    // Extract loan details
-    const loan = getValue(deal, 'loans.loan') || {};
-    const termsOfLoan = getValue(loan, 'terms_of_loan') || {};
-    
-    const loanDetails = {
-      loanType: getValue(termsOfLoan, 'loanpurposetype') || 'Purchase',
-      loanAmount: getNumber(termsOfLoan, 'baseloanamount'),
-      interestRate: getNumber(termsOfLoan, 'noteratepercent'),
-      loanTerm: getNumber(loan, 'amortization.amortization_rule.loanamortizationperiodcount') / 12, // Convert months to years
-    };
+  const militaryService = {
+      hasServed: getBoolean(borrowerRole, 'borrower.borrower_detail.selfdeclaredmilitaryserviceindicator'),
+      isSurvivingSpouse: getBoolean(borrowerRole, 'borrower.borrower_detail.spousalvabenefitseligibilityindicator'),
+  };
 
-    // Extract property information
-    const collateral = getValue(deal, 'collaterals.collateral.subject_property') || {};
-    const propertyAddress = getValue(collateral, 'address') || {};
-    
-    const property = {
-      streetAddress: getValue(propertyAddress, 'addresslinetext'),
-      city: getValue(propertyAddress, 'cityname'),
-      state: getValue(propertyAddress, 'statecode'),
-      zipCode: getValue(propertyAddress, 'postalcode'),
-      propertyType: mapPropertyType(getValue(collateral, 'property_detail.propertyusagetype')),
-      propertyValue: getNumber(collateral, 'property_detail.propertyestimatedvalueamount'),
-      occupancyType: 'Primary Residence', // Default
-    };
+  const demographics = {
+      ethnicity: mapEthnicity(getValue(borrowerRole, 'borrower.government_monitoring.extension.other.government_monitoring_extension.hmda_ethnicities.hmda_ethnicity.hmdaethnicitytype') || 'NotHispanicOrLatino'),
+      race: mapRace(getValue(borrowerRole, 'borrower.government_monitoring.hmda_races.hmda_race.hmda_race_detail.hmdaracetype') || 'Asian'),
+      gender: mapGender(getValue(borrowerRole, 'borrower.government_monitoring.government_monitoring_detail.extension.other.government_monitoring_detail_extension.hmdagendertype') || 'InformationNotProvided')
+  };
 
-    // If loan is purchase, set purchase price
-    if (loanDetails.loanType?.toLowerCase() === 'purchase') {
-      loanDetails.purchasePrice = getNumber(collateral, 'sales_contracts.sales_contract.sales_contract_detail.salescontractamount');
-    }
+  const expenses = getArray(deal, 'expenses.expense').map(exp => ({
+      expenseType: getValue(exp, 'expensetype'),
+      amount: getNumber(exp, 'expensemonthlypaymentamount')
+  }));
 
-    // Extract residence history
-    const residences = getValue(borrowerRole, 'borrower.residences.residence') || [];
-    const residenceArray = Array.isArray(residences) ? residences : [residences];
-    const residenceHistory = residenceArray.map(residence => ({
-      address: {
-        streetAddress: getValue(residence, 'address.addresslinetext'),
-        city: getValue(residence, 'address.cityname'),
-        state: getValue(residence, 'address.statecode'),
-        zipCode: getValue(residence, 'address.postalcode'),
-      },
-      residencyType: getValue(residence, 'residence_detail.borrowerresidencytype') || 'Current',
-      monthlyRent: getNumber(residence, 'landlord.landlord_detail.monthlyrentamount'),
-      ownOrRent: getValue(residence, 'residence_detail.borrowerresidencybasistype') === 'Own' ? 'Own' : 'Rent'
-    }));
-
-    // Extract military service
-    const militaryServices = getValue(borrowerRole, 'borrower.military_services.military_service') || {};
-    const militaryService = {
-      hasServed: getValue(borrowerDetail, 'selfdeclaredmilitaryserviceindicator') === 'true',
-      serviceType: getValue(militaryServices, 'militarystatustype'),
-      isVeteran: false,
-      isActiveReserve: getValue(militaryServices, 'militarystatustype')?.includes('Reserve') || false
-    };
-
-    // Extract declarations
-    const declarationDetail = getValue(borrowerRole, 'borrower.declaration.declaration_detail') || {};
-    const declarations = {
-      bankruptcyIndicator: getValue(declarationDetail, 'bankruptcyindicator') === 'true',
-      foreclosureIndicator: getValue(declarationDetail, 'priorpropertyforeclosurecompletedIndicator') === 'true',
-      shortSaleIndicator: getValue(declarationDetail, 'priorpropertyshortSalecompletedIndicator') === 'true',
-      lawsuitIndicator: getValue(declarationDetail, 'partytolawsuitindicator') === 'true',
-      delinquentIndicator: getValue(declarationDetail, 'presentlydelinquentindicator') === 'true',
-      judgmentIndicator: getValue(declarationDetail, 'outstandingjudgmentsindicator') === 'true',
-      undisclosedBorrowedFunds: getValue(declarationDetail, 'undisclosedborrowedfundsindicator') === 'true',
-      undisclosedBorrowedFundsAmount: getNumber(declarationDetail, 'undisclosedborrowedfundsamount'),
-    };
-
-    // Extract demographics
-    const governmentMonitoring = getValue(borrowerRole, 'borrower.government_monitoring') || {};
-    const demographics = {
-      ethnicity: getValue(governmentMonitoring, 'hmda_ethnicity_origins.hmda_ethnicity_origin.hmdaethnicityorigintype'),
-      race: getValue(governmentMonitoring, 'hmda_races.hmda_race.hmda_race_detail.hmdaracetype'),
-      sex: getValue(governmentMonitoring, 'government_monitoring_detail.extension.other.government_monitoring_detail_extension.hmdagendertype'),
-    };
-
-    return {
-      borrowerDetails: borrowerData,
-      income,
+  return {
+      borrowerDetails,
+    loanDetails,
+    property,
       assets,
       debts,
-      loanDetails,
-      property,
-      employmentHistory,
-      residenceHistory,
+    declarations,
+      income,
       militaryService,
-      declarations,
-      demographics
-    };
-
-  } catch (error) {
-    logger.error('Error extracting XML data:', error);
-    throw new ApiError('Failed to extract loan data from XML file', 400);
-  }
+      demographics,
+      expenses,
+  };
 }
 
 /**
@@ -3260,3 +3118,4 @@ exports.sendPreApprovalLetter = async (req, res, next) => {
     next(error);
   }
 };
+

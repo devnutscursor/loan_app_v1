@@ -287,6 +287,20 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       return defaultValue;
     };
 
+    // Helper to get text content from an element, supporting multiple selectors
+    const queryText = (element, selectors) => {
+      for (const selector of selectors) {
+        const el = element.querySelector(selector);
+        if (el) return el.textContent?.trim() || '';
+      }
+      return '';
+    };
+
+    // Helper to extract multiple elements
+    const getElements = (context, selector) => {
+        return Array.from(context.querySelectorAll(selector));
+    }
+
     // Extract borrower information with enhanced paths
     const borrowerData = {
       firstName: getMultiPathContent(['FirstName', 'name firstname', 'individual name firstname']),
@@ -344,7 +358,7 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       loanAmount: getNumber('LoanAmount') || getNumber('amount loanamount') || getNumber('terms_of_loan baseloanamount'),
       loanTerm: getNumber('LoanTermMonths') / 12 || getNumber('terms loantermmonths') / 12 || getNumber('amortization amortization_rule loanamortizationperiodcount') / 12 || 30, // Convert months to years
       interestRate: getNumber('NoteRatePercent') || getNumber('terms_of_loan noteratepercent') || 0,
-      purchasePrice: getNumber('SalesContractAmount') || getNumber('sales_contracts sales_contract sales_contract_detail salescontractamount')
+      purchasePrice: getNumber('SalesContractAmount') || getNumber('collateral subject_property sales_contracts sales_contract sales_contract_detail salescontractamount'),
     };
 
     // Extract property information - enhanced with multiple paths
@@ -376,63 +390,132 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       occupancyType: getMultiPathContent(['IntentToOccupyType', 'declaration_detail intenttooccupytype']) === 'Yes' ? 'Primary Residence' : 'Investment'
     };
 
-    // Extract asset information - enhanced
-    const assetData = {
-      checkingAccounts: getNumber('asset asset_detail assetcashormarketvalueamount', 0),
-      savingsAccounts: 0,
-      investments: 0,
-      retirementAccounts: 0,
+    // Extract asset information
+    const assetsData = {
+      checkingAndSavings: [],
+      stocksAndBonds: [],
+      otherAssets: [],
+      giftsAndGrants: [],
+      miscellaneous: {}
     };
 
-    // Try to find assets by type
-    const checkingAsset = xmlDoc.querySelector('asset_detail assettype, AssetType');
-    if (checkingAsset && checkingAsset.textContent.includes('Checking')) {
-      assetData.checkingAccounts = getNumber('asset asset_detail assetcashormarketvalueamount');
-    }
-    
-    const savingsAsset = xmlDoc.querySelector('asset_detail assettype, AssetType');
-    if (savingsAsset && savingsAsset.textContent.includes('Savings')) {
-      assetData.savingsAccounts = getNumber('asset asset_detail assetcashormarketvalueamount');
-    }
+    getElements(xmlDoc, 'ASSET').forEach(assetNode => {
+      const assetType = queryText(assetNode, ['AssetType']);
+      const value = parseFloat(queryText(assetNode, ['AssetCashOrMarketValueAmount']) || '0');
+      const bankName = queryText(assetNode, ['ASSET_HOLDER NAME FullName']);
+
+      switch (assetType) {
+        case 'CheckingAccount':
+        case 'SavingsAccount':
+        case 'MoneyMarketAccount':
+        case 'CertificateOfDeposit':
+          assetsData.checkingAndSavings.push({ bankName, value, accountType: assetType.replace('Account', '') });
+          break;
+        case 'Stock':
+        case 'Bond':
+          assetsData.stocksAndBonds.push({ description: bankName || 'Stocks/Bonds', value });
+          break;
+        case 'GiftOfCash':
+          const source = queryText(assetNode, ['FundsSourceType']);
+          assetsData.giftsAndGrants.push({ source, value, deposited: true });
+          break;
+        case 'LifeInsurance':
+           assetsData.miscellaneous.lifeInsurance = value;
+           break;
+        case 'RetirementFund':
+            assetsData.miscellaneous.vestedInterestInRetirement = value;
+            break;
+        case 'Other':
+            const otherType = queryText(assetNode, ['AssetTypeOtherDescription']);
+            if (otherType === 'EarnestMoney') {
+                assetsData.miscellaneous.earnestMoney = value;
+            } else {
+                assetsData.otherAssets.push({ description: otherType, value });
+            }
+            break;
+        default:
+          assetsData.otherAssets.push({ description: assetType, value });
+          break;
+      }
+    });
+
+    // Extract liabilities
+    const debtsData = [];
+    getElements(xmlDoc, 'LIABILITY').forEach(liabilityNode => {
+      const debt = {
+        creditorName: queryText(liabilityNode, ['LIABILITY_HOLDER NAME FullName']),
+        monthlyPayment: parseFloat(queryText(liabilityNode, ['LiabilityMonthlyPaymentAmount']) || '0'),
+        balance: parseFloat(queryText(liabilityNode, ['LiabilityUnpaidBalanceAmount']) || '0'),
+        paidAtClosing: queryText(liabilityNode, ['LiabilityPayoffStatusIndicator']) === 'true',
+        debtType: queryText(liabilityNode, ['LiabilityTypeOtherDescription']) || queryText(liabilityNode, ['LiabilityType'])
+      };
+      debtsData.push(debt);
+    });
 
     // Extract declarations information - enhanced with multiple paths
     const declarationsData = {
-      bankruptcyHistory: getMultiPathBoolean(['BankruptcyIndicator', 'declaration_detail bankruptcyindicator']),
-      foreclosureHistory: getMultiPathBoolean(['PriorPropertyForeclosureCompletedIndicator', 'declaration_detail priorpropertyforeclosurecompletedIndicator']),
-      legalProblems: getMultiPathBoolean(['PartyToLawsuitIndicator', 'declaration_detail partytolawsuitindicator']),
-      delinquent: getMultiPathBoolean(['PresentlyDelinquentIndicator', 'declaration_detail presentlydelinquentindicator']),
-      judgments: getMultiPathBoolean(['OutstandingJudgmentsIndicator', 'declaration_detail outstandingjudgmentsindicator']),
-      borrowingMoney: getMultiPathBoolean(['UndisclosedBorrowedFundsIndicator', 'declaration_detail undisclosedborrowedfundsindicator']),
-      coSigner: getMultiPathBoolean(['UndisclosedComakerOfNoteIndicator', 'declaration_detail undisclosedcomakerofnoteindicator']),
+      declaredBankruptcy: getMultiPathBoolean(['BankruptcyIndicator', 'declaration_detail bankruptcyindicator']),
+      bankruptcyType: getMultiPathContent(['BankruptcyChapterType', 'bankruptcy_detail bankruptcychaptertype']),
       hadOwnershipInterest: getMultiPathContent(['HomeownerPastThreeYearsType', 'declaration_detail homeownerpastthreeyearstype']) === 'Yes',
+      propertyForeclosed: getMultiPathBoolean(['PriorPropertyForeclosureCompletedIndicator', 'declaration_detail priorpropertyforeclosurecompletedIndicator']),
+      partyToLawsuit: getMultiPathBoolean(['PartyToLawsuitIndicator', 'declaration_detail partytolawsuitindicator']),
+      outstandingJudgements: getMultiPathBoolean(['OutstandingJudgmentsIndicator', 'declaration_detail outstandingjudgmentsindicator']),
+      delinquent: getMultiPathBoolean(['PresentlyDelinquentIndicator', 'declaration_detail presentlydelinquentindicator']),
+      alimonyChildSupport: getMultiPathBoolean(['AlimonyChildSupportObligationIndicator', 'declaration_detail alimonychildsupportobligationindicator']),
+      borrowingMoney: getMultiPathBoolean(['UndisclosedBorrowedFundsIndicator', 'declaration_detail undisclosedborrowedfundsindicator']),
+      borrowingMoneyAmount: getNumber('UndisclosedBorrowedFundsAmount', 'declaration_detail undisclosedborrowedfundsamount'),
+      coSigner: getMultiPathBoolean(['UndisclosedComakerOfNoteIndicator', 'declaration_detail undisclosedcomakerofnoteindicator']),
       occupyAsPrimary: getMultiPathContent(['IntentToOccupyType', 'declaration_detail intenttooccupytype']) === 'Yes',
       applyingForMortgage: getMultiPathBoolean(['UndisclosedMortgageApplicationIndicator', 'declaration_detail undisclosedmortgageapplicationindicator']),
     };
+
+    const incomeData = {
+        baseIncome: 0,
+        overtime: 0,
+        bonuses: 0,
+        commissions: 0,
+        militaryEntitlements: 0,
+        otherIncome: [],
+    };
+
+    getElements(xmlDoc, 'CURRENT_INCOME_ITEM').forEach(item => {
+        const incomeType = queryText(item, ['IncomeType']);
+        const amount = parseFloat(queryText(item, ['CurrentIncomeMonthlyTotalAmount']) || '0');
+        const otherTypeDesc = queryText(item, ['OtherIncomeTypeDescription']);
+
+        switch (incomeType) {
+            case 'Base':
+                incomeData.baseIncome = amount;
+                break;
+            case 'Overtime':
+                incomeData.overtime = amount;
+                break;
+            case 'Bonus':
+                incomeData.bonuses = amount;
+                break;
+            case 'Commission':
+                incomeData.commissions = amount;
+                break;
+            case 'MilitaryEntitlements':
+                incomeData.militaryEntitlements = amount;
+                break;
+            default:
+                incomeData.otherIncome.push({
+                    incomeType: otherTypeDesc || incomeType,
+                    amount: amount
+                });
+                break;
+        }
+    });
 
     // Return structured data with enhanced fields
     return {
       borrowerDetails: borrowerData,
       loanDetails: loanData,
       property: propertyData,
-      income: {
-        baseIncome: borrowerData.employment.monthlyIncome * 12,
-        overtime: getNumber('current_income_items current_income_item overtime') * 12,
-        commissions: getNumber('current_income_items current_income_item commissions') * 12,
-        bonuses: getNumber('current_income_items current_income_item bonus') * 12,
-        militaryEntitlements: getNumber('current_income_items current_income_item militaryentitlement') * 12,
-      },
-      assets: {
-        checkingAccounts: assetData.checkingAccounts,
-        savingsAccounts: assetData.savingsAccounts,
-        investments: assetData.investments,
-        retirementAccounts: assetData.retirementAccounts,
-      },
-      debts: {
-        creditCards: getNumber('liability liability_detail creditcard'),
-        autoLoans: getNumber('liability liability_detail autoloan'),
-        studentLoans: getNumber('liability liability_detail studentloan'),
-        otherDebts: getNumber('liability liability_detail other'),
-      },
+      income: incomeData,
+      assets: assetsData,
+      debts: debtsData,
       militaryService: {
         isVeteran: getMultiPathBoolean(['selfdeclaredmilitaryserviceindicator', 'borrower_detail selfdeclaredmilitaryserviceindicator']),
         isActive: getMultiPathContent(['militarystatustype', 'military_service_detail militarystatustype'])?.includes('Active') || false,
@@ -442,25 +525,27 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       },
       declarations: declarationsData,
       demographics: {
-        ethnicity: getMultiPathContent(['hmda_ethnicity_origin hmdaethnicityorigintype', 'hmda_ethnicity hmdaethnicitytype']) || 'Not Provided',
-        race: getMultiPathContent(['hmda_race hmda_race_detail hmdaracetype', 'hmda_races hmda_race hmda_race_detail hmdaracetype']) || 'Not Provided',
-        sex: getMultiPathContent(['government_monitoring_detail hmdagendertype', 'government_monitoring_detail extension other government_monitoring_detail_extension hmdagendertype']) || 'Not Provided',
+        ethnicity: getElements(xmlDoc, 'HMDA_ETHNICITY, HMDAEthnicity').map(el => ({type: queryText(el, ['HMDAEthnicityType'])})),
+        race: getElements(xmlDoc, 'HMDA_RACE').map(el => ({
+            type: queryText(el, ['HMDARaceType']),
+            tribe: queryText(el, ['HMDARaceTypeAdditionalDescription'])
+        })),
+        sex: getMultiPathContent(['HMDAGenderType', '*[local-name()="HMDAGenderType"]']) || 'Not Provided',
+        origin: getElements(xmlDoc, "HMDA_ETHNICITY_ORIGIN").map(el => ({type: queryText(el, ["HMDAEthnicityOriginType"])}))
       },
-      residenceHistory: [
-        {
-          address: {
-            streetAddress: getMultiPathContent(['residence address addresslinetext']),
-            city: getMultiPathContent(['residence address cityname']),
-            state: getMultiPathContent(['residence address statecode']),
-            zipCode: getMultiPathContent(['residence address postalcode']),
-          },
-          residencyType: getMultiPathContent(['residence residence_detail borrowerresidencytype']),
-          monthlyRent: getNumber('residence landlord landlord_detail monthlyrentamount'),
-          ownOrRent: getMultiPathContent(['residence residence_detail borrowerresidencybasistype']) === 'Own' ? 'Own' : 'Rent',
-          yearsAtAddress: Math.floor(getNumber('residence residence_detail borrowerresidencydurationmonthscount') / 12),
-          monthsAtAddress: getNumber('residence residence_detail borrowerresidencydurationmonthscount') % 12
-        }
-      ]
+      residenceHistory: getElements(xmlDoc, 'RESIDENCE').map(residenceNode => ({
+        address: {
+            streetAddress: queryText(residenceNode, ['ADDRESS AddressLineText']),
+            city: queryText(residenceNode, ['ADDRESS CityName']),
+            state: queryText(residenceNode, ['ADDRESS StateCode']),
+            zipCode: queryText(residenceNode, ['ADDRESS PostalCode']),
+        },
+        residencyType: queryText(residenceNode, ['RESIDENCE_DETAIL BorrowerResidencyType']),
+        monthlyRent: parseFloat(queryText(residenceNode, ['LANDLORD LANDLORD_DETAIL MonthlyRentAmount']) || '0'),
+        ownOrRent: queryText(residenceNode, ['RESIDENCE_DETAIL BorrowerResidencyBasisType']) === 'Own' ? 'Own' : 'Rent',
+        yearsAtAddress: Math.floor(parseFloat(queryText(residenceNode, ['RESIDENCE_DETAIL BorrowerResidencyDurationMonthsCount']) || '0') / 12),
+        monthsAtAddress: parseFloat(queryText(residenceNode, ['RESIDENCE_DETAIL BorrowerResidencyDurationMonthsCount']) || '0') % 12,
+    }))
     };
   };
   
@@ -941,8 +1026,24 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                         <div><span className="font-medium">Annual Income:</span> ${parsedData.income.baseIncome?.toLocaleString() || '0'}</div>
                         <div><span className="font-medium">Employer:</span> {parsedData.borrowerDetails.employment?.employerName || 'Not provided'}</div>
                         <div><span className="font-medium">Position:</span> {parsedData.borrowerDetails.employment?.position || 'Not provided'}</div>
-                        <div><span className="font-medium">Checking Accounts:</span> ${parsedData.assets.checkingAccounts?.toLocaleString() || '0'}</div>
-                        <div><span className="font-medium">Savings Accounts:</span> ${parsedData.assets.savingsAccounts?.toLocaleString() || '0'}</div>
+                        <div><span className="font-medium">Checking Accounts:</span> ${parsedData.assets.checkingAndSavings?.reduce((acc, curr) => acc + curr.value, 0).toLocaleString() || '0'}</div>
+                        <div><span className="font-medium">Other Assets:</span> ${parsedData.assets.otherAssets?.reduce((acc, curr) => acc + curr.value, 0).toLocaleString() || '0'}</div>
+                        <div>
+                            <span className="font-medium">Total Assets:</span>
+                            ${(
+                                (parsedData.assets.checkingAndSavings?.reduce((acc, curr) => acc + curr.value, 0) || 0) +
+                                (parsedData.assets.stocksAndBonds?.reduce((acc, curr) => acc + curr.value, 0) || 0) +
+                                (parsedData.assets.otherAssets?.reduce((acc, curr) => acc + curr.value, 0) || 0) +
+                                (parsedData.assets.giftsAndGrants?.reduce((acc, curr) => acc + curr.value, 0) || 0) +
+                                (parsedData.assets.miscellaneous?.lifeInsurance || 0) +
+                                (parsedData.assets.miscellaneous?.vestedInterestInRetirement || 0) +
+                                (parsedData.assets.miscellaneous?.earnestMoney || 0)
+                            ).toLocaleString() || '0'}
+                        </div>
+                        <div>
+                            <span className="font-medium">Total Liabilities:</span>
+                            ${(parsedData.debts?.reduce((acc, curr) => acc + curr.balance, 0) || 0).toLocaleString() || '0'}
+                        </div>
                       </div>
                     </div>
                     
@@ -953,10 +1054,10 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                         <h4 className="font-medium text-gray-900">Declarations</h4>
                       </div>
                       <div className="space-y-2 text-sm">
-                        <div><span className="font-medium">Bankruptcy:</span> {parsedData.declarations.bankruptcyHistory ? 'Yes' : 'No'}</div>
-                        <div><span className="font-medium">Foreclosure:</span> {parsedData.declarations.foreclosureHistory ? 'Yes' : 'No'}</div>
-                        <div><span className="font-medium">Legal Problems:</span> {parsedData.declarations.legalProblems ? 'Yes' : 'No'}</div>
-                        <div><span className="font-medium">Outstanding Judgments:</span> {parsedData.declarations.judgments ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Bankruptcy:</span> {parsedData.declarations.declaredBankruptcy ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Foreclosure:</span> {parsedData.declarations.propertyForeclosed ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Legal Problems:</span> {parsedData.declarations.partyToLawsuit ? 'Yes' : 'No'}</div>
+                        <div><span className="font-medium">Outstanding Judgments:</span> {parsedData.declarations.outstandingJudgements ? 'Yes' : 'No'}</div>
                         <div><span className="font-medium">Delinquent on Debt:</span> {parsedData.declarations.delinquent ? 'Yes' : 'No'}</div>
                         <div><span className="font-medium">Intend to Occupy:</span> {parsedData.declarations.occupyAsPrimary ? 'Yes' : 'No'}</div>
                       </div>

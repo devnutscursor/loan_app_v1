@@ -84,7 +84,9 @@ export const generateMismoXml = (loan) => {
  * @returns {string} - Formatted date string
  */
 const formatDate = (date) => {
-  return date.toISOString().slice(0, 10).replace(/-/g, '');
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toISOString().split('T')[0].replace(/-/g, '');
 };
 
 /**
@@ -302,13 +304,14 @@ const generateLiabilitiesXml = (loan) => {
               <LIABILITY_DETAIL>
                 <LiabilityExclusionIndicator>false</LiabilityExclusionIndicator>
                 <LiabilityMonthlyPaymentAmount>${debt.monthlyPayment || 0}</LiabilityMonthlyPaymentAmount>
-                <LiabilityPayoffStatusIndicator>${debt.paidAtClosing ? 'true' : 'false'}</LiabilityPayoffStatusIndicator>
+                <LiabilityPayoffStatusIndicator>${debt.paidAtClosing || debt.willBePaidOff ? 'true' : 'false'}</LiabilityPayoffStatusIndicator>
                 <LiabilityType>${mapLiabilityType(debt)}</LiabilityType>
+                ${debt.debtType ? `<LiabilityTypeOtherDescription>${debt.debtType}</LiabilityTypeOtherDescription>` : ''}
                 <LiabilityUnpaidBalanceAmount>${debt.balance || 0}</LiabilityUnpaidBalanceAmount>
               </LIABILITY_DETAIL>
               <LIABILITY_HOLDER>
                 <NAME>
-                  <FullName>${debt.creditor || ''}</FullName>
+                  <FullName>${debt.creditorName || 'Unknown'}</FullName>
                 </NAME>
               </LIABILITY_HOLDER>
             </LIABILITY>`;
@@ -316,7 +319,6 @@ const generateLiabilitiesXml = (loan) => {
   
   xml += `
           </LIABILITIES>`;
-  
   return xml;
 };
 
@@ -326,9 +328,28 @@ const generateLiabilitiesXml = (loan) => {
  * @returns {string} - MISMO liability type
  */
 const mapLiabilityType = (debt) => {
-  // Map common debt types to MISMO liability types
-  // Default to "Installment" if no specific mapping exists
-  return "Installment";
+  const type = debt.debtType || 'Other';
+  const typeMap = {
+    'Alimony': 'Alimony',
+    'ChildSupport': 'ChildSupport',
+    'CreditCard': 'Revolving',
+    'CarLoan': 'Installment',
+    'StudentLoan': 'Installment',
+    'Mortgage': 'Mortgage',
+    'HELOC': 'HELOC',
+    'Taxes': 'Taxes',
+    'Other': 'Other',
+    'Revolving': 'Revolving',
+    'Installment': 'Installment'
+  };
+
+  for (const key in typeMap) {
+    if (type.toLowerCase().includes(key.toLowerCase())) {
+      return typeMap[key];
+    }
+  }
+  
+  return 'Other';
 };
 
 /**
@@ -564,6 +585,7 @@ const getMortgageType = (loan) => {
  */
 const generatePartiesXml = (loan) => {
   const borrower = loan.borrowerDetails || {};
+  const dependents = borrower.dependents || [];
   const declarations = loan.declarations || {};
   const demographics = loan.demographics || {};
   const militaryService = loan.militaryService || {};
@@ -612,11 +634,14 @@ const generatePartiesXml = (loan) => {
                   <BORROWER>
                     <BORROWER_DETAIL>
                       <BorrowerBirthDate>${formatDate(new Date(borrower.dateOfBirth || new Date()))}</BorrowerBirthDate>
-                      <DependentCount>${borrower.dependents?.length || 0}</DependentCount>
+                      <DependentCount>${dependents.length || 0}</DependentCount>
                       <MaritalStatusType>${mapMaritalStatus(borrower.maritalStatus)}</MaritalStatusType>
                       <SelfDeclaredMilitaryServiceIndicator>${militaryService?.hasServed ? 'true' : 'false'}</SelfDeclaredMilitaryServiceIndicator>
                       <SpousalVABenefitsEligibilityIndicator>${militaryService?.isSurvivingSpouse ? 'true' : 'false'}</SpousalVABenefitsEligibilityIndicator>
                     </BORROWER_DETAIL>
+                    
+                    ${generateDependentsXml(dependents)}
+
                     ${generateCurrentIncomeXml(loan)}
                     ${generateDeclarationsXml(loan)}
                     ${generateEmployersXml(loan)}
@@ -656,6 +681,32 @@ const mapMaritalStatus = (status) => {
   };
   
   return statusMap[status] || 'Unmarried';
+};
+
+/**
+ * Generate Dependents XML section
+ * @param {Array} dependents - Array of dependent objects
+ * @returns {string} - XML string for dependents
+ */
+const generateDependentsXml = (dependents) => {
+  if (!dependents || dependents.length === 0) return '';
+  
+  let xml = `
+                    <DEPENDENTS>`;
+  
+  dependents.forEach(dependent => {
+    xml += `
+                      <DEPENDENT>
+                        <FullName>${dependent.name || ''}</FullName>
+                        <DependentAgeDuration>${dependent.age || 0}</DependentAgeDuration>
+                        <RelationshipType>${dependent.relationship || 'Child'}</RelationshipType>
+                      </DEPENDENT>`;
+  });
+  
+  xml += `
+                    </DEPENDENTS>`;
+                    
+  return xml;
 };
 
 /**
@@ -757,104 +808,98 @@ export const downloadXmlFile = (xmlString, filename) => {
  * @returns {string} - XML for current income
  */
 const generateCurrentIncomeXml = (loan) => {
-  const income = loan.income || {};
-  let xml = '';
-  let incomeCounter = 1;
-  
-  if (Object.keys(income).length > 0) {
-    xml = `
+  const incomes = [];
+  let sequenceNumber = 1;
+
+  if (loan.income.baseIncome) {
+    incomes.push({
+      type: 'Base',
+      amount: loan.income.baseIncome,
+      employmentIncome: true
+    });
+  }
+  if (loan.income.overtime) {
+    incomes.push({
+      type: 'Overtime',
+      amount: loan.income.overtime,
+      employmentIncome: true
+    });
+  }
+  if (loan.income.bonus) {
+    incomes.push({
+      type: 'Bonus',
+      amount: loan.income.bonus,
+      employmentIncome: true
+    });
+  }
+  if (loan.income.commissions) {
+    incomes.push({
+      type: 'Commission',
+      amount: loan.income.commissions,
+      employmentIncome: true
+    });
+  }
+  if (loan.income.militaryEntitlements) {
+    incomes.push({
+      type: 'MilitaryEntitlements',
+      amount: loan.income.militaryEntitlements,
+      employmentIncome: true
+    });
+  }
+
+  (loan.income.otherIncome || []).forEach(other => {
+    incomes.push({
+      type: mapOtherIncomeType(other.incomeType),
+      otherTypeDescription: other.incomeType,
+      amount: other.amount,
+      employmentIncome: false,
+    });
+  });
+
+  return `
                     <CURRENT_INCOME>
-                      <CURRENT_INCOME_ITEMS>`;
-    
-    // Base income
-    if (income.baseIncome) {
-      xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
+                      <CURRENT_INCOME_ITEMS>
+                        ${incomes.map(income => `
+                        <CURRENT_INCOME_ITEM SequenceNumber="${sequenceNumber++}" xlink:label="CURRENT_INCOME_ITEM_${sequenceNumber}">
                           <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.baseIncome || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
-                            <IncomeType>Base</IncomeType>
+                            <CurrentIncomeMonthlyTotalAmount>${income.amount}</CurrentIncomeMonthlyTotalAmount>
+                            <EmploymentIncomeIndicator>${income.employmentIncome}</EmploymentIncomeIndicator>
+                            <IncomeType>${income.type}</IncomeType>
+                            ${income.otherTypeDescription ? `<OtherIncomeTypeDescription>${income.otherTypeDescription}</OtherIncomeTypeDescription>` : ''}
                           </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-      incomeCounter++;
-    }
-    
-    // Overtime income
-    if (income.overtime) {
-      xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
-                          <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.overtime || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
-                            <IncomeType>Overtime</IncomeType>
-                          </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-      incomeCounter++;
-    }
-    
-    // Bonuses income
-    if (income.bonuses) {
-      xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
-                          <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.bonuses || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
-                            <IncomeType>Bonus</IncomeType>
-                          </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-      incomeCounter++;
-    }
-    
-    // Commissions income
-    if (income.commissions) {
-      xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
-                          <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.commissions || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
-                            <IncomeType>Commission</IncomeType>
-                          </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-      incomeCounter++;
-    }
-    
-    // Military entitlements
-    if (income.militaryEntitlements) {
-      xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
-                          <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.militaryEntitlements || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>true</EmploymentIncomeIndicator>
-                            <IncomeType>MilitaryEntitlement</IncomeType>
-                          </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-      incomeCounter++;
-    }
-    
-    // Other income items
-    if (income.otherIncome && Array.isArray(income.otherIncome)) {
-      income.otherIncome.forEach(otherIncome => {
-        if (otherIncome.amount) {
-          xml += `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${incomeCounter}" xlink:label="CURRENT_INCOME_ITEM_${incomeCounter}">
-                          <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${otherIncome.amount || 0}</CurrentIncomeMonthlyTotalAmount>
-                            <EmploymentIncomeIndicator>false</EmploymentIncomeIndicator>
-                            <IncomeType>Other</IncomeType>
-                            <OtherIncomeType>${otherIncome.incomeType || 'Other'}</OtherIncomeType>
-                          </CURRENT_INCOME_ITEM_DETAIL>
-                        </CURRENT_INCOME_ITEM>`;
-          incomeCounter++;
-        }
-      });
-    }
-    
-    xml += `
+                        </CURRENT_INCOME_ITEM>`).join('')}
                       </CURRENT_INCOME_ITEMS>
                     </CURRENT_INCOME>`;
+};
+
+/**
+ * Map Other Income Type to MISMO standard values
+ * @param {string} incomeType - Application income type
+ * @returns {string} - MISMO income type
+ */
+const mapOtherIncomeType = (incomeType) => {
+  if (!incomeType) return 'Other';
+
+  const typeMap = {
+    'Alimony': 'Alimony',
+    'Child Support': 'ChildSupport',
+    'Disability': 'Disability',
+    'Foster Care': 'FosterCare',
+    'Interest And Dividends': 'InvestmentIncome',
+    'Retirement': 'Retirement',
+    'Social Security': 'SocialSecurity',
+    'Trust': 'Trust',
+    'Unemployment': 'UnemploymentBenefits',
+    'V.A. Compensation': 'VABenefits'
+  };
+
+  for (const key in typeMap) {
+    if (incomeType.toLowerCase().includes(key.toLowerCase())) {
+      return typeMap[key];
+    }
   }
-  
-  return xml;
+
+  return 'Other';
 };
 
 /**
@@ -880,6 +925,7 @@ const generateDeclarationsXml = (loan) => {
                         ${declarations.borrowingMoneyAmount ? `<UndisclosedBorrowedFundsAmount>${declarations.borrowingMoneyAmount}</UndisclosedBorrowedFundsAmount>` : ''}
                         <UndisclosedComakerOfNoteIndicator>${declarations.coSigner ? 'true' : 'false'}</UndisclosedComakerOfNoteIndicator>
                         <UndisclosedMortgageApplicationIndicator>${declarations.applyingForMortgage ? 'true' : 'false'}</UndisclosedMortgageApplicationIndicator>
+                        <AlimonyChildSupportObligationIndicator>${declarations.alimonyChildSupport ? 'true' : 'false'}</AlimonyChildSupportObligationIndicator>
                       </DECLARATION_DETAIL>
                     </DECLARATION>`;
 };
@@ -922,7 +968,7 @@ const generateEmployersXml = (loan) => {
                         </LEGAL_ENTITY>
                         <ADDRESS>
                           <AddressLineText>${employer.streetAddress || ''}</AddressLineText>
-                          ${employer.aptSteNum ? `<AddressUnitIdentifier>${employer.aptSteNum}</AddressUnitIdentifier>` : ''}
+                          <AddressUnitIdentifier>${employer.aptSteNum || ''}</AddressUnitIdentifier>
                           <CityName>${employer.city || ''}</CityName>
                           <PostalCode>${employer.zipCode || ''}</PostalCode>
                           <StateCode>${employer.state || ''}</StateCode>
@@ -930,13 +976,15 @@ const generateEmployersXml = (loan) => {
                         <EMPLOYMENT>
                           <EmploymentBorrowerSelfEmployedIndicator>${employer.isSelfEmployed === 'Yes' ? 'true' : 'false'}</EmploymentBorrowerSelfEmployedIndicator>
                           <EmploymentMonthlyIncomeAmount>${employer.monthlyIncome || 0}</EmploymentMonthlyIncomeAmount>
-                          <EmploymentClassificationType>${index === 0 ? 'Primary' : 'Secondary'}</EmploymentClassificationType>
+                          <EmploymentClassificationType>Primary</EmploymentClassificationType>
                           <EmploymentPositionDescription>${employer.jobTitle || ''}</EmploymentPositionDescription>
-                          <EmploymentStartDate>${formatDate(new Date(employer.startDate || new Date()))}</EmploymentStartDate>
-                          <EmploymentStatusType>${employer.employmentStatus || 'Current'}</EmploymentStatusType>
-                          ${employer.endDate ? `<EmploymentEndDate>${formatDate(new Date(employer.endDate))}</EmploymentEndDate>` : ''}
+                          <EmploymentStartDate>${formatDate(employer.startDate)}</EmploymentStartDate>
+                          <EmploymentStatusType>${mapEmploymentStatusToMismo(employer.employmentStatus)}</EmploymentStatusType>
+                          <YearsInProfession>${calculateYearsInProfession(employer.startDate)}</YearsInProfession>
+                          <MonthsInProfession>${calculateRemainingMonthsInProfession(employer.startDate)}</MonthsInProfession>
+                          
                           <SpecialBorrowerEmployerRelationshipIndicator>false</SpecialBorrowerEmployerRelationshipIndicator>
-                          <OwnershipInterestType>${employer.ownsMoreThan25Percent === 'Yes' ? 'GreaterThanOrEqual25Percent' : 'LessThan25Percent'}</OwnershipInterestType>
+                          <OwnershipInterestType>LessThan25Percent</OwnershipInterestType>
                         </EMPLOYMENT>
                       </EMPLOYER>`;
     });
@@ -1129,6 +1177,8 @@ const mapBankruptcyType = (type) => {
 const generateGovernmentMonitoringXml = (loan) => {
   const demographics = loan.demographics || {};
   let xml = '';
+  const ethnicity = Array.isArray(demographics.ethnicity) ? demographics.ethnicity : [demographics.ethnicity];
+  const race = Array.isArray(demographics.race) ? demographics.race : [demographics.race];
   
   xml = `
                     <GOVERNMENT_MONITORING>
@@ -1137,35 +1187,43 @@ const generateGovernmentMonitoringXml = (loan) => {
                           <OTHER>
                             <ULAD:GOVERNMENT_MONITORING_DETAIL_EXTENSION>
                               <ULAD:ApplicationTakenMethodType>Internet</ULAD:ApplicationTakenMethodType>
-                              <ULAD:HMDAGenderType>${mapGender(demographics.gender)}</ULAD:HMDAGenderType>
+                              <ULAD:HMDAGenderType>${mapGender(demographics.gender || demographics.sex)}</ULAD:HMDAGenderType>
                             </ULAD:GOVERNMENT_MONITORING_DETAIL_EXTENSION>
                           </OTHER>
                         </EXTENSION>
                       </GOVERNMENT_MONITORING_DETAIL>`;
   
   // Add Race information
-  if (demographics.race) {
+  if (race && race.length > 0 && race[0]) {
     xml += `
-                      <HMDA_RACES>
+                      <HMDA_RACES>`;
+    race.forEach(raceItem => {
+      xml += `
                         <HMDA_RACE>
                           <HMDA_RACE_DETAIL>
-                            <HMDARaceType>${mapRace(demographics.race)}</HMDARaceType>
-                            ${demographics.tribe ? `<HMDARaceTypeAdditionalDescription>${demographics.tribe}</HMDARaceTypeAdditionalDescription>` : ''}
+                            <HMDARaceType>${mapRace(raceItem.type || raceItem)}</HMDARaceType>
+                            ${raceItem.tribe ? `<HMDARaceTypeAdditionalDescription>${raceItem.tribe}</HMDARaceTypeAdditionalDescription>` : ''}
                           </HMDA_RACE_DETAIL>
-                        </HMDA_RACE>
+                        </HMDA_RACE>`;
+    });
+    xml += `
                       </HMDA_RACES>`;
   }
   
   // Add Ethnicity information
-  if (demographics.ethnicity) {
+  if (ethnicity && ethnicity.length > 0 && ethnicity[0]) {
     xml += `
                       <EXTENSION>
                         <OTHER>
                           <ULAD:GOVERNMENT_MONITORING_EXTENSION>
-                            <ULAD:HMDA_ETHNICITIES>
+                            <ULAD:HMDA_ETHNICITIES>`;
+    ethnicity.forEach(ethnicityItem => {
+        xml += `
                               <ULAD:HMDA_ETHNICITY>
-                                <ULAD:HMDAEthnicityType>${mapEthnicity(demographics.ethnicity)}</ULAD:HMDAEthnicityType>
-                              </ULAD:HMDA_ETHNICITY>
+                                <ULAD:HMDAEthnicityType>${mapEthnicity(ethnicityItem.type || ethnicityItem)}</ULAD:HMDAEthnicityType>
+                              </ULAD:HMDA_ETHNICITY>`;
+    });
+    xml += `
                             </ULAD:HMDA_ETHNICITIES>
                           </ULAD:GOVERNMENT_MONITORING_EXTENSION>
                         </OTHER>
@@ -1173,12 +1231,16 @@ const generateGovernmentMonitoringXml = (loan) => {
   }
   
   // Add Ethnicity Origin information
-  if (demographics.origin) {
+  if (demographics.origin && Array.isArray(demographics.origin) && demographics.origin.length > 0 && demographics.origin[0]) {
     xml += `
-                      <HMDA_ETHNICITY_ORIGINS>
+                      <HMDA_ETHNICITY_ORIGINS>`;
+    demographics.origin.forEach(originItem => {
+      xml += `
                         <HMDA_ETHNICITY_ORIGIN>
-                          <HMDAEthnicityOriginType>${mapEthnicityOrigin(demographics.origin)}</HMDAEthnicityOriginType>
-                        </HMDA_ETHNICITY_ORIGIN>
+                          <HMDAEthnicityOriginType>${mapEthnicityOrigin(originItem.type || originItem)}</HMDAEthnicityOriginType>
+                        </HMDA_ETHNICITY_ORIGIN>`;
+    });
+    xml += `
                       </HMDA_ETHNICITY_ORIGINS>`;
   }
   
@@ -1200,7 +1262,9 @@ const mapGender = (gender) => {
     'Male': 'Male',
     'Female': 'Female',
     'Not applicable': 'NotApplicable',
-    'I do not wish to provide this information': 'InformationNotProvided'
+    'I do not wish to provide this information': 'InformationNotProvided',
+    'InformationNotProvided': 'InformationNotProvided',
+    'NotProvided': 'InformationNotProvided',
   };
   
   return genderMap[gender] || 'InformationNotProvided';
@@ -1220,7 +1284,13 @@ const mapRace = (race) => {
     'black': 'BlackOrAfricanAmerican',
     'pacific-islander': 'NativeHawaiianOrOtherPacificIslander',
     'white': 'White',
-    'refuse': 'InformationNotProvided'
+    'refuse': 'InformationNotProvided',
+    'AmericanIndianOrAlaskaNative': 'AmericanIndianOrAlaskaNative',
+    'Asian': 'Asian',
+    'BlackOrAfricanAmerican': 'BlackOrAfricanAmerican',
+    'NativeHawaiianOrOtherPacificIslander': 'NativeHawaiianOrOtherPacificIslander',
+    'White': 'White',
+    'InformationNotProvided': 'InformationNotProvided'
   };
   
   return raceMap[race] || 'InformationNotProvided';
@@ -1237,7 +1307,10 @@ const mapEthnicity = (ethnicity) => {
   const ethnicityMap = {
     'hispanic': 'HispanicOrLatino',
     'not-hispanic': 'NotHispanicOrLatino',
-    'refuse': 'InformationNotProvided'
+    'refuse': 'InformationNotProvided',
+    'HispanicOrLatino': 'HispanicOrLatino',
+    'NotHispanicOrLatino': 'NotHispanicOrLatino',
+    'InformationNotProvided': 'InformationNotProvided',
   };
   
   return ethnicityMap[ethnicity] || 'InformationNotProvided';
@@ -1255,7 +1328,11 @@ const mapEthnicityOrigin = (origin) => {
     'mexican': 'Mexican',
     'puerto-rican': 'PuertoRican',
     'cuban': 'Cuban',
-    'other': 'Other'
+    'other': 'Other',
+    'Mexican': 'Mexican',
+    'PuertoRican': 'PuertoRican',
+    'Cuban': 'Cuban',
+    'Other': 'Other'
   };
   
   return originMap[origin] || 'Other';
@@ -1312,4 +1389,55 @@ const generateTaxpayerIdentifiersXml = (loan) => {
   }
   
   return xml;
+};
+
+/**
+ * Maps employment status to MISMO standard values
+ * @param {string} status - Application employment status
+ * @returns {string} - MISMO employment status
+ */
+const mapEmploymentStatusToMismo = (status) => {
+  const mapping = {
+    'Full-time': 'currentEmployer',
+    'Part-time': 'currentEmployer',
+    'Self-employed': 'currentEmployer'
+  };
+  return mapping[status] || 'currentEmployer';
+};
+
+/**
+ * Calculate years in profession from a start date
+ * @param {string | Date} startDate - The start date of the employment
+ * @returns {number} - The number of years in the profession
+ */
+const calculateYearsInProfession = (startDate) => {
+  if (!startDate) return 0;
+  const start = new Date(startDate);
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  const m = now.getMonth() - start.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < start.getDate())) {
+    years--;
+  }
+  return years > 0 ? years : 0;
+};
+
+/**
+ * Calculate remaining months in profession from a start date
+ * @param {string | Date} startDate - The start date of the employment
+ * @returns {number} - The number of remaining months
+ */
+const calculateRemainingMonthsInProfession = (startDate) => {
+    if (!startDate) return 0;
+    const start = new Date(startDate);
+    const now = new Date();
+    let months = now.getMonth() - start.getMonth();
+    let years = now.getFullYear() - start.getFullYear();
+    if (now.getDate() < start.getDate()) {
+        months--;
+    }
+    if (months < 0) {
+        months += 12;
+    }
+    return months;
 }; 
