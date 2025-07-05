@@ -384,7 +384,6 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       try {
         console.log('[LoanQualificationCard] Modal closed, fetching fresh loan data');
         // Set loading to true while we fetch the data
-        console.log("@4444444444444")
         setIsLoading(true);
         
         const response = await fetchAPI(`/loans/${loan._id}`);
@@ -403,7 +402,6 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           }
           
           // Calculate and update values
-          console.log("9999999999999999999999999999999999999");
           calculateLoanValues(updatedLoan);
           setHasFetchedLoan(true);
           if (onUpdate) onUpdate(updatedLoan);
@@ -414,6 +412,52 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       }
     } else {
       setIsLoading(false);
+    }
+  };
+  
+  // Handler for real-time parameter updates from the modal
+  const handleParametersChange = (updatedParams, updatedCalculations) => {
+    console.log("[LoanQualificationCard] Real-time parameter update received:", { updatedParams, updatedCalculations });
+
+    if (updatedCalculations) {
+      // Force immediate UI update by creating a new object reference
+      const newCalcs = {
+        ...calculations,
+        dti: updatedCalculations.dti !== undefined ? updatedCalculations.dti : calculations.dti,
+        monthlyPayment: updatedCalculations.monthlyPayment !== undefined ? updatedCalculations.monthlyPayment : calculations.monthlyPayment,
+        isQualified: updatedCalculations.isQualified !== undefined ? updatedCalculations.isQualified : calculations.isQualified,
+        principalAndInterest: updatedCalculations.principalAndInterest !== undefined ? updatedCalculations.principalAndInterest : calculations.principalAndInterest,
+        insurance: updatedCalculations.insurance !== undefined ? updatedCalculations.insurance : calculations.insurance,
+        taxes: updatedCalculations.taxes !== undefined ? updatedCalculations.taxes : calculations.taxes,
+        mortgageInsurance: updatedCalculations.mortgageInsurance !== undefined ? updatedCalculations.mortgageInsurance : calculations.mortgageInsurance,
+        hoa: updatedCalculations.hoa !== undefined ? updatedCalculations.hoa : calculations.hoa
+      };
+      
+      // Set the new calculations state directly instead of using a callback
+      console.log("[LoanQualificationCard] Updating calculations with:", newCalcs);
+      setCalculations(newCalcs);
+    }
+    
+    // Update loan parameters in local state
+    if (updatedParams && loan) {
+      // Create an updated loan object with new parameters
+      const updatedLoanParams = {
+        ...loan.loanParameters,
+        income: updatedParams.income !== undefined ? updatedParams.income : loan.loanParameters?.income,
+        debts: updatedParams.debts !== undefined ? updatedParams.debts : loan.loanParameters?.debts
+      };
+      
+      // Create updated loan object to pass to the parent via onUpdate
+      const updatedLoan = {
+        ...loan,
+        loanParameters: updatedLoanParams
+      };
+      
+      // Notify parent component of changes if needed
+      if (onUpdate) {
+        console.log('[LoanQualificationCard] Notifying parent with updated loan:', updatedLoan);
+        onUpdate(updatedLoan);
+      }
     }
   };
 
@@ -849,6 +893,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           calculations={calculations}
           onProgramChange={handleProgramChange}
           onUpdate={onUpdate}
+          onParametersChange={handleParametersChange}
         />
       )}
     </div>

@@ -30,6 +30,7 @@ import DataLoader from "./components/parameters/DataLoader";
 import ParametersProvider from "./components/parameters/ParametersProvider";
 import ProgramGuidelinesManager from "./components/parameters/ProgramGuidelinesManager";
 import { ProgramGuidelinesProvider } from "./components/parameters/ProgramGuidelinesProvider";
+import RealTimeUpdateHandler from "./components/parameters/RealTimeUpdateHandler";
 
 /**
  * LoanParametersModal component - Refactored for better code organization
@@ -42,6 +43,8 @@ const LoanParametersModal = ({
   loanRates,
   initialCalculations = {},
   onParametersChange,
+  onUpdate,
+  calculations: externalCalculations
 }) => {
   // State to track the selected program
   const [selectedProgram, setSelectedProgram] = useState(
@@ -205,6 +208,15 @@ const LoanParametersModal = ({
                       selectedProgram={selectedProgram}
                       updateLoadingState={updateLoadingState}
                     />
+                    
+                    {/* Real-time updates to parent component */}
+                    {onParametersChange && (
+                      <RealTimeUpdateHandler
+                        localParams={localParams}
+                        calculations={calculations}
+                        onParametersChange={onParametersChange}
+                      />
+                    )}
 
                     {/* Show saving indicator when needed */}
                     {loadingStates.isSaving && <SavingIndicator />}
