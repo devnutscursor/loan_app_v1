@@ -245,7 +245,7 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
         </div>
         
         {/* Borrower from XML info */}
-        {borrowerDataFromXml && (
+        {/* {borrowerDataFromXml && (
           <div className="flex-shrink-0 bg-blue-50 p-4 border-b border-blue-100">
             <h3 className="text-sm font-medium text-blue-800 mb-2">Borrower from XML File</h3>
             <div className="space-y-1">
@@ -260,7 +260,7 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
               </p>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Search */}
         <div className="flex-shrink-0 p-4 border-b border-gray-200">

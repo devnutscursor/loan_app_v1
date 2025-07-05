@@ -81,7 +81,7 @@ const MilestoneForm = ({ milestone, onSubmit, onCancel }) => {
             value={formData.name}
             onChange={handleChange}
             placeholder="Enter milestone name"
-            className={`block w-full px-4 py-2.5 pr-10 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${errors.name ? 'border-red-300' : 'border-gray-300'}`}
+            className={`block w-full px-4 py-2.5 pr-10 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm border ${errors.name ? 'border-red-300' : 'border-gray-300'}`}
           />
           {formData.name && (
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -108,7 +108,7 @@ const MilestoneForm = ({ milestone, onSubmit, onCancel }) => {
           value={formData.description}
           onChange={handleChange}
           placeholder="Enter description for this milestone"
-          className="block w-full px-4 py-2.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm border-gray-300"
+          className="block w-full px-4 py-2.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm border border-gray-300"
         ></textarea>
       </div>
 
@@ -117,6 +117,7 @@ const MilestoneForm = ({ milestone, onSubmit, onCancel }) => {
         <label htmlFor="deadlineDate" className="block text-sm font-medium text-gray-700 mb-1">
           Deadline Date
         </label>
+        <p className="mt-1.5 mb-2 text-xs text-gray-500">Set a target completion date for this milestone</p>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -130,10 +131,9 @@ const MilestoneForm = ({ milestone, onSubmit, onCancel }) => {
             value={formData.deadlineDate}
             onChange={handleChange}
             min={new Date().toISOString().split('T')[0]} // Can't select dates in the past
-            className="pl-10 block w-full px-4 py-2.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm border-gray-300"
+            className="pl-10 block w-full px-4 py-2.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm border border-gray-300"
           />
         </div>
-        <p className="mt-1.5 text-xs text-gray-500">Set a target completion date for this milestone</p>
       </div>
       
       {/* Form Actions - Updated with modern design */}

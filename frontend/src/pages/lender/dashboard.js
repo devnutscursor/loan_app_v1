@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MainLayout from '../../components/layout/MainLayout';
+import XMLLoanUpload from '../../components/lender/loans/XMLLoanUpload_new';
 import { 
   BarChart3, 
   Users, 
@@ -286,6 +287,7 @@ const ProgramItem = ({ program }) => {
 const LenderDashboard = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showLoanModal, setShowLoanModal] = useState(false);
   const [stats, setStats] = useState({
     totalLoans: 0,
     approvedLoans: 0,
@@ -503,10 +505,11 @@ const LenderDashboard = () => {
           </div>
           
           <div className="flex space-x-3">
-            <Link href="/lender/loans?newLoan=true"
+            <button
+              onClick={() => setShowLoanModal(true)}
               className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
               New Loan
-            </Link>
+            </button>
             <Link href="/lender/borrowers" 
               className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
               View All Borrowers
@@ -750,9 +753,11 @@ const LenderDashboard = () => {
                     <FileText className="mx-auto h-8 w-8 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No recent applications</h3>
                     <p className="mt-1 text-sm text-gray-500">Get started by creating a new loan application</p>
-                    <Link href="/lender/loans?newLoan=true" className="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900">
-                      New Loan
-                    </Link>
+                    <button
+              onClick={() => setShowLoanModal(true)}
+              className="mt-3 px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+              New Loan
+            </button>
                   </div>
                 )}
 
@@ -941,6 +946,17 @@ const LenderDashboard = () => {
           </>
         )}
       </div>
+      {/* XML Loan Upload Modal */}
+      <XMLLoanUpload 
+        isOpen={showLoanModal} 
+        onClose={() => setShowLoanModal(false)} 
+        onSuccess={() => {
+          setShowLoanModal(false);
+          toast.success('Loan created successfully');
+          // You may want to refresh data here
+          fetchDashboardData();
+        }} 
+      />
     </MainLayout>
   );
 };

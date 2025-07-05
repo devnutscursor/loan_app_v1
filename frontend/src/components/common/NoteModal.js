@@ -271,7 +271,7 @@ const NoteModal = ({ isOpen, onClose, loanId }) => {
                 style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
               ></textarea>
               <button
-                className="absolute bottom-3 right-3 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="absolute bottom-3 right-3 p-2 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 onClick={handleCreateNote}
                 disabled={!newNote.trim() || creating}
                 aria-label="Add note"
@@ -374,7 +374,7 @@ const NoteModal = ({ isOpen, onClose, loanId }) => {
         <div className="px-6 py-4 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className="w-full px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
           >
             Close
           </button>

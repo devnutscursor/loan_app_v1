@@ -17,11 +17,13 @@ import {
 } from "../../utils/LoanCalculationUtils";
 
 const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
+  const [hasFetchedLoan, setHasFetchedLoan] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loanPrograms, setLoanPrograms] = useState([]);
   const [loanRates, setLoanRates] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false); // Track if we're silently processing data
   const [calculations, setCalculations] = useState({
     loanAmount: 0,
     downPayment: 0,
@@ -36,331 +38,648 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     isQualified: false,
     programName: "Conventional",
     interestRate: 0,
-    baseRate: 0,
-    rateAdjustment: 0,
     loanTerm: 30,
   });
 
-  // Initial data loading effect - fetch programs and rates
   useEffect(() => {
-    const initializeCard = async () => {
-      if (!loan?._id) return;
-
-      setIsLoading(true);
-
+    const fetchProgramsAndRates = async () => {
       try {
-        // Fetch all data in parallel for maximum speed
-        const [programsResponse, ratesResponse, loanResponse] = await Promise.all([
-          fetchAPI("/loan-programs"),
-          fetchAPI("/loan-rates"),
-          fetchAPI(`/loans/${loan._id}`)
-        ]);
+        console.log("@@@@@1111111111");
+        setIsLoading(true);
+        const programsResponse = await fetchAPI("/loan-programs");
+        const ratesResponse = await fetchAPI("/loan-rates");
 
-        // Set programs and rates immediately
-        if (programsResponse.status === "success") {
+        if (programsResponse.status === "success" && ratesResponse.status === "success") {
           setLoanPrograms(programsResponse.data);
-        }
-        if (ratesResponse.status === "success") {
           setLoanRates(ratesResponse.data);
-        }
 
-        if (loanResponse.status !== "success" || !loanResponse.data) {
-          throw new Error("Failed to fetch loan data");
-        }
+          const defaultProgram = programsResponse.data.find(
+            (p) => p.programType === "conventional" || p.isDefaultForIntegrations
+          );
 
-        const loanData = loanResponse.data;
-        const programs = programsResponse.data || [];
-        const rates = ratesResponse.data || [];
-
-        // Check if we have valid calculations
-        const hasValidCalcs = loanData.loanCalculations && 
-                             loanData.loanCalculations.monthlyPayment > 0 && 
-                             loanData.loanCalculations.dti > 0;
-
-        if (hasValidCalcs) {
-          // Use existing calculations immediately
-          console.log('[LoanQualificationCard] Using existing calculations');
-          displayCalculationsSync(loanData, programs);
-        } else {
-          // Calculate quickly with the data we already have
-          console.log('[LoanQualificationCard] Fast calculating...');
-          await fastCalculateAndSave(loanData, programs, rates);
+          if (defaultProgram) setSelectedProgram(defaultProgram);
         }
       } catch (error) {
-        console.error("Error initializing card:", error);
-        setIsLoading(false);
+        console.error("Error fetching loan programs and rates:", error);
       }
     };
 
-    initializeCard();
-  }, [loan?._id]); // Only depend on loan ID
+    fetchProgramsAndRates();
+  }, []);
 
-  // NEW: Add a dedicated effect to watch for income and debt changes and recalculate
   useEffect(() => {
-    // Skip if not initialized yet or modal is open (modal handles its own calculations)
-    if (!loan?._id || isLoading || isModalOpen || !loanPrograms.length || !loanRates.length) {
-      return;
+    if (loan && selectedProgram && hasFetchedLoan) {
+      console.log("@@@@@2222222");
+      setIsLoading(true);
+      console.log("111111111111111111111111111111");
+      calculateLoanValues();
     }
+  }, [loan?._id, selectedProgram, hasFetchedLoan]);
 
-    // Check if we have loan data with income/debts and the card is already initialized
-    if (loan.income || loan.debts) {
-      console.log('[LoanQualificationCard] Income or debts changed, recalculating...');
-      fastCalculateAndSave(loan, loanPrograms, loanRates);
-    }
-  }, [
-    // Dependencies for income and debt recalculation
-    loan?.income, 
-    loan?.debts,
-    // We need these references too
-    loan?._id,
-    isLoading,
-    isModalOpen,
-    loanPrograms,
-    loanRates
-  ]);
-
-  // Synchronous display function for immediate rendering
-  const displayCalculationsSync = (loanData, programs = loanPrograms) => {
-    const calcs = loanData.loanCalculations;
-    const params = loanData.loanParameters || {};
-    
-    // Update selected program and extract rate adjustment
-    if (params.selectedProgramId && programs.length > 0) {
-      const program = programs.find(p => p._id === params.selectedProgramId);
-      if (program) {
-        setSelectedProgram(program);
-        console.log(`[LoanQualificationCard] Selected program: ${program.displayName}, Rate Adjustment: ${program.rateAdjustment || 0}%`);
-        
-        // If rate adjustment is not stored in params but exists in program, use program's value
-        if (!params.rateAdjustment && program.rateAdjustment) {
-          params.rateAdjustment = program.rateAdjustment;
-          console.log(`[LoanQualificationCard] Applied missing rate adjustment from program: ${program.rateAdjustment}%`);
-        }
-      }
-    }
-
-    const interestRate = parseFloat(params.interestRate || 6.75);
-    const baseRate = parseFloat(params.baseRate || interestRate);
-    const rateAdjustment = parseFloat(params.rateAdjustment || 0);
-    
-    console.log(`[LoanQualificationCard] Display rates - Base: ${baseRate}%, Adjustment: ${rateAdjustment}%, Final: ${interestRate}%`);
-
-    setCalculations({
-      loanAmount: parseFloat(params.loanAmount || 0),
-      downPayment: parseFloat(params.downPayment || 0),
-      downPaymentPercent: parseFloat(params.downPaymentPercent || 0),
-      monthlyPayment: parseFloat(calcs.monthlyPayment || 0),
-      dti: parseFloat(calcs.dti || 0),
-      principalAndInterest: parseFloat(calcs.principalAndInterest || 0),
-      taxes: parseFloat(calcs.taxes || 0),
-      insurance: parseFloat(calcs.insurance || 0),
-      mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
-      hoa: parseFloat(calcs.hoa || 0),
-      isQualified: calcs.isQualified === true || calcs.isQualified === "true",
-      programName: programs.find(p => p._id === params.selectedProgramId)?.displayName || "Conventional",
-      interestRate,
-      baseRate,
-      rateAdjustment,
-      loanTerm: programs.find(p => p._id === params.selectedProgramId)?.loanTerm || 30,
-    });
-
-    setIsLoading(false);
-    if (onUpdate) {
-      onUpdate({
-        ...loan,
-        loanParameters: params,
-        loanCalculations: calcs
-      });
-    }
-  };
-
-  // Ultra-fast calculation with minimal processing
-  const fastCalculateAndSave = async (loanData, programs, rates) => {
-    try {
-      // Get loan amount from multiple possible sources
-      const loanAmount = loanData.loanParameters?.loanAmount ||
-                        loanData.loanDetails?.loanAmount || 
-                        loanData.loanDetails?.purchasePrice || 
-                        loanData.loanDetails?.requestedLoanAmount || 
-                        loanData.property?.propertyValue || 400000;
-      
-      const downPayment = loanData.loanParameters?.downPayment || 
-                         loanData.loanDetails?.downPayment || 
-                         (loanAmount * 0.2);
-      const downPaymentPercent = (downPayment / loanAmount) * 100;
-
-      // Quick program selection
-      const program = programs.find(p => p.programType === "conventional") || programs[0];
-      if (program) setSelectedProgram(program);
-
-      // Quick rate lookup with rate adjustment
-      const programRate = rates.find(r => r.programType === program?.programType);
-      const baseRate = programRate?.rate || 6.75;
-      const rateAdjustment = program?.rateAdjustment || 0;
-      const effectiveInterestRate = baseRate + rateAdjustment; // Use for calculations
-      const displayInterestRate = baseRate; // Use base rate for display
-
-      console.log(`[LoanQualificationCard] Rate calculation - Base: ${baseRate}%, Adjustment: ${rateAdjustment}%, Effective: ${effectiveInterestRate}%, Display: ${displayInterestRate}%`);
-
-      // PROPERLY EXTRACT REAL INCOME AND DEBT DATA
-      let totalIncome = 0;
-      let totalDebts = 0;
-
-      // Extract income from loan data - check multiple sources
-      if (loanData.income && Array.isArray(loanData.income) && loanData.income.length > 0) {
-        console.log('[LoanQualificationCard] Extracting income from loan.income array:', loanData.income);
-        totalIncome = loanData.income.reduce((total, incomeItem) => {
-          const amount = parseFloat(incomeItem.amount || incomeItem.monthlyAmount || incomeItem.grossAmount || 0);
-          const frequency = (incomeItem.frequency || incomeItem.payFrequency || 'monthly').toLowerCase();
-          
-          // Convert to monthly - handle all possible frequency values
-          let monthlyAmount = amount;
-          if (frequency.includes('year') || frequency.includes('annual')) {
-            monthlyAmount = amount / 12;
-          } else if (frequency.includes('week') && !frequency.includes('biweek')) {
-            monthlyAmount = amount * 4.33;
-          } else if (frequency.includes('biweek') || frequency.includes('bi-week')) {
-            monthlyAmount = amount * 2.17;
-          } else if (frequency.includes('hour')) {
-            // Assume 40 hours/week, 4.33 weeks/month
-            monthlyAmount = amount * 40 * 4.33;
+  useEffect(() => {
+    if (!isLoading && loan?._id && selectedProgram) {
+      const fetchFreshData = async () => {
+        try {
+          const response = await fetchAPI(`/loans/${loan._id}`);
+          if (response.status === "success" && response.data) {
+            const updatedLoan = {
+              ...loan,
+              loanParameters: response.data.loanParameters || {},
+              loanCalculations: response.data.loanCalculations || {},
+            };
+            console.log("2222222222222222222222222222222222");
+            calculateLoanValues(updatedLoan);
+          setHasFetchedLoan(true);
+          if (onUpdate) onUpdate(updatedLoan);
           }
-          
-          return total + monthlyAmount;
-        }, 0);
-      }
-
-      // Extract debts from loan data - check multiple sources
-      if (loanData.debts && Array.isArray(loanData.debts) && loanData.debts.length > 0) {
-        console.log('[LoanQualificationCard] Extracting debts from loan.debts array:', loanData.debts);
-        totalDebts = loanData.debts.reduce((total, debtItem) => {
-          const monthlyPayment = parseFloat(debtItem.monthlyPayment || debtItem.amount || debtItem.payment || 0);
-          return total + monthlyPayment;
-        }, 0);
-      }
-
-      // Try alternative sources if arrays are empty or don't exist
-      if (totalIncome === 0) {
-        console.log('[LoanQualificationCard] Trying alternative income sources...');
-        totalIncome = parseFloat(loanData.loanCalculations?.monthlyIncome || 0) ||
-                     parseFloat(loanData.borrowerDetails?.monthlyIncome || 0) ||
-                     parseFloat(loanData.borrower?.monthlyIncome || 0) ||
-                     parseFloat(loanData.personalInfo?.monthlyIncome || 0) ||
-                     parseFloat(loanData.financialInfo?.monthlyIncome || 0);
-        
-        // Try to extract from employment data
-        if (totalIncome === 0 && loanData.employment && Array.isArray(loanData.employment)) {
-          totalIncome = loanData.employment.reduce((total, job) => {
-            const salary = parseFloat(job.annualSalary || job.monthlySalary || job.baseSalary || 0);
-            const monthlyAmount = job.annualSalary ? salary / 12 : salary;
-            return total + monthlyAmount;
-          }, 0);
+        } catch (error) {
+          console.error("Error fetching fresh loan data:", error);
         }
+      };
 
-        // Try extracting from nested borrower structures
-        if (totalIncome === 0 && loanData.borrowers && Array.isArray(loanData.borrowers)) {
-          totalIncome = loanData.borrowers.reduce((total, borrower) => {
-            const income = parseFloat(borrower.monthlyIncome || borrower.annualIncome / 12 || 0);
-            return total + income;
-          }, 0);
+      fetchFreshData();
+    }
+  }, [isLoading]);
+
+  // ✅ Initial fetch after all dependencies are ready
+  useEffect(() => {
+    const fetchInitialLoanData = async () => {
+      if (!loan?._id || loanPrograms.length === 0 || loanRates.length === 0) return;
+
+      try {
+        const response = await fetchAPI(`/loans/${loan._id}`);
+        if (response.status === "success" && response.data) {
+          const updatedLoan = {
+            ...loan,
+            loanParameters: response.data.loanParameters || {},
+            loanCalculations: response.data.loanCalculations || {},
+          };
+
+          const programId = updatedLoan.loanParameters?.selectedProgramId;
+          if (programId) {
+            const matchedProgram = loanPrograms.find(p => p._id === programId);
+            if (matchedProgram) setSelectedProgram(matchedProgram);
+          }
+          console.log("333333333333333333333333333333333");
+
+          calculateLoanValues(updatedLoan);
+          if (onUpdate) onUpdate(updatedLoan);
         }
+      } catch (e) {
+        console.error("Initial loan fetch failed", e);
       }
+    };
 
-      if (totalDebts === 0) {
-        console.log('[LoanQualificationCard] Trying alternative debt sources...');
-        totalDebts = parseFloat(loanData.loanCalculations?.monthlyDebt || 0) ||
-                    parseFloat(loanData.borrowerDetails?.monthlyDebt || 0) ||
-                    parseFloat(loanData.borrower?.monthlyDebt || 0) ||
-                    parseFloat(loanData.personalInfo?.monthlyDebt || 0) ||
-                    parseFloat(loanData.financialInfo?.monthlyDebt || 0) ||
-                    parseFloat(loanData.financialInfo?.totalMonthlyDebts || 0);
+    fetchInitialLoanData();
+  }, [loan?._id, loanPrograms, loanRates]);
 
-        // Try extracting from nested borrower structures
-        if (totalDebts === 0 && loanData.borrowers && Array.isArray(loanData.borrowers)) {
-          totalDebts = loanData.borrowers.reduce((total, borrower) => {
-            const debts = parseFloat(borrower.monthlyDebt || borrower.totalMonthlyDebts || 0);
-            return total + debts;
-          }, 0);
-        }
-      }
+  // useEffect(() => {
+  //   if (!enablePolling) return;
 
-      // Use the utility functions as a fallback
-      if (totalIncome === 0) {
-        try {
-          totalIncome = calculateTotalIncome(loanData.income) || 0;
-        } catch (e) {
-          console.log("calculateTotalIncome failed:", e);
-        }
-      }
+  //   const pollInterval = setInterval(async () => {
+  //     if (!loan?._id || isModalOpen) return;
+  //     try {
+  //       const response = await fetchAPI(`/loans/${loan._id}`);
+  //       if (response.status === "success" && response.data) {
+  //         const currentParamsStr = JSON.stringify(loan.loanParameters || {});
+  //         const newParamsStr = JSON.stringify(response.data.loanParameters || {});
+  //         const currentCalcsStr = JSON.stringify(loan.loanCalculations || {});
+  //         const newCalcsStr = JSON.stringify(response.data.loanCalculations || {});
 
-      if (totalDebts === 0) {
-        try {
-          totalDebts = calculateTotalDebts(loanData.debts) || 0;
-        } catch (e) {
-          console.log("calculateTotalDebts failed:", e);
-        }
-      }
+  //         if (currentParamsStr !== newParamsStr || currentCalcsStr !== newCalcsStr) {
+  //           const updatedLoan = {
+  //             ...loan,
+  //             loanParameters: response.data.loanParameters || {},
+  //             loanCalculations: response.data.loanCalculations || {},
+  //           };
+  //           console.log("4444444444444444444444444444444444444444444444");
+  //           calculateLoanValues(updatedLoan);
+  //           if (onUpdate) onUpdate(updatedLoan);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Error polling for loan updates:", error);
+  //     }
+  //   }, 1000);
 
-      console.log(`[LoanQualificationCard] Final extracted values - Income: ${totalIncome}, Debts: ${totalDebts}`);
+  //   return () => clearInterval(pollInterval);
+  // }, [loan?._id, enablePolling, isModalOpen]);
 
-      // Validate data quality for DTI calculation
-      let dtiDataQuality = 'good';
-      if (totalIncome === 0) {
-        console.warn('[LoanQualificationCard] No income data found - DTI calculation will be invalid');
-        totalIncome = 0.01; // Tiny amount to avoid division by zero, DTI will be very high
-        dtiDataQuality = 'no-income';
-      } else if (totalIncome < 1000) {
-        console.warn('[LoanQualificationCard] Very low income detected - DTI calculation may be unreliable');
-        dtiDataQuality = 'low-income';
-      }
-
-      if (totalDebts === 0 && dtiDataQuality === 'good') {
-        console.log('[LoanQualificationCard] No existing debts found - this is acceptable for DTI calculation');
-      }
-
-      // Ultra-fast loan calculations
-      const principal = loanAmount - downPayment;
-      const monthlyRate = effectiveInterestRate / 100 / 12; // Use effective rate for calculations
-      const payments = (program?.loanTerm || 30) * 12;
+  // Effect to silently process loan data when component mounts
+  // useEffect(() => {
+  //   const processFreshData = async () => {
+  //     // Only proceed if we have necessary data and haven't processed already
+  //     if (!loan?._id || hasFetchedLoan || loanPrograms.length === 0 || loanRates.length === 0 || isProcessing) {
+  //       return;
+  //     }
       
-      const principalAndInterest = monthlyRate > 0 ? 
-        principal * (monthlyRate * Math.pow(1 + monthlyRate, payments)) / (Math.pow(1 + monthlyRate, payments) - 1) :
-        principal / payments;
+  //     // First check if we already have the loan calculations
+  //     try {
+  //       const response = await fetchAPI(`/loans/${loan._id}`);
+  //       if (response.status === "success" && response.data) {
+  //         const fetchedLoan = response.data;
+          
+  //         // Check if we have the minimum required data already
+  //         const hasMinimumData = fetchedLoan.loanCalculations && 
+  //                                Object.keys(fetchedLoan.loanCalculations).length > 0 &&
+  //                                fetchedLoan.loanCalculations.monthlyPayment > 0;
+          
+  //         if (hasMinimumData) {
+  //           // If we already have data, use it directly
+  //           console.log('[LoanQualificationCard] Loan already has calculation data, using directly');
+  //           const updatedLoan = {
+  //             ...loan,
+  //             loanParameters: fetchedLoan.loanParameters || {},
+  //             loanCalculations: fetchedLoan.loanCalculations || {},
+  //           };
+            
+  //           const programId = updatedLoan.loanParameters?.selectedProgramId;
+  //           if (programId) {
+  //             const matchedProgram = loanPrograms.find(p => p._id === programId);
+  //             if (matchedProgram) setSelectedProgram(matchedProgram);
+  //           }
+  //           console.log("55555555555555555555555555555555555555555555");
+  //           calculateLoanValues(updatedLoan);
+  //           setHasFetchedLoan(true);
+  //           if (onUpdate) onUpdate(updatedLoan);
+  //           setIsLoading(false);
+  //           return;
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Error checking existing loan data:", error);
+  //     }
+      
+  //     // If we don't have data, process it silently
+  //     console.log('[LoanQualificationCard] Processing loan data silently');
+  //     setIsProcessing(true);
+      
+  //     // Call our silent processing function
+  //     const success = await processLoanDataSilently(loan, loanPrograms, loanRates, (updatedLoanData) => {
+  //       // This callback runs when processing is complete
+  //       console.log('[LoanQualificationCard] Silent processing complete');
+        
+  //       const updatedLoan = {
+  //         ...loan,
+  //         loanParameters: updatedLoanData.loanParameters || {},
+  //         loanCalculations: updatedLoanData.loanCalculations || {},
+  //       };
+        
+  //       // Update selected program if needed
+  //       const programId = updatedLoan.loanParameters?.selectedProgramId;
+  //       if (programId) {
+  //         const matchedProgram = loanPrograms.find(p => p._id === programId);
+  //         if (matchedProgram) setSelectedProgram(matchedProgram);
+  //       }
+        
+  //       // Calculate values and update state
+  //       console.log("666666666666666666666666666666666666666666666666666");
+  //       calculateLoanValues(updatedLoan);
+  //       setHasFetchedLoan(true);
+  //       if (onUpdate) onUpdate(updatedLoan);
+  //       //pause here for 1 minute
+     
+  //     });
+      
+  //     setIsProcessing(false);
+  //     setIsLoading(false);
+      
+  //     if (!success) {
+  //       console.error('[LoanQualificationCard] Failed to process loan data silently');
+  //     }
+  //   };
+    
+  //   processFreshData();
+  // }, []);
 
-      // Use reasonable defaults for speed
-      const taxes = Math.max(300, loanAmount * 0.012 / 12); // 1.2% annually
-      const insurance = Math.max(100, loanAmount * 0.004 / 12); // 0.4% annually
-      const mortgageInsurance = downPaymentPercent < 20 ? (principal * 0.005) / 12 : 0;
-      const hoa = 0;
+  // Check if the loan data is complete and trigger silent processing if needed
+  
+  useEffect(() => {
+    // Only run this check if we've already fetched loan data but something is missing
+    if (hasFetchedLoan && !isLoading && !isModalOpen && !isProcessing && loan?._id) {
+      // Check if we have all the required data
+      const hasRequiredData = 
+        loan.loanParameters && 
+        loan.loanCalculations && 
+        loan.loanCalculations.monthlyPayment > 0 &&
+        loan.loanCalculations.dti > 0;
+      
+      if (!hasRequiredData) {
+        console.log('[LoanQualificationCard] Missing required loan data, triggering silent processing');
+        
+        // Silently process the data
+        setIsProcessing(true);
+        console.log("@@@@3333333333");
+        setIsLoading(true);
+        
+        processLoanDataSilently(loan, loanPrograms, loanRates, (updatedLoanData) => {
+          const updatedLoan = {
+            ...loan,
+            loanParameters: updatedLoanData.loanParameters || {},
+            loanCalculations: updatedLoanData.loanCalculations || {},
+          };
+          console.log("777777777777777777777777777777777777777777777");
+          calculateLoanValues(updatedLoan);
+          setHasFetchedLoan(true);
+          if (onUpdate) onUpdate(updatedLoan);
+          setIsProcessing(false);
+          setIsLoading(false);
+        }).catch(error => {
+          console.error("Error in silent processing:", error);
+          setIsProcessing(false);
+          setIsLoading(false);
+        });
+      }
+    }
+  }, [hasFetchedLoan, isLoading, isModalOpen, isProcessing, loan?._id]);
 
-      const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoa;
-      const dti = totalIncome > 0 ? ((totalDebts + monthlyPayment) / totalIncome) * 100 : 999;
-      const isQualified = dti <= 43 && dtiDataQuality === 'good';
+  const calculateLoanValues = (updatedLoan = null) => {
+    const currentLoan = updatedLoan || loan;
+    const hasStoredParams = !!currentLoan?.loanParameters;
+    const hasStoredCalcs = !!currentLoan?.loanCalculations;
 
-      console.log(`[LoanQualificationCard] Calculated DTI: ${dti.toFixed(2)}%, Qualified: ${isQualified}, Data Quality: ${dtiDataQuality}`);
+    if (hasStoredCalcs && Object.keys(currentLoan.loanCalculations).length > 0) {
+      const calcs = currentLoan.loanCalculations;
+      const loanAmount = hasStoredParams ? parseFloat(currentLoan.loanParameters.loanAmount) : 0;
+      const downPayment = hasStoredParams ? parseFloat(currentLoan.loanParameters.downPayment) : 0;
+      const downPaymentPercent = hasStoredParams ? parseFloat(currentLoan.loanParameters.downPaymentPercent) : 0;
 
-      // Create simplified data objects
-      const loanParameters = {
+      let interestRate = hasStoredParams ? parseFloat(currentLoan.loanParameters.interestRate || 0) : 0;
+      if (!interestRate || interestRate === 0) {
+        const selectedProg = loanPrograms.find(
+          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+        );
+        if (selectedProg) {
+          const programRate = loanRates.find(
+            (rate) => rate.programType === selectedProg.programType
+          );
+          if (programRate && programRate.rate) {
+            interestRate = programRate.rate;
+            if (typeof selectedProg.rateAdjustment === 'number') {
+              interestRate += selectedProg.rateAdjustment;
+            }
+          }
+          else {
+            switch (selectedProg.programType) {
+              case 'conventional': interestRate = 6.75; break;
+              case 'fha': interestRate = 6.5; ;break;
+              case 'va': interestRate = 6.25; break;
+              case 'usda': interestRate = 6.25; break;
+              case 'jumbo': interestRate = 7.25; break;
+              default: interestRate = 6.75;
+            }
+          }
+        } else {
+          interestRate = 6.75;
+        }
+      }
+
+      setCalculations({
         loanAmount,
         downPayment,
         downPaymentPercent,
-        propertyTaxes: taxes * 12,
-        homeownersInsurance: insurance * 12,
-        hoaFees: 0,
-        interestRate: displayInterestRate, // Store base rate for display
-        baseRate, // Include base rate for reference
-        rateAdjustment, // Include rate adjustment for modal
-        loanTerm: program?.loanTerm || 30,
-        selectedProgramId: program?._id,
-        propertyTaxesUnit: 'dollar',
-        propertyTaxesFrequency: 'yearly',
-        homeownersInsuranceUnit: 'dollar',
-        homeownersInsuranceFrequency: 'yearly',
-        hoaFeesUnit: 'dollar',
-        hoaFeesFrequency: 'monthly'
-      };
+        monthlyPayment: parseFloat(calcs.monthlyPayment || 0),
+        dti: parseFloat(calcs.dti || 0),
+        principalAndInterest: parseFloat(calcs.principalAndInterest || 0),
+        taxes: parseFloat(calcs.taxes || 0),
+        insurance: parseFloat(calcs.insurance || 0),
+        mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
+        hoa: parseFloat(calcs.hoa || 0),
+        isQualified: calcs.isQualified === true || calcs.isQualified === "true",
+        programName: loanPrograms.find(
+          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+        )?.displayName || "Conventional",
+        interestRate,
+        loanTerm: loanPrograms.find(
+          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+        )?.loanTerm || 30,
+      });
+    } else 
+    {
+      //calculate interestrate here if not already defined adn then pass it in parameters,
+      const selectedProgram = loanPrograms.find(
+        (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+      ) || loanPrograms.find(
+        (program) => program.programType === "conventional" || program.isDefaultForIntegrations
+      ) || loanPrograms[0];
+      if (!selectedProgram) {
+        console.error("[LoanQualificationCard] No loan program available to calculate values");
+        return;
+      }
+      
+      // const defaultCalculations = calculateDefaultLoanValues(currentLoan, loanPrograms, selectedProgram);
+      // console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+      // setCalculations(defaultCalculations);
+    }
 
-      const loanCalculations = {
+    setTimeout(() => {
+      setIsLoading(false);
+    },0);
+  };
+
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = async () => {
+    setIsModalOpen(false);
+    if (loan?._id) {
+      try {
+        console.log('[LoanQualificationCard] Modal closed, fetching fresh loan data');
+        // Set loading to true while we fetch the data
+        console.log("@4444444444444")
+        setIsLoading(true);
+        
+        const response = await fetchAPI(`/loans/${loan._id}`);
+        if (response.status === "success" && response.data) {
+          const updatedLoan = {
+            ...loan,
+            loanParameters: response.data.loanParameters || {},
+            loanCalculations: response.data.loanCalculations || {},
+          };
+          
+          // Update the program if needed
+          const programId = updatedLoan.loanParameters?.selectedProgramId;
+          if (programId) {
+            const matchedProgram = loanPrograms.find(p => p._id === programId);
+            if (matchedProgram) setSelectedProgram(matchedProgram);
+          }
+          
+          // Calculate and update values
+          console.log("9999999999999999999999999999999999999");
+          calculateLoanValues(updatedLoan);
+          setHasFetchedLoan(true);
+          if (onUpdate) onUpdate(updatedLoan);
+        }
+      } catch (error) {
+        console.error("Error fetching loan data after modal close:", error);
+        setIsLoading(false);
+      }
+    } else {
+      setIsLoading(false);
+    }
+  };
+
+  const handleProgramChange = (programId) => {
+    const program = loanPrograms.find((p) => p._id === programId);
+    if (program) setSelectedProgram(program);
+  };
+
+  // This component will be rendered inside the modal to monitor saving state
+  const LoadingStateMonitor = ({ onSaveComplete }) => {
+    useEffect(() => {
+      // Function to check for loading state indicators in the DOM
+      const checkForLoadingState = () => {
+        // Look for elements that might indicate saving state
+        const savingIndicators = document.querySelectorAll('.saving-indicator');
+        if (savingIndicators.length > 0) {
+          console.log('[LoadingStateMonitor] Found saving indicator');
+          
+          // Set up an observer to watch when it disappears
+          const observer = new MutationObserver((mutations) => {
+            // If saving indicator is removed, trigger save complete
+            if (document.querySelectorAll('.saving-indicator').length === 0) {
+              console.log('[LoadingStateMonitor] Saving complete detected');
+              onSaveComplete();
+              observer.disconnect();
+            }
+          });
+          
+          // Start observing
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+          
+          // Cleanup function
+          return () => observer.disconnect();
+        }
+        
+        // If no saving indicator found, check again soon
+        return setTimeout(checkForLoadingState, 500);
+      };
+      
+      // Start checking
+      const timerId = checkForLoadingState();
+      
+      // Clean up
+      return () => clearTimeout(timerId);
+    }, [onSaveComplete]);
+    
+    return null; // This component doesn't render anything
+  };
+
+  // Remove the monitoring code since we're now processing silently
+  // useEffect(() => {
+  //   // Monitor for saving indicators in the DOM to detect when saving is complete
+  //   // Implementation removed
+  // }, [isModalOpen, autoModalOpened]);
+
+  // Function to process loan data without showing the modal
+  const processLoanDataSilently = async (loan, loanPrograms, loanRates, onComplete) => {
+    if (!loan?._id || !loanPrograms.length || !loanRates.length) {
+      console.error("[LoanQualificationCard] Missing required data for processing");
+      return false;
+    }
+    
+    console.log("[LoanQualificationCard] Processing loan data silently...");
+    
+    try {
+      // First, get the current loan data
+      const response = await fetchAPI(`/loans/${loan._id}`);
+      if (response.status !== "success" || !response.data) {
+        console.error("[LoanQualificationCard] Failed to fetch loan data");
+        return false;
+      }
+      
+      const loanData = response.data;
+      
+      // Check if we already have the necessary calculation data
+      if (loanData.loanCalculations && 
+          Object.keys(loanData.loanCalculations).length > 0 && 
+          loanData.loanCalculations.monthlyPayment > 0) {
+        console.log("[LoanQualificationCard] Loan already has valid calculations");
+        onComplete && onComplete(loanData);
+        return true;
+      }
+      
+      // Select a program (same logic as in LoanParametersModal)
+      const selectedProgram = loanPrograms.find(
+        (p) => p._id === loanData.loanParameters?.selectedProgramId
+      ) || loanPrograms.find(
+        (p) => p.programType === "conventional" || p.isDefaultForIntegrations
+      ) || loanPrograms[0];
+      
+      if (!selectedProgram) {
+        console.error("[LoanQualificationCard] No loan program available");
+        return false;
+      }
+      
+      // Calculate financial values
+      const totalIncome = calculateTotalIncome(loanData.income); // Already returns monthly income
+      const totalDebts = calculateTotalDebts(loanData.debts); // Already returns monthly debts
+      const totalAssets = calculateTotalAssets(loanData.assets);
+      
+      // Add logging to verify income values from utility functions
+      console.log("[LoanQualificationCard] Income/Debt Values:", {
+        totalIncomeMonthly: totalIncome,
+        totalDebtsMonthly: totalDebts,
+        rawIncome: loanData.income,
+        rawDebts: loanData.debts
+      });
+
+      // Create toggle states similar to what DataLoader does
+      const toggleStates = {
+        propertyTaxes: {
+          isPercent: loanData.loanParameters?.propertyTaxesUnit === "percent" || false,
+          isYearly: loanData.loanParameters?.propertyTaxesFrequency === "yearly" || true,
+        },
+        homeownersInsurance: {
+          isPercent: loanData.loanParameters?.homeownersInsuranceUnit === "percent" || false,
+          isYearly: loanData.loanParameters?.homeownersInsuranceFrequency === "yearly" || true,
+        },
+        hoaFees: {
+          isPercent: loanData.loanParameters?.hoaFeesUnit === "percent" || false,
+          isYearly: loanData.loanParameters?.hoaFeesFrequency === "yearly" || false,
+        },
+        originationFees: {
+          isPercent: loanData.loanParameters?.originationFeesUnit === "percent" || false,
+          frequency: loanData.loanParameters?.originationFeesFrequency || "once",
+        },
+        closingCosts: {
+          isPercent: loanData.loanParameters?.closingCostsUnit === "percent" || false,
+          frequency: loanData.loanParameters?.closingCostsFrequency || "once",
+        },
+        otherFees: {
+          isPercent: loanData.loanParameters?.otherFeesUnit === "percent" || false,
+          frequency: loanData.loanParameters?.otherFeesFrequency || "once",
+        },
+      };
+      
+      // Get or calculate important values
+      let loanAmount = loanData.loanParameters?.loanAmount;
+      if (!loanAmount) {
+        if (loanData.loanDetails?.loanType === "Purchase") {
+          loanAmount = loanData.loanDetails?.purchasePrice || 0;
+        } else if (loanData.loanDetails?.loanType === "Refinance") {
+          loanAmount = loanData.loanDetails?.requestedLoanAmount || 0;
+        } else {
+          loanAmount = loanData.loanDetails?.loanAmount || 0;
+        }
+      }
+      
+      // Get or calculate down payment
+      let downPayment = loanData.loanParameters?.downPayment;
+      let downPaymentPercent = loanData.loanParameters?.downPaymentPercent;
+      
+      if (!downPayment) {
+        if (loanData.loanDetails?.loanType === "Purchase") {
+          downPayment = loanData.loanDetails?.downPayment || 0;
+        } else {
+          // For non-purchase loans, get the minimum down payment percentage
+          const minDownPaymentPercent = 3; // Default minimum
+          downPaymentPercent = minDownPaymentPercent;
+          downPayment = loanAmount * (minDownPaymentPercent / 100);
+        }
+      }
+      
+      if (!downPaymentPercent && loanAmount > 0 && downPayment > 0) {
+        downPaymentPercent = (downPayment / loanAmount) * 100;
+      }
+      
+      // Get interest rate based on program
+      let interestRate = loanData.loanParameters?.interestRate;
+      if (!interestRate) {
+        // Try to find rate for this program type
+        if (loanRates && loanRates.length > 0) {
+          const programRate = loanRates.find(
+            (rate) => rate.programType === selectedProgram.programType
+          );
+          interestRate = programRate?.rate || 0;
+        }
+        // If still no interest rate, use defaults
+        if (!interestRate) {
+          switch (selectedProgram.programType) {
+            case 'conventional': interestRate = 6.75; break;
+            case 'fha': interestRate = 6.5; break;
+            case 'va': interestRate = 6.25; break;
+            case 'usda': interestRate = 6.25; break;
+            case 'jumbo': interestRate = 7.25; break;
+            default: interestRate = 6.75;
+          }
+        }
+      }
+      
+      // Create parameters object
+      const localParams = {
+        loanAmount,
+        downPayment,
+        downPaymentPercent,
+        propertyTaxes: loanData.loanParameters?.propertyTaxes || loanData.propertiesOwned?.realEstateTaxes || 0,
+        homeownersInsurance: loanData.loanParameters?.homeownersInsurance || loanData.propertiesOwned?.hazardInsurance || 0,
+        hoaFees: loanData.loanParameters?.hoaFees || loanData.propertiesOwned?.hoaDues || 0,
+        selectedProgramId: selectedProgram._id,
+        interestRate,
+        loanTerm: selectedProgram.loanTerm || 30,
+        income: totalIncome,
+        debts: totalDebts,
+        assets: totalAssets,
+      };
+      
+      // Calculate loan values
+      // This is a simplified version of the calculations that happen in the modal
+      const principal = loanAmount - downPayment;
+      const monthlyInterestRate = interestRate / 100 / 12;
+      const numberOfPayments = localParams.loanTerm * 12;
+      
+      // Calculate principal and interest
+      let principalAndInterest = 0;
+      if (monthlyInterestRate > 0) {
+        principalAndInterest = principal * (
+          monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)
+        ) / (
+          Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1
+        );
+      } else {
+        principalAndInterest = principal / numberOfPayments;
+      }
+      
+      // Calculate other monthly costs
+      const taxes = localParams.propertyTaxes / (toggleStates.propertyTaxes.isYearly ? 12 : 1);
+      const insurance = localParams.homeownersInsurance / (toggleStates.homeownersInsurance.isYearly ? 12 : 1);
+      const hoa = localParams.hoaFees / (toggleStates.hoaFees.isYearly ? 12 : 1);
+      
+      // Calculate mortgage insurance
+      let mortgageInsurance = 0;
+      if (selectedProgram.programType === 'fha') {
+        // FHA MIP calculation
+        mortgageInsurance = (principal * 0.0055) / 12; // Annual MIP rate of 0.55%
+      } else if (selectedProgram.programType === 'conventional' && downPaymentPercent < 20) {
+        // Conventional PMI calculation (simplified)
+        mortgageInsurance = (principal * 0.005) / 12; // Rough estimate of 0.5% annually
+      }
+      
+      // Total monthly payment
+      const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoa;
+      
+      // Calculate DTI ratio
+      // Note: totalIncome and totalDebts are already monthly values from the calculation functions
+      const monthlyIncome = totalIncome;
+      const monthlyDebt = totalDebts;
+      const dti = monthlyIncome > 0 ? ((monthlyDebt + monthlyPayment) / monthlyIncome) * 100 : 0;
+      
+      // Debug logging for DTI calculation
+      console.log("[LoanQualificationCard] DTI Calculation:", {
+        monthlyIncome,
+        monthlyDebt,
+        monthlyPayment,
+        totalDTIExpenses: monthlyDebt + monthlyPayment,
+        calculatedDTI: dti
+      });
+
+      // Determine qualification
+      const dtiMax = 43; // Default maximum DTI
+      const isQualified = dti <= dtiMax;
+      
+      // Create calculations object
+      const calculations = {
         loanAmount,
         downPayment,
         downPaymentPercent,
@@ -372,55 +691,67 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         mortgageInsurance,
         hoa,
         isQualified,
-        monthlyIncome: totalIncome,
-        monthlyDebt: totalDebts,
-        dtiDataQuality, // Track data quality for debugging
-        calculatedAt: new Date().toISOString()
+        monthlyIncome,
+        monthlyDebt,
       };
-
-      // Display immediately, save in background
-      displayCalculationsSync({
-        ...loanData,
-        loanParameters,
-        loanCalculations
-      }, programs);
-
-      // Save to database asynchronously (don't wait for it)
-      fetchAPI(`/loans/${loanData._id}`, {
+      
+      // Save the data back to the loan
+      console.log("[LoanQualificationCard] Saving calculated loan data");
+      
+      const loanParameters = {
+        loanAmount: localParams.loanAmount,
+        downPayment: localParams.downPayment,
+        downPaymentPercent: localParams.downPaymentPercent,
+        propertyTaxes: localParams.propertyTaxes,
+        propertyTaxesUnit: toggleStates.propertyTaxes.isPercent ? 'percent' : 'dollar',
+        propertyTaxesFrequency: toggleStates.propertyTaxes.isYearly ? 'yearly' : 'monthly',
+        homeownersInsurance: localParams.homeownersInsurance,
+        homeownersInsuranceUnit: toggleStates.homeownersInsurance.isPercent ? 'percent' : 'dollar',
+        homeownersInsuranceFrequency: toggleStates.homeownersInsurance.isYearly ? 'yearly' : 'monthly',
+        hoaFees: localParams.hoaFees,
+        hoaFeesUnit: toggleStates.hoaFees.isPercent ? 'percent' : 'dollar',
+        hoaFeesFrequency: toggleStates.hoaFees.isYearly ? 'yearly' : 'monthly',
+        interestRate: localParams.interestRate,
+        loanTerm: localParams.loanTerm,
+        selectedProgramId: localParams.selectedProgramId,
+      };
+      
+      // Make the API call to update the loan
+      const updateResponse = await fetchAPI(`/loans/${loan._id}`, {
         method: 'PUT',
-        body: { loanParameters, loanCalculations }
-      }).catch(err => console.error("Background save failed:", err));
-
-    } catch (error) {
-      console.error("Error in fast calculation:", error);
-      setIsLoading(false);
-    }
-  };
-
-  const handleOpenModal = () => setIsModalOpen(true);
-  
-  const handleCloseModal = async () => {
-    setIsModalOpen(false);
-    // Quick refresh after modal close
-    if (loan?._id) {
-      try {
-        const response = await fetchAPI(`/loans/${loan._id}`);
-        if (response.status === "success" && response.data) {
-          displayCalculationsSync(response.data);
+        body: {
+          loanParameters,
+          loanCalculations: calculations
         }
-      } catch (error) {
-        console.error("Error refreshing after modal close:", error);
+      });
+      
+      if (updateResponse.status !== "success") {
+        console.error("[LoanQualificationCard] Failed to save calculated loan data", updateResponse);
+        return false;
       }
+      
+      console.log("[LoanQualificationCard] Successfully processed and saved loan data");
+      
+      // Get fresh data after saving
+      const freshResponse = await fetchAPI(`/loans/${loan._id}`);
+      if (freshResponse.status === "success" && freshResponse.data) {
+        onComplete && onComplete(freshResponse.data);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("[LoanQualificationCard] Error processing loan data:", error);
+      return false;
     }
   };
 
-  const handleProgramChange = (programId) => {
-    const program = loanPrograms.find((p) => p._id === programId);
-    if (program) setSelectedProgram(program);
-  };
 
-  if (isLoading) return <LoadingSkeleton />;
-
+    if (
+  isLoading ||
+  isProcessing ||
+  !hasFetchedLoan ) {
+  return <LoadingSkeleton />;
+}
   return (
     <div className="bg-white rounded-lg hover:shadow-md transition-shadow duration-300">
       <div className="p-5">
