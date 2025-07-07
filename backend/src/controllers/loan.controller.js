@@ -2518,14 +2518,14 @@ exports.importFromXML = async (req, res, next) => {
     
     const parser = new xml2js.Parser({ 
       explicitArray: false,
-      ignoreAttrs: false,
+    ignoreAttrs: false,
       mergeAttrs: true,
-      normalizeTags: true,
-      charkey: 'value',
-      attrkey: 'attr',
-      xmlns: true,
-      explicitRoot: false
-    });
+    normalizeTags: true,
+    charkey: 'value',
+    attrkey: 'attr',
+    xmlns: true,
+    explicitRoot: false
+});
     const parsedXML = await parser.parseStringPromise(xmlString);
     
     const extractedData = extractLoanDataFromXML(parsedXML);
@@ -2536,12 +2536,12 @@ exports.importFromXML = async (req, res, next) => {
     // If borrowerId is provided, use that borrower
     if (req.body.borrowerId) {
       borrower = await Borrower.findById(req.body.borrowerId);
-      if (!borrower) {
-        return next(new ApiError('Selected borrower not found', 404));
-      }
-      if (borrower.lender.toString() !== lender._id.toString()) {
-        return next(new ApiError('Selected borrower does not belong to this lender', 403));
-      }
+    if (!borrower) {
+            return next(new ApiError('Selected borrower not found', 404));
+        }
+        if (borrower.lender.toString() !== lender._id.toString()) {
+            return next(new ApiError('Selected borrower does not belong to this lender', 403));
+        }
     } 
     // If createNewBorrower is explicitly set to false, require borrowerId
     else if (req.body.createNewBorrower === 'false' && !req.body.borrowerId) {
@@ -2565,27 +2565,27 @@ exports.importFromXML = async (req, res, next) => {
     }
 
     // Create new borrower if needed
-    if (!borrower) {
+        if (!borrower) {
       // Create user first
-      let user = await User.findOne({ email: email.toLowerCase() });
-      if (!user) {
-        user = new User({
-          email: email.toLowerCase() || `imported_${Date.now()}@example.com`,
-          firstName,
-          lastName,
-          role: 'borrower',
-          password: `defaultPassword${new Date().getTime()}`
-        });
-        await user.save();
-      }
-      
+            let user = await User.findOne({ email: email.toLowerCase() });
+            if (!user) {
+                user = new User({
+                    email: email.toLowerCase() || `imported_${Date.now()}@example.com`,
+                    firstName,
+                    lastName,
+        role: 'borrower',
+                    password: `defaultPassword${new Date().getTime()}`
+                });
+                await user.save();
+            }
+            
       borrower = new Borrower({
-        user: user._id,
-        lender: lender._id,
-        firstName,
-        lastName,
-        email: email.toLowerCase(),
-      });
+                user: user._id,
+                lender: lender._id,
+                firstName,
+                lastName,
+                email: email.toLowerCase(),
+            });
       await borrower.save();
     }
 
@@ -2598,13 +2598,13 @@ exports.importFromXML = async (req, res, next) => {
     };
 
     const newLoan = await Loan.create(loanData);
-    await createDefaultMilestonesForLoan(newLoan._id);
+      await createDefaultMilestonesForLoan(newLoan._id);
     
     borrower.loans.push(newLoan._id);
     await borrower.save();
     
     if (!USE_S3) {
-      fs.unlinkSync(req.file.path);
+    fs.unlinkSync(req.file.path);
     }
 
     res.status(201).json({

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
@@ -304,183 +304,187 @@ const LenderDashboard = () => {
   const [programs, setPrograms] = useState([]);
   const [borrowerLoans, setBorrowerLoans] = useState({});
   const [activities, setActivities] = useState([]);
+  const [shouldRefreshDashboard, setShouldRefreshDashboard] = useState(false);
   
-    useEffect(() => {
-    const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Fetch dashboard stats (includes recent loans)
+      const statsResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Fetch borrowers
+      const borrowersResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers?limit=5`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Fetch loan programs
+      const programsResponse = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs?limit=5`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Process responses
+      const dashboardData = statsResponse.data.data || {};
+      setStats(dashboardData);
+      
+      // Use the recent loans from the dashboard API response
+      setRecentLoans(dashboardData.recentLoans || []);
+
+      const borrowersData = borrowersResponse.data.data || [];
+      setRecentBorrowers(borrowersData);
+
+      const programsData = programsResponse.data.data || [];
+      setPrograms(programsData);
+
+      // Initialize borrower loan count map
+      const loansMap = {};
+      
+      // Get lender ID
+      let lenderId = null;
       try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        
-        // Fetch dashboard stats (includes recent loans)
-        const statsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`,
+        const lenderResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/profile`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        // Fetch borrowers
-        const borrowersResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers?limit=5`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        // Fetch loan programs
-        const programsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs?limit=5`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        // Process responses
-        const dashboardData = statsResponse.data.data || {};
-        setStats(dashboardData);
-        
-        // Use the recent loans from the dashboard API response
-        setRecentLoans(dashboardData.recentLoans || []);
-
-        const borrowersData = borrowersResponse.data.data || [];
-        setRecentBorrowers(borrowersData);
-
-        const programsData = programsResponse.data.data || [];
-        setPrograms(programsData);
-
-        // Initialize borrower loan count map
-        const loansMap = {};
-        
-        // Get lender ID
-        let lenderId = null;
-        try {
-          const lenderResponse = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/profile`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          lenderId = lenderResponse.data.data._id;
-        } catch (err) {
-          console.error('Error fetching lender profile:', err);
-        }
-        
-        // Count loans for each borrower
-        if (lenderId) {
-          for (const borrower of borrowersData) {
-            try {
-              // Get loans for this specific borrower from lender's borrower endpoint
-              const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrowers/${borrower._id}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              
-              // The response structure has loans array in data.loans
-              const loans = response.data.data.loans || [];
-              loansMap[borrower._id] = loans.length;
-              console.log(`Borrower ${borrower._id} has ${loans.length} loans`);
-            } catch (err) {
-              console.error(`Error fetching loans for borrower ${borrower._id}:`, err);
-              loansMap[borrower._id] = 0;
-            }
-          }
-        } else {
-          // If we couldn't get lender ID, initialize all with 0
-          borrowersData.forEach(borrower => {
-            loansMap[borrower._id] = 0;
-          });
-        }
-        
-        setBorrowerLoans(loansMap);
-        
-        // Fetch real activities from backend
-        try {
-          // Use axios directly to avoid import issues
-          console.log('Fetching activities from API...');
-          const activitiesResponse = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`, // Add cache-busting
-            { 
-              headers: { Authorization: `Bearer ${token}` },
-              timeout: 10000 // 10 second timeout
-            }
-          );
-          
-          console.log('Activities response:', activitiesResponse.data);
-          if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
-            // Map backend icons to Lucide React components
-            const iconMap = {
-              'FileText': FileText,
-              'CheckCircle': CheckCircle, 
-              'Clock': Clock,
-              'AlertTriangle': AlertTriangle,
-              'XCircle': XCircle,
-              'Upload': Upload,
-              'RefreshCw': RefreshCw,
-              'Edit': Edit,
-              'FileCheck': FileCheck,
-              'FilePlus': FilePlus,
-              'FileX': FileX,
-              'FilePen': FilePen,
-              'MessageSquare': MessageSquare
-            };
-            
-            // Transform backend activities to frontend format
-            const mappedActivities = activitiesResponse.data.data.map(activity => ({
-              icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
-              title: activity.title,
-              time: activity.time,
-              status: activity.status,
-              statusColor: `bg-${activity.statusColor}-500`,
-              id: activity.id,
-              entityId: activity.entityId,
-              entityType: activity.entityType,
-              description: activity.description,
-              borrowerId: activity.borrowerId
-            }));
-            console.log('Mapped activities:', mappedActivities);
-            setActivities(mappedActivities);
-          } else {
-            console.error('Invalid response format:', activitiesResponse);
-            throw new Error('Invalid activity data format');
-          }
-        } catch (err) {
-          console.error('Error fetching activities:', err);
-          // Fallback to sample data if API fails
-          setActivities([
-            { 
-              icon: FileText, 
-              title: 'New loan application submitted',
-              time: '2 hours ago',
-              status: 'New',
-              statusColor: 'bg-blue-500'
-            },
-            { 
-              icon: CheckCircle, 
-              title: 'Loan #12345 approved',
-              time: '5 hours ago',
-              status: 'Completed',
-              statusColor: 'bg-green-500'
-            },
-            { 
-              icon: Clock, 
-              title: 'Document verification pending',
-              time: 'Yesterday',
-              status: 'Pending',
-              statusColor: 'bg-yellow-500'
-            },
-            { 
-              icon: AlertTriangle, 
-              title: 'Credit check failed',
-              time: '2 days ago',
-              status: 'Failed',
-              statusColor: 'bg-red-500'
-            }
-          ]);
-        }
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
+        lenderId = lenderResponse.data.data._id;
+      } catch (err) {
+        console.error('Error fetching lender profile:', err);
       }
-    };
-    
-    fetchDashboardData();
+      
+      // Count loans for each borrower
+      if (lenderId) {
+        for (const borrower of borrowersData) {
+          try {
+            // Get loans for this specific borrower from lender's borrower endpoint
+            const response = await axios.get(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrowers/${borrower._id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            // The response structure has loans array in data.loans
+            const loans = response.data.data.loans || [];
+            loansMap[borrower._id] = loans.length;
+            console.log(`Borrower ${borrower._id} has ${loans.length} loans`);
+          } catch (err) {
+            console.error(`Error fetching loans for borrower ${borrower._id}:`, err);
+            loansMap[borrower._id] = 0;
+          }
+        }
+      }
+      
+      setBorrowerLoans(loansMap);
+      
+      // Fetch real activities from backend
+      try {
+        // Use axios directly to avoid import issues
+        console.log('Fetching activities from API...');
+        const activitiesResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`, // Add cache-busting
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000 // 10 second timeout
+          }
+        );
+        
+        console.log('Activities response:', activitiesResponse.data);
+        if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
+          // Map backend icons to Lucide React components
+          const iconMap = {
+            'FileText': FileText,
+            'CheckCircle': CheckCircle, 
+            'Clock': Clock,
+            'AlertTriangle': AlertTriangle,
+            'XCircle': XCircle,
+            'Upload': Upload,
+            'RefreshCw': RefreshCw,
+            'Edit': Edit,
+            'FileCheck': FileCheck,
+            'FilePlus': FilePlus,
+            'FileX': FileX,
+            'FilePen': FilePen,
+            'MessageSquare': MessageSquare
+          };
+          
+          // Transform backend activities to frontend format
+          const mappedActivities = activitiesResponse.data.data.map(activity => ({
+            icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
+            title: activity.title,
+            time: activity.time,
+            status: activity.status,
+            statusColor: `bg-${activity.statusColor}-500`,
+            id: activity.id,
+            entityId: activity.entityId,
+            entityType: activity.entityType,
+            description: activity.description,
+            borrowerId: activity.borrowerId
+          }));
+          console.log('Mapped activities:', mappedActivities);
+          setActivities(mappedActivities);
+        } else {
+          console.error('Invalid response format:', activitiesResponse);
+          throw new Error('Invalid activity data format');
+        }
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+        // Fallback to sample data if API fails
+        setActivities([
+          { 
+            icon: FileText, 
+            title: 'New loan application submitted',
+            time: '2 hours ago',
+            status: 'New',
+            statusColor: 'bg-blue-500'
+          },
+          { 
+            icon: CheckCircle, 
+            title: 'Loan #12345 approved',
+            time: '5 hours ago',
+            status: 'Completed',
+            statusColor: 'bg-green-500'
+          },
+          { 
+            icon: Clock, 
+            title: 'Document verification pending',
+            time: 'Yesterday',
+            status: 'Pending',
+            statusColor: 'bg-yellow-500'
+          },
+          { 
+            icon: AlertTriangle, 
+            title: 'Credit check failed',
+            time: '2 days ago',
+            status: 'Failed',
+            statusColor: 'bg-red-500'
+          }
+        ]);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
-  
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Effect to trigger dashboard refresh when shouldRefreshDashboard is true
+  useEffect(() => {
+    if (shouldRefreshDashboard) {
+      fetchDashboardData();
+      setShouldRefreshDashboard(false); // Reset the flag
+    }
+  }, [shouldRefreshDashboard, fetchDashboardData]);
+
   const handleViewLoan = (loanId) => {
     router.push(`/lender/loans/${loanId}`);
   };
@@ -953,8 +957,7 @@ const LenderDashboard = () => {
         onSuccess={() => {
           setShowLoanModal(false);
           toast.success('Loan created successfully');
-          // You may want to refresh data here
-          fetchDashboardData();
+          setShouldRefreshDashboard(true); // Trigger dashboard refresh
         }} 
       />
     </MainLayout>

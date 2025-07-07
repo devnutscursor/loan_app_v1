@@ -18,7 +18,7 @@ import {
 import BorrowerSelectionModal from './BorrowerSelectionModal';
 import ReferralLinkModal from './ReferralLinkModal';
 
-const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
+const XMLLoanUpload = ({ isOpen, onClose, onSuccess, onRefreshDashboard }) => {
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -785,7 +785,7 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       }
 
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      
+
       // Upload XML file to backend for processing
       const response = await fetch(`${API_URL}/api/v1/loans/import-xml`, {
         method: 'POST',
@@ -805,6 +805,11 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
       if (result.status === 'success') {
         toast.success('Loan imported successfully from XML!');
         onSuccess && onSuccess(result.data);
+        
+        // Call the dashboard refresh function
+        if (onRefreshDashboard) {
+          onRefreshDashboard();
+        }
         
         // If we have a newly created loan, redirect to it
         if (result.data && result.data._id) {
@@ -840,7 +845,16 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl flex flex-col relative" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
+        {/* Global Loading Overlay for loan creation */}
+        {isCreatingLoan && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex flex-col items-center justify-center rounded-lg z-10">
+            <Loader2 className="h-12 w-12 text-blue-600 animate-spin mb-4" />
+            <p className="text-lg font-semibold text-gray-800">Importing Loan...</p>
+            <p className="text-sm text-gray-600 mt-2">Please do not close this window.</p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Import Loan from XML</h2>
@@ -894,8 +908,8 @@ const XMLLoanUpload = ({ isOpen, onClose, onSuccess }) => {
                   </button>
                 </div>
 
-                {/* Progress Bar */}
-                {isUploading && (
+                {/* Progress Bar for parsing */}
+                {isUploading && ( // This is for XML parsing progress
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-gray-600">Parsing XML...</span>

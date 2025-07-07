@@ -334,25 +334,43 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         }
       }
 
+      // Recalculate DTI using the freshest income and debt figures so the UI never shows stale data
+      const monthlyIncome = calculateTotalIncome(currentLoan?.income || currentLoan?.loanParameters?.income);
+      const monthlyDebts = calculateTotalDebts(currentLoan?.debts || currentLoan?.loanParameters?.debts);
+      const monthlyPayment = parseFloat(calcs.monthlyPayment || 0);
+      const computedDti = monthlyIncome > 0 ? ((monthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
+
+      // Determine qualification against the program DTI cap (fallback to 43%)
+      const selectedProgForQual = loanPrograms.find(
+        (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+      ) || loanPrograms.find(
+        (program) => program.programType === "conventional" || program.isDefaultForIntegrations
+      ) || loanPrograms[0];
+
+      const dtiLimit = selectedProgForQual?.restrictions?.dtiRestriction?.max ?? 43;
+      const isQualifiedComputed = computedDti <= dtiLimit;
+
       setCalculations({
         loanAmount,
         downPayment,
         downPaymentPercent,
-        monthlyPayment: parseFloat(calcs.monthlyPayment || 0),
-        dti: parseFloat(calcs.dti || 0),
+        monthlyPayment,
+        dti: computedDti,
         principalAndInterest: parseFloat(calcs.principalAndInterest || 0),
         taxes: parseFloat(calcs.taxes || 0),
         insurance: parseFloat(calcs.insurance || 0),
         mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
         hoa: parseFloat(calcs.hoa || 0),
-        isQualified: calcs.isQualified === true || calcs.isQualified === "true",
-        programName: loanPrograms.find(
-          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
-        )?.displayName || "Conventional",
+        isQualified: isQualifiedComputed,
+        programName: selectedProgForQual?.displayName || "Conventional",
         interestRate,
-        loanTerm: loanPrograms.find(
-          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
-        )?.loanTerm || 30,
+        loanTerm: selectedProgForQual?.loanTerm || 30,
+      });
+      console.log("Calculations (recomputed):", {
+        monthlyIncome,
+        monthlyDebts,
+        monthlyPayment,
+        computedDti,
       });
     } else 
     {
@@ -393,6 +411,8 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             loanParameters: response.data.loanParameters || {},
             loanCalculations: response.data.loanCalculations || {},
           };
+
+          console.log("Response data:", response.data);
           
           // Update the program if needed
           const programId = updatedLoan.loanParameters?.selectedProgramId;
@@ -401,8 +421,10 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             if (matchedProgram) setSelectedProgram(matchedProgram);
           }
           
+          console.log("Before update:");
           // Calculate and update values
           calculateLoanValues(updatedLoan);
+          console.log("After update:");
           setHasFetchedLoan(true);
           if (onUpdate) onUpdate(updatedLoan);
         }
