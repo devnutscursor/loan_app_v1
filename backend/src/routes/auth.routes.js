@@ -12,6 +12,10 @@ router.post('/refresh-token', authController.refreshToken);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 
+// Email verification routes
+router.get('/verify-email/:token', authController.verifyEmail);
+router.post('/resend-verification', authController.resendVerificationEmail);
+
 // Protected routes
 router.use(authenticate);
 router.get('/me', authController.getMe);

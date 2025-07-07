@@ -27,6 +27,21 @@ class EmailService {
    */
   async sendEmail(options) {
     try {
+      // First, verify the transporter is properly initialized
+      if (!this.transporter) {
+        logger.error('Email transporter not initialized!');
+        return { success: false, error: 'Email transporter not initialized' };
+      }
+
+      // Log SMTP configuration (without credentials)
+      logger.info('Email service configuration:', { 
+        host: config.email.host,
+        port: config.email.port,
+        secure: config.email.secure,
+        from: config.email.from,
+        authConfigured: !!config.email.auth.user && !!config.email.auth.pass
+      });
+      
       const mailOptions = {
         from: options.from || config.email.from,
         to: options.to,
@@ -34,13 +49,51 @@ class EmailService {
         text: options.text || '',
         html: options.html || ''
       };
+      
+      // Log the full mail options except HTML content (could be large)
+      const logMailOptions = { ...mailOptions };
+      delete logMailOptions.html;
+      logger.info('Sending email with options:', logMailOptions);
 
+      // Verify the SMTP connection before sending
+      logger.info('Verifying SMTP connection...');
+      await new Promise((resolve, reject) => {
+        this.transporter.verify((error, success) => {
+          if (error) {
+            logger.error('SMTP verification failed:', { error: error.message, code: error.code });
+            reject(error);
+          } else {
+            logger.info('SMTP connection verified successfully');
+            resolve(success);
+          }
+        });
+      });
+      
+      // Send the email
+      logger.info(`Attempting to send email to ${options.to}`, { subject: options.subject });
       const info = await this.transporter.sendMail(mailOptions);
-      logger.info(`Email sent to ${options.to}`, { messageId: info.messageId });
-      return { success: true, messageId: info.messageId };
+      
+      // Log detailed information about the send result
+      logger.info(`Email sent successfully to ${options.to}`, { 
+        messageId: info.messageId,
+        response: info.response,
+        envelope: info.envelope
+      });
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        response: info.response,
+        envelope: info.envelope 
+      };
     } catch (error) {
-      logger.error(`Failed to send email to ${options.to}`, { error: error.message });
-      return { success: false, error: error.message };
+      logger.error(`Failed to send email to ${options.to}`, { 
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+        command: error.command
+      });
+      return { success: false, error: error.message, code: error.code };
     }
   }
 
@@ -248,6 +301,179 @@ Thank you for choosing ${lenderName} for your mortgage needs.
       });
     } catch (error) {
       logger.error(`Failed to send pre-approval letter email`, { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send an email verification email
+   * @param {Object} options - The verification options
+   * @param {string} options.email - The user's email address
+   * @param {string} options.name - The user's full name
+   * @param {string} options.token - The verification token
+   * @param {string} options.baseUrl - The base URL for the verification link
+   * @returns {Promise<Object>} - The result of sending the email
+   */
+  async sendEmailVerification(options) {
+    try {
+      const { email, name, token, baseUrl } = options;
+      
+      // Create verification URL
+      const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
+      
+      // Create email content
+      const subject = 'Email Verification - Loan App';
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #2563eb; margin: 0;">Verify Your Email</h1>
+          </div>
+          
+          <div style="margin-bottom: 30px;">
+            <p>Dear ${name.split(' ')[0] || 'User'},</p>
+            
+            <p>Thank you for registering with our Loan Application System. To complete your registration and ensure the security of your account, please verify your email address by clicking the button below:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Verify Email Address</a>
+            </div>
+            
+            <p>If you're having trouble with the button above, copy and paste the URL below into your web browser:</p>
+            <p style="background-color: #f1f5f9; padding: 10px; border-radius: 4px; word-break: break-all;">${verificationUrl}</p>
+            
+            <p>This verification link will expire in 24 hours.</p>
+            
+            <p>If you did not create an account with us, please disregard this email.</p>
+          </div>
+          
+          <div style="font-size: 14px; color: #64748b; margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p>This is an automated email. Please do not reply to this message.</p>
+            <p>Thank you for choosing our Loan Application System.</p>
+          </div>
+        </div>
+      `;
+      
+      const text = `
+VERIFY YOUR EMAIL
+
+Dear ${name.split(' ')[0] || 'User'},
+
+Thank you for registering with our Loan Application System. To complete your registration and ensure the security of your account, please verify your email address by visiting the link below:
+
+${verificationUrl}
+
+This verification link will expire in 24 hours.
+
+If you did not create an account with us, please disregard this email.
+
+This is an automated email. Please do not reply to this message.
+
+Thank you for choosing our Loan Application System.
+      `;
+      
+      return await this.sendEmail({
+        to: email,
+        subject,
+        html,
+        text
+      });
+    } catch (error) {
+      logger.error(`Failed to send email verification email`, { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send password reset email
+   * @param {Object} options - Reset email options
+   * @param {string} options.email - The recipient email address
+   * @param {string} options.name - The recipient name
+   * @param {string} options.token - The reset token
+   * @param {string} options.baseUrl - The base URL for the reset link
+   * @returns {Promise<Object>} - The result of sending the email
+   */
+  async sendPasswordResetEmail(options) {
+    try {
+      const resetUrl = `${options.baseUrl}/reset-password/${options.token}`;
+      
+      const subject = 'Password Reset';
+      const text = `Hello ${options.name},\n\nYou requested to reset your password. Please click on the following link to set a new password: ${resetUrl}\n\nIf you did not request this reset, please ignore this email.\n\nThanks,\nLoan App Team`;
+      
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h2 style="color: #4361ee;">Password Reset</h2>
+          <p>Hello ${options.name},</p>
+          <p>You requested to reset your password. Please click on the button below to set a new password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #4361ee; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+          </div>
+          <p>If the button doesn't work, you can also click on this link: <a href="${resetUrl}">${resetUrl}</a></p>
+          <p>If you did not request this reset, please ignore this email.</p>
+          <p>Thanks,<br>Loan App Team</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      `;
+
+      // Send the email using the sendEmail method
+      return await this.sendEmail({
+        to: options.email,
+        subject,
+        text,
+        html
+      });
+    } catch (error) {
+      logger.error(`Failed to send password reset email: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send test email for debugging
+   * @param {Object} options - Test email options
+   * @param {string} options.email - The recipient email address
+   * @param {string} options.name - The recipient name
+   * @param {string} options.token - The verification token
+   * @param {string} options.baseUrl - The base URL for the verification link
+   * @returns {Promise<Object>} - The result of sending the email
+   */
+  async sendTestEmail(options) {
+    try {
+      const verificationUrl = `${options.baseUrl}/verify-email/${options.token}`;
+      
+      const subject = 'Test Email - Email Verification';
+      const text = `Hello ${options.name},\n\nThis is a TEST email. Please verify your email by clicking on the link: ${verificationUrl}\n\nIf you did not create an account, please ignore this email.\n\nThanks,\nLoan App Team`;
+      
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h1 style="color: #4361ee;">TEST EMAIL</h1>
+          <h2 style="color: #4361ee;">Email Verification</h2>
+          <p>Hello ${options.name},</p>
+          <p>This is a <strong>TEST email</strong> to verify that our email service is working correctly.</p>
+          <p>Please verify your email by clicking on the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="background-color: #4361ee; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify Email</a>
+          </div>
+          <p>If the button doesn't work, you can also click on this link: <a href="${verificationUrl}">${verificationUrl}</a></p>
+          <p>If you did not create an account, please ignore this email.</p>
+          <p>Thanks,<br>Loan App Team</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666;">
+            <p>This is an automated email. Please do not reply to this message.</p>
+            <p>TEST EMAIL - Sent at ${new Date().toISOString()}</p>
+          </div>
+        </div>
+      `;
+
+      // Send the email using the sendEmail method
+      return await this.sendEmail({
+        to: options.email,
+        subject,
+        text,
+        html
+      });
+    } catch (error) {
+      logger.error(`Failed to send test email: ${error.message}`);
       return { success: false, error: error.message };
     }
   }

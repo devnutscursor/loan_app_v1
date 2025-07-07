@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -63,6 +64,18 @@ const userSchema = new mongoose.Schema({
     select: true
   },
   resetPasswordExpires: {
+    type: Date,
+    select: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: true
+  },
+  emailVerificationExpires: {
     type: Date,
     select: true
   }

@@ -26,6 +26,7 @@ const loanTypeRoutes = require('./routes/loanType.routes');
 const loanProgramRoutes = require('./routes/loanProgram.routes');
 const loanRateRoutes = require('./routes/loanRate.routes');
 const noteRoutes = require('./routes/note.routes');
+const testRoutes = require('./routes/test.routes'); // Import test routes
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -203,19 +204,26 @@ app.get('/api/image-proxy/:filename', (req, res) => {
 // Add global CORS middleware for Render and Vercel deployment
 app.use((req, res, next) => {
   const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app']
-    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'];
+    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app'].filter(Boolean)
+    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'].filter(Boolean);
     
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app');
-  }
   
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Only set CORS headers if this is a browser request with an origin
+  if (origin) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      const defaultOrigin = process.env.FRONTEND_URL || 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app';
+      if (defaultOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', defaultOrigin);
+      }
+    }
+    
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -242,6 +250,7 @@ app.use('/api/v1/loan-types', loanTypeRoutes);
 app.use('/api/v1/loan-programs', loanProgramRoutes);
 app.use('/api/v1/loan-rates', loanRateRoutes);
 app.use('/api/v1/notes', noteRoutes);
+app.use('/api/v1/test', testRoutes); // Register test routes
 
 // Root route
 app.get('/', (req, res) => {

@@ -7,6 +7,9 @@ const logger = require('../utils/logger');
 const { createDefaultLoanRates } = require('./loanRate.controller');
 const loanRateController = require('./loanRate.controller');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+const emailService = require('../utils/email/emailService');
+const config = require('../config');
 
 /**
  * Helper function to automatically save loan rates for lenders upon login
@@ -118,73 +121,351 @@ const autoSaveLenderRates = async (userId) => {
 };
 
 /**
+ * Generate verification token for email verification
+ * @param {string} userId - The user ID
+ * @returns {Promise<string>} - Returns the verification token
+ */
+async function generateVerificationToken(userId) {
+  try {
+    // Generate random token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token and set expiration
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresIn = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    
+    // Update user with verification token
+    await User.findByIdAndUpdate(userId, {
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: expiresIn
+    });
+    
+    return token;
+  } catch (error) {
+    logger.error(`Error generating verification token: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Send verification email
+ * @param {Object} user - The user object
+ * @param {Object} req - Express request object
+ * @returns {Promise<boolean>} - Returns true if email sent successfully
+ */
+async function sendVerificationEmail(user, req) {
+  try {
+    // Generate token
+    logger.info(`Generating verification token for user: ${user._id}`);
+    const token = await generateVerificationToken(user._id);
+    
+    // Determine base URL from request or environment
+    // For local development, req.protocol might be http but the frontend uses http://localhost:3001
+    let baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    // Special case for local development - if port is 5000 (backend), we assume frontend is on 3001
+    if (baseUrl.includes(':5000') && process.env.NODE_ENV === 'development') {
+      baseUrl = 'http://localhost:3000';
+      logger.info(`Using frontend URL for local development: ${baseUrl}`);
+    }
+    
+    logger.info(`Sending verification email to: ${user.email} with base URL: ${baseUrl}`);
+    
+    // Send email
+    const result = await emailService.sendEmailVerification({
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`,
+      token: token,
+      baseUrl: baseUrl
+    });
+    
+    if (result.success) {
+      logger.info(`Verification email sent successfully to: ${user.email}`);
+      return true;
+    } else {
+      logger.error(`Failed to send verification email: ${result.error}`);
+      throw new Error(`Email service failed: ${result.error}`);
+    }
+  } catch (error) {
+    logger.error(`Error sending verification email: ${error.message}`, {
+      stack: error.stack,
+      userId: user._id,
+      email: user.email
+    });
+    throw error;
+  }
+}
+
+/**
  * Register a new user
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
 exports.register = async (req, res, next) => {
-  try {
-    const { firstName, lastName, email, password, phone, role } = req.body;
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { firstName, lastName, email, password, phone, role, nmls } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return next(new ApiError('User already exists with this email', 400));
+      // Normalize email to lowercase
+      const normalizedEmail = email.toLowerCase();
+
+      // Check if user already exists with this email
+      const existingUser = await User.findOne({ email: normalizedEmail });
+      if (existingUser) {
+        return reject(new ApiError('Email already in use', 400));
+      }
+
+      // Create new user
+      const user = await User.create({
+        firstName,
+        lastName,
+        email: normalizedEmail,
+        password,
+        phone,
+        role: role || 'borrower',
+        nmls,
+        isEmailVerified: false
+      });
+
+      // Create corresponding profile based on role
+      if (user.role === 'borrower') {
+        const borrower = await Borrower.create({
+          user: user._id
+        });
+      } else if (user.role === 'lender') {
+        const lender = await Lender.create({
+          user: user._id,
+          nmls: nmls || ''
+        });
+
+        // Create default loan programs for new lender
+        if (lender) {
+          this.createDefaultLoanPrograms(user._id, lender._id)
+            .then(() => {
+              logger.info(`Created default loan programs for new lender: ${lender._id}`);
+            })
+            .catch(error => {
+              logger.error(`Error creating default loan programs: ${error.message}`);
+            });
+
+          // Create default loan rates
+          try {
+            await createDefaultLoanRates(user._id, lender._id);
+            logger.info(`Created default loan rates for new lender: ${lender._id}`);
+          } catch (error) {
+            logger.error(`Error creating default loan rates: ${error.message}`);
+          }
+        }
+      }
+
+      // Send verification email
+      try {
+        logger.info(`Attempting to send verification email for new user: ${user._id}, ${user.email}`);
+        const emailSent = await sendVerificationEmail(user, req);
+        if (emailSent) {
+          logger.info(`Verification email successfully triggered for user: ${user._id}`);
+        } else {
+          logger.error(`Verification email sending returned false for user: ${user._id}`);
+        }
+      } catch (error) {
+        logger.error(`Failed to send verification email: ${error.message}`, {
+          stack: error.stack,
+          userId: user._id,
+          email: user.email
+        });
+        // Continue with registration even if email fails
+      }
+
+      logger.info(`User registered successfully: ${user._id} (${user.role})`);
+      
+      // Return success without sending token (require login)
+      return resolve(res.status(201).json({
+        status: 'success',
+        message: 'Registration successful! Please check your email to verify your account before logging in.',
+        data: {
+          userId: user._id,
+          role: user.role,
+          verified: false
+        }
+      }));
+    } catch (error) {
+      logger.error(`Registration error: ${error.message}`);
+      return reject(new ApiError(error.message || 'Registration failed', 500));
     }
+  }).catch(next);
+};
 
-    // For regular registration, only allow lender and admin roles
-    if (role === 'borrower') {
-      return next(new ApiError('Borrowers should register through a lender link', 400));
-    }
-
-    // Create new user
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      phone,
-      role: role || 'lender'
-    });
-
-    // Create lender profile
-    if (user.role === 'lender') {
-      const lender = await Lender.create({
-        user: user._id
+/**
+ * Verify email with token
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.verifyEmail = async (req, res, next) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { token } = req.params;
+      
+      // Hash the token from the URL
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+      
+      // Find user with this token and token not expired
+      const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: { $gt: Date.now() }
       });
       
-      // Create default loan programs and default loan rates for the new lender
-      await exports.createDefaultLoanPrograms(user._id, lender._id);
-      await createDefaultLoanRates(user._id, lender._id);
-    }
-
-    // Generate tokens
-    const token = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    // Log the registration
-    logger.info(`New user registered: ${user.email} with role: ${user.role}`);
-
-    res.status(201).json({
-      status: 'success',
-      message: 'User registered successfully',
-      data: {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role
-        },
-        token,
-        refreshToken
+      if (!user) {
+        return reject(new ApiError('Invalid or expired verification link', 400));
       }
-    });
-  } catch (error) {
-    next(error);
-  }
+      
+      // Update user as verified
+      user.isEmailVerified = true;
+      user.emailVerificationToken = undefined;
+      user.emailVerificationExpires = undefined;
+      await user.save();
+      
+      logger.info(`Email verified for user: ${user._id}`);
+      
+      // Return success
+      return resolve(res.status(200).json({
+        status: 'success',
+        message: 'Email verified successfully! You can now login.',
+      }));
+    } catch (error) {
+      logger.error(`Email verification error: ${error.message}`);
+      return reject(new ApiError(error.message || 'Email verification failed', 500));
+    }
+  }).catch(next);
+};
+
+/**
+ * Resend verification email
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.resendVerificationEmail = async (req, res, next) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return reject(new ApiError('Email is required', 400));
+      }
+      
+      // Find user by email
+      const user = await User.findOne({ email: email.toLowerCase() });
+      
+      if (!user) {
+        return reject(new ApiError('User not found', 404));
+      }
+      
+      if (user.isEmailVerified) {
+        return reject(new ApiError('Email is already verified', 400));
+      }
+      
+      // Send new verification email
+      await sendVerificationEmail(user, req);
+      
+      // Return success
+      return resolve(res.status(200).json({
+        status: 'success',
+        message: 'Verification email resent successfully',
+      }));
+    } catch (error) {
+      logger.error(`Resend verification error: ${error.message}`);
+      return reject(new ApiError(error.message || 'Failed to resend verification email', 500));
+    }
+  }).catch(next);
+};
+
+/**
+ * Login a user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.login = async (req, res, next) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { email, password } = req.body;
+
+      // Validate input
+      if (!email || !password) {
+        return reject(new ApiError('Please provide email and password', 400));
+      }
+
+      // Find user with password field included (select)
+      const user = await User.findOne({ email: email.toLowerCase() });
+
+      // Check if user exists and password is correct
+      if (!user || !(await user.comparePassword(password))) {
+        return reject(new ApiError('Invalid credentials', 401));
+      }
+      
+      // Check if email is verified
+      if (!user.isEmailVerified) {
+        return reject(new ApiError('Please verify your email before logging in. Check your inbox or request a new verification email.', 403, { requiresVerification: true }));
+      }
+
+      // Update last login time
+      user.lastLogin = Date.now();
+      await user.save({ validateBeforeSave: false });
+      
+      // Auto-save loan rates for lenders
+      if (user.role === 'lender') {
+        autoSaveLenderRates(user._id)
+          .then(saved => {
+            if (saved) {
+              logger.info(`Auto-saved loan rates for lender user: ${user._id}`);
+            }
+          })
+          .catch(error => {
+            logger.error(`Error auto-saving loan rates: ${error.message}`);
+          });
+      }
+      
+      // Generate JWT token
+      const token = generateToken(user._id);
+      const refreshToken = generateRefreshToken(user._id);
+
+      let profileData = null;
+      
+      // Get profile data based on role
+      if (user.role === 'borrower') {
+        profileData = await Borrower.findOne({ user: user._id });
+      } else if (user.role === 'lender') {
+        profileData = await Lender.findOne({ user: user._id });
+      }
+
+      // Respond with user data and token
+      return resolve(res.status(200).json({
+        status: 'success',
+        message: 'Login successful',
+        data: {
+          user: {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            phone: user.phone,
+            profileImage: user.profileImage,
+            createdAt: user.createdAt,
+            profileId: profileData ? profileData._id : null,
+            isEmailVerified: user.isEmailVerified
+          },
+          token,
+          refreshToken
+        }
+      }));
+    } catch (error) {
+      logger.error(`Login error: ${error.message}`);
+      return reject(new ApiError(error.message || 'Login failed', 500));
+    }
+  }).catch(next);
 };
 
 /**
@@ -227,7 +508,8 @@ exports.registerBorrower = async (req, res, next) => {
       email,
       password,
       phone,
-      role: 'borrower'
+      role: 'borrower',
+      isEmailVerified: false  // Set email as unverified
     });
 
     try {
@@ -246,12 +528,30 @@ exports.registerBorrower = async (req, res, next) => {
     const token = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
+    // Send verification email
+    try {
+      logger.info(`Attempting to send verification email for new borrower: ${user._id}, ${user.email}`);
+      const emailSent = await sendVerificationEmail(user, req);
+      if (emailSent) {
+        logger.info(`Verification email successfully triggered for borrower: ${user._id}`);
+      } else {
+        logger.error(`Verification email sending returned false for borrower: ${user._id}`);
+      }
+    } catch (error) {
+      logger.error(`Failed to send verification email to borrower: ${error.message}`, {
+        stack: error.stack,
+        userId: user._id,
+        email: user.email
+      });
+      // Continue with registration even if email fails
+    }
+    
     // Log borrower registration
     logger.info(`New borrower registered: ${user.email} under lender ID: ${lenderId}`);
 
     res.status(201).json({
       status: 'success',
-      message: 'Borrower registered successfully',
+      message: 'Borrower registered successfully. Please check your email to verify your account.',
       data: {
         user: {
           id: user._id,
@@ -262,82 +562,6 @@ exports.registerBorrower = async (req, res, next) => {
           role: user.role
         },
         lenderId,
-        token,
-        refreshToken
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
-/**
- * Login a user
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- */
-exports.login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    // Validate inputs
-    if (!email || !password) {
-      return next(new ApiError('Please provide email and password', 400));
-    }
-
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return next(new ApiError('Invalid credentials', 401));
-    }
-
-    // Check if account is active
-    if (!user.isActive) {
-      return next(new ApiError('Your account is inactive', 403));
-    }
-
-    // Check password
-    const isPasswordCorrect = await user.comparePassword(password);
-    if (!isPasswordCorrect) {
-      return next(new ApiError('Invalid credentials', 401));
-    }
-
-    // Update last login time
-    user.lastLogin = Date.now();
-    await user.save();
-
-    // Generate tokens
-    const token = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    // Log login
-    logger.info(`User logged in: ${user.email}`);
-
-    // Auto-save loan rates for lenders
-    if (user.role === 'lender') {
-      try {
-        await autoSaveLenderRates(user._id);
-        logger.info(`Auto-saved loan rates for lender: ${user.email}`);
-      } catch (rateError) {
-        // Don't fail the login process if auto-saving rates fails
-        logger.error(`Failed to auto-save loan rates for lender ${user.email}: ${rateError.message}`);
-      }
-    }
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Logged in successfully',
-      data: {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role
-        },
         token,
         refreshToken
       }

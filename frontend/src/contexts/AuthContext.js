@@ -157,6 +157,14 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error("Login error:", error);
+      
+      // Check if this is an email verification error
+      if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
+        toast.error("Please verify your email before logging in.");
+        router.push(`/resend-verification?email=${encodeURIComponent(email)}`);
+        return { requiresVerification: true };
+      }
+      
       const errorMessage =
         error.response?.data?.message ||
         "Failed to login. Please check your credentials.";
@@ -172,7 +180,7 @@ export const AuthProvider = ({ children }) => {
         userData
       );
 
-      toast.success("Registration successful! Please login.");
+      toast.success("Registration successful! Please check your email to verify your account.");
       router.push("/login");
       return true;
     } catch (error) {
@@ -229,6 +237,26 @@ export const AuthProvider = ({ children }) => {
     return user.role === role;
   };
 
+  // Function to resend verification email
+  const resendVerificationEmail = async (email) => {
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/resend-verification`,
+        { email }
+      );
+
+      toast.success("Verification email sent! Please check your inbox.");
+      return true;
+    } catch (error) {
+      console.error("Error resending verification:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to resend verification email. Please try again.";
+      toast.error(errorMessage);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -240,6 +268,7 @@ export const AuthProvider = ({ children }) => {
         updateProfile,
         isAuthenticated,
         hasRole,
+        resendVerificationEmail,
       }}
     >
       {children}
