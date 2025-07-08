@@ -231,7 +231,14 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   );
   
   // Calculate other monthly costs
-  const taxes = calculateDefaultPropertyTax(defaultLoanAmount);
+  // Use saved property taxes if available (including zero)
+  let taxes;
+  if (loan?.loanParameters && typeof loan.loanParameters.propertyTaxes === 'number') {
+    taxes = loan.loanParameters.propertyTaxes; // Already stored in monthly value
+  } else {
+    // Fallback to default estimate when property taxes not yet set
+    taxes = calculateDefaultPropertyTax(defaultLoanAmount);
+  }
   const insurance = calculateDefaultInsurance(defaultLoanAmount);
   const hoaFees = loan?.property?.hoaFees || 0;
   

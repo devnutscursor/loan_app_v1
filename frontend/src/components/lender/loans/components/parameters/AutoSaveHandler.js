@@ -45,6 +45,7 @@ const AutoSaveHandler = ({
         // Get important parameter keys to compare
         const paramKeys = [
           'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'rateAdjustment',
+          'propertyTaxes', 'homeownersInsurance', 'hoaFees',
           'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
           'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
         ];
@@ -207,6 +208,7 @@ const AutoSaveHandler = ({
     // Get important parameter keys to compare
     const paramKeys = [
       'loanAmount', 'downPayment', 'downPaymentPercent', 'interestRate', 'loanTerm',
+      'propertyTaxes', 'homeownersInsurance', 'hoaFees',
       'dtiMax', 'downPaymentMin', 'downPaymentMax', 'loanAmountMin', 'loanAmountMax',
       'upfrontMIP', 'annualMIP', 'originationFees', 'closingCosts', 'otherFees'
     ];

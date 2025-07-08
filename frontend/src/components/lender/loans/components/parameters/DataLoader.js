@@ -307,8 +307,8 @@ const DataLoader = ({
             downPayment,
             downPaymentPercent,
             propertyTaxes:
-              loanData.loanParameters?.propertyTaxes ||
-              loanData.propertiesOwned?.realEstateTaxes ||
+              typeof loanData.loanParameters?.propertyTaxes === 'number' ? loanData.loanParameters.propertyTaxes :
+              typeof loanData.propertiesOwned?.realEstateTaxes === 'number' ? loanData.propertiesOwned.realEstateTaxes :
               0,
             homeownersInsurance:
               loanData.loanParameters?.homeownersInsurance ||
