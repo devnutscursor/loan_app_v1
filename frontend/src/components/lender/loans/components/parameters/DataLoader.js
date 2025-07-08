@@ -307,8 +307,13 @@ const DataLoader = ({
             downPayment,
             downPaymentPercent,
             propertyTaxes:
+              // ALWAYS show 0 if borrower doesn't own property
+              loanData.propertiesOwned?.ownsProperty === false ? 0 :
+              // Otherwise if they do own property, use stored value
               typeof loanData.loanParameters?.propertyTaxes === 'number' ? loanData.loanParameters.propertyTaxes :
+              // Or try to use real estate taxes if available
               typeof loanData.propertiesOwned?.realEstateTaxes === 'number' ? loanData.propertiesOwned.realEstateTaxes :
+              // Final fallback
               0,
             homeownersInsurance:
               loanData.loanParameters?.homeownersInsurance ||
