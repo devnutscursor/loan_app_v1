@@ -32,7 +32,23 @@ const loanRateService = {
   // Get a rate by program type
   getRateByType: async (type, lenderId = null) => {
     try {
-      const params = lenderId ? { lender: lenderId } : {};
+      // Ensure lenderId is a string and not an object
+      let lenderParam = null;
+      if (lenderId) {
+        // If lender is an object with _id, use that
+        if (typeof lenderId === 'object' && lenderId._id) {
+          lenderParam = lenderId._id;
+        } 
+        // If it's a string ID, use it directly
+        else if (typeof lenderId === 'string') {
+          lenderParam = lenderId;
+        }
+      }
+      
+      // Only add lender parameter if we have a valid ID
+      const params = lenderParam ? { lender: lenderParam } : {};
+      console.log(`Fetching rate for type ${type} with params:`, params);
+      
       return await api.get(`/loan-rates/${type}`, { params });
     } catch (error) {
       throw handleApiError(error);
