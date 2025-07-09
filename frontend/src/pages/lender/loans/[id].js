@@ -2112,6 +2112,42 @@ const LoanDetails = () => {
   // Add new state to track accordion expansion
   const [isApplicationExpanded, setIsApplicationExpanded] = useState(true);
 
+  // Functions to handle dependents array
+  const handleAddDependent = () => {
+    setLoan(prevLoan => ({
+      ...prevLoan,
+      borrowerDetails: {
+        ...(prevLoan.borrowerDetails || {}),
+        dependents: [...(prevLoan.borrowerDetails?.dependents || []), { name: '', age: '', relationship: '' }]
+      }
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleRemoveDependent = (index) => {
+    setLoan(prevLoan => ({
+      ...prevLoan,
+      borrowerDetails: {
+        ...(prevLoan.borrowerDetails || {}),
+        dependents: prevLoan.borrowerDetails?.dependents?.filter((_, i) => i !== index) || []
+      }
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDependentChange = (index, field, value) => {
+    setLoan(prevLoan => ({
+      ...prevLoan,
+      borrowerDetails: {
+        ...(prevLoan.borrowerDetails || {}),
+        dependents: prevLoan.borrowerDetails?.dependents?.map((dependent, i) => 
+          i === index ? { ...dependent, [field]: value } : dependent
+        ) || []
+      }
+    }));
+    setHasUnsavedChanges(true);
+  };
+
   // Modify tabs structure to include Application tab
   const mainTabs = [
     { id: "dashboard", label: "Loan Dashboard", icon: BarChart2 },
@@ -2350,16 +2386,49 @@ const LoanDetails = () => {
     setHasUnsavedChanges(true);
     
     setLoan((prev) => {
-      // Make sure the section exists
-      const sectionData = prev[section] || {};
+      const prevSectionData = prev[section] || {};
 
-      return {
-        ...prev,
-        [section]: {
-          ...sectionData,
-          [field]: value,
-        },
-      };
+      // Split the field string by '.' to handle nested fields
+      const fieldParts = field.split('.');
+
+      if (fieldParts.length > 1) {
+        // Handle nested fields (e.g., "borrowerDetails.currentAddress.streetAddress")
+        const topLevelField = fieldParts[0]; // e.g., "currentAddress"
+        const nestedFields = fieldParts.slice(1); // e.g., ["streetAddress"]
+
+        let updatedTopLevelData = { ...(prevSectionData[topLevelField] || {}) };
+        let currentNested = updatedTopLevelData;
+
+        // Traverse and create/update nested objects
+        for (let i = 0; i < nestedFields.length; i++) {
+          const part = nestedFields[i];
+          if (i === nestedFields.length - 1) {
+            // Last part is the actual field to update
+            currentNested[part] = value;
+          } else {
+            // Create nested object if it doesn't exist
+            currentNested[part] = { ...(currentNested[part] || {}) };
+            currentNested = currentNested[part];
+          }
+        }
+
+        return {
+          ...prev,
+          [section]: {
+            ...prevSectionData,
+            [topLevelField]: updatedTopLevelData,
+          },
+        };
+      } else { // Removed the 'addresses' special case here
+        // Handle top-level fields within a section (or whole objects like mailingAddress)
+        return {
+          ...prev,
+          [section]: {
+            ...prevSectionData,
+            [field]: value,
+          },
+        };
+      }
     });
   };
 
@@ -3229,6 +3298,9 @@ const LoanDetails = () => {
                                     );
                                   }
                                 }}
+                                addDependent={handleAddDependent}
+                                removeDependent={handleRemoveDependent}
+                                handleDependentChange={handleDependentChange}
                               />
                             </div>
                           </div>

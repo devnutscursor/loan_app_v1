@@ -311,16 +311,18 @@ class MilestoneNotificationService {
       console.log('STEP 6: Sending email notification...');
       try {
         // Send email with fresh time calculation
-        const emailResult = await emailService.sendMilestoneDeadlineNotification({
-          to: lenderEmail,
-          milestone: {
-            ...(freshMilestone ? freshMilestone._doc : milestone._doc),
-            timeDescription
-          },
-          loan
-        });
+        // Temporarily disable email sending for debugging/maintenance
+        // const emailResult = await emailService.sendMilestoneDeadlineNotification({
+        //   to: lenderEmail,
+        //   milestone: {
+        //     ...(freshMilestone ? freshMilestone._doc : milestone._doc),
+        //     timeDescription
+        //   },
+        //   loan
+        // });
         
-        console.log(`Email sending result: ${JSON.stringify(emailResult)}`);
+        // console.log(`Email sending result: ${JSON.stringify(emailResult)}`);
+        console.log("Email sending is temporarily disabled.");
         
         // Mark notification as sent
         console.log('Marking notification as sent in the database');

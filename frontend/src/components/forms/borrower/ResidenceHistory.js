@@ -25,6 +25,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
   
   // Sync local state when borrower prop changes
   useEffect(() => {
+    console.log("ResidenceHistory useEffect - borrower prop changed:", borrower);
     setStreetAddress(borrower?.currentAddress?.streetAddress || '');
     setAptSteNum(borrower?.currentAddress?.aptSteNum || '');
     setCity(borrower?.currentAddress?.city || '');
@@ -133,7 +134,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where does asad live?</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where do you live?</h2>
         <p className="text-gray-600 mb-4">
           Please tell us a little about your current home.
         </p>

@@ -30,16 +30,16 @@ const createDefaultMilestonesForLoan = async (loanId) => {
       "Loan Closed"
     ];
     
-    // Set start date to current date
-    const startDate = new Date();
-    
-    // Create milestones with deadlines one week in the future
-    const oneWeekFromNow = new Date();
-    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+    // Set start date to current date for the first milestone
+    let currentStartDate = new Date();
     
     // Create each milestone
     for (let i = 0; i < defaultMilestones.length; i++) {
       const milestoneName = defaultMilestones[i];
+      
+      // Calculate deadlineDate for the current milestone (1 week from currentStartDate)
+      const deadlineDate = new Date(currentStartDate); // Create a new Date object to avoid modifying currentStartDate directly
+      deadlineDate.setDate(deadlineDate.getDate() + 7);
       
       await Milestone.create({
         loan: loanId,
@@ -47,12 +47,15 @@ const createDefaultMilestonesForLoan = async (loanId) => {
         description: `Standard milestone: ${milestoneName}`,
         order: i + 1, // 1-based ordering
         status: i === 0 ? 'in_progress' : 'pending', // First milestone is in progress
-        startDate: startDate,
-        deadlineDate: oneWeekFromNow, // Default deadline is one week from now
+        startDate: currentStartDate, // Use the calculated start date
+        deadlineDate: deadlineDate, // Use the calculated deadline date
         notificationSent: false
       });
       
-      console.log(`Created milestone "${milestoneName}" for loan ${loanId}`);
+      console.log(`Created milestone "${milestoneName}" for loan ${loanId} from ${currentStartDate.toISOString()} to ${deadlineDate.toISOString()}`);
+      
+      // Set the start date for the next milestone to be the deadline of the current one
+      currentStartDate = deadlineDate;
     }
     
     // Calculate initial completion percentage (first milestone is in progress = 50% of 1/13 = ~4%)

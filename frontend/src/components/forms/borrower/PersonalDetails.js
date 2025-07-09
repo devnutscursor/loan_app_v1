@@ -298,8 +298,8 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
               name="email"
               value={email}
               onChange={handleChange}
-              className={`text-xs w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
+              className={`text-xs w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="name@example.com"
             />
             {errors.email && (
               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -325,99 +325,73 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
             )}
           </div>
         </div>
-      </div>
 
-      {/* Dependents */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Dependents</h3>
-
-        {borrower?.dependents && borrower?.dependents?.length > 0 && (
-          <div className="space-y-4 mb-4">
-            {borrower?.dependents?.map((dependent, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-md">
-                <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={dependent.name || ''}
-                    onChange={(e) => handleChangeDependentField(index, 'name', e.target.value)}
-                    className={`text-xs w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                    style={{ '--focus-ring-color': theme.colors.primary }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                    Age
-                  </label>
-                  <input
-                    type="text"
-                    value={dependent.age || ''}
-                    onChange={(e) => handleChangeDependentField(index, 'age', e.target.value)}
-                    className={`text-xs w-full border ${errors.age ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                    style={{ '--focus-ring-color': theme.colors.primary }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                    Relationship
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="text"
-                      value={dependent.relationship || ''}
-                      onChange={(e) => handleChangeDependentField(index, 'relationship', e.target.value)}
-                      className={`text-xs flex-1 border ${errors.relationship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                      style={{ '--focus-ring-color': theme.colors.primary }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeDependent(index)}
-                      className="ml-2 text-red-500 hover:text-red-700"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+        {/* Dependents */}
+        <div className="mt-8">
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Dependents</h3>
+          {(borrower.dependents || []).map((dependent, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 border border-gray-200 rounded-md relative">
+              <div className="md:col-span-1">
+                <label htmlFor={`dependent-name-${index}`} className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id={`dependent-name-${index}`}
+                  name="name"
+                  value={dependent.name}
+                  onChange={(e) => handleDependentChange(index, 'name', e.target.value)}
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
-            ))}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => addDependent()}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0.25rem 0.5rem',  // Reduced padding
-            borderWidth: '1px',
-            borderColor: theme.colors.primary,
-            borderRadius: '0.25rem',  // Slightly smaller border radius
-            fontSize: '0.75rem',  // Smaller font size
-            lineHeight: '1rem',  // Tighter line height
-            fontWeight: '500',
-            color: theme.colors.primary,
-            backgroundColor: 'white',
-            transition: 'all 150ms ease-in-out',
-          }}
-          className="focus:outline-none focus:ring-1 focus:ring-offset-1 hover:bg-gray-50"  // Smaller focus ring
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="-ml-0.5 mr-1 h-4 w-4"  // Smaller icon
-            viewBox="0 0 20 20"
-            fill="currentColor"
+              <div className="md:col-span-1">
+                <label htmlFor={`dependent-age-${index}`} className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                  Age
+                </label>
+                <input
+                  type="number"
+                  id={`dependent-age-${index}`}
+                  name="age"
+                  value={dependent.age}
+                  onChange={(e) => handleDependentChange(index, 'age', e.target.value)}
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="md:col-span-1">
+                <label htmlFor={`dependent-relationship-${index}`} className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                  Relationship
+                </label>
+                <input
+                  type="text"
+                  id={`dependent-relationship-${index}`}
+                  name="relationship"
+                  value={dependent.relationship}
+                  onChange={(e) => handleDependentChange(index, 'relationship', e.target.value)}
+                  className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="md:col-span-1 flex items-end justify-end">
+                <button
+                  type="button"
+                  onClick={() => removeDependent(index)}
+                  className="p-2 text-red-500 hover:text-red-700 transition"
+                  title="Remove Dependent"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm2 4a1 1 0 100 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addDependent}
+            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
-          Add Dependent
-        </button>
+            + Add Dependent
+          </button>
+        </div>
       </div>
     </div>
   );

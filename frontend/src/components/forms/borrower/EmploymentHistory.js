@@ -100,9 +100,9 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where does asad work?</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where do you work?</h2>
         <p className="text-gray-600 mb-4">
-          Tell us a little more about asad and what they do for a living.
+          Tell us a little more about yourself and what do you do for a living.
         </p>
         <hr className="border-t border-gray-300 mb-6" />
       </div>
