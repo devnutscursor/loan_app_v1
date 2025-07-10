@@ -243,25 +243,34 @@ class DocumentService {
    */
   async updateDocumentStatus(documentId, status, feedback = '') {
     try {
-      const response = await ApiService.put(`/api/v1/documents/${documentId}/status`, {
-        status,
-        feedback
-      });
+      let response;
       
-      // Log the document status update action
-      // Audit logging temporarily disabled
-      /*
-      try {
-        await AuditLogService.createAuditLog(
-          'document',
-          `Updated document status to ${status}: ${documentId}`,
-          { documentId, status }
-        );
-      } catch (logError) {
-        console.warn('Failed to log document status update:', logError);
+      // Map frontend status values to backend enum values
+      const statusMap = {
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'needs_changes': 'Needs Correction',
+        'pending_review': 'Pending Review'
+      };
+      
+      const backendStatus = statusMap[status] || status;
+      
+      // Call the correct endpoint based on the requested status
+      if (status === 'approved') {
+        response = await ApiService.put(`/api/v1/documents/${documentId}/approve`, {
+          feedback
+        });
+      } else if (status === 'rejected') {
+        response = await ApiService.put(`/api/v1/documents/${documentId}/reject`, {
+          reason: feedback
+        });
+      } else {
+        // For other statuses, use PATCH as there's no dedicated endpoint
+        response = await ApiService.patch(`/api/v1/documents/${documentId}`, {
+          status: backendStatus,
+          notes: feedback
+        });
       }
-      */
-      
       return {
         success: true,
         data: response.data,

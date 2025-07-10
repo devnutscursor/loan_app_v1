@@ -9,6 +9,7 @@ const DocumentVerification = () => {
   const [verificationQueue, setVerificationQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingDoc, setProcessingDoc] = useState(null);
+  const [updatedDocuments, setUpdatedDocuments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -23,15 +24,47 @@ const DocumentVerification = () => {
   useEffect(() => {
     loadVerificationQueue();
   }, [currentPage, filters]);
+  
+  // Debug effect to help diagnose button state issues
+  useEffect(() => {
+    console.log('Updated documents state:', updatedDocuments);
+  }, [updatedDocuments]);
 
   const loadVerificationQueue = async () => {
     setLoading(true);
     try {
+      // Store current state of updated documents to preserve across refresh
+      const currentUpdatedDocs = [...updatedDocuments];
+      
       const response = await DocumentService.getVerificationQueue(filters, currentPage, 10);
       
       if (response.success) {
         setVerificationQueue(response.data.documents);
         setTotalPages(Math.ceil(response.data.total / 10));
+        
+        // Find all documents that should be marked as updated
+        // 1. Any documents with 'Needs Correction' status from backend
+        const needsChangesDocuments = response.data.documents
+          .filter(doc => doc.status === 'Needs Correction')
+          .map(doc => doc._id);
+          
+        // 2. Any documents we've already tracked as updated
+        const documentsInCurrentView = response.data.documents.map(doc => doc._id);
+        const relevantPreviouslyTracked = currentUpdatedDocs.filter(id => 
+          documentsInCurrentView.includes(id)
+        );
+        
+        // 3. Combine all sources of updated documents without duplicates
+        const allUpdatedDocs = [...new Set([...needsChangesDocuments, ...relevantPreviouslyTracked, ...currentUpdatedDocs])];
+        
+        console.log('Updated documents tracking:', {
+          fromBackend: needsChangesDocuments,
+          previouslyTracked: currentUpdatedDocs,
+          combined: allUpdatedDocs
+        });
+        
+        // Set the complete list of updated documents
+        setUpdatedDocuments(allUpdatedDocs);
       } else {
         toast.error(response.message || 'Failed to load verification queue');
       }
@@ -46,11 +79,37 @@ const DocumentVerification = () => {
   const handleDocumentStatus = async (documentId, status) => {
     setProcessingDoc(documentId);
     try {
+      // Add the document to updatedDocuments list immediately when requesting changes
+      // This ensures the UI updates right away without waiting for backend response
+      if (status === 'needs_changes') {
+        setUpdatedDocuments(prev => {
+          // Make sure we're not adding duplicates
+          if (!prev.includes(documentId)) {
+            console.log(`Adding document ${documentId} to updatedDocuments`);
+            return [...prev, documentId];
+          }
+          return prev;
+        });
+      }
+      
       const response = await DocumentService.updateDocumentStatus(documentId, status, feedback);
       
       if (response.success) {
         toast.success(response.message || `Document ${status} successfully`);
-        loadVerificationQueue(); // Refresh the queue
+        
+        // Refresh the queue - but don't reset our updated documents tracking
+        const currentUpdatedDocs = [...updatedDocuments];
+        await loadVerificationQueue();
+        
+        // Re-apply our tracked documents if they were lost during queue refresh
+        if (status === 'needs_changes') {
+          setUpdatedDocuments(prev => {
+            const combined = [...new Set([...prev, ...currentUpdatedDocs, documentId])];
+            console.log('Updated documents after operation:', combined);
+            return combined;
+          });
+        }
+        
         if (modalOpen) {
           closeModal();
         }
@@ -89,7 +148,14 @@ const DocumentVerification = () => {
 
   const openDocumentModal = (document) => {
     setSelectedDocument(document);
-    setFeedback('');
+    
+    // Pre-fill feedback if document already has updates requested
+    if (document.status === 'Needs Correction' || updatedDocuments.includes(document._id)) {
+      setFeedback(document.feedback || 'Update requested for this document.');
+    } else {
+      setFeedback('');
+    }
+    
     setModalOpen(true);
   };
 
@@ -307,9 +373,23 @@ const DocumentVerification = () => {
                           {new Date(document.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            Pending Verification
-                          </span>
+                          {document.status === 'Approved' ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Approved
+                            </span>
+                          ) : document.status === 'Rejected' ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                              Rejected
+                            </span>
+                          ) : document.status === 'Needs Correction' ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              Needs Correction
+                            </span>
+                          ) : (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                              Pending Review
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex space-x-2">
@@ -336,13 +416,24 @@ const DocumentVerification = () => {
                             >
                               <FiX />
                             </button>
-                            <button
-                              onClick={() => openDocumentModal(document)}
-                              className="text-gray-600 hover:text-gray-900"
-                              title="Provide Feedback"
-                            >
-                              <FiMessageSquare />
-                            </button>
+                            {document.status === 'Needs Correction' || updatedDocuments.includes(document._id) ? (
+                              <button
+                                className="text-yellow-600 cursor-not-allowed opacity-70 flex items-center"
+                                title="Update Requested"
+                                disabled
+                              >
+                                <FiMessageSquare />
+                                <span className="ml-1 text-xs">Update Requested</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openDocumentModal(document)}
+                                className="text-gray-600 hover:text-gray-900"
+                                title="Provide Feedback"
+                              >
+                                <FiMessageSquare />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -377,12 +468,12 @@ const DocumentVerification = () => {
                     <div className="mt-4 flex justify-between">
                       <button
                         onClick={() => handleDocumentStatus(selectedDocument._id, 'needs_changes')}
-                        disabled={processingDoc === selectedDocument._id || !feedback.trim()}
+                        disabled={processingDoc === selectedDocument._id || !feedback.trim() || updatedDocuments.includes(selectedDocument._id) || selectedDocument.status === 'Needs Correction'}
                         className={`px-4 py-2 bg-yellow-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-                          (processingDoc === selectedDocument._id || !feedback.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+                          (processingDoc === selectedDocument._id || !feedback.trim() || updatedDocuments.includes(selectedDocument._id) || selectedDocument.status === 'Needs Correction') ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
-                        Request Changes
+                        {(updatedDocuments.includes(selectedDocument._id) || selectedDocument.status === 'Needs Correction') ? 'Update Requested' : 'Request Changes'}
                       </button>
                       
                       <div className="flex space-x-2">
