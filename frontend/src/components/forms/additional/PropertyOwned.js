@@ -33,10 +33,18 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
     // Update the ownsProperty state first
     setOwnsProperty(value);
     
-    // If changing to 'No', clear the properties list
+    // If changing to 'No', clear the properties list and set all housing expenses to 0
     let updatedProperties = value ? localProperties : [];
     if (!value) {
       setLocalProperties(updatedProperties);
+      onChange({
+        ...propertyOwned,
+        ownsProperty: value,
+        properties: updatedProperties,
+        realEstateTaxes: '0',
+        hazardInsurance: '0',
+        hoaDues: '0'
+      });
     } else if (value && (!localProperties || localProperties.length === 0)) {
       // If changing to 'Yes' and no properties exist, add a default property
       const defaultProperty = {
@@ -65,13 +73,12 @@ const PropertyOwned = ({ propertyOwned = {}, onChange, errors = {} }) => {
       const newProperties = [defaultProperty];
       setLocalProperties(newProperties);
       updatedProperties = newProperties;
+      onChange({
+        ...propertyOwned,
+        ownsProperty: value,
+        properties: updatedProperties
+      });
     }
-    
-    onChange({
-      ...propertyOwned,
-      ownsProperty: value,
-      properties: updatedProperties,
-    });
   };
 
   // Add a new property
