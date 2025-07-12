@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import { useRouter } from 'next/router';
+import { LoanRateService, LoanProgramService } from '../../services';
 import { io } from 'socket.io-client';
 import ActivityManager from '../../components/dashboard/ActivityManager';
 import { 
@@ -86,6 +87,9 @@ const QuickActionButton = ({ icon: Icon, label, onClick, bgColor }) => (
 
 // Loan card component with modern design
 const LoanCard = ({ loan, onView }) => {
+  // State for interest rate and loan term
+  const [interestRate, setInterestRate] = useState(null);
+  const [loanTerm, setLoanTerm] = useState(null);
   
   // Format currency
   const formatCurrency = (amount) => {
@@ -128,16 +132,142 @@ const LoanCard = ({ loan, onView }) => {
     }
   };
   
-  // Extract interest rate from various possible places in the loan object
-  const getInterestRate = () => {
-    // Try to get from different possible locations in the loan object
-    const rate = loan.interestRate || 
-                loan.loanParameters?.interestRate || 
-                loan.loanDetails?.interestRate ||
-                (loan.loanParameters?.rate ? loan.loanParameters.rate : null);
+  // Function to fetch interest rate and loan term
+  useEffect(() => {
+    const fetchLoanData = async () => {
+      // Only fetch if we have a loan type
+      if (loan?.loanDetails?.loanType || loan?.loanType) {
+        try {
+          // Extract lender ID from loan object if available
+          let lenderId = null;
+          
+          // Check for lender ID in different possible formats
+          if (loan?.lender && typeof loan.lender === 'string') {
+            lenderId = loan.lender;
+          } else if (loan?.lender && loan.lender._id) {
+            lenderId = loan.lender._id;
+          } else if (loan?.lenderDetails && loan.lenderDetails.id) {
+            lenderId = loan.lenderDetails.id;
+          }
+          
+          // Get the loan type from wherever it might be
+          const loanType = loan.loanDetails?.loanType || loan.loanType || 'Purchase';
+          
+          // Get interest rate from loanRates collection with lender ID
+          try {
+            // First check if we already have an interest rate in the loan object
+            const existingRate = loan.interestRate || 
+                        loan.loanParameters?.interestRate || 
+                        loan.loanDetails?.interestRate ||
+                        (loan.loanParameters?.rate ? loan.loanParameters.rate : null) ||
+                        loan.terms?.interestRate ||
+                        loan.interest ||
+                        loan.summary?.interestRate ||
+                        loan.rate;
+            
+            if (existingRate || existingRate === 0) {
+              setInterestRate(existingRate);
+            } else {
+              // Try with lender ID first
+              if (lenderId && typeof lenderId === 'string') {
+                const rateResponse = await LoanRateService.getRateByType(loanType, lenderId);
+                if (rateResponse?.data?.data?.rate) {
+                  setInterestRate(rateResponse.data.data.rate);
+                }
+              } 
+              
+              // If we couldn't get the rate with lender ID, try without it
+              if (!interestRate) {
+                const fallbackResponse = await LoanRateService.getRateByType(loanType);
+                if (fallbackResponse?.data?.data?.rate) {
+                  setInterestRate(fallbackResponse.data.data.rate);
+                }
+              }
+
+              // If we still don't have an interest rate, set a default
+              if (!interestRate) {
+                // Set default rates based on loan type as fallback
+                const defaultRates = {
+                  'conventional': 6.75,
+                  'fha': 7.25,
+                  'va': 6.25,
+                  'usda': 6.5,
+                  'jumbo': 7.5,
+                  'Purchase': 6.85, // Use this if the loan type is 'Purchase'
+                  'default': 7.0
+                };
+                
+                const fallbackRate = defaultRates[loanType] || defaultRates.default;
+                setInterestRate(fallbackRate);
+              }
+            }
+          } catch (rateError) {
+            console.error('Rate fetch failed', rateError);
+            // Set a reasonable default rate
+            setInterestRate(7.0);
+          }
+          
+          // Check if we already have a loan term in the loan object
+          const existingTerm = loan.loanDetails?.loanTerm || 
+                     loan.loanParameters?.loanTerm ||
+                     loan.terms?.loanTerm ||
+                     loan.term ||
+                     loan.summary?.term ||
+                     loan.summary?.loanTerm ||
+                     loan.loanTerm;
+          
+          if (existingTerm || existingTerm === 0) {
+            setLoanTerm(existingTerm);
+          } else {
+            // Get loan program based on loan type and lender to extract the term
+            const programFilters = { 
+              programType: loanType
+            };
+            
+            // Only add lender filter if we have a valid string ID
+            if (lenderId && typeof lenderId === 'string') {
+              programFilters.lender = lenderId;
+            }
+            
+            try {
+              const programResponse = await LoanProgramService.getPrograms(programFilters);
+              const programs = programResponse?.data?.data?.loanPrograms || [];
+              
+              if (programs.length > 0) {
+                // Get the default term from the first matching program
+                const defaultTerm = programs[0].term || 30;
+                setLoanTerm(defaultTerm);
+              } else {
+                // Set a default term if no programs found
+                setLoanTerm(30);
+              }
+            } catch (programError) {
+              console.error('Program fetch failed', programError);
+              // Set a reasonable default term
+              setLoanTerm(30);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching loan data:', error);
+        }
+      }
+    };
     
-    if (rate || rate === 0) {
-      return `${rate}%`;
+    fetchLoanData();
+  }, [loan]);
+  
+  // Format interest rate for display
+  const getInterestRate = () => {
+    if (interestRate || interestRate === 0) {
+      return `${interestRate}%`;
+    }
+    return 'N/A';
+  };
+
+  // Format loan term for display
+  const getLoanTerm = () => {
+    if (loanTerm || loanTerm === 0) {
+      return `${loanTerm} years`;
     }
     return 'N/A';
   };
@@ -168,7 +298,7 @@ const LoanCard = ({ loan, onView }) => {
           </div>
           <div>
             <p className="text-gray-500 mb-1">Term</p>
-            <p className="font-semibold text-gray-900">{loan.loanDetails?.loanTerm ? `${loan.loanDetails.loanTerm} years` : loan.loanParameters?.loanTerm ? `${loan.loanParameters.loanTerm} years` : 'N/A'}</p>
+            <p className="font-semibold text-gray-900">{getLoanTerm()}</p>
           </div>
         </div>
         
@@ -2167,13 +2297,17 @@ useEffect(() => {
 
                 {recentLoans.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {recentLoans.map((loan) => (
-                      <LoanCard
-                        key={loan._id}
-                        loan={loan}
-                        onView={handleViewLoan}
-                      />
-                    ))}
+                    {recentLoans.map((loan) => {
+                      // Debug: log the loan object structure to see what fields are available
+                      console.log('Loan object for card:', JSON.stringify(loan, null, 2));
+                      return (
+                        <LoanCard
+                          key={loan._id}
+                          loan={loan}
+                          onView={handleViewLoan}
+                        />
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center p-6 bg-gray-50 rounded-lg">

@@ -9,7 +9,7 @@ const ReferralLinkModal = ({ isOpen, onClose, lenderId }) => {
   useEffect(() => {
     if (isOpen && lenderId) {
       const baseUrl = window.location.origin;
-      const link = `${baseUrl}/register/borrower?lender=${lenderId}`;
+      const link = `${baseUrl}/register/borrower?lenderId=${lenderId}`;
       setReferralLink(link);
     }
   }, [isOpen, lenderId]);
