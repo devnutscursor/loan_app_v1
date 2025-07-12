@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
 
 /**
@@ -9,9 +10,10 @@ import theme from '../../../styles/theme';
  * @param {Function} props.onChange - Function to handle input changes
  * @param {Array} props.loanTypes - Available loan types
  * @param {Object} props.errors - Form validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Loan details form component
  */
-const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) => {
+const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, userType = 'borrower' }) => {
   // Individual state variables for each field for immediate feedback
   const [loanType, setLoanType] = useState(loanInfo.loanType || '');
   
@@ -186,10 +188,12 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Loan Details</h2>
-        <p className="text-gray-600 mb-4">
-          If you can, tell us a little about the loan you are applying for.
-        </p>
+        <h2 className="text-lg font-medium text-gray-900 mb-2">Loan Details</h2>
+        {userType === 'borrower' && (
+          <p className="text-sm text-gray-500 mb-4">
+            Tell us more about the loan you're looking for.
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 
@@ -222,12 +226,16 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
           <p className="text-red-500 text-xs mt-1">{errors['loanInfo.loanType']}</p>
         )}
       </div>
-      
 
       {/* Purchase Details */}
       {loanType === 'Purchase' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-4">Purchase Details</h3>
+          {userType === 'borrower' && (
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide details about the property you're planning to purchase.
+            </p>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -282,6 +290,11 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       {loanType === 'Refinance' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-4">Refinance Details</h3>
+          {userType === 'borrower' && (
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide details about your current mortgage and refinancing goals.
+            </p>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -379,6 +392,11 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       {loanType === 'Construction' && (
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-4">Construction Details</h3>
+          {userType === 'borrower' && (
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide details about your construction project and financing needs.
+            </p>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -535,6 +553,14 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {} }) =
       )}
     </div>
   );
+};
+
+LoanDetails.propTypes = {
+  loanInfo: PropTypes.object,
+  onChange: PropTypes.func.isRequired,
+  loanTypes: PropTypes.array,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default LoanDetails;

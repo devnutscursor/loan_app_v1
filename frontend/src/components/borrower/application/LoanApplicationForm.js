@@ -14,8 +14,12 @@ import { useToast } from '../../../hooks/useToast';
  * 
  * Manages the multi-step loan application process with form validation,
  * data persistence, and integration with the milestone tracking system.
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.applicationId - The application ID if it exists
+ * @param {string} props.userType - The type of user viewing the form ('borrower' or 'lender')
  */
-const LoanApplicationForm = ({ applicationId }) => {
+const LoanApplicationForm = ({ applicationId, userType = 'borrower' }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { id } = useParams();
@@ -287,12 +291,13 @@ const LoanApplicationForm = ({ applicationId }) => {
           handleDocumentUpload={handleDocumentUpload}
           handleDocumentRemove={handleDocumentRemove}
           isSubmitting={isSubmitting}
+          userType={userType}
         />
 
         {/* Navigation Buttons */}
         <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between">
-          <div>
-            {currentStep > 0 && (
+        <div>
+          {currentStep > 0 && (
               <button
                 type="button"
                 onClick={handlePrevious}
@@ -372,7 +377,8 @@ const LoanApplicationForm = ({ applicationId }) => {
 };
 
 LoanApplicationForm.propTypes = {
-  applicationId: PropTypes.string
+  applicationId: PropTypes.string,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default LoanApplicationForm;

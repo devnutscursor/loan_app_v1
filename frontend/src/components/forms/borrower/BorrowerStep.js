@@ -3,6 +3,7 @@ import PersonalDetails from "./PersonalDetails";
 import ResidenceHistory from "./ResidenceHistory";
 import EmploymentHistory from "./EmploymentHistory";
 import theme from "../../../styles/theme";
+import PropTypes from "prop-types";
 
 /**
  * BorrowerStep Component
@@ -15,6 +16,7 @@ import theme from "../../../styles/theme";
  * @param {Function} props.nextStep - Function to advance to the next step
  * @param {Function} props.prevStep - Function to go back to the previous step
  * @param {Object} props.errors - Form validation errors
+ * @param {string} props.userType - Type of user viewing the form ('borrower' or 'lender')
  * @returns {JSX.Element} BorrowerStep component with tabs for navigation
  */
 const BorrowerStep = ({
@@ -24,6 +26,7 @@ const BorrowerStep = ({
   nextStep,
   prevStep,
   errors = {},
+  userType = 'borrower',
 }) => {
   const [activeTab, setActiveTab] = useState("personalDetails");
   const borrower = formData.borrowers[0]; // Using first borrower for now
@@ -216,15 +219,9 @@ const BorrowerStep = ({
 
   // Render the active tab content - keep all components mounted but only show the active one
   const renderTabContent = () => {
-    // Render all components but only show the active one
     return (
       <div>
-        {/* Personal Details Tab */}
-        <div
-          style={{
-            display: activeTab === "personalDetails" ? "block" : "none",
-          }}
-        >
+        <div style={{ display: activeTab === "personalDetails" ? "block" : "none" }}>
           <PersonalDetails
             borrower={borrower}
             onChange={handleFieldChange}
@@ -232,28 +229,18 @@ const BorrowerStep = ({
             removeDependent={removeDependent}
             handleDependentChange={handleDependentChange}
             errors={errors}
+            userType={userType}
           />
         </div>
-
-        {/* Residence History Tab */}
-        <div
-          style={{
-            display: activeTab === "residenceHistory" ? "block" : "none",
-          }}
-        >
+        <div style={{ display: activeTab === "residenceHistory" ? "block" : "none" }}>
           <ResidenceHistory
             borrower={borrower}
             onChange={handleFieldChange}
             errors={errors}
+            userType={userType}
           />
         </div>
-
-        {/* Employment History Tab */}
-        <div
-          style={{
-            display: activeTab === "employmentHistory" ? "block" : "none",
-          }}
-        >
+        <div style={{ display: activeTab === "employmentHistory" ? "block" : "none" }}>
           <EmploymentHistory
             borrower={borrower}
             onChange={handleFieldChange}
@@ -261,6 +248,7 @@ const BorrowerStep = ({
             removeEmployer={removeEmployer}
             handleEmployerChange={handleEmployerChange}
             errors={errors}
+            userType={userType}
           />
         </div>
       </div>
@@ -396,6 +384,16 @@ const BorrowerStep = ({
       </div>
     </div>
   );
+};
+
+BorrowerStep.propTypes = {
+  formData: PropTypes.object.isRequired,
+  handleChange: PropTypes.func.isRequired,
+  validateStep: PropTypes.func.isRequired,
+  nextStep: PropTypes.func.isRequired,
+  prevStep: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default BorrowerStep;

@@ -10,9 +10,10 @@ import React, { useState, useEffect } from 'react';
  * @param {Function} props.onChange - Function to handle changes
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Demographics form component
  */
-const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} }) => {
+const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Local state for immediate UI updates
   const [localDemographics, setLocalDemographics] = useState({
     ethnicity: demographics.ethnicity || '',
@@ -76,12 +77,16 @@ const Demographics = ({ demographics = {}, onChange, borrower = {}, errors = {} 
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Demographics</h2>
-        <p className="text-gray-600 mb-4">
-          This section asks about your ethnicity, sex, and race.
-        </p>
-        <p className="text-gray-600 mb-4">
-          This information is used by the federal government to make sure that everyone, regardless of background, has equal credit opportunity.
-        </p>
+        {userType === 'borrower' && (
+          <>
+            <p className="text-gray-600 mb-4">
+              This section asks about your ethnicity, sex, and race.
+            </p>
+            <p className="text-gray-600 mb-4">
+              This information is used by the federal government to make sure that everyone, regardless of background, has equal credit opportunity.
+            </p>
+          </>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 

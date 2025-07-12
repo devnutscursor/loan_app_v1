@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 /**
  * Residence History Form
@@ -7,9 +8,10 @@ import React, { useState, useEffect } from 'react';
  * @param {Object} props.borrower - Borrower data
  * @param {Function} props.onChange - Function to handle input changes
  * @param {Object} props.errors - Form validation errors
+ * @param {string} props.userType - Type of user viewing the form ('borrower' or 'lender')
  * @returns {JSX.Element} Residence history form component
  */
-const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
+const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrower' }) => {
   // Local state initialized from props once
   const [streetAddress, setStreetAddress] = useState(borrower?.currentAddress?.streetAddress || '');
   const [aptSteNum, setAptSteNum] = useState(borrower?.currentAddress?.aptSteNum || '');
@@ -131,14 +133,20 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
     });
   };
 
+  // Determine if we should show descriptive text (only on borrower side)
+  const isLenderView = userType === 'lender';
+
   return (
     <div className="space-y-6">
+      <h2 className="text-sm font-medium text-gray-700 mb-2">Residence History</h2>
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where do you live?</h2>
-        <p className="text-gray-600 mb-4">
-          Please tell us a little about your current home.
-        </p>
-        <hr className="border-t border-gray-300 mb-6" />
+        {userType === 'borrower' && (
+          <>
+            <h3 className="text-sm font-medium text-gray-700 mb-1">Where do you live?</h3>
+            <p className="text-xs text-gray-500 mb-4">Please tell us a little about your current home.</p>
+            <hr className="border-t border-gray-300 mb-6" />
+          </>
+        )}
       </div>
 
       {/* Current Address */}
@@ -384,6 +392,13 @@ const ResidenceHistory = ({ borrower, onChange, errors = {} }) => {
       </div>
     </div>
   );
+};
+
+ResidenceHistory.propTypes = {
+  borrower: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default ResidenceHistory;

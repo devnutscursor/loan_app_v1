@@ -3264,6 +3264,7 @@ const LoanDetails = () => {
                                   );
                                 }
                               }}
+                              userType="lender"
                             />
                           </div>
                         </div>
@@ -3301,6 +3302,7 @@ const LoanDetails = () => {
                                 addDependent={handleAddDependent}
                                 removeDependent={handleRemoveDependent}
                                 handleDependentChange={handleDependentChange}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3332,6 +3334,7 @@ const LoanDetails = () => {
                                     );
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3345,6 +3348,7 @@ const LoanDetails = () => {
                             <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                               <ResidenceHistory
                                 borrower={loan.borrowerDetails || {}}
+                                userType="lender"
                                 onChange={(field, value) => {
                                   if (field === "addresses") {
                                     handleFieldChange(
@@ -3400,6 +3404,7 @@ const LoanDetails = () => {
                                     handleFieldChange("property", field, value);
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3472,6 +3477,7 @@ const LoanDetails = () => {
                                     handleFieldChange("income", field, value);
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3492,6 +3498,7 @@ const LoanDetails = () => {
                                   }));
                                   setHasUnsavedChanges(true);
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3529,6 +3536,7 @@ const LoanDetails = () => {
                                     setHasUnsavedChanges(true);
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3577,6 +3585,7 @@ const LoanDetails = () => {
                                     );
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3620,6 +3629,7 @@ const LoanDetails = () => {
                                     );
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>
@@ -3664,6 +3674,7 @@ const LoanDetails = () => {
                                     );
                                   }
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>

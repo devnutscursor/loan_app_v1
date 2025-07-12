@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
 
 /**
@@ -9,9 +10,10 @@ import theme from '../../../styles/theme';
  * @param {Function} props.onChange - Function to handle changes to income
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Income form component
  */
-const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
+const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Local state for immediate UI updates
   const [localIncome, setLocalIncome] = useState(income);
 
@@ -124,11 +126,15 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {} }) => {
 
   return (
     <div className="space-y-6">
+      {/* Monthly Income Section */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Let's collect some information about your income.</h2>
-        <p className="text-gray-600 mb-4">
-          How much does {getBorrowerFirstName()} make at their job?
-        </p>
+        <h3 className="text-base font-medium text-gray-900 mb-3">Income (Monthly)</h3>
+        {userType === 'borrower' && (
+          <p className="text-sm text-gray-500 mb-4">
+            Let's collect some information about your income.
+            How much does {getBorrowerFirstName()} make at their job?
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
 
 /**
@@ -13,9 +14,10 @@ import theme from '../../../styles/theme';
  * @param {Function} props.onChange - Function to handle changes to assets
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Assets form component
  */
-const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
+const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Ensure each asset has a valid, unique ID
   const ensureUniqueIds = (items, prefix) => {
     return Array.isArray(items) ? items.map((item, index) => {
@@ -335,9 +337,11 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {} }) => {
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Assets</h2>
-        <p className="text-gray-600 mb-4">
-          We need to better understand your financial situation. Please enter any assets belonging to you below.
-        </p>
+        {userType === 'borrower' && (
+          <p className="text-gray-600 mb-4">
+            We need to better understand your financial situation. Please enter any assets belonging to you below.
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 

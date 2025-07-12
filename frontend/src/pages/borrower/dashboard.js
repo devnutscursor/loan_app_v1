@@ -90,6 +90,7 @@ const LoanCard = ({ loan, onView }) => {
   // State for interest rate and loan term
   const [interestRate, setInterestRate] = useState(null);
   const [loanTerm, setLoanTerm] = useState(null);
+  const [isDataFetched, setIsDataFetched] = useState(false);
   
   // Format currency
   const formatCurrency = (amount) => {
@@ -135,129 +136,146 @@ const LoanCard = ({ loan, onView }) => {
   // Function to fetch interest rate and loan term
   useEffect(() => {
     const fetchLoanData = async () => {
-      // Only fetch if we have a loan type
-      if (loan?.loanDetails?.loanType || loan?.loanType) {
+      // Always attempt to fetch, even if loan type isn't explicitly available
+      // This ensures we try to get data in all cases
+      try {
+        // Extract lender ID from loan object if available
+        let lenderId = null;
+        
+        if (loan?.lender && typeof loan.lender === 'string') {
+          lenderId = loan.lender;
+        } else if (loan?.lender?._id) {
+          lenderId = loan.lender._id;
+        } else if (loan?.lenderDetails?.id) {
+          lenderId = loan.lenderDetails.id;
+        }
+        
+        // Get the loan type from wherever it might be, with more fallbacks
+        const loanType = loan.loanDetails?.loanType || 
+                        loan.loanType || 
+                        loan.type || 
+                        loan.summary?.loanType || 
+                        'Purchase';
+        console.log('Using loan type for rate/term lookup:', loanType);
+        
+        // Get interest rate from loanRates collection with lender ID
         try {
-          // Extract lender ID from loan object if available
-          let lenderId = null;
+          // First check if we already have an interest rate in the loan object with expanded search
+          const existingRate = loan.interestRate || 
+                      loan.loanParameters?.interestRate || 
+                      loan.loanDetails?.interestRate ||
+                      (loan.loanParameters?.rate ? loan.loanParameters.rate : null) ||
+                      loan.terms?.interestRate ||
+                      loan.interest ||
+                      loan.summary?.interestRate ||
+                      loan.rate ||
+                      loan.interest_rate || // Check additional possible field names
+                      loan.interest_Rate || 
+                      loan.interestrate || 
+                      loan.data?.interestRate || 
+                      loan.loanInfo?.interestRate;
           
-          // Check for lender ID in different possible formats
-          if (loan?.lender && typeof loan.lender === 'string') {
-            lenderId = loan.lender;
-          } else if (loan?.lender && loan.lender._id) {
-            lenderId = loan.lender._id;
-          } else if (loan?.lenderDetails && loan.lenderDetails.id) {
-            lenderId = loan.lenderDetails.id;
-          }
-          
-          // Get the loan type from wherever it might be
-          const loanType = loan.loanDetails?.loanType || loan.loanType || 'Purchase';
-          
-          // Get interest rate from loanRates collection with lender ID
-          try {
-            // First check if we already have an interest rate in the loan object
-            const existingRate = loan.interestRate || 
-                        loan.loanParameters?.interestRate || 
-                        loan.loanDetails?.interestRate ||
-                        (loan.loanParameters?.rate ? loan.loanParameters.rate : null) ||
-                        loan.terms?.interestRate ||
-                        loan.interest ||
-                        loan.summary?.interestRate ||
-                        loan.rate;
-            
-            if (existingRate || existingRate === 0) {
-              setInterestRate(existingRate);
-            } else {
-              // Try with lender ID first
-              if (lenderId && typeof lenderId === 'string') {
-                const rateResponse = await LoanRateService.getRateByType(loanType, lenderId);
-                if (rateResponse?.data?.data?.rate) {
-                  setInterestRate(rateResponse.data.data.rate);
-                }
-              } 
-              
-              // If we couldn't get the rate with lender ID, try without it
-              if (!interestRate) {
-                const fallbackResponse = await LoanRateService.getRateByType(loanType);
-                if (fallbackResponse?.data?.data?.rate) {
-                  setInterestRate(fallbackResponse.data.data.rate);
-                }
+          if (existingRate || existingRate === 0) {
+            setInterestRate(existingRate);
+          } else if (lenderId) {
+            // If no existing rate but we have a lender ID, fetch from API
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/loan-rates/${loanType}?lender=${lenderId}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
               }
-
-              // If we still don't have an interest rate, set a default
-              if (!interestRate) {
-                // Set default rates based on loan type as fallback
-                const defaultRates = {
-                  'conventional': 6.75,
-                  'fha': 7.25,
-                  'va': 6.25,
-                  'usda': 6.5,
-                  'jumbo': 7.5,
-                  'Purchase': 6.85, // Use this if the loan type is 'Purchase'
-                  'default': 7.0
-                };
-                
-                const fallbackRate = defaultRates[loanType] || defaultRates.default;
-                setInterestRate(fallbackRate);
-              }
-            }
-          } catch (rateError) {
-            console.error('Rate fetch failed', rateError);
-            // Set a reasonable default rate
-            setInterestRate(7.0);
-          }
-          
-          // Check if we already have a loan term in the loan object
-          const existingTerm = loan.loanDetails?.loanTerm || 
-                     loan.loanParameters?.loanTerm ||
-                     loan.terms?.loanTerm ||
-                     loan.term ||
-                     loan.summary?.term ||
-                     loan.summary?.loanTerm ||
-                     loan.loanTerm;
-          
-          if (existingTerm || existingTerm === 0) {
-            setLoanTerm(existingTerm);
-          } else {
-            // Get loan program based on loan type and lender to extract the term
-            const programFilters = { 
-              programType: loanType
-            };
+            });
             
-            // Only add lender filter if we have a valid string ID
-            if (lenderId && typeof lenderId === 'string') {
-              programFilters.lender = lenderId;
-            }
-            
-            try {
-              const programResponse = await LoanProgramService.getPrograms(programFilters);
-              const programs = programResponse?.data?.data?.loanPrograms || [];
-              
-              if (programs.length > 0) {
-                // Get the default term from the first matching program
-                const defaultTerm = programs[0].term || 30;
-                setLoanTerm(defaultTerm);
+            if (response.ok) {
+              const data = await response.json();
+              if (data && typeof data.rate === 'number') {
+                setInterestRate(data.rate);
               } else {
-                // Set a default term if no programs found
+                // Fallback to default
+                setInterestRate(6.5);
+              }
+            } else {
+              // API call failed, use default
+              setInterestRate(6.5);
+            }
+          } else {
+            // No lender ID, use default
+            setInterestRate(6.5);
+          }
+        } catch (rateError) {
+          console.error('Rate fetch failed', rateError);
+          // Set a reasonable default rate
+          setInterestRate(7.0);
+        }
+        
+        // Check if we already have a loan term in the loan object with expanded search
+        const existingTerm = loan.loanDetails?.loanTerm || 
+                   loan.loanParameters?.loanTerm ||
+                   loan.terms?.loanTerm ||
+                   loan.term ||
+                   loan.summary?.term ||
+                   loan.summary?.loanTerm ||
+                   loan.loanTerm ||
+                   loan.loan_term || // Check additional possible field names
+                   loan.loanterm || 
+                   loan.data?.loanTerm ||
+                   loan.loanInfo?.loanTerm;
+        
+        if (existingTerm || existingTerm === 0) {
+          setLoanTerm(existingTerm);
+        } else if (lenderId) {
+          // If no existing term but we have a lender ID and loan type, fetch from API
+          try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/loan-programs?loanType=${loanType}&lender=${lenderId}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data[0] && typeof data[0].term === 'number') {
+                setLoanTerm(data[0].term);
+              } else {
+                // Fallback to default term
                 setLoanTerm(30);
               }
-            } catch (programError) {
-              console.error('Program fetch failed', programError);
-              // Set a reasonable default term
+            } else {
+              // API call failed, use default
               setLoanTerm(30);
             }
+          } catch (programError) {
+            console.error('Program fetch failed', programError);
+            // Set a reasonable default term
+            setLoanTerm(30);
           }
-        } catch (error) {
-          console.error('Error fetching loan data:', error);
+        } else {
+          // No lender ID or loan type, use default
+          setLoanTerm(30);
         }
+      } catch (error) {
+        console.error('Error fetching loan data:', error);
       }
     };
     
-    fetchLoanData();
-  }, [loan]);
+    // Only fetch if data hasn't been fetched yet or if the loan changes
+    if (!isDataFetched || loan) {
+      console.log('Fetching loan data for interest/term for loan ID:', loan?._id);
+      fetchLoanData()
+        .then(() => setIsDataFetched(true))
+        .catch(err => {
+          console.error('Error in fetchLoanData:', err);
+          setIsDataFetched(true); // Mark as fetched even on error to prevent infinite retries
+        });
+    }
+  }, [loan, isDataFetched]);
   
   // Format interest rate for display
   const getInterestRate = () => {
+    // Add debug logging to see the value
+    console.log(`LoanCard (${loan._id}) interestRate value:`, interestRate);
+    
     if (interestRate || interestRate === 0) {
       return `${interestRate}%`;
     }
@@ -266,6 +284,9 @@ const LoanCard = ({ loan, onView }) => {
 
   // Format loan term for display
   const getLoanTerm = () => {
+    // Add debug logging to see the value
+    console.log(`LoanCard (${loan._id}) loanTerm value:`, loanTerm);
+    
     if (loanTerm || loanTerm === 0) {
       return `${loanTerm} years`;
     }
@@ -2300,6 +2321,29 @@ useEffect(() => {
                     {recentLoans.map((loan) => {
                       // Debug: log the loan object structure to see what fields are available
                       console.log('Loan object for card:', JSON.stringify(loan, null, 2));
+                      
+                      // Additional debug: log available interest rate and term fields
+                      console.log('Potential interest rate fields for loan ' + loan._id + ':', {
+                        interestRate: loan.interestRate, 
+                        loanParametersInterestRate: loan.loanParameters?.interestRate,
+                        loanDetailsInterestRate: loan.loanDetails?.interestRate,
+                        loanParametersRate: loan.loanParameters?.rate,
+                        termsInterestRate: loan.terms?.interestRate,
+                        interest: loan.interest,
+                        summaryInterestRate: loan.summary?.interestRate,
+                        rate: loan.rate
+                      });
+                      
+                      console.log('Potential term fields for loan ' + loan._id + ':', {
+                        loanDetailsLoanTerm: loan.loanDetails?.loanTerm,
+                        loanParametersLoanTerm: loan.loanParameters?.loanTerm,
+                        termsLoanTerm: loan.terms?.loanTerm,
+                        term: loan.term,
+                        summaryTerm: loan.summary?.term,
+                        summaryLoanTerm: loan.summary?.loanTerm,
+                        loanTerm: loan.loanTerm
+                      });
+                      
                       return (
                         <LoanCard
                           key={loan._id}

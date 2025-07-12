@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import theme from '../../../styles/theme';
+import PropTypes from 'prop-types';
 
 /**
  * Employment History form component
@@ -8,9 +9,10 @@ import theme from '../../../styles/theme';
  * @param {Object} props.borrower - Borrower data with employers
  * @param {Function} props.onChange - Function to handle input changes
  * @param {Object} props.errors - Form validation errors
+ * @param {string} props.userType - Type of user viewing the form ('borrower' or 'lender')
  * @returns {JSX.Element} Employment history form
  */
-const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
+const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrower' }) => {
   // Local state initialized from props once
   const [employers, setEmployers] = useState(borrower?.employers || []);
 
@@ -97,14 +99,19 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
     });
   };
 
+  // Determine if we should show descriptive text (only on borrower side)
+  const isLenderView = userType === 'lender';
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Where do you work?</h2>
-        <p className="text-gray-600 mb-4">
-          Tell us a little more about yourself and what do you do for a living.
-        </p>
-        <hr className="border-t border-gray-300 mb-6" />
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">{isLenderView ? 'Employment' : 'Where do you work?'}</h2>
+        {!isLenderView && (
+          <p className="text-gray-600 mb-4">
+            Tell us a little more about yourself and what do you do for a living.
+          </p>
+        )}
+        {!isLenderView && <hr className="border-t border-gray-300 mb-6" />}
       </div>
 
       {borrower?.employers && borrower?.employers?.map((employer, index) => (
@@ -458,6 +465,13 @@ const EmploymentHistory = ({ borrower, onChange, errors = {} }) => {
       </div>
     </div>
   );
+};
+
+EmploymentHistory.propTypes = {
+  borrower: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default EmploymentHistory;

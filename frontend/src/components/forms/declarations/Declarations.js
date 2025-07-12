@@ -10,9 +10,10 @@ import React, { useState, useEffect } from 'react';
  * @param {Function} props.onChange - Function to handle changes
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Declarations form component
  */
-const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} }) => {
+const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Local state for immediate UI updates
   const [localDeclarations, setLocalDeclarations] = useState({
     occupyAsPrimary: declarations.occupyAsPrimary ?? false,
@@ -173,9 +174,11 @@ const Declarations = ({ declarations = {}, onChange, borrower = {}, errors = {} 
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Declarations</h2>
-        <p className="text-gray-600 mb-4">
-          Almost done! We just need a few more details about your property, your funding, and your past financial history.
-        </p>
+        {userType === 'borrower' && (
+          <p className="text-gray-600 mb-4">
+            Almost done! We just need a few more details about your property, your funding, and your past financial history.
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 

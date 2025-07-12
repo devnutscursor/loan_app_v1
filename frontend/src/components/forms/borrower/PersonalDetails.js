@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import theme from '../../../styles/theme';
+import PropTypes from 'prop-types';
 
 /**
  * Personal Details Form
@@ -11,9 +12,18 @@ import theme from '../../../styles/theme';
  * @param {Function} props.removeDependent - Function to remove a dependent
  * @param {Function} props.handleDependentChange - Function to handle dependent field changes
  * @param {Object} props.errors - Form validation errors
+ * @param {string} props.userType - Type of user viewing the form ('borrower' or 'lender')
  * @returns {JSX.Element} Personal details form component
  */
-const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, handleDependentChange, errors = {} }) => {
+const PersonalDetails = ({ 
+  borrower, 
+  onChange, 
+  addDependent, 
+  removeDependent, 
+  handleDependentChange, 
+  errors = {},
+  userType = 'borrower'
+ }) => {
   // Local state for each field (similar to property forms)
   const [firstName, setFirstName] = useState(borrower?.firstName || '');
   const [middleName, setMiddleName] = useState(borrower?.middleName || '');
@@ -106,13 +116,18 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
     setEmail(borrower?.email || '');
   }, [borrower]);
 
+  // Determine if we should show descriptive text (only on borrower side)
+  const isLenderView = userType === 'lender';
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Personal Details</h2>
-        <p className="text-gray-600 mb-4">
-          Fill out as much information as you can. If you aren't sure, leave it blank and we will follow up with you.
-        </p>
+        {!isLenderView && (
+          <p className="text-gray-600 mb-4">
+            Fill out as much information as you can. If you aren't sure, leave it blank and we will follow up with you.
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 
@@ -395,6 +410,16 @@ const PersonalDetails = ({ borrower, onChange, addDependent, removeDependent, ha
       </div>
     </div>
   );
+};
+
+PersonalDetails.propTypes = {
+  borrower: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  addDependent: PropTypes.func.isRequired,
+  removeDependent: PropTypes.func.isRequired,
+  handleDependentChange: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default PersonalDetails;

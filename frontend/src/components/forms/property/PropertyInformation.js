@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
 
 /**
@@ -8,9 +9,10 @@ import theme from '../../../styles/theme';
  * @param {Object} props.propertyInfo - Property information data
  * @param {Function} props.onChange - Function to handle input changes
  * @param {Object} props.errors - Form validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Property information form component
  */
-const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {} }) => {
+const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {}, userType = 'borrower' }) => {
   // Local state for responsive input fields - use a state variable for each field
   const [zipCode, setZipCode] = useState(propertyInfo.zipCode || '');
   const [contractPurchasePrice, setContractPurchasePrice] = useState(propertyInfo.contractPurchasePrice || '');
@@ -123,78 +125,135 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
     if (name === 'hasAcceptedOffer') {
       setHasAcceptedOffer(value);
     }
-    
+
     // Send to parent component
     onChange({
       target: {
         name: `propertyInfo.${name}`,
-        value
-      }
+        value,
+      },
     });
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Property Information</h2>
-        <p className="text-gray-600 mb-4">
-          Help us gather some details about the home you would like to buy.
-        </p>
-        <hr className="border-t border-gray-300 mb-6" />
-      </div>
+    <div className="bg-white">
+      <div className="px-1 py-3 space-y-6">
+        <div>
+          <h2 className="text-lg font-medium text-gray-900 mb-2">
+            {userType === 'borrower' ? 'Property Information' : 'Property Details'}
+          </h2>
+          {userType === 'borrower' && (
+            <p className="text-sm text-gray-500 mb-4">
+              Help us gather some details about the home you would like to buy.
+            </p>
+          )}
+          <hr className="border-t border-gray-300 mb-6" />
 
-      {/* Property Offer Status */}
-      <div>
-        <p className="text-gray-700 mb-4">Do you have a signed and accepted offer for a specific property?</p>
-        
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div 
-            className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
-              hasAcceptedOffer === true 
-                ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}` 
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
-            onClick={() => handleRadioChange('hasAcceptedOffer', true)}
-          >
-            <div className="text-center">
-              <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
-                hasAcceptedOffer === true 
-                  ? 'bg-opacity-20' 
-                  : 'bg-gray-100 text-gray-400'
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div
+              className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
+                hasAcceptedOffer === true
+                  ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
+                  : 'border-gray-300 hover:bg-gray-50'
               }`}
-              style={hasAcceptedOffer === true ? { backgroundColor: `${theme.colors.primary}20` } : {}}>
-                <div style={hasAcceptedOffer === true ? { color: theme.colors.primary } : {}}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              onClick={() => handleRadioChange('hasAcceptedOffer', true)}
+            >
+              <div className="text-center">
+                <div
+                  className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
+                    hasAcceptedOffer === true
+                      ? 'bg-opacity-20'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                  style={
+                    hasAcceptedOffer === true
+                      ? { backgroundColor: `${theme.colors.primary}20` }
+                      : {}
+                  }
+                >
+                  <div
+                    style={
+                      hasAcceptedOffer === true
+                        ? { color: theme.colors.primary }
+                        : {}
+                    }
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="mt-2 font-medium"
+                  style={{
+                    color: hasAcceptedOffer === true ? theme.colors.primary : 'inherit',
+                  }}
+                >
+                  Yes
                 </div>
               </div>
-              <div className="mt-2 font-medium" style={{ color: hasAcceptedOffer === true ? theme.colors.primary : 'inherit' }}>Yes</div>
             </div>
-          </div>
-          
-          <div 
-            className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
-              hasAcceptedOffer === false 
-                ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}` 
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
-            onClick={() => handleRadioChange('hasAcceptedOffer', false)}
-          >
-            <div className="text-center">
-              <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
-                hasAcceptedOffer === false 
-                  ? 'bg-opacity-20' 
-                  : 'bg-gray-100 text-gray-400'
+
+            <div
+              className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
+                hasAcceptedOffer === false
+                  ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
+                  : 'border-gray-300 hover:bg-gray-50'
               }`}
-              style={hasAcceptedOffer === false ? { backgroundColor: `${theme.colors.primary}20` } : {}}>
-                <div style={hasAcceptedOffer === false ? { color: theme.colors.primary } : {}}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+              onClick={() => handleRadioChange('hasAcceptedOffer', false)}
+            >
+              <div className="text-center">
+                <div
+                  className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
+                    hasAcceptedOffer === false
+                      ? 'bg-opacity-20'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                  style={
+                    hasAcceptedOffer === false
+                      ? { backgroundColor: `${theme.colors.primary}20` }
+                      : {}
+                  }
+                >
+                  <div
+                    style={
+                      hasAcceptedOffer === false
+                        ? { color: theme.colors.primary }
+                        : {}
+                    }
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="mt-2 font-medium"
+                  style={{
+                    color: hasAcceptedOffer === false ? theme.colors.primary : 'inherit',
+                  }}
+                >
+                  No
                 </div>
               </div>
-              <div className="mt-2 font-medium" style={{ color: hasAcceptedOffer === false ? theme.colors.primary : 'inherit' }}>No</div>
             </div>
           </div>
         </div>
@@ -204,7 +263,10 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
       {hasAcceptedOffer === true && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label htmlFor="contractPurchasePrice" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+            <label
+              htmlFor="contractPurchasePrice"
+              className="block text-xs uppercase font-medium text-gray-500 mb-1"
+            >
               Contract Purchase Price
             </label>
             <div className="relative">
@@ -222,7 +284,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               />
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
               Property ZIP Code (if known)
@@ -233,11 +295,15 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               name="zipCode"
               value={zipCode || ''}
               onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`text-xs w-full border ${
+                errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
+              } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
             />
             {errors['propertyInfo.zipCode'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.zipCode']}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {errors['propertyInfo.zipCode']}
+              </p>
             )}
           </div>
         </div>
@@ -255,26 +321,38 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
             name="zipCode"
             value={zipCode || ''}
             onChange={handleChange}
-            className={`text-xs w-full border ${errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+            className={`text-xs w-full border ${
+              errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
+            } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
             style={{ '--focus-ring-color': theme.colors.primary }}
           />
           {errors['propertyInfo.zipCode'] && (
-            <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.zipCode']}</p>
+            <p className="text-red-500 text-xs mt-1">
+              {errors['propertyInfo.zipCode']}
+            </p>
           )}
         </div>
       )}
 
       {/* Additional Details Section */}
       <div>
-        <h3 className="text-md font-medium text-gray-700 mb-4">Additional Details</h3>
-        
+        {userType === 'borrower' && (
+          <h3 className="text-md font-medium text-gray-700 mb-4">Additional Details</h3>
+        )}
+        {userType === 'lender' && (
+          <h3 className="text-md font-medium text-gray-700 mb-4">Property Details</h3>
+        )}
+
         {/* Additional fields for "Yes" selection */}
         {hasAcceptedOffer === true && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
               <div>
-                <label htmlFor="isMixedUse" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                  Is This Property Mixed-Use?
+                <label
+                  htmlFor="isMixedUse"
+                  className="block text-xs uppercase font-medium text-gray-500 mb-1"
+                >
+                  {userType === 'borrower' ? 'Is This Property Mixed-Use?' : 'Mixed-Use Property'}
                 </label>
                 <div className="relative">
                   <select
@@ -299,7 +377,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
 
               <div>
                 <label htmlFor="isManufactured" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                  Is This A Manufactured Home?
+                  {userType === 'borrower' ? 'Is This A Manufactured Home?' : 'Manufactured Home'}
                 </label>
                 <div className="relative">
                   <select
@@ -385,7 +463,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           {/* Home Purpose */}
           <div>
             <label htmlFor="occupancyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Occupancy Type
+              {userType === 'borrower' ? 'Occupancy Type' : 'Occupancy Type'}
             </label>
             <div className="relative">
               <select
@@ -416,7 +494,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           {/* Property Type */}
           <div>
             <label htmlFor="propertyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              What Type of Home Is This?
+              {userType === 'borrower' ? 'What Type of Home Is This?' : 'Property Type'}
             </label>
             <div className="relative">
               <select
@@ -450,6 +528,13 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
       </div>
     </div>
   );
+};
+
+PropertyInformation.propTypes = {
+  propertyInfo: PropTypes.object,
+  onChange: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  userType: PropTypes.oneOf(['borrower', 'lender'])
 };
 
 export default PropertyInformation;

@@ -11,9 +11,10 @@ import theme from '../../../styles/theme';
  * @param {Function} props.onChange - Function to handle changes
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} MilitaryService form component
  */
-const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors = {} }) => {
+const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Local state for immediate UI updates
   const [hasServed, setHasServed] = useState(militaryService.hasServed || false);
   const [currentlyServing, setCurrentlyServing] = useState(militaryService.currentlyServing || false);
@@ -100,9 +101,11 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
     <div className="space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Military Service</h2>
-        <p className="text-gray-600 mb-4">
-          Have you served in the United States Armed Forces?
-        </p>
+        {userType === 'borrower' && (
+          <p className="text-gray-600 mb-4">
+            Have you served in the United States Armed Forces?
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 

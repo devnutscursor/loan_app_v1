@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
 
 /**
@@ -10,9 +11,10 @@ import theme from '../../../styles/theme';
  * @param {Function} props.onChange - Function to handle changes to debts and expenses
  * @param {Object} props.borrower - Borrower information
  * @param {Object} props.errors - Validation errors
+ * @param {String} props.userType - Type of user (borrower or lender)
  * @returns {JSX.Element} Debts form component
  */
-const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {} }) => {
+const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}, userType = 'borrower' }) => {
   // Local state for immediate UI updates
   const [localDebts, setLocalDebts] = useState(debts);
   const [localExpenses, setLocalExpenses] = useState(expenses);
@@ -135,10 +137,12 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Help us learn a little bit more about your debts.</h2>
-        <p className="text-gray-600 mb-4">
-          Keep in mind, we will need to pull credit regardless, but taking care of this now will help us qualify you more quickly.
-        </p>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Debts</h2>
+        {userType === 'borrower' && (
+          <p className="text-gray-600 mb-4">
+            Keep in mind, we will need to pull credit regardless, but taking care of this now will help us qualify you more quickly.
+          </p>
+        )}
         <hr className="border-t border-gray-300 mb-6" />
       </div>
 
