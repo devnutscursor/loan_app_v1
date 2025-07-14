@@ -357,7 +357,7 @@ const LenderMessages = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-220px)] flex">
+              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-10px)] flex">
                 {/* Borrowers list (sidebar) */}
                 <div className="w-80 border-r overflow-y-auto">
                   <div className="p-4 border-b">
@@ -480,8 +480,7 @@ const LenderMessages = () => {
                                                 <ImageViewer 
                                                   src={getImageUrl(attachment)}
                                                   alt={attachment.fileName}
-                                                  className="max-w-full rounded"
-                                                  style={{ maxHeight: '200px' }}
+                                                  className="max-w-[250px] rounded"
                                                 />
                                               ) : (
                                                 <div className="p-2 border rounded bg-gray-50 text-sm flex items-center">

@@ -37,7 +37,7 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
         
         if (!token || !userData) {
           // Public routes that don't require authentication
-          const publicRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy'];
+          const publicRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy', '/email-verification-sent', '/verify-email', '/resend-verification'];
           
           if (!publicRoutes.some(route => router.pathname.startsWith(route))) {
             router.push('/login');

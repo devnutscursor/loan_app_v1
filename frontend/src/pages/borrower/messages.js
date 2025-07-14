@@ -9,7 +9,7 @@ import socketService from '../../services/socket.service';
 
 /**
  * Borrower Messages Page
- * 
+ *
  * A dedicated interface for borrowers to communicate with loan officers and other lenders.
  * Provides conversation management and messaging capabilities.
  */
@@ -32,40 +32,40 @@ const BorrowerMessages = () => {
   const [attachments, setAttachments] = useState([]);
   // State for uploading status
   const [uploading, setUploading] = useState(false);
-  
+
   // Ref for message container to auto scroll
   const messageContainerRef = useRef(null);
   // Ref for file input
   const fileInputRef = useRef(null);
-  
+
   // Load user data when component mounts
   useEffect(() => {
     fetchUserData();
   }, []);
-  
+
   // Auto scroll to bottom when messages change
   useEffect(() => {
     if (messageContainerRef.current) {
       messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
     }
   }, [messages]);
-  
+
   // Initialize socket connection
   useEffect(() => {
     if (userData?.data?.user?._id) {
       // Connect to socket
       const socket = socketService.connect();
-      
+
       // Join user's room
       socketService.joinRoom(userData.data.user._id);
       console.log('Borrower Messages: Joined room', userData.data.user._id);
-      
+
       // Handle direct message events
       const handleNewMessage = (message) => {
         console.log('Borrower Messages: New message received', message);
-        
+
         // Check if this message belongs to the current conversation or is a new message
-        if ((message.borrower && lender?.borrowerId && message.borrower === lender.borrowerId) || 
+        if ((message.borrower && lender?.borrowerId && message.borrower === lender.borrowerId) ||
             (message.sender && message.sender === 'lender')) {
           setMessages((prevMessages) => {
             // Check if message already exists to prevent duplicates
@@ -77,7 +77,7 @@ const BorrowerMessages = () => {
             }
             return prevMessages;
           });
-          
+
           // Scroll to bottom when new message arrives
           setTimeout(() => {
             if (messageContainerRef.current) {
@@ -86,11 +86,11 @@ const BorrowerMessages = () => {
           }, 100);
         }
       };
-      
+
       // Register direct event listeners
       socket.on('receive_message', handleNewMessage);
       socket.on('new_lender_message', handleNewMessage);
-      
+
       // Clean up on unmount
       return () => {
         socket.off('receive_message', handleNewMessage);
@@ -98,7 +98,7 @@ const BorrowerMessages = () => {
       };
     }
   }, [userData?.data?.user?._id, lender?.borrowerId]);
-  
+
   // Fetch user data
   const fetchUserData = async () => {
     setIsLoading(true);
@@ -106,13 +106,13 @@ const BorrowerMessages = () => {
       // Get the user profile from the server
       const response = await api.get('/users/me');
       setUserData(response.data);
-      
+
       // Get borrower information
       const borrowerResponse = await api.get('/borrower/profile');
       // console.log(borrowerResponse.data);
       const borrowerData = borrowerResponse.data;
       // console.log("borrowerData", borrowerData);
-      
+
       // Fetch lender information
       if (borrowerData && borrowerData.data.lender) {
         try {
@@ -123,7 +123,7 @@ const BorrowerMessages = () => {
             ...lenderResponse.data,
             borrowerId: borrowerData.data._id
           });
-          
+
           // Fetch messages between borrower and lender
           fetchMessages(borrowerData.data._id);
         } catch (error) {
@@ -138,7 +138,7 @@ const BorrowerMessages = () => {
       setIsLoading(false);
     }
   };
-  
+
   // Fetch messages between borrower and lender
   const fetchMessages = async (borrowerId) => {
     setLoadingMessages(true);
@@ -156,71 +156,71 @@ const BorrowerMessages = () => {
       setLoadingMessages(false);
     }
   };
-  
+
   // Handle file selection
   const handleFileChange = (e) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      
+
       // Filter by image files only
       const imageFiles = newFiles.filter(file => file.type.startsWith('image/'));
-      
+
       if (imageFiles.length !== newFiles.length) {
         toast.error('Only image files are allowed');
       }
-      
+
       // Limit to 5 images at a time
       if (attachments.length + imageFiles.length > 5) {
         toast.error('Maximum 5 images allowed per message');
         return;
       }
-      
+
       // Add preview for selected images
       const filesWithPreview = imageFiles.map(file => ({
         file,
         preview: URL.createObjectURL(file)
       }));
-      
+
       setAttachments([...attachments, ...filesWithPreview]);
     }
   };
-  
+
   // Remove an attachment
   const removeAttachment = (index) => {
     const newAttachments = [...attachments];
-    
+
     // Revoke object URL to prevent memory leaks
     URL.revokeObjectURL(newAttachments[index].preview);
-    
+
     newAttachments.splice(index, 1);
     setAttachments(newAttachments);
   };
-  
+
   // Open file selector
   const openFileSelector = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
-  
+
   // Send a message to the lender
   const sendMessage = async () => {
     if ((!messageInput.trim() && attachments.length === 0) || !lender) return;
-    
+
     setSendingMessage(true);
     try {
       // Extract files from the attachments
       const files = attachments.map(attachment => attachment.file);
-      
+
       const result = await MessageService.sendMessage(lender.borrowerId, messageInput, files);
       if (result.success) {
         setMessages([...messages, result.data]);
         setMessageInput('');
         setAttachments([]);
-        
+
         // Emit socket event for real-time updates
         socketService.sendMessage(result.data);
-        
+
         toast.success('Message sent');
       } else {
         toast.error('Failed to send message');
@@ -257,20 +257,20 @@ const BorrowerMessages = () => {
   // Get image URL with proper base path
   const getImageUrl = (attachment) => {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    
+
     // Make sure we don't duplicate the base URL if it's already included
     if (attachment.url.startsWith('http')) {
       return attachment.url;
     }
-    
+
     // Extract the filename from the URL path
     const urlParts = attachment.url.split('/');
     const filename = urlParts[urlParts.length - 1];
-    
+
     // Use our proxy route to avoid CORS issues
     return `${baseUrl}/api/image-proxy/${filename}`;
   };
-  
+
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout>
@@ -281,7 +281,7 @@ const BorrowerMessages = () => {
               Communicate with your loan officer and other lending team members
             </p>
           </div>
-          
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6 flex-grow flex flex-col">
             {/* Loading state */}
             {isLoading ? (
@@ -289,7 +289,7 @@ const BorrowerMessages = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-220px)] flex flex-col">
+              <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-120px)] flex flex-col">
                 {/* Lender information */}
                 {lender && (
                   <div className="border-b p-4 flex items-center">
@@ -304,7 +304,7 @@ const BorrowerMessages = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Messages container */}
                 <div ref={messageContainerRef} className="flex-grow overflow-y-auto p-4">
                   {loadingMessages ? (
@@ -323,10 +323,10 @@ const BorrowerMessages = () => {
                               console.log(message.sender.role);
                               console.log(userData.data.user.role);
                               const senderName = getSenderName(message);
-                        
+
                         return (
-                          <div 
-                          key={message._id} 
+                          <div
+                          key={message._id}
                           className={`flex w-full ${isSender ? 'justify-start' : 'justify-end'}`}
                         >
                           <div className={`flex flex-col max-w-[75%] ${isSender ? 'items-start' : 'items-end'}`}>
@@ -334,9 +334,9 @@ const BorrowerMessages = () => {
                             <div className={`text-xs text-gray-500 mb-1 ${isSender ? 'text-left' : 'text-right'}`}>
                               {senderName}
                             </div>
-                              
+
                              {/* Message content */}
-                             <div 
+                             <div
                                       className={`rounded-lg px-4 py-2 break-words ${
                                         isSender 
                                           ? 'bg-gray-200 text-black rounded-tl-none' 
@@ -344,27 +344,26 @@ const BorrowerMessages = () => {
                                       }`}
                                     >
                                 {message.content && <p>{message.content}</p>}
-                                
+
                                 {/* Image attachments */}
                                 {message.attachments && message.attachments.length > 0 && (
                                   <div className="mt-2 grid gap-2">
                                     {message.attachments.map((attachment, index) => (
                                       <div key={index} className="relative">
                                         {attachment.fileType.startsWith('image/') ? (
-                                          <ImageViewer 
+                                          <ImageViewer
                                             src={getImageUrl(attachment)}
                                             alt={attachment.fileName}
-                                            className="max-w-full rounded"
-                                            style={{ maxHeight: '200px' }}
+                                            className="max-w-[250px] rounded"
                                           />
                                         ) : (
                                           <div className="p-2 border rounded bg-gray-50 text-sm flex items-center">
                                             <svg className="h-5 w-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                                               <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                                             </svg>
-                                            <a 
-                                              href={getImageUrl(attachment)} 
-                                              target="_blank" 
+                                            <a
+                                              href={getImageUrl(attachment)}
+                                              target="_blank"
                                               rel="noopener noreferrer"
                                               className="text-blue-500 hover:underline"
                                             >
@@ -376,7 +375,7 @@ const BorrowerMessages = () => {
                                     ))}
                                   </div>
                                 )}
-                                
+
                                 <p className={`text-xs mt-1 ${isSender ? 'text-gray-500' : 'text-gray-200'}`}>
                                   {formatMessageTime(message.createdAt)}
                                 </p>
@@ -388,7 +387,7 @@ const BorrowerMessages = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Message input */}
                 <div className="border-t p-4 bg-gray-50">
                   <div className="flex flex-col">
@@ -398,12 +397,12 @@ const BorrowerMessages = () => {
                         <div className="flex overflow-x-auto space-x-3 pb-2">
                           {attachments.map((attachment, index) => (
                             <div key={index} className="relative flex-shrink-0">
-                              <img 
-                                src={attachment.preview} 
-                                alt="Selected" 
+                              <img
+                                src={attachment.preview}
+                                alt="Selected"
                                 className="h-16 w-16 object-cover rounded-md border border-gray-200"
                               />
-                              <button 
+                              <button
                                 onClick={() => removeAttachment(index)}
                                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold shadow-sm hover:bg-red-600 transition-colors"
                               >
@@ -414,7 +413,7 @@ const BorrowerMessages = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="flex items-end bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                       <textarea
                         value={messageInput}
@@ -430,7 +429,7 @@ const BorrowerMessages = () => {
                         }}
                         disabled={!lender || sendingMessage}
                       />
-                      
+
                       <div className="flex items-center h-full px-2 mb-3">
                         {/* Attachment button */}
                         <button
@@ -443,7 +442,7 @@ const BorrowerMessages = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                           </svg>
                         </button>
-                        
+
                         {/* Send button */}
                         <button
                           onClick={sendMessage}
@@ -464,7 +463,7 @@ const BorrowerMessages = () => {
                         </button>
                       </div>
                     </div>
-                      
+
                     {/* Hidden file input */}
                     <input
                       ref={fileInputRef}
@@ -475,14 +474,14 @@ const BorrowerMessages = () => {
                       onChange={handleFileChange}
                       disabled={!lender || attachments.length >= 5 || sendingMessage}
                     />
-                    
-  
-                   
+
+
+
                   </div>
                 </div>
               </div>
             )}
-            
+
             {/* Help section */}
             <div className="mt-6 bg-blue-50 rounded-lg p-4">
               <div className="flex">
