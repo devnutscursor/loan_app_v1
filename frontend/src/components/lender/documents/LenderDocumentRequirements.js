@@ -116,80 +116,44 @@ const LenderDocumentRequirements = ({
       verificationStatus: doc.verificationStatus
     })));
 
-    // Create a map of existing requirement statuses to preserve them
-    const existingStatusMap = {};
-    
-    // First load from current requirements
-    requirements.forEach(req => {
-      if (req.documentId) {
-        existingStatusMap[req.documentId] = {
-          status: req.status,
-          isSubmitted: req.isSubmitted,
-          requestedUpdate: req.requestedUpdate
-        };
-      }
-      // Also map by matchedDocument._id if available
-      if (req.matchedDocument?._id) {
-        existingStatusMap[req.matchedDocument._id] = {
-          status: req.status,
-          isSubmitted: req.isSubmitted,
-          requestedUpdate: req.requestedUpdate
-        };
-      }
-      // Also map by req.id as fallback
-      if (req.id) {
-        existingStatusMap[req.id] = {
-          status: req.status,
-          isSubmitted: req.isSubmitted,
-          requestedUpdate: req.requestedUpdate
-        };
-      }
-      
-      // Use category and documentType as key too
-      if (req.category && req.documentType) {
-        existingStatusMap[`${req.category}-${req.documentType}`] = {
-          status: req.status,
-          isSubmitted: req.isSubmitted,
-          requestedUpdate: req.requestedUpdate
-        };
-      }
-    });
-    
-    // Then check localStorage for any persisted states
+    // Create a map to track only requestedUpdate flags from localStorage
+    // We'll no longer override backend status, only track update requests
+    const requestedUpdateMap = {};
+
+    // Check localStorage only for requestedUpdate flags, not status overrides
     try {
       const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-      console.log("Loaded states from localStorage:", storedStates);
-      
-      // For each stored state that matches this loan
+      console.log("Loaded requestedUpdate flags from localStorage:", storedStates);
+
+      // For each stored state that matches this loan, only extract requestedUpdate info
       Object.entries(storedStates).forEach(([key, state]) => {
-        if (key.startsWith(`${loanId}-`)) {
+        if (key.startsWith(`${loanId}-`) && state.requestedUpdate) {
           // Extract category and document type from key
           const parts = key.split('-');
           if (parts.length >= 3) {
             const category = parts[1];
             const documentType = parts[2];
-            
-            // Add to the existing status map
-            existingStatusMap[`${category}-${documentType}`] = {
-              status: state.status,
-              isSubmitted: false,
-              requestedUpdate: state.requestedUpdate
+
+            // Only store the requestedUpdate flag and timestamp
+            requestedUpdateMap[`${category}-${documentType}`] = {
+              requestedUpdate: state.requestedUpdate,
+              timestamp: state.timestamp
             };
-            
-            console.log(`Restored state for ${category}-${documentType}: ${state.status}`);
+
+            console.log(`Found requestedUpdate flag for ${category}-${documentType}`);
           }
         }
       });
     } catch (err) {
-      console.error("Failed to load persisted document states:", err);
+      console.error("Failed to load persisted document update flags:", err);
     }
-    
-    console.log("Existing status map:", existingStatusMap);
+
+    console.log("RequestedUpdate map:", requestedUpdateMap);
 
     if (!loanId || !docsList || !docsList.length) {
-      console.log('No documents found, setting default requirements but preserving existing statuses');
+      console.log('No documents found, setting default requirements');
 
-      // Set default requirements without document mappings, but preserve statuses
+      // Set default requirements without document mappings
       const updatedReqs = standardDocumentRequirements.map((req, index) => {
         const reqId = `req-${index}`;
         // Check if there's a pending document condition for this requirement
@@ -199,39 +163,28 @@ const LenderDocumentRequirements = ({
           req.documentType,
           req.title
         );
-        
-        // Check if we have an existing status for this requirement, looking at multiple possible keys
-        const existingStatus = 
-          existingStatusMap[reqId] || 
-          existingStatusMap[`${req.category}-${req.documentType}`] ||
-          existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
-        
-        // Determine if this document needs correction (from conditions OR persisted state)
-        const needsCorrection = hasCondition || 
-                               (existingStatus && 
-                                existingStatus.requestedUpdate && 
-                                existingStatus.status === "Needs Correction");
+
+        // Check if we have a requestedUpdate flag for this requirement
+        const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
+
+        // Determine if this document needs correction based on conditions or manual requests
+        const needsCorrection = hasCondition || (requestedUpdateInfo && requestedUpdateInfo.requestedUpdate);
 
         return {
           ...req,
           id: reqId,
-          // Preserve existing status if available, otherwise set default
-          status: existingStatus ? existingStatus.status : 
-                 (needsCorrection ? "Needs Correction" : "Not Submitted"),
-          isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
-          requestedUpdate: needsCorrection, // Set based on condition existence or persisted state
+          // Use default status, only override if there's an active condition/request
+          status: needsCorrection ? "Needs Correction" : "Not Submitted",
+          isSubmitted: false,
+          requestedUpdate: needsCorrection,
         };
       });
 
-      console.log("Requirements with preserved statuses:", updatedReqs);
+      console.log("Requirements with default statuses:", updatedReqs);
       setRequirements(updatedReqs);
       setLoading(false);
       return;
     }
-
-    // Filter out duplicate documents based on original filename or name
-    const uniqueDocuments = [];
-    const docNames = new Set();
 
     // Assign documents to requirements
     const documentAssignments = assignDocumentsToRequirements(
@@ -242,16 +195,8 @@ const LenderDocumentRequirements = ({
 
     const updatedReqs = standardDocumentRequirements.map((req) => {
       const assignedDoc = documentAssignments[req.id];
-      // console.log("tryingtest");
-      // console.log(assignedDoc);
+
       if (assignedDoc) {
-        // Check if we have an existing status for this document, checking multiple possible keys
-        const existingStatus = 
-          existingStatusMap[assignedDoc._id] || 
-          existingStatusMap[req.id] ||
-          existingStatusMap[`${req.category}-${req.documentType}`] ||
-          existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
-        
         // Check if this document has a condition from the lender
         const hasCondition = hasDocumentCondition(
           loanConditions,
@@ -259,28 +204,23 @@ const LenderDocumentRequirements = ({
           req.documentType,
           req.title
         );
-        
-        // Check if this is a newly uploaded document by comparing timestamps or status
-        // A document is newly uploaded if:
-        // 1. It was created after any existing status timestamp OR
-        // 2. It has "Pending Review" status OR
-        // 3. It was uploaded in the last 10 minutes
-        const isNewlyUploaded = assignedDoc.createdAt && (
-          (existingStatus?.timestamp && new Date(assignedDoc.createdAt) > new Date(existingStatus.timestamp)) ||
-          assignedDoc.status === "Pending Review" ||
-          new Date(assignedDoc.createdAt) > Date.now() - (1000 * 60 * 10)
-        );
-        
-        console.log(`Document ${req.title}: isNewlyUploaded=${isNewlyUploaded}, hasCondition=${hasCondition}, assignedDoc.status=${assignedDoc.status}, assignedDoc.createdAt=${assignedDoc.createdAt}`);
-        
-        // If this is a newly uploaded document, clear the requestedUpdate flag in localStorage
-        if (isNewlyUploaded) {
+
+        // Check if we have a manual requestedUpdate flag for this document
+        const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
+
+        // Check if document was uploaded after any manual update request
+        const wasUploadedAfterRequest = requestedUpdateInfo?.timestamp &&
+          assignedDoc.createdAt &&
+          new Date(assignedDoc.createdAt) > new Date(requestedUpdateInfo.timestamp);
+
+        // Clear requestedUpdate flag if document was uploaded after the request
+        if (wasUploadedAfterRequest) {
           try {
             const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
             const docKey = `${loanId}-${req.category}-${req.documentType}`;
-            
-            if (storedStates[docKey] && storedStates[docKey].requestedUpdate) {
-              console.log(`Clearing requestedUpdate flag for newly uploaded document: ${docKey}`);
+
+            if (storedStates[docKey]) {
+              console.log(`Clearing requestedUpdate flag for re-uploaded document: ${docKey}`);
               delete storedStates[docKey];
               localStorage.setItem('documentStates', JSON.stringify(storedStates));
             }
@@ -288,49 +228,42 @@ const LenderDocumentRequirements = ({
             console.error("Failed to clear persisted document update state:", err);
           }
         }
-        
-        // Determine if document needs correction based on conditions and not being newly uploaded
-        const needsCorrection = hasCondition && !isNewlyUploaded;
+
+        // Determine if document needs correction:
+        // - Has active condition AND document wasn't uploaded after condition was created
+        // - Has manual update request AND document wasn't uploaded after request
+        const needsCorrection = (hasCondition || (requestedUpdateInfo?.requestedUpdate && !wasUploadedAfterRequest));
 
         // Debug the document status determination
         console.log(`📋 Status determination for ${req.documentType}:`, {
           documentId: assignedDoc._id,
           backendStatus: assignedDoc.status,
-          isNewlyUploaded,
+          hasCondition,
+          hasManualRequest: requestedUpdateInfo?.requestedUpdate,
+          wasUploadedAfterRequest,
           needsCorrection,
-          existingStatus: existingStatus?.status,
-          finalStatus: isNewlyUploaded ? "Pending Review" :
-                      (needsCorrection ? "Needs Correction" :
-                      (existingStatus ? existingStatus.status :
-                      (assignedDoc.status || "Pending Review")))
+          finalStatus: assignedDoc.status || "Pending Review"
         });
 
         return {
           ...req,
           isSubmitted: true,
-          // Priority order for status:
-          // 1. If newly uploaded -> always "Pending Review"
-          // 2. If needs correction -> "Needs Correction"
-          // 3. Use existing status or document status
-          status: isNewlyUploaded ? "Pending Review" :
-                 (needsCorrection ? "Needs Correction" :
-                 (existingStatus ? existingStatus.status :
-                 (assignedDoc.status || "Pending Review"))),
+          // FIXED: Use backend status as primary source of truth
+          // Only override with "Needs Correction" if there's an active condition/request
+          // and the document wasn't uploaded after the request
+          status: needsCorrection ? "Needs Correction" : (assignedDoc.status || "Pending Review"),
           documentId: assignedDoc._id,
           url: assignedDoc.fileUrl || assignedDoc.url,
           uploadDate: assignedDoc.createdAt || assignedDoc.uploadedAt,
-          requestedUpdate: needsCorrection && !isNewlyUploaded, // Don't mark as needing update if newly uploaded
+          requestedUpdate: needsCorrection,
           // Store original document info for debugging
           matchedDocument: assignedDoc,
         };
       }
 
-      // For unassigned documents, check if there's an existing status, checking multiple possible keys
-      const existingStatus = 
-        existingStatusMap[req.id] || 
-        existingStatusMap[`${req.category}-${req.documentType}`] ||
-        existingStatusMap[`${loanId}-${req.category}-${req.documentType}`];
-      
+      // For unassigned documents, check if there's a manual requestedUpdate flag
+      const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
+
       // Check if there's a pending document condition for this requirement
       const hasCondition = hasDocumentCondition(
         loanConditions,
@@ -338,20 +271,16 @@ const LenderDocumentRequirements = ({
         req.documentType,
         req.title
       );
-      
-      // Determine if this document needs correction (from conditions OR persisted state)
-      const needsCorrection = hasCondition || 
-                             (existingStatus && 
-                              existingStatus.requestedUpdate && 
-                              existingStatus.status === "Needs Correction");
-      
+
+      // Determine if this document needs correction based on conditions or manual requests
+      const needsCorrection = hasCondition || (requestedUpdateInfo && requestedUpdateInfo.requestedUpdate);
+
       return {
-        ...req
-        // isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
-        // status: needsCorrection ? "Needs Correction" : 
-        //        (existingStatus ? existingStatus.status : "Not Submitted"),
-        // requestedUpdate: needsCorrection,
-        // matchedDocument: null,
+        ...req,
+        isSubmitted: false,
+        status: needsCorrection ? "Needs Correction" : "Not Submitted",
+        requestedUpdate: needsCorrection,
+        matchedDocument: null,
       };
     });
 
@@ -509,7 +438,10 @@ const LenderDocumentRequirements = ({
           if (parts.length >= 3) {
             const category = parts[1];
             const documentType = parts[2];
-            manuallyRequestedUpdates[`${category}-${documentType}`] = true;
+            manuallyRequestedUpdates[`${category}-${documentType}`] = {
+              requestedUpdate: true,
+              timestamp: state.timestamp
+            };
           }
         }
       });
@@ -529,39 +461,34 @@ const LenderDocumentRequirements = ({
       );
       
       // Check if this document has a manually requested update
-      const hasManualUpdate = manuallyRequestedUpdates[`${req.category}-${req.documentType}`] || false;
-      
-      // Check if this is a newly uploaded document
-      // A document is considered newly uploaded if:
-      // 1. It has a matched document AND
-      // 2. Either it was uploaded in the last 10 minutes OR it has "Pending Review" status
-      const isNewlyUploaded = req.matchedDocument && req.uploadDate && (
-        new Date(req.uploadDate) > Date.now() - (1000 * 60 * 10) || // Uploaded in the last 10 minutes
-        req.status === "Pending Review" // Or has pending review status
-      );
+      const manualUpdateInfo = manuallyRequestedUpdates[`${req.category}-${req.documentType}`];
+      const hasManualUpdate = manualUpdateInfo?.requestedUpdate || false;
+
+      // Check if document was uploaded after any manual update request
+      const wasUploadedAfterRequest = hasManualUpdate && req.matchedDocument && req.uploadDate &&
+        manualUpdateInfo?.timestamp &&
+        new Date(req.uploadDate) > new Date(manualUpdateInfo.timestamp);
 
       // The document should be marked for update if it has a condition OR was manually requested
-      // BUT not if it was newly uploaded
-      const shouldBeMarkedForUpdate = (hasCondition || hasManualUpdate) && !isNewlyUploaded;
-      
-      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, isNewlyUploaded=${isNewlyUploaded}, current requestedUpdate=${req.requestedUpdate}, current status=${req.status}, uploadDate=${req.uploadDate}`);
+      // BUT not if it was uploaded after the manual request
+      const shouldBeMarkedForUpdate = (hasCondition || hasManualUpdate) && !wasUploadedAfterRequest;
+
+      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, wasUploadedAfterRequest=${wasUploadedAfterRequest}, current requestedUpdate=${req.requestedUpdate}, current status=${req.status}, uploadDate=${req.uploadDate}`);
 
       // Only update if the requestedUpdate flag needs to change
       if (req.requestedUpdate !== shouldBeMarkedForUpdate) {
-        console.log(`Updating status for ${req.documentType}: requestedUpdate=${shouldBeMarkedForUpdate}`);
+        console.log(`Updating requestedUpdate flag for ${req.documentType}: ${shouldBeMarkedForUpdate}`);
 
-        // Preserve existing status if it's already Approved or Rejected
-        // Don't overwrite these final states with condition-based logic
-        let newStatus = req.status;
-        if (req.status !== "Approved" && req.status !== "Rejected") {
-          newStatus = isNewlyUploaded ? "Pending Review" :
-                     (shouldBeMarkedForUpdate ? "Needs Correction" : req.status);
-        }
-
+        // FIXED: Only update requestedUpdate flag, don't override backend status
+        // The backend status should remain as the source of truth
         return {
           ...req,
           requestedUpdate: shouldBeMarkedForUpdate,
-          status: newStatus,
+          // Only override status to "Needs Correction" if we're marking for update
+          // and the current status isn't a final state (Approved/Rejected)
+          status: shouldBeMarkedForUpdate && req.status !== "Approved" && req.status !== "Rejected"
+            ? "Needs Correction"
+            : req.status
         };
       }
       return req;
@@ -980,7 +907,6 @@ const LenderDocumentRequirements = ({
       category,
       reason,
       customReason,
-      message,
       isUpdate,
     } = requestDetails;
 
