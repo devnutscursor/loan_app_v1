@@ -60,12 +60,15 @@ class DocumentService {
       
       // Try to create an audit log (don't let it affect the main functionality)
       try {
-        await AuditLogService.createAuditLog({
-          action: 'UPLOAD',
-          resourceType: 'DOCUMENT',
-          resourceId: response.data._id || 'unknown',
-          details: `Uploaded document: ${documentData.name || file.name}`
-        });
+        await AuditLogService.createAuditLog(
+          'document:uploaded',
+          `Uploaded document: ${documentData.name || file.name}`,
+          {
+            action: 'UPLOAD',
+            resourceType: 'DOCUMENT',
+            resourceId: response.data._id || 'unknown'
+          }
+        );
       } catch (logError) {
         console.warn('Failed to create audit log:', logError);
       }

@@ -106,6 +106,16 @@ const LenderDocumentRequirements = ({
     console.log("Current loan conditions:", loanConditions);
     console.log("Current requirements:", requirements);
 
+    // Debug: Log raw documents from backend
+    console.log("📄 Raw documents from backend:", docsList?.map(doc => ({
+      id: doc._id,
+      name: doc.name,
+      status: doc.status,
+      category: doc.category,
+      documentType: doc.documentType,
+      verificationStatus: doc.verificationStatus
+    })));
+
     // Create a map of existing requirement statuses to preserve them
     const existingStatusMap = {};
     
@@ -232,7 +242,8 @@ const LenderDocumentRequirements = ({
 
     const updatedReqs = standardDocumentRequirements.map((req) => {
       const assignedDoc = documentAssignments[req.id];
-
+      // console.log("tryingtest");
+      // console.log(assignedDoc);
       if (assignedDoc) {
         // Check if we have an existing status for this document, checking multiple possible keys
         const existingStatus = 
@@ -249,11 +260,18 @@ const LenderDocumentRequirements = ({
           req.title
         );
         
-        // Check if this is a newly uploaded document by comparing timestamps
-        const isNewlyUploaded = assignedDoc.createdAt && existingStatus?.timestamp && 
-                               new Date(assignedDoc.createdAt) > new Date(existingStatus.timestamp);
+        // Check if this is a newly uploaded document by comparing timestamps or status
+        // A document is newly uploaded if:
+        // 1. It was created after any existing status timestamp OR
+        // 2. It has "Pending Review" status OR
+        // 3. It was uploaded in the last 10 minutes
+        const isNewlyUploaded = assignedDoc.createdAt && (
+          (existingStatus?.timestamp && new Date(assignedDoc.createdAt) > new Date(existingStatus.timestamp)) ||
+          assignedDoc.status === "Pending Review" ||
+          new Date(assignedDoc.createdAt) > Date.now() - (1000 * 60 * 10)
+        );
         
-        console.log(`Document ${req.title}: isNewlyUploaded=${isNewlyUploaded}, hasCondition=${hasCondition}`);
+        console.log(`Document ${req.title}: isNewlyUploaded=${isNewlyUploaded}, hasCondition=${hasCondition}, assignedDoc.status=${assignedDoc.status}, assignedDoc.createdAt=${assignedDoc.createdAt}`);
         
         // If this is a newly uploaded document, clear the requestedUpdate flag in localStorage
         if (isNewlyUploaded) {
@@ -273,14 +291,30 @@ const LenderDocumentRequirements = ({
         
         // Determine if document needs correction based on conditions and not being newly uploaded
         const needsCorrection = hasCondition && !isNewlyUploaded;
-        
+
+        // Debug the document status determination
+        console.log(`📋 Status determination for ${req.documentType}:`, {
+          documentId: assignedDoc._id,
+          backendStatus: assignedDoc.status,
+          isNewlyUploaded,
+          needsCorrection,
+          existingStatus: existingStatus?.status,
+          finalStatus: isNewlyUploaded ? "Pending Review" :
+                      (needsCorrection ? "Needs Correction" :
+                      (existingStatus ? existingStatus.status :
+                      (assignedDoc.status || "Pending Review")))
+        });
+
         return {
           ...req,
           isSubmitted: true,
-          // Use existing status if available, otherwise use the assigned doc status or default
-          status: needsCorrection ? "Needs Correction" : 
-                 (isNewlyUploaded ? "Pending Review" : // Reset status for newly uploaded docs
-                 (existingStatus ? existingStatus.status : 
+          // Priority order for status:
+          // 1. If newly uploaded -> always "Pending Review"
+          // 2. If needs correction -> "Needs Correction"
+          // 3. Use existing status or document status
+          status: isNewlyUploaded ? "Pending Review" :
+                 (needsCorrection ? "Needs Correction" :
+                 (existingStatus ? existingStatus.status :
                  (assignedDoc.status || "Pending Review"))),
           documentId: assignedDoc._id,
           url: assignedDoc.fileUrl || assignedDoc.url,
@@ -312,12 +346,12 @@ const LenderDocumentRequirements = ({
                               existingStatus.status === "Needs Correction");
       
       return {
-        ...req,
-        isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
-        status: needsCorrection ? "Needs Correction" : 
-               (existingStatus ? existingStatus.status : "Not Submitted"),
-        requestedUpdate: needsCorrection,
-        matchedDocument: null,
+        ...req
+        // isSubmitted: existingStatus ? existingStatus.isSubmitted : false,
+        // status: needsCorrection ? "Needs Correction" : 
+        //        (existingStatus ? existingStatus.status : "Not Submitted"),
+        // requestedUpdate: needsCorrection,
+        // matchedDocument: null,
       };
     });
 
@@ -452,6 +486,14 @@ const LenderDocumentRequirements = ({
 
   useEffect(() => {
     console.log("Loan conditions:", loanConditions);
+
+    // Skip this effect if we're currently processing a document status change
+    // This prevents overwriting approve/reject status changes
+    if (processingDocId) {
+      console.log("⏸️ Skipping loan conditions effect - document processing in progress:", processingDocId);
+      return;
+    }
+
     // Force refresh of requirements when conditions change
     // This ensures we update the UI based on the latest conditions
     const reqsCopy = JSON.parse(JSON.stringify(requirements)); // Deep copy to avoid reference issues
@@ -490,30 +532,43 @@ const LenderDocumentRequirements = ({
       const hasManualUpdate = manuallyRequestedUpdates[`${req.category}-${req.documentType}`] || false;
       
       // Check if this is a newly uploaded document
-      const isNewlyUploaded = req.matchedDocument && req.uploadDate && 
-                             new Date(req.uploadDate) > Date.now() - (1000 * 60 * 5); // Uploaded in the last 5 minutes
-      
+      // A document is considered newly uploaded if:
+      // 1. It has a matched document AND
+      // 2. Either it was uploaded in the last 10 minutes OR it has "Pending Review" status
+      const isNewlyUploaded = req.matchedDocument && req.uploadDate && (
+        new Date(req.uploadDate) > Date.now() - (1000 * 60 * 10) || // Uploaded in the last 10 minutes
+        req.status === "Pending Review" // Or has pending review status
+      );
+
       // The document should be marked for update if it has a condition OR was manually requested
       // BUT not if it was newly uploaded
       const shouldBeMarkedForUpdate = (hasCondition || hasManualUpdate) && !isNewlyUploaded;
       
-      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, isNewlyUploaded=${isNewlyUploaded}, current requestedUpdate=${req.requestedUpdate}`);
+      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, isNewlyUploaded=${isNewlyUploaded}, current requestedUpdate=${req.requestedUpdate}, current status=${req.status}, uploadDate=${req.uploadDate}`);
 
       // Only update if the requestedUpdate flag needs to change
       if (req.requestedUpdate !== shouldBeMarkedForUpdate) {
         console.log(`Updating status for ${req.documentType}: requestedUpdate=${shouldBeMarkedForUpdate}`);
+
+        // Preserve existing status if it's already Approved or Rejected
+        // Don't overwrite these final states with condition-based logic
+        let newStatus = req.status;
+        if (req.status !== "Approved" && req.status !== "Rejected") {
+          newStatus = isNewlyUploaded ? "Pending Review" :
+                     (shouldBeMarkedForUpdate ? "Needs Correction" : req.status);
+        }
+
         return {
           ...req,
           requestedUpdate: shouldBeMarkedForUpdate,
-          status: isNewlyUploaded ? "Pending Review" : 
-                 (shouldBeMarkedForUpdate ? "Needs Correction" : req.status),
+          status: newStatus,
         };
       }
       return req;
     });
 
     setRequirements(updatedReqs);
-  }, [loanConditions, loanId]);
+  }, [loanConditions, loanId, processingDocId]);
 
   // Effect for processing documents whenever loanId or documents change
   useEffect(() => {
@@ -521,8 +576,11 @@ const LenderDocumentRequirements = ({
 
     setLoading(true);
     processDocuments(documents);
+  }, [loanId, documents]);
 
-    // If we have a loanId, also fetch loan conditions
+  // Separate effect for fetching loan conditions (including when refreshCounter changes)
+  useEffect(() => {
+    // If we have a loanId, fetch loan conditions
     if (loanId) {
       lenderService
         .getLoanConditions(loanId)
@@ -548,7 +606,7 @@ const LenderDocumentRequirements = ({
     } else {
       setLoanConditions([]);
     }
-  }, [loanId, documents, refreshCounter]);
+  }, [loanId, refreshCounter]);
 
   // Generate appropriate message based on document type and reason
   const generateMessageForReason = (
@@ -697,11 +755,7 @@ const LenderDocumentRequirements = ({
   // Open the document request modal
   const openRequestModal = (documentType, category, title, isUpdate = false) => {
     console.log(`Opening request modal for ${documentType} (${category})`);
-    
-    // Always set the processing ID to prevent button flicker during modal open
-    const requestId = `${category}-${documentType}`;
-    setProcessingDocId(requestId);
-    
+
     // Initialize request modal data
     const initialRequestData = {
       documentType,
@@ -719,36 +773,10 @@ const LenderDocumentRequirements = ({
 
   // Close request document modal
   const closeRequestModal = () => {
-    // Get the current document key if we're in update mode
-    const currentDocKey = requestDetails.isUpdate && requestDetails.category && requestDetails.documentType ? 
-      `${requestDetails.category}-${requestDetails.documentType}` : null;
-    
-    // Check if we need to clear the processing state for this document
-    // Only clear if we're canceling (not submitting) the request
-    if (currentDocKey && processingDocId === currentDocKey) {
-      // Check if this document already has an update requested in our requirements state
-      const requirementWithUpdate = requirements.find(
-        req => req.category === requestDetails.category && 
-               req.documentType === requestDetails.documentType && 
-               req.requestedUpdate === true
-      );
-      
-      // Also check localStorage for persisted state
-      let persistedUpdateRequested = false;
-      try {
-        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-        const loanDocKey = `${loanId}-${requestDetails.category}-${requestDetails.documentType}`;
-        persistedUpdateRequested = storedStates[loanDocKey]?.requestedUpdate || false;
-      } catch (err) {
-        console.error("Failed to check localStorage for persisted state:", err);
-      }
-      
-      // Only clear the processing state if there's no update already requested
-      if (!requirementWithUpdate && !persistedUpdateRequested) {
-        console.log("Clearing processing state for canceled update request:", currentDocKey);
-        setProcessingDocId("");
-      }
-    }
+    // Always clear the processing state when closing the modal
+    // This ensures buttons don't stay in loading state when user cancels
+    console.log("Closing request modal, clearing processing state");
+    setProcessingDocId("");
 
     // Reset modal state
     setShowRequestModal(false);
@@ -808,20 +836,20 @@ const LenderDocumentRequirements = ({
       console.log("Calling API to approve document:", documentId);
       const response = await lenderService.approveDocument(loanId, documentId);
       console.log("API response:", response);
-      
+      console.log("Response success check:", response && response.success);
+
       if (response && response.success) {
+        console.log("✅ API call successful, updating UI state");
         toast.success("Document approved successfully");
-        
+
         // Ensure UI is updated even if the initial update failed
-        updateDocumentStatus(documentId, "Approved");
-        
-        // Trigger a refresh of documents list to ensure UI is in sync with backend
-        // But don't force a reload of the full page
-        setRefreshCounter(prev => prev + 1);
+        const finalUpdateSuccess = updateDocumentStatus(documentId, "Approved");
+        console.log("Final UI update success:", finalUpdateSuccess);
       } else {
+        console.log("❌ API call failed or returned success: false");
         // Show error message
         toast.error(response?.message || "Failed to approve document");
-        
+
         // Revert UI to previous state
         console.log(`Reverting status back to: ${previousState}`);
         updateDocumentStatus(documentId, previousState);
@@ -866,20 +894,20 @@ const LenderDocumentRequirements = ({
         reason: reason || "Document does not meet requirements",
       });
       console.log("API response:", response);
-      
+      console.log("Response success check:", response && response.success);
+
       if (response && response.success) {
+        console.log("✅ API call successful, updating UI state");
         toast.success("Document rejected successfully");
-        
+
         // Ensure UI is updated even if the initial update failed
-        updateDocumentStatus(documentId, "Rejected");
-        
-        // Trigger a refresh of documents list to ensure UI is in sync with backend
-        // But don't force a reload of the full page
-        setRefreshCounter(prev => prev + 1);
+        const finalUpdateSuccess = updateDocumentStatus(documentId, "Rejected");
+        console.log("Final UI update success:", finalUpdateSuccess);
       } else {
+        console.log("❌ API call failed or returned success: false");
         // Show error message
         toast.error(response?.message || "Failed to reject document");
-        
+
         // Revert UI to previous state
         console.log(`Reverting status back to: ${previousState}`);
         updateDocumentStatus(documentId, previousState);
@@ -1084,17 +1112,19 @@ const LenderDocumentRequirements = ({
       const matchesDocumentId = req.documentId === documentId;
       const matchesMatchedDocId = req.matchedDocument?._id === documentId;
       const matchesReqId = req.id === documentId;
-      
-      console.log(`Document ID check for ${req.documentType || req.title}:`, {
+
+      console.log(`🔍 Document ID check for ${req.documentType || req.title}:`, {
         searchingFor: documentId,
         documentId: req.documentId,
         matchedDocId: req.matchedDocument?._id,
         reqId: req.id,
         matches: matchesDocumentId || matchesMatchedDocId || matchesReqId
       });
-      
+
       return matchesDocumentId || matchesMatchedDocId || matchesReqId;
     });
+
+    console.log(`🔍 Search result: reqIndex = ${reqIndex} (${reqIndex >= 0 ? 'FOUND' : 'NOT FOUND'})`);
     
     if (reqIndex >= 0) {
       console.log(`Found document at index ${reqIndex}:`, reqsCopy[reqIndex]);

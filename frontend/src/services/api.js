@@ -196,10 +196,14 @@ export const lenderService = {
     console.log(`📡 Approving document:`, { loanId, docId });
     try {
       // Send only the essential data to avoid payload size issues
-      const response = await api.put(`/documents/${docId}/approve`, { 
+      const response = await api.put(`/documents/${docId}/approve`, {
         loanId
       });
-      
+
+      console.log(`📡 Raw backend response for approve:`, response);
+      console.log(`📡 Response data:`, response.data);
+      console.log(`📡 Response status:`, response.status);
+
       // Return a standardized success response
       return {
         success: true,
@@ -207,7 +211,8 @@ export const lenderService = {
         data: response.data
       };
     } catch (error) {
-      console.error('Error approving document:', error);
+      console.error('❌ Error approving document:', error);
+      console.error('❌ Error response:', error.response);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to approve document',
@@ -221,11 +226,15 @@ export const lenderService = {
     console.log(`📡 Rejecting document:`, { loanId, docId, ...data });
     try {
       // Send only the essential data to avoid payload size issues
-      const response = await api.put(`/documents/${docId}/reject`, { 
+      const response = await api.put(`/documents/${docId}/reject`, {
         loanId,
         reason: data.reason || 'Document does not meet requirements'
       });
-      
+
+      console.log(`📡 Raw backend response for reject:`, response);
+      console.log(`📡 Response data:`, response.data);
+      console.log(`📡 Response status:`, response.status);
+
       // Return a standardized success response
       return {
         success: true,
@@ -233,7 +242,8 @@ export const lenderService = {
         data: response.data
       };
     } catch (error) {
-      console.error('Error rejecting document:', error);
+      console.error('❌ Error rejecting document:', error);
+      console.error('❌ Error response:', error.response);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to reject document',

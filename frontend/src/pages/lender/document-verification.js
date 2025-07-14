@@ -400,22 +400,26 @@ const DocumentVerification = () => {
                             >
                               <FiDownload />
                             </button>
-                            <button
-                              onClick={() => handleDocumentStatus(document._id, 'approved')}
-                              disabled={processingDoc === document._id}
-                              className={`text-green-600 hover:text-green-900 ${processingDoc === document._id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              title="Approve"
-                            >
-                              <FiCheck />
-                            </button>
-                            <button
-                              onClick={() => handleDocumentStatus(document._id, 'rejected')}
-                              disabled={processingDoc === document._id}
-                              className={`text-red-600 hover:text-red-900 ${processingDoc === document._id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              title="Reject"
-                            >
-                              <FiX />
-                            </button>
+                            {!(document.status === 'Needs Correction' || updatedDocuments.includes(document._id)) && (
+                              <>
+                                <button
+                                  onClick={() => handleDocumentStatus(document._id, 'approved')}
+                                  disabled={processingDoc === document._id}
+                                  className={`text-green-600 hover:text-green-900 ${processingDoc === document._id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  title="Approve"
+                                >
+                                  <FiCheck />
+                                </button>
+                                <button
+                                  onClick={() => handleDocumentStatus(document._id, 'rejected')}
+                                  disabled={processingDoc === document._id}
+                                  className={`text-red-600 hover:text-red-900 ${processingDoc === document._id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  title="Reject"
+                                >
+                                  <FiX />
+                                </button>
+                              </>
+                            )}
                             {document.status === 'Needs Correction' || updatedDocuments.includes(document._id) ? (
                               <button
                                 className="text-yellow-600 cursor-not-allowed opacity-70 flex items-center"
@@ -476,27 +480,29 @@ const DocumentVerification = () => {
                         {(updatedDocuments.includes(selectedDocument._id) || selectedDocument.status === 'Needs Correction') ? 'Update Requested' : 'Request Changes'}
                       </button>
                       
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleDocumentStatus(selectedDocument._id, 'approved')}
-                          disabled={processingDoc === selectedDocument._id}
-                          className={`px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 ${
-                            processingDoc === selectedDocument._id ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          Approve
-                        </button>
-                        
-                        <button
-                          onClick={() => handleDocumentStatus(selectedDocument._id, 'rejected')}
-                          disabled={processingDoc === selectedDocument._id || !feedback.trim()}
-                          className={`px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 ${
-                            (processingDoc === selectedDocument._id || !feedback.trim()) ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          Reject
-                        </button>
-                      </div>
+                      {!(updatedDocuments.includes(selectedDocument._id) || selectedDocument.status === 'Needs Correction') && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleDocumentStatus(selectedDocument._id, 'approved')}
+                            disabled={processingDoc === selectedDocument._id}
+                            className={`px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 ${
+                              processingDoc === selectedDocument._id ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            Approve
+                          </button>
+
+                          <button
+                            onClick={() => handleDocumentStatus(selectedDocument._id, 'rejected')}
+                            disabled={processingDoc === selectedDocument._id || !feedback.trim()}
+                            className={`px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 ${
+                              (processingDoc === selectedDocument._id || !feedback.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
                     </div>
                     
                     <button

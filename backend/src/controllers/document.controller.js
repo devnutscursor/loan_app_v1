@@ -842,7 +842,47 @@ exports.verifyDocument = async (req, res, next) => {
     document.reviewDate = new Date();
     
     await document.save();
-    
+
+    // Update related loan condition when document status changes
+    if (document.loan) {
+      try {
+        const Loan = require('../models/loan.model');
+        const loan = await Loan.findById(document.loan);
+
+        if (loan && loan.conditions) {
+          // Find the condition that matches this document
+          const conditionIndex = loan.conditions.findIndex(condition =>
+            condition.category === document.category &&
+            condition.documentType === document.documentType &&
+            condition.status === 'Pending'
+          );
+
+          if (conditionIndex !== -1) {
+            if (status === 'Approved') {
+              // Update the condition status to Completed
+              loan.conditions[conditionIndex].status = 'Completed';
+              loan.conditions[conditionIndex].completedDate = new Date();
+
+              await loan.save();
+
+              console.log(`✅ Updated loan condition for verified document: ${document.documentType} -> ${status}`);
+              logger.info(`Loan condition updated for verified document ${id}: ${document.documentType} -> ${status}`);
+            } else if (status === 'Rejected') {
+              // Keep condition as Pending for rejected documents
+              console.log(`📋 Loan condition remains pending for rejected document: ${document.documentType}`);
+              logger.info(`Loan condition remains pending for rejected document ${id}: ${document.documentType}`);
+            }
+          } else {
+            console.log(`⚠️ No matching pending condition found for document: ${document.documentType}`);
+          }
+        }
+      } catch (conditionError) {
+        console.error('Error updating loan condition:', conditionError);
+        logger.error(`Failed to update loan condition for verified document ${id}: ${conditionError.message}`);
+        // Don't fail the whole verification process if condition update fails
+      }
+    }
+
     // Log the verification
     logger.info(`Document ${id} verified with status ${status} by ${req.user.role} ${req.user._id}`);
     
@@ -1151,7 +1191,41 @@ exports.approveDocument = async (req, res, next) => {
     document.reviewDate = new Date();
     
     await document.save();
-    
+
+    // Update related loan condition when document is approved
+    if (document.loan) {
+      try {
+        const Loan = require('../models/loan.model');
+        const loan = await Loan.findById(document.loan);
+
+        if (loan && loan.conditions) {
+          // Find the condition that matches this document
+          const conditionIndex = loan.conditions.findIndex(condition =>
+            condition.category === document.category &&
+            condition.documentType === document.documentType &&
+            condition.status === 'Pending'
+          );
+
+          if (conditionIndex !== -1) {
+            // Update the condition status to Completed
+            loan.conditions[conditionIndex].status = 'Completed';
+            loan.conditions[conditionIndex].completedDate = new Date();
+
+            await loan.save();
+
+            console.log(`✅ Updated loan condition for approved document: ${document.documentType}`);
+            logger.info(`Loan condition updated for approved document ${id}: ${document.documentType}`);
+          } else {
+            console.log(`⚠️ No matching pending condition found for document: ${document.documentType}`);
+          }
+        }
+      } catch (conditionError) {
+        console.error('Error updating loan condition:', conditionError);
+        logger.error(`Failed to update loan condition for approved document ${id}: ${conditionError.message}`);
+        // Don't fail the whole approval process if condition update fails
+      }
+    }
+
     // Log the approval
     logger.info(`Document ${id} approved by ${req.user.role} ${req.user._id}`);
     
@@ -1285,7 +1359,37 @@ exports.rejectDocument = async (req, res, next) => {
     document.reviewDate = new Date();
     
     await document.save();
-    
+
+    // Update related loan condition when document is rejected
+    if (document.loan) {
+      try {
+        const Loan = require('../models/loan.model');
+        const loan = await Loan.findById(document.loan);
+
+        if (loan && loan.conditions) {
+          // Find the condition that matches this document
+          const conditionIndex = loan.conditions.findIndex(condition =>
+            condition.category === document.category &&
+            condition.documentType === document.documentType &&
+            condition.status === 'Pending'
+          );
+
+          if (conditionIndex !== -1) {
+            // Keep the condition as Pending since document was rejected
+            // The borrower will need to resubmit
+            console.log(`📋 Loan condition remains pending for rejected document: ${document.documentType}`);
+            logger.info(`Loan condition remains pending for rejected document ${id}: ${document.documentType}`);
+          } else {
+            console.log(`⚠️ No matching pending condition found for document: ${document.documentType}`);
+          }
+        }
+      } catch (conditionError) {
+        console.error('Error checking loan condition:', conditionError);
+        logger.error(`Failed to check loan condition for rejected document ${id}: ${conditionError.message}`);
+        // Don't fail the whole rejection process if condition check fails
+      }
+    }
+
     // Log the rejection
     logger.info(`Document ${id} rejected by ${req.user.role} ${req.user._id}`);
     

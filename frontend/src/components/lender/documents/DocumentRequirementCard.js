@@ -12,15 +12,15 @@ const DocumentRequirementCard = ({
   isSelected = false,
   onSelectToggle = null,
 }) => {
-  useEffect(() => {
-    console.log("DocumentRequirementCard updated");
-    console.log("DocumentRequirementCard", req);
+  // useEffect(() => {
+  //   console.log("DocumentRequirementCard updated");
+  //   console.log("DocumentRequirementCard", req);
     
-    // Force re-render when status changes
-    if (req.status) {
-      console.log(`Document status: ${req.status}`);
-    }
-  }, [req, req.status, processingDocId]); // Re-run when req, req.status, or processingDocId changes
+  //   // Force re-render when status changes
+  //   Lif (req.status) {
+  //     console.log(`Document status: ${req.status}`);
+  //   }
+  // }, [req, req.status, processingDocId]); // Re-run when req, req.status, or processingDocId changes
 
   // State to track when the document viewer should be shown
   const [viewingDocument, setViewingDocument] = useState(null);
@@ -235,7 +235,7 @@ const DocumentRequirementCard = ({
                 )}
 
                 {/* Approve button */}
-                {req.status !== "Approved" && (
+                {req.status !== "Approved" && !req.requestedUpdate && (
                   <button
                     onClick={() => onApprove(req.documentId)}
                     disabled={
@@ -287,7 +287,7 @@ const DocumentRequirementCard = ({
                 )}
 
                 {/* Reject button */}
-                {req.status !== "Rejected" && (
+                {req.status !== "Rejected" && !req.requestedUpdate && (
                   <button
                     onClick={() =>
                       onReject(
