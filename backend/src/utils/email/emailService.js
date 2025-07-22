@@ -384,6 +384,89 @@ Thank you for choosing our Loan Application System.
   }
 
   /**
+   * Send email change verification email
+   * @param {Object} options - Email options
+   * @param {string} options.email - New email address to send verification to
+   * @param {string} options.name - User's name
+   * @param {string} options.token - Verification token
+   * @param {string} options.baseUrl - Base URL for verification link
+   * @param {string} options.currentEmail - Current email address
+   * @returns {Promise<Object>} Result of email send operation
+   */
+  async sendEmailChangeVerification(options) {
+    try {
+      const { email, name, token, baseUrl, currentEmail } = options;
+
+      if (!email || !name || !token || !baseUrl || !currentEmail) {
+        throw new Error('Missing required parameters for email change verification');
+      }
+
+      const verificationUrl = `${baseUrl}/verify-email-change?token=${token}`;
+      const subject = 'Verify Your New Email Address - Loan Application System';
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h1 style="color: #4361ee; text-align: center;">Email Address Change Verification</h1>
+          <p>Hello ${name.split(' ')[0] || 'User'},</p>
+          <p>You have requested to change your email address from <strong>${currentEmail}</strong> to <strong>${email}</strong>.</p>
+          <p>To complete this change and ensure the security of your account, please verify your new email address by clicking the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="background-color: #4361ee; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify New Email Address</a>
+          </div>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 3px;">${verificationUrl}</p>
+          <p><strong>Important:</strong></p>
+          <ul>
+            <li>This verification link will expire in 24 hours</li>
+            <li>Your current email address (${currentEmail}) will remain active until you verify this new email</li>
+            <li>If you did not request this email change, please ignore this email and contact support immediately</li>
+          </ul>
+          <p>If you have any questions or concerns, please contact our support team.</p>
+          <br>
+          <p>Thank you,</p>
+          <p><strong>Loan Application System Team</strong></p>
+          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+          <p style="font-size: 12px; color: #666;">This is an automated email. Please do not reply to this message.</p>
+        </div>
+      `;
+
+      const text = `
+Email Address Change Verification
+
+Hello ${name.split(' ')[0] || 'User'},
+
+You have requested to change your email address from ${currentEmail} to ${email}.
+
+To complete this change and ensure the security of your account, please verify your new email address by visiting the link below:
+
+${verificationUrl}
+
+Important:
+- This verification link will expire in 24 hours
+- Your current email address (${currentEmail}) will remain active until you verify this new email
+- If you did not request this email change, please ignore this email and contact support immediately
+
+If you have any questions or concerns, please contact our support team.
+
+Thank you,
+Loan Application System Team
+
+This is an automated email. Please do not reply to this message.
+      `;
+
+      return await this.sendEmail({
+        to: email,
+        subject,
+        html,
+        text
+      });
+    } catch (error) {
+      logger.error(`Failed to send email change verification email`, { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Send password reset email
    * @param {Object} options - Reset email options
    * @param {string} options.email - The recipient email address

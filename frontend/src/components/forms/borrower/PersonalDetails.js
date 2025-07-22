@@ -15,72 +15,34 @@ import PropTypes from 'prop-types';
  * @param {string} props.userType - Type of user viewing the form ('borrower' or 'lender')
  * @returns {JSX.Element} Personal details form component
  */
-const PersonalDetails = ({ 
-  borrower, 
-  onChange, 
-  addDependent, 
-  removeDependent, 
-  handleDependentChange, 
+const PersonalDetails = ({
+  borrower,
+  onChange,
+  addDependent,
+  removeDependent,
+  handleDependentChange,
   errors = {},
   userType = 'borrower'
  }) => {
-  // Local state for each field (similar to property forms)
-  const [firstName, setFirstName] = useState(borrower?.firstName || '');
-  const [middleName, setMiddleName] = useState(borrower?.middleName || '');
-  const [lastName, setLastName] = useState(borrower?.lastName || '');
-  const [suffix, setSuffix] = useState(borrower?.suffix || '');
-  const [dateOfBirth, setDateOfBirth] = useState(borrower?.dateOfBirth || '');
-  const [ssn, setSsn] = useState(borrower?.ssn || '');
-  const [citizenship, setCitizenship] = useState(borrower?.citizenship || '');
-  const [maritalStatus, setMaritalStatus] = useState(borrower?.maritalStatus || '');
-  const [phone, setPhone] = useState(borrower?.phone || '');
-  const [email, setEmail] = useState(borrower?.email || '');
-
-  // Handle form field changes - update local state and pass to parent
+  // Handle form field changes - use dot notation for borrower fields
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const actualValue = type === "checkbox" ? checked : value;
 
-    // Update local state for immediate feedback
-    switch (name) {
-      case 'firstName':
-        setFirstName(value);
-        break;
-      case 'middleName':
-        setMiddleName(value);
-        break;
-      case 'lastName':
-        setLastName(value);
-        break;
-      case 'suffix':
-        setSuffix(value);
-        break;
-      case 'dateOfBirth':
-        setDateOfBirth(value);
-        break;
-      case 'ssn':
-        setSsn(value);
-        break;
-      case 'citizenship':
-        setCitizenship(value);
-        break;
-      case 'maritalStatus':
-        setMaritalStatus(value);
-        break;
-      case 'phone':
-        setPhone(value);
-        break;
-      case 'email':
-        setEmail(value);
-        break;
-      default:
-        break;
-    }
+    // Create a new event with the correct field name using dot notation
+    const modifiedEvent = {
+      target: {
+        name: name, // Use the field name directly (firstName, lastName, etc.)
+        value: actualValue,
+        type,
+        checked
+      }
+    };
 
-    // DEBUG: Log personal details changes
-    // console.log(`PersonalDetails - Field ${name} changed to:`, value);
+    console.log(`PersonalDetails - Field ${name} changed to:`, actualValue);
 
-    // Pass to parent component
-    onChange(e);
+    // Pass modified event to parent component
+    onChange(modifiedEvent);
   };
 
   // Helper function for dependent field changes
@@ -103,18 +65,7 @@ const PersonalDetails = ({
     }
   }, []);
 
-  useEffect(() => {
-    setFirstName(borrower?.firstName || '');
-    setMiddleName(borrower?.middleName || '');
-    setLastName(borrower?.lastName || '');
-    setSuffix(borrower?.suffix || '');
-    setDateOfBirth(borrower?.dateOfBirth || '');
-    setSsn(borrower?.ssn || '');
-    setCitizenship(borrower?.citizenship || '');
-    setMaritalStatus(borrower?.maritalStatus || '');
-    setPhone(borrower?.phone || '');
-    setEmail(borrower?.email || '');
-  }, [borrower]);
+  // No useEffect needed - component is now fully controlled by parent state
 
   // Determine if we should show descriptive text (only on borrower side)
   const isLenderView = userType === 'lender';
@@ -143,7 +94,7 @@ const PersonalDetails = ({
               type="text"
               id="firstName"
               name="firstName"
-              value={firstName}
+              value={borrower?.firstName || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
@@ -161,7 +112,7 @@ const PersonalDetails = ({
               type="text"
               id="middleName"
               name="middleName"
-              value={middleName}
+              value={borrower?.middleName || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.middleName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
@@ -176,7 +127,7 @@ const PersonalDetails = ({
               type="text"
               id="lastName"
               name="lastName"
-              value={lastName}
+              value={borrower?.lastName || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
@@ -194,7 +145,7 @@ const PersonalDetails = ({
               type="text"
               id="suffix"
               name="suffix"
-              value={suffix}
+              value={borrower?.suffix || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.suffix ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
@@ -212,7 +163,7 @@ const PersonalDetails = ({
               <select
                 id="maritalStatus"
                 name="maritalStatus"
-                value={maritalStatus}
+                value={borrower?.maritalStatus || ''}
                 onChange={handleChange}
                 className={`text-xs appearance-none w-full border ${errors.maritalStatus ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               >
@@ -240,7 +191,7 @@ const PersonalDetails = ({
               type="text"
               id="dateOfBirth"
               name="dateOfBirth"
-              value={dateOfBirth}
+              value={borrower?.dateOfBirth || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               placeholder="mm/dd/yyyy"
@@ -258,7 +209,7 @@ const PersonalDetails = ({
               type="text"
               id="ssn"
               name="ssn"
-              value={ssn}
+              value={borrower?.ssn || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.ssn ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
@@ -277,7 +228,7 @@ const PersonalDetails = ({
               <select
                 id="citizenship"
                 name="citizenship"
-                value={citizenship}
+                value={borrower?.citizenship || ''}
                 onChange={handleChange}
                 className={`text-xs appearance-none w-full border ${errors.citizenship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               >
@@ -311,7 +262,7 @@ const PersonalDetails = ({
               type="email"
               id="email"
               name="email"
-              value={email}
+              value={borrower?.email || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               placeholder="name@example.com"
@@ -329,7 +280,7 @@ const PersonalDetails = ({
               type="tel"
               id="phone"
               name="phone"
-              value={phone}
+              value={borrower?.phone || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}

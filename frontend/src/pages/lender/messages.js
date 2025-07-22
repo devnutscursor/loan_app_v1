@@ -7,6 +7,10 @@ import api from '../../services/api';
 import { useRouter } from 'next/router';
 import { ImageViewer } from '../../components/common';
 import socketService from '../../services/socket.service';
+import { getTemplatesGroupedByCategory } from '../../data/messageTemplates';
+import { TemplateProcessor } from '../../utils/TemplateProcessor';
+import { CustomTemplateManager } from '../../utils/CustomTemplateManager';
+import CustomTemplateForm from '../../components/common/CustomTemplateForm';
 
 /**
  * Lender Messages Page
@@ -39,6 +43,14 @@ const LenderMessages = () => {
   const [attachments, setAttachments] = useState([]);
   // State for uploading status
   const [uploading, setUploading] = useState(false);
+  // State for template categories (for UI organization)
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState('application');
+  // State for custom template form
+  const [showCustomTemplateForm, setShowCustomTemplateForm] = useState(false);
+  // State for custom templates
+  const [customTemplates, setCustomTemplates] = useState([]);
+  // State for editing template
+  const [editingTemplate, setEditingTemplate] = useState(null);
   
   // Ref for message container to auto scroll
   const messageContainerRef = useRef(null);
@@ -338,6 +350,102 @@ const LenderMessages = () => {
     // Use our proxy route to avoid CORS issues
     return `${baseUrl}/api/image-proxy/${filename}`;
   };
+
+  // Handle template selection with dynamic borrower name insertion
+  const handleTemplateSelect = (template) => {
+    try {
+      const processedContent = TemplateProcessor.processTemplate(template, selectedBorrower);
+      setMessageInput(processedContent);
+    } catch (error) {
+      console.error('Error processing template:', error);
+      // Fallback to original template content if processing fails
+      setMessageInput(template.content);
+    }
+  };
+
+  // Load custom templates on component mount
+  useEffect(() => {
+    loadCustomTemplates();
+  }, []);
+
+  // Load custom templates from storage
+  const loadCustomTemplates = () => {
+    try {
+      const templates = CustomTemplateManager.getCustomTemplates();
+      setCustomTemplates(templates);
+    } catch (error) {
+      console.error('Error loading custom templates:', error);
+      toast.error('Failed to load custom templates');
+    }
+  };
+
+  // Handle custom template save
+  const handleCustomTemplateSave = (template) => {
+    try {
+      // Reload custom templates to get the updated list
+      loadCustomTemplates();
+      
+      // Hide the form
+      setShowCustomTemplateForm(false);
+      setEditingTemplate(null);
+      
+      toast.success(`Template "${template.title}" saved successfully!`);
+    } catch (error) {
+      console.error('Error handling template save:', error);
+      toast.error('Failed to save template');
+    }
+  };
+
+  // Handle custom template form cancel
+  const handleCustomTemplateCancel = () => {
+    setShowCustomTemplateForm(false);
+    setEditingTemplate(null);
+  };
+
+  // Handle custom template edit
+  const handleCustomTemplateEdit = (template) => {
+    setEditingTemplate(template);
+    setShowCustomTemplateForm(true);
+  };
+
+  // Handle custom template delete
+  const handleCustomTemplateDelete = (templateId) => {
+    try {
+      const result = CustomTemplateManager.deleteCustomTemplate(templateId);
+      if (result.success) {
+        loadCustomTemplates();
+        toast.success('Template deleted successfully!');
+      } else {
+        toast.error(result.error || 'Failed to delete template');
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Failed to delete template');
+    }
+  };
+
+  // Get all templates including custom ones, organized by category
+  const getAllTemplatesGroupedByCategory = () => {
+    const defaultTemplates = getTemplatesGroupedByCategory();
+    
+    // Add custom templates to their respective categories
+    customTemplates.forEach(template => {
+      const categoryId = template.category || 'custom';
+      
+      if (!defaultTemplates[categoryId]) {
+        // Create custom category if it doesn't exist
+        defaultTemplates[categoryId] = {
+          id: categoryId,
+          name: categoryId === 'custom' ? 'Custom' : categoryId,
+          templates: []
+        };
+      }
+      
+      defaultTemplates[categoryId].templates.push(template);
+    });
+    
+    return defaultTemplates;
+  };
   
   return (
     <ProtectedRoute allowedRoles={['lender', 'admin']}>
@@ -617,7 +725,7 @@ const LenderMessages = () => {
             )}
             
             {/* Quick actions */}
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Communication guidelines */}
               <div className="bg-white rounded-lg shadow p-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Communication Guidelines</h3>
@@ -630,40 +738,144 @@ const LenderMessages = () => {
                 </ul>
               </div>
               
-              {/* Message templates */}
-              <div className="bg-white rounded-lg shadow p-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Quick Templates</h3>
-                <div className="grid grid-cols-1 gap-2">
+              {/* Enhanced Message Templates with Categories */}
+              <div className="bg-white rounded-lg shadow p-4 lg:col-span-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-medium text-gray-900">Quick Templates</h3>
                   <button
                     type="button"
-                    onClick={() => {
-                      setMessageInput("Thank you for your application. I'll be your dedicated loan officer throughout the process. Please let me know if you have any questions.");
-                    }}
-                    className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+                    onClick={() => setShowCustomTemplateForm(!showCustomTemplateForm)}
+                    className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                   >
-                    <span className="block font-medium text-gray-700">Application Received</span>
-                    <span className="block text-xs text-gray-500 truncate">Thank you for your application. I'll be your dedicated loan officer...</span>
+                    {showCustomTemplateForm ? 'Cancel' : '+ Add Custom'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMessageInput("To proceed with your application, we need the following documents: 1) Last 2 months of bank statements, 2) Recent pay stubs, 3) W-2 forms from the last 2 years. Please upload these to your dashboard.");
-                    }}
-                    className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
-                  >
-                    <span className="block font-medium text-gray-700">Document Request</span>
-                    <span className="block text-xs text-gray-500 truncate">To proceed with your application, we need the following documents...</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMessageInput("Great news! Your loan application has been approved. The next step is to review and sign the closing documents. We'll schedule a convenient time for the closing process.");
-                    }}
-                    className="text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
-                  >
-                    <span className="block font-medium text-gray-700">Application Approved</span>
-                    <span className="block text-xs text-gray-500 truncate">Great news! Your loan application has been approved...</span>
-                  </button>
+                </div>
+
+                {/* Custom Template Form */}
+                {showCustomTemplateForm && (
+                  <CustomTemplateForm
+                    onSave={handleCustomTemplateSave}
+                    onCancel={handleCustomTemplateCancel}
+                    selectedBorrower={selectedBorrower}
+                    editTemplate={editingTemplate}
+                    isVisible={showCustomTemplateForm}
+                  />
+                )}
+                
+                {/* Template Category Tabs */}
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-1 border-b border-gray-200">
+                    {Object.entries(getAllTemplatesGroupedByCategory()).map(([categoryId, category]) => (
+                      <button
+                        key={categoryId}
+                        type="button"
+                        onClick={() => setSelectedTemplateCategory(categoryId)}
+                        className={`px-3 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                          selectedTemplateCategory === categoryId
+                            ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {category.name}
+                        {category.templates.filter(t => t.isCustom).length > 0 && (
+                          <span className="ml-1 text-xs bg-green-100 text-green-600 px-1 rounded">
+                            {category.templates.filter(t => t.isCustom).length}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Template Buttons for Selected Category */}
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {(() => {
+                    const templatesGrouped = getAllTemplatesGroupedByCategory();
+                    const selectedCategory = templatesGrouped[selectedTemplateCategory];
+                    
+                    if (!selectedCategory || !selectedCategory.templates.length) {
+                      return (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          No templates available in this category
+                        </div>
+                      );
+                    }
+                    
+                    return selectedCategory.templates.map((template) => (
+                      <div key={template.id} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => handleTemplateSelect(template)}
+                          className="w-full text-left px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                          disabled={!selectedBorrower}
+                          title={!selectedBorrower ? 'Select a borrower to use templates' : ''}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-grow">
+                              <span className="block font-medium text-gray-700">
+                                {template.title}
+                                {template.isCustom && (
+                                  <span className="ml-2 text-xs bg-green-100 text-green-600 px-1 rounded">
+                                    Custom
+                                  </span>
+                                )}
+                              </span>
+                              <span className="block text-xs text-gray-500 truncate mt-1">
+                                {selectedBorrower 
+                                  ? TemplateProcessor.processTemplate(template, selectedBorrower).substring(0, 60) + '...'
+                                  : template.preview
+                                }
+                              </span>
+                            </div>
+                            
+                            {/* Custom template actions */}
+                            {template.isCustom && (
+                              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCustomTemplateEdit(template);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-blue-600 focus:outline-none"
+                                  title="Edit template"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Are you sure you want to delete "${template.title}"?`)) {
+                                      handleCustomTemplateDelete(template.id);
+                                    }
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-red-600 focus:outline-none"
+                                  title="Delete template"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                
+                {/* Template Usage Hint */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    {selectedBorrower 
+                      ? `Templates will be personalized for ${selectedBorrower.user?.firstName || 'the selected borrower'}`
+                      : 'Select a borrower to personalize templates with their name'
+                    }
+                  </p>
                 </div>
               </div>
             </div>

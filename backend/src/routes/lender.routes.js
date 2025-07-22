@@ -29,6 +29,9 @@ router.post('/company', lenderController.associateWithCompany);
 router.patch('/rates', lenderController.updateRateSettings);
 
 // Borrower management
+// Create a new borrower for the current lender
+router.post('/borrowers', authorize('lender'), lenderController.createBorrowerForLender);
+
 // Get borrowers for the current lender
 router.get('/borrowers', authorize('lender'), lenderController.getLenderBorrowers);
 

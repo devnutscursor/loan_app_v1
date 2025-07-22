@@ -29,7 +29,7 @@ const BorrowerStep = ({
   userType = 'borrower',
 }) => {
   const [activeTab, setActiveTab] = useState("personalDetails");
-  const borrower = formData.borrowers[0]; // Using first borrower for now
+  const borrower = formData.borrowers?.[0] || {}; // Safely access first borrower
 
   // Forward field changes directly to parent
   const handleFieldChange = (e) => {
@@ -49,20 +49,20 @@ const BorrowerStep = ({
     let isComplete = false;
 
     if (tabName === "personalDetails") {
-      isComplete = borrower.firstName && borrower.lastName;
+      isComplete = borrower?.firstName && borrower?.lastName;
     } else if (tabName === "residenceHistory") {
       isComplete =
-        borrower.currentAddress &&
-        borrower.currentAddress.streetAddress &&
-        borrower.currentAddress.city &&
-        borrower.currentAddress.state &&
-        borrower.currentAddress.zipCode;
+        borrower?.currentAddress?.streetAddress &&
+        borrower?.currentAddress?.city &&
+        borrower?.currentAddress?.state &&
+        borrower?.currentAddress?.zipCode;
     } else if (tabName === "employmentHistory") {
       isComplete =
-        borrower.employers &&
+        borrower?.employers &&
+        Array.isArray(borrower.employers) &&
         borrower.employers.length > 0 &&
-        borrower.employers[0].companyName &&
-        borrower.employers[0].jobTitle;
+        borrower.employers[0]?.companyName &&
+        borrower.employers[0]?.jobTitle;
     }
 
     if (isComplete) {
@@ -142,8 +142,8 @@ const BorrowerStep = ({
   };
 
   const addDependent = () => {
-    // Get current dependents
-    const dependents = formData.borrowers[0].dependents || [];
+    // Get current dependents safely
+    const dependents = formData.borrowers?.[0]?.dependents || [];
     const newDependents = [
       ...dependents,
       { name: "", age: "", relationship: "" },
@@ -159,8 +159,8 @@ const BorrowerStep = ({
   };
 
   const removeDependent = (index) => {
-    // Get current dependents
-    const dependents = [...(formData.borrowers[0].dependents || [])];
+    // Get current dependents safely
+    const dependents = [...(formData.borrowers?.[0]?.dependents || [])];
     dependents.splice(index, 1);
 
     // Properly prefix nested name
@@ -173,8 +173,8 @@ const BorrowerStep = ({
   };
 
   const addEmployer = () => {
-    // Get current employers
-    const employers = formData.borrowers[0].employers || [];
+    // Get current employers safely
+    const employers = formData.borrowers?.[0]?.employers || [];
 
     const newEmployers = [
       ...employers,
@@ -205,8 +205,8 @@ const BorrowerStep = ({
   };
 
   const removeEmployer = (index) => {
-    // Get current employers
-    const employers = [...(formData.borrowers[0].employers || [])];
+    // Get current employers safely
+    const employers = [...(formData.borrowers?.[0]?.employers || [])];
     employers.splice(index, 1);
 
     handleChange({

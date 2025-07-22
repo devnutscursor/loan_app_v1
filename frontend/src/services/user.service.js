@@ -1,4 +1,4 @@
-import ApiService from './api.service';
+import ApiService from './api';
 import AuditLogService from './auditLog.service';
 
 /**
@@ -14,7 +14,7 @@ class UserService {
    */
   async getUserProfile() {
     try {
-      const response = await ApiService.get('/api/v1/users/profile');
+      const response = await ApiService.get('/users/profile');
       
       return {
         success: true,
@@ -36,7 +36,7 @@ class UserService {
    */
   async updateProfile(profileData) {
     try {
-      const response = await ApiService.put('/api/v1/users/profile', profileData);
+      const response = await ApiService.put('/users/profile', profileData);
       
       // Log the profile update if audit log service is available
       if (AuditLogService?.createLog) {
@@ -56,6 +56,50 @@ class UserService {
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to update profile'
+      };
+    }
+  }
+
+  /**
+   * Request email change
+   * @param {string} newEmail - New email address
+   * @returns {Promise<Object>} Response with request status
+   */
+  async requestEmailChange(newEmail) {
+    try {
+      const response = await ApiService.post('/users/request-email-change', { newEmail });
+
+      return {
+        success: true,
+        message: response.data?.message || 'Verification email sent successfully'
+      };
+    } catch (error) {
+      console.error('Request email change error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to request email change'
+      };
+    }
+  }
+
+  /**
+   * Verify email change with token
+   * @param {string} token - Verification token
+   * @returns {Promise<Object>} Response with verification status
+   */
+  async verifyEmailChange(token) {
+    try {
+      const response = await ApiService.get(`/auth/verify-email-change/${token}`);
+
+      return {
+        success: true,
+        message: response.data?.message || 'Email address updated successfully'
+      };
+    } catch (error) {
+      console.error('Verify email change error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to verify email change'
       };
     }
   }
@@ -128,7 +172,7 @@ class UserService {
       const formData = new FormData();
       formData.append('profilePicture', file);
       
-      const response = await ApiService.post('/api/v1/users/profile/picture', formData, {
+      const response = await ApiService.post('/users/profile/picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -164,7 +208,7 @@ class UserService {
       const formData = new FormData();
       formData.append('profilePicture', imageFile);
       
-      const response = await ApiService.post('/api/v1/users/profile-picture', formData, {
+      const response = await ApiService.post('/users/profile-picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

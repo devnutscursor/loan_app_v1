@@ -16,4 +16,7 @@ router.put('/me', userController.updateCurrentUser);
 router.get('/profile', userController.getCurrentUser);
 router.put('/profile', userController.updateCurrentUser);
 
+// Email change routes
+router.post('/request-email-change', userController.requestEmailChange);
+
 module.exports = router;

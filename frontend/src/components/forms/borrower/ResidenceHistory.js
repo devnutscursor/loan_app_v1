@@ -37,7 +37,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
     setYearsAtAddress(borrower?.currentAddress?.yearsAtAddress || '');
     setMonthsAtAddress(borrower?.currentAddress?.monthsAtAddress || '');
     setSameAsCurrentAddress(borrower?.mailingAddress?.sameAsCurrentAddress || false);
-  }, [borrower.currentAddress, borrower.mailingAddress]);
+  }, [borrower?.currentAddress, borrower?.mailingAddress]);
 
   // Handle form field changes - pass the event directly to parent
   const handleChange = (e) => {
@@ -78,7 +78,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
         break;
     }
     
-    // Send to parent component with proper path
+    // Send to parent component with dot notation for currentAddress
     onChange({
       target: {
         name: `currentAddress.${name === 'ownershipStatus' ? 'housingStatus' : name}`,
@@ -91,7 +91,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
   const handleMailingAddressChange = (e) => {
     const { name, value } = e.target;
     
-    // Send to parent component with proper path
+    // Send to parent component with dot notation for mailingAddress
     onChange({
       target: {
         name: `mailingAddress.${name}`,
@@ -124,7 +124,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
       };
     }
     
-    // Send to parent component
+    // Send to parent component with dot notation for mailingAddress
     onChange({
       target: {
         name: 'mailingAddress',

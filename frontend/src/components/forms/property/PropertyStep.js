@@ -15,7 +15,7 @@ import theme from "../../../styles/theme";
  * @param {Object} props.errors - Form validation errors
  * @returns {JSX.Element} PropertyStep component with tabs for navigation
  */
-const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = [], errors = {} }) => {
+const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = [], errors = {}, userType = 'borrower' }) => {
   const [activeTab, setActiveTab] = useState('propertyInformation');
   const { propertyInfo, loanInfo } = formData;
 
@@ -135,6 +135,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             propertyInfo={propertyInfo || {}}
             onChange={handleFieldChange}
             errors={errors}
+            userType={userType}
           />
         );
       case 'loanDetails':
@@ -144,6 +145,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             onChange={handleFieldChange}
             loanTypes={loanTypes}
             errors={errors}
+            userType={userType}
           />
         );
       default:

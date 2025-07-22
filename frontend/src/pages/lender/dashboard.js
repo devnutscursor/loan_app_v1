@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MainLayout from '../../components/layout/MainLayout';
 import XMLLoanUpload from '../../components/lender/loans/XMLLoanUpload_new';
+import NewLoanModal from '../../components/lender/loans/NewLoanModal';
 import { 
   BarChart3, 
   Users, 
@@ -288,6 +289,7 @@ const LenderDashboard = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [showLoanModal, setShowLoanModal] = useState(false);
+  const [isXMLUploadOpen, setIsXMLUploadOpen] = useState(false);
   const [stats, setStats] = useState({
     totalLoans: 0,
     approvedLoans: 0,
@@ -487,6 +489,18 @@ const LenderDashboard = () => {
 
   const handleViewLoan = (loanId) => {
     router.push(`/lender/loans/${loanId}`);
+  };
+
+  // Handler for NewLoanModal XML upload option
+  const handleXMLUploadOption = () => {
+    setShowLoanModal(false);
+    setIsXMLUploadOpen(true);
+  };
+
+  // Handler for NewLoanModal manual creation option
+  const handleManualCreateOption = () => {
+    setShowLoanModal(false);
+    router.push('/lender/loans/create');
   };
 
   const formatCurrency = (amount) => {
@@ -950,12 +964,20 @@ const LenderDashboard = () => {
           </>
         )}
       </div>
+      {/* New Loan Modal */}
+      <NewLoanModal
+        isOpen={showLoanModal}
+        onClose={() => setShowLoanModal(false)}
+        onXMLUpload={handleXMLUploadOption}
+        onManualCreate={handleManualCreateOption}
+      />
+
       {/* XML Loan Upload Modal */}
       <XMLLoanUpload 
-        isOpen={showLoanModal} 
-        onClose={() => setShowLoanModal(false)} 
+        isOpen={isXMLUploadOpen} 
+        onClose={() => setIsXMLUploadOpen(false)} 
         onSuccess={() => {
-          setShowLoanModal(false);
+          setIsXMLUploadOpen(false);
           toast.success('Loan created successfully');
           setShouldRefreshDashboard(true); // Trigger dashboard refresh
         }} 

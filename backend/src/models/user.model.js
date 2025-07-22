@@ -78,6 +78,20 @@ const userSchema = new mongoose.Schema({
   emailVerificationExpires: {
     type: Date,
     select: true
+  },
+  pendingEmail: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    select: true
+  },
+  emailChangeToken: {
+    type: String,
+    select: true
+  },
+  emailChangeExpires: {
+    type: Date,
+    select: true
   }
 }, {
   timestamps: true

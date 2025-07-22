@@ -1648,3 +1648,201 @@ exports.getLenderActivities = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * Create a new borrower for the current lender (for manual loan creation)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.createBorrowerForLender = async (req, res, next) => {
+  try {
+    // Find the lender profile
+    const lender = await Lender.findOne({ user: req.user._id });
+    
+    if (!lender) {
+      return next(new ApiError('Lender profile not found', 404));
+    }
+
+    const { firstName, lastName, email, phone, dateOfBirth, ssn, maritalStatus, citizenship, currentAddress, employment } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email) {
+      return next(new ApiError('First name, last name, and email are required', 400));
+    }
+
+    // Helper function to map citizenship values
+    const mapCitizenship = (citizenship) => {
+      const citizenshipMap = {
+        'USCitizen': 'US Citizen',
+        'US Citizen': 'US Citizen',
+        'PermanentResidentAlien': 'Permanent Resident',
+        'Permanent Resident': 'Permanent Resident',
+        'NonPermanentResidentAlien': 'Non-Permanent Resident',
+        'Non-Permanent Resident': 'Non-Permanent Resident'
+      };
+      return citizenshipMap[citizenship] || citizenship;
+    };
+
+    // Helper function to map employment status
+    const mapEmploymentStatus = (status) => {
+      const statusMap = {
+        'Full-Time': 'Full-time',
+        'Part-Time': 'Part-time',
+        'Self-Employed': 'Self-employed',
+        'Retired': 'Retired',
+        'Unemployed': 'Unemployed'
+      };
+      return statusMap[status] || status;
+    };
+
+    // Check if a user with this email already exists
+    const existingUser = await User.findOne({ email: email });
+    
+    if (existingUser) {
+      // Check if this user already has a borrower profile
+      const existingBorrower = await Borrower.findOne({ user: existingUser._id });
+      
+      if (existingBorrower) {
+        // If the borrower already belongs to this lender, return the existing borrower
+        if (existingBorrower.lender.equals(lender._id)) {
+          return res.status(200).json({
+            status: 'success',
+            data: existingBorrower,
+            message: 'Borrower already exists for this lender'
+          });
+        } else {
+          return next(new ApiError('A borrower with this email already exists under a different lender', 400));
+        }
+      }
+      
+      // User exists but no borrower profile - create borrower profile for existing user
+      const borrowerData = {
+        user: existingUser._id,
+        lender: lender._id
+      };
+
+      // Add optional fields if provided
+      if (dateOfBirth) borrowerData.dateOfBirth = new Date(dateOfBirth);
+      if (ssn) borrowerData.ssn = ssn;
+      if (maritalStatus) borrowerData.maritalStatus = maritalStatus;
+      if (citizenship) borrowerData.citizenship = mapCitizenship(citizenship);
+      
+      // Handle address - only add if we have the required fields
+      if (currentAddress && currentAddress.streetAddress && currentAddress.city && currentAddress.state && currentAddress.zipCode) {
+        borrowerData.primaryAddress = {
+          addressLine1: currentAddress.streetAddress,
+          addressLine2: currentAddress.aptSteNum || '',
+          city: currentAddress.city,
+          state: currentAddress.state,
+          zipCode: currentAddress.zipCode,
+          ownershipStatus: currentAddress.ownershipStatus || 'Own',
+          yearsAtAddress: currentAddress.yearsAtAddress || 0,
+          monthsAtAddress: currentAddress.monthsAtAddress || 0
+        };
+      }
+      
+      // Handle employment - only add if we have the required fields
+      if (employment && employment.companyName && employment.jobTitle && employment.employmentStatus) {
+        borrowerData.employment = {
+          currentEmployment: {
+            employerName: employment.companyName,
+            jobTitle: employment.jobTitle,
+            employmentStatus: mapEmploymentStatus(employment.employmentStatus),
+            startDate: employment.startDate ? new Date(employment.startDate) : new Date(),
+            isSelfEmployed: employment.employmentStatus === 'Self-employed'
+          }
+        };
+      }
+
+      const borrower = await Borrower.create(borrowerData);
+
+      // Populate the user information for the response
+      await borrower.populate('user', 'firstName lastName email phone');
+
+      logger.info(`Lender ${lender._id} created borrower profile for existing user ${existingUser._id}`);
+
+      return res.status(201).json({
+        status: 'success',
+        data: borrower,
+        message: 'Borrower profile created for existing user'
+      });
+    }
+
+    // Create a new user account for the borrower
+    const userData = {
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone || '',
+      role: 'borrower',
+      // Generate a temporary password - the borrower will need to set their own password later
+      password: Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8),
+      isActive: true
+    };
+
+    const user = await User.create(userData);
+
+    // Create the borrower profile
+    const borrowerData = {
+      user: user._id,
+      lender: lender._id
+    };
+
+    // Add optional fields if provided
+    if (dateOfBirth) borrowerData.dateOfBirth = new Date(dateOfBirth);
+    if (ssn) borrowerData.ssn = ssn;
+    if (maritalStatus) borrowerData.maritalStatus = maritalStatus;
+    if (citizenship) borrowerData.citizenship = mapCitizenship(citizenship);
+    
+    // Handle address - only add if we have the required fields
+    if (currentAddress && currentAddress.streetAddress && currentAddress.city && currentAddress.state && currentAddress.zipCode) {
+      borrowerData.primaryAddress = {
+        addressLine1: currentAddress.streetAddress,
+        addressLine2: currentAddress.aptSteNum || '',
+        city: currentAddress.city,
+        state: currentAddress.state,
+        zipCode: currentAddress.zipCode,
+        ownershipStatus: currentAddress.ownershipStatus || 'Own',
+        yearsAtAddress: currentAddress.yearsAtAddress || 0,
+        monthsAtAddress: currentAddress.monthsAtAddress || 0
+      };
+    }
+    
+    // Handle employment - only add if we have the required fields
+    if (employment && employment.companyName && employment.jobTitle && employment.employmentStatus) {
+      borrowerData.employment = {
+        currentEmployment: {
+          employerName: employment.companyName,
+          jobTitle: employment.jobTitle,
+          employmentStatus: mapEmploymentStatus(employment.employmentStatus),
+          startDate: employment.startDate ? new Date(employment.startDate) : new Date(),
+          isSelfEmployed: employment.employmentStatus === 'Self-employed'
+        }
+      };
+    }
+
+    const borrower = await Borrower.create(borrowerData);
+
+    // Populate the user information for the response
+    await borrower.populate('user', 'firstName lastName email phone');
+
+    logger.info(`Lender ${lender._id} created new borrower ${borrower._id} with user ${user._id}`);
+
+    res.status(201).json({
+      status: 'success',
+      data: borrower,
+      message: 'Borrower created successfully'
+    });
+
+  } catch (error) {
+    console.error('Error creating borrower for lender:', error);
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return next(new ApiError('A user with this email already exists', 400));
+    }
+    
+    next(error);
+  }
+};

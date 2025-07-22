@@ -1,36 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { FiUser, FiMail, FiPhone, FiSave, FiCamera, FiBriefcase } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiSave, FiBriefcase } from 'react-icons/fi';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import { UserService } from '../../services';
-import Image from 'next/image';
-
-const ProfileField = ({ label, name, value, onChange, type = 'text', disabled = false, icon: Icon, required = false }) => (
-  <div className="mb-5">
-    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor={name}>
-      {label} {required && <span className="text-primary">*</span>}
-    </label>
-    <div className="relative rounded-md">
-      {Icon && (
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Icon className={`h-5 w-5 ${disabled ? 'text-gray-400' : 'text-primary/70'}`} aria-hidden="true" />
-        </div>
-      )}
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className={`${Icon ? 'pl-10' : ''} ${
-          disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' : 'bg-white border-gray-300 hover:border-primary/50'
-        } block w-full rounded-lg border py-2.5 px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-200 shadow-sm`}
-      />
-    </div>
-  </div>
-);
+import EmailChangeModal from '../../components/common/EmailChangeModal';
+import ProfileField from '../../components/common/ProfileField';
 
 const ProfilePage = () => {
   const [form, setForm] = useState({ 
@@ -40,9 +15,10 @@ const ProfilePage = () => {
     phone: '',
     role: ''
   });
-  const [profileImage, setProfileImage] = useState('/images/default-avatar.png');
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [emailChangeModalOpen, setEmailChangeModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -72,9 +48,13 @@ const ProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const res = await UserService.updateProfile(form);
+    
+    // Only send fields that can be updated directly (exclude email)
+    const { email, role, ...updateData } = form;
+    
+    const res = await UserService.updateProfile(updateData);
     if (res.success) {
-      toast.success('Profile updated');
+      toast.success('Profile updated successfully');
     } else {
       toast.error(res.message || 'Update failed');
     }
@@ -136,15 +116,16 @@ const ProfilePage = () => {
                         required
                       />
                     
-                      <ProfileField 
-                        label="Email" 
-                        name="email" 
+                      <ProfileField
+                        label="Email"
+                        name="email"
                         type="email"
                         disabled
-                        value={form.email} 
+                        value={form.email}
                         onChange={handleChange}
-  
                         icon={FiMail}
+                        showEditIcon={true}
+                        onEditClick={() => setEmailChangeModalOpen(true)}
                       />
                       <ProfileField 
                         label="Phone" 
@@ -194,6 +175,17 @@ const ProfilePage = () => {
           </div>
         </div>
       </MainLayout>
+
+      {/* Email Change Modal */}
+      <EmailChangeModal
+        isOpen={emailChangeModalOpen}
+        onClose={() => setEmailChangeModalOpen(false)}
+        currentEmail={form.email}
+        onEmailChanged={(newEmail) => {
+          setForm(prev => ({ ...prev, email: newEmail }));
+          toast.success('Email address updated successfully!');
+        }}
+      />
     </ProtectedRoute>
   );
 };

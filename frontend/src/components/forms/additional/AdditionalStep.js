@@ -37,8 +37,8 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
 
   // Validate the current tab
   const validateTab = (tab) => {
-    const validationErrors = validateStep(4, tab);
-    return Object.keys(validationErrors).length === 0;
+    // validateStep returns a boolean (true if valid, false if invalid)
+    return validateStep(4, tab);
   };
 
   // Get tab completion status for showing completion icons

@@ -1,5 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/auth.controller');
+const userController = require('../controllers/user.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -15,6 +16,9 @@ router.post('/reset-password', authController.resetPassword);
 // Email verification routes
 router.get('/verify-email/:token', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerificationEmail);
+
+// Email change verification route (public)
+router.get('/verify-email-change/:token', userController.verifyEmailChange);
 
 // Protected routes
 router.use(authenticate);

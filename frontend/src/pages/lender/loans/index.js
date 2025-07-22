@@ -6,20 +6,17 @@ import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import { lenderService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
 import XMLLoanUpload from '../../../components/lender/loans/XMLLoanUpload_new';
+import NewLoanModal from '../../../components/lender/loans/NewLoanModal';
 import {
   FileText,
-  User,
   Calendar,
   DollarSign,
   Search,
   ChevronDown,
-  Filter,
   Plus,
   X,
-  Clock,
   CreditCard,
-  ExternalLink,
-  HomeIcon
+  ExternalLink
 } from 'lucide-react';
 
 // Skeleton Loader Component
@@ -57,9 +54,6 @@ const SkeletonLoader = () => (
   </div>
 );
 
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
-
 const formatDate = (dateString) =>
   new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -78,6 +72,7 @@ const LenderLoans = () => {
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   const [isXMLUploadOpen, setIsXMLUploadOpen] = useState(false);
+  const [isNewLoanModalOpen, setIsNewLoanModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchLoans = async () => {
@@ -109,10 +104,10 @@ const LenderLoans = () => {
     }
   }, [borrowerId, router.isReady]);
 
-  // Check for newLoan query parameter to automatically open the XML upload modal
+  // Check for newLoan query parameter to automatically open the new loan modal
   useEffect(() => {
     if (router.isReady && router.query.newLoan === 'true') {
-      setIsXMLUploadOpen(true);
+      setIsNewLoanModalOpen(true);
       // Clean up the URL by removing the query parameter
       router.replace('/lender/loans', undefined, { shallow: true });
     }
@@ -222,6 +217,18 @@ const LenderLoans = () => {
     }
   };
 
+  // Handler for NewLoanModal XML upload option
+  const handleXMLUploadOption = () => {
+    setIsNewLoanModalOpen(false);
+    setIsXMLUploadOpen(true);
+  };
+
+  // Handler for NewLoanModal manual creation option
+  const handleManualCreateOption = () => {
+    setIsNewLoanModalOpen(false);
+    router.push('/lender/loans/create');
+  };
+
   return (
     <ProtectedRoute allowedRoles={['lender']}>
       <MainLayout>
@@ -239,7 +246,7 @@ const LenderLoans = () => {
             </p>            </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setIsXMLUploadOpen(true)}
+                  onClick={() => setIsNewLoanModalOpen(true)}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -332,7 +339,7 @@ const LenderLoans = () => {
                       : 'Get started by creating a new loan application for your borrowers.'}
                   </p>                  <div className="mt-6">
                     <button
-                      onClick={() => setIsXMLUploadOpen(true)}
+                      onClick={() => setIsNewLoanModalOpen(true)}
                       className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       <Plus className="h-5 w-5 mr-2" aria-hidden="true" />
@@ -453,6 +460,14 @@ const LenderLoans = () => {
               )}            </div>
           )}
         </div>
+
+        {/* New Loan Modal */}
+        <NewLoanModal
+          isOpen={isNewLoanModalOpen}
+          onClose={() => setIsNewLoanModalOpen(false)}
+          onXMLUpload={handleXMLUploadOption}
+          onManualCreate={handleManualCreateOption}
+        />
 
         {/* XML Upload Modal */}
         <XMLLoanUpload

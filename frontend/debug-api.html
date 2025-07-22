@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug</title>
+</head>
+<body>
+    <h1>API Debug</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Check if server is running
+            try {
+                const response = await fetch('http://localhost:5000/');
+                const data = await response.json();
+                results.innerHTML += `<p><strong>Server Health:</strong> ${response.status} - ${JSON.stringify(data)}</p>`;
+            } catch (error) {
+                results.innerHTML += `<p><strong>Server Health Error:</strong> ${error.message}</p>`;
+            }
+            
+            // Test 2: Check users endpoint without auth
+            try {
+                const response = await fetch('http://localhost:5000/api/v1/users/profile');
+                const data = await response.text();
+                results.innerHTML += `<p><strong>Users Profile (no auth):</strong> ${response.status} - ${data}</p>`;
+            } catch (error) {
+                results.innerHTML += `<p><strong>Users Profile Error:</strong> ${error.message}</p>`;
+            }
+            
+            // Test 3: Check email change endpoint without auth
+            try {
+                const response = await fetch('http://localhost:5000/api/v1/users/request-email-change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ newEmail: 'test@example.com' })
+                });
+                const data = await response.text();
+                results.innerHTML += `<p><strong>Email Change (no auth):</strong> ${response.status} - ${data}</p>`;
+            } catch (error) {
+                results.innerHTML += `<p><strong>Email Change Error:</strong> ${error.message}</p>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

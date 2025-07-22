@@ -40,8 +40,8 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
 
   // Validate the current tab
   const validateTab = (tab) => {
-    const validationErrors = validateStep(3, tab);
-    return Object.keys(validationErrors).length === 0;
+    // validateStep returns a boolean (true if valid, false if invalid)
+    return validateStep(3, tab);
   };
 
   // Get tab completion status for showing completion icons

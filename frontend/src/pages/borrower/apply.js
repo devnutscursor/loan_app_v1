@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import { LoanService } from '../../services';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
+import { useAuth } from '../../contexts/AuthContext';
 import Link from 'next/link';
 import BorrowerStep from '../../components/forms/borrower/BorrowerStep';
 import PropertyStep from '../../components/forms/property/PropertyStep';
@@ -16,7 +17,12 @@ import StepNavigator from '../../components/ui/StepNavigator';
 
 const LoanApplication = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const { draft } = router.query;
+  
+  // User context detection for lender vs borrower usage
+  const isLenderContext = router.pathname.includes('/lender/');
+  const userRole = user?.role;
   const [currentStep, setCurrentStep] = useState(1);
   const [currentSubStep, setCurrentSubStep] = useState('personalDetails'); // For Step 1 navigation
   const [loading, setLoading] = useState(false);
@@ -186,6 +192,43 @@ const LoanApplication = () => {
   useEffect(() => {
     console.log('Form data:', formData);
   }, [formData]);
+
+  // Ensure form data structure is properly initialized
+  useEffect(() => {
+    setFormData(prevData => {
+      // Ensure borrowers array exists and has at least one borrower
+      if (!prevData.borrowers || !Array.isArray(prevData.borrowers) || prevData.borrowers.length === 0) {
+        console.log('Initializing borrowers array - was missing or empty');
+        return {
+          ...prevData,
+          borrowers: [{
+            firstName: '',
+            middleName: '',
+            lastName: '',
+            suffix: '',
+            maritalStatus: '',
+            dateOfBirth: '',
+            ssn: '',
+            citizenship: '',
+            phone: '',
+            email: '',
+            dependents: [],
+            currentAddress: {},
+            mailingAddress: {
+              sameAsCurrentAddress: false,
+              aptSteNum: '',
+              city: '',
+              state: '',
+              zipCode: ''
+            },
+            previousAddresses: [],
+            employers: []
+          }]
+        };
+      }
+      return prevData;
+    });
+  }, []);
 
   // Load draft when router is ready and draft ID is available
   useEffect(() => {
@@ -383,8 +426,8 @@ const LoanApplication = () => {
     if (window._tempValidateOverride || validateStep(currentStep)) {
       setCurrentStep(currentStep + 1);
     } else {
-      // More detailed error message
-      toast.error('Please complete all required fields');
+      // Enhanced error message for better user experience
+      toast.error('Please complete all required fields for the loan application');
       console.log('Validation errors:', errors);
     }
   };
@@ -399,6 +442,7 @@ const LoanApplication = () => {
     setLoading(true);
     console.log('Form submission started - draftId:', draftId);
     console.log('Is existing loan?', formData.isExistingLoan);
+    console.log('Lender context detection - isLenderContext:', isLenderContext, 'userRole:', userRole);
     
     try {
       // Validate all steps before submission
@@ -416,12 +460,13 @@ const LoanApplication = () => {
         return;
       }
       
-      // Process the borrowers data for submission
+      // Process the borrowers data for submission - safely access borrower data
+      const primaryBorrower = formData.borrowers?.[0] || {};
       const borrowerData = {
-        ...(formData.borrowers[0] || {}),
-        dependents: Array.isArray(formData.borrowers?.[0]?.dependents) ? formData.borrowers[0].dependents : [],
-        employers: Array.isArray(formData.borrowers?.[0]?.employers) ? formData.borrowers[0].employers : [],
-        previousAddresses: Array.isArray(formData.borrowers?.[0]?.previousAddresses) ? formData.borrowers[0].previousAddresses : []
+        ...primaryBorrower,
+        dependents: Array.isArray(primaryBorrower.dependents) ? primaryBorrower.dependents : [],
+        employers: Array.isArray(primaryBorrower.employers) ? primaryBorrower.employers : [],
+        previousAddresses: Array.isArray(primaryBorrower.previousAddresses) ? primaryBorrower.previousAddresses : []
       };
       
       // Transform propertyOwned data to propertiesOwned array
@@ -490,6 +535,13 @@ const LoanApplication = () => {
         // For the embedded borrowerDetails field - direct copy of the borrowers[0] data
         borrowerDetails: borrowerData,
         
+        // Add lender-specific fields when used by lender
+        ...(isLenderContext && userRole === 'lender' && {
+          submittedByLender: true,
+          lenderId: user._id,
+          submissionSource: 'manual'
+        }),
+        
         // Property information (from Step 2)
         property: {
           addressLine1: formData.propertyInfo?.address?.streetAddress || 'To be updated',
@@ -504,8 +556,8 @@ const LoanApplication = () => {
           yearBuilt: formData.propertyInfo?.yearBuilt || new Date().getFullYear(),
           propertyValue: parseFloat(formData.propertyInfo?.propertyValue) || 100000,
           isNewConstruction: formData.propertyInfo?.isNewConstruction || false,
-          // Fields for property with accepted offer
-          hasAcceptedOffer: formData.propertyInfo?.hasAcceptedOffer || false,
+          // Fields for property with accepted offer - convert hasAcceptedOffer to boolean, keep others as strings
+          hasAcceptedOffer: formData.propertyInfo?.hasAcceptedOffer === 'Yes' || formData.propertyInfo?.hasAcceptedOffer === true,
           contractPurchasePrice: parseFloat(formData.propertyInfo?.contractPurchasePrice) || 0,
           isMixedUse: formData.propertyInfo?.isMixedUse || 'No',
           isManufactured: formData.propertyInfo?.isManufactured || 'No',
@@ -577,7 +629,7 @@ const LoanApplication = () => {
       
       // Make API call to submit the loan application
       let response;
-      
+
       // If we're editing an existing loan (with loan number), use updateLoan instead
       const isLoanNumber = draftId && (/^\d{11}$/.test(draftId) || draftId.startsWith('DRAFT-') || draftId.startsWith('LN'));
       if (formData.isExistingLoan && isLoanNumber) {
@@ -585,8 +637,9 @@ const LoanApplication = () => {
         // For loan numbers, we need to use the loan number, not the MongoDB ID
         response = await LoanService.updateLoan(draftId, submissionData);
       } else {
-        // Otherwise create a new loan
-        console.log('Creating new loan application');
+        // Create a new loan using standard borrower submission method
+        // Note: borrowers cannot use submitLoanForLender as it requires lender permissions
+        console.log('Creating new loan application using standard borrower method');
         response = await LoanService.submitLoan(submissionData);
       }
       
@@ -607,8 +660,20 @@ const LoanApplication = () => {
           console.log('Draft deleted successfully, please fix the issues and shouldn\'t create a new application instead edit the existing one');
         }
         
-        // Redirect to loans page
-        router.push('/borrower/loans');
+        // Conditional redirect based on user context
+        if (isLenderContext && userRole === 'lender') {
+          // Lenders go to loan details page
+          const loanId = response.data._id;
+          if (loanId) {
+            router.push(`/lender/loans/${loanId}`);
+          } else {
+            // Fallback to lender loans list if no loan ID
+            router.push('/lender/loans');
+          }
+        } else {
+          // Borrowers go to confirmation page (existing behavior)
+          router.push('/borrower/loans');
+        }
       } else {
         toast.error(response.message || 'Failed to submit loan application');
       }
@@ -620,10 +685,10 @@ const LoanApplication = () => {
     }
   };
 
-  // Fill form with test data (for development/testing only)
+  // Fill form with test data (for development/testing only) - Enhanced version matching lender page
   const fillWithTestData = () => {
-    console.log('FILL TEST DATA - Starting to fill form with test data');
-    
+    console.log('FILL TEST DATA - Starting to fill form with comprehensive test data');
+
     const testData = {
       // Purpose field is required for auto-save
       purpose: 'Purchase',
@@ -634,70 +699,95 @@ const LoanApplication = () => {
         {
           // Personal details
           firstName: 'John',
-          middleName: 'A',
-          lastName: 'Smith',
-          suffix: 'Jr',
+          middleName: 'Michael',
+          lastName: 'Doe',
+          suffix: 'Jr.',
           maritalStatus: 'Married',
-          dateOfBirth: '1980-01-01',
+          dateOfBirth: '1985-06-15',
           ssn: '123-45-6789',
-          citizenship: 'USCitizen',
-          phone: '(123) 456-7890',
-          email: 'test@example.com',
-          
+          citizenship: 'US Citizen',
+          phone: '555-123-4567',
+          email: 'john.doe@example.com',
+
           // Dependents - ensure we have proper array data
           dependents: [
-            { name: 'Child 1', age: 10, relationship: 'Child' },
-            { name: 'Child 2', age: 8, relationship: 'Child' }
+            {
+              id: 'dep1',
+              name: 'Jane Doe',
+              age: 8,
+              relationship: 'Child'
+            },
+            {
+              id: 'dep2',
+              name: 'Jimmy Doe',
+              age: 5,
+              relationship: 'Child'
+            }
           ],
           
           // Address information
           currentAddress: {
-            streetAddress: '123 Main St',
-            aptSteNum: 'Apt 4B',
-            city: 'Anytown',
-            state: 'CA',
-            zipCode: '90210',
+            streetAddress: '123 Main Street',
+            aptSteNum: 'Apt 2B',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62701',
             ownershipStatus: 'Own',
-            yearsAtAddress: 3,
-            monthsAtAddress: 6
+            yearsAtAddress: 5,
+            monthsAtAddress: 3
           },
           mailingAddress: {
-            sameAsCurrentAddress: true,
-            streetAddress: '123 Main St',
-            aptSteNum: 'Apt 4B',
-            city: 'Anytown',
-            state: 'CA',
-            zipCode: '90210'
+            sameAsCurrentAddress: false,
+            streetAddress: 'PO Box 456',
+            aptSteNum: '',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62702'
           },
           // Previous addresses - ensure proper array data
           previousAddresses: [
             {
-              streetAddress: '456 Old Rd',
+              streetAddress: '456 Oak Street',
               aptSteNum: '',
-              city: 'Previous City',
-              state: 'NY',
-              zipCode: '10001',
-              yearsAtAddress: 2,
-              monthsAtAddress: 4,
+              city: 'Chicago',
+              state: 'IL',
+              zipCode: '60601',
+              yearsAtAddress: 3,
+              monthsAtAddress: 0,
               ownershipStatus: 'Rent'
             }
           ],
-          
+
           // Employment history - ensure proper array data
           employers: [
             {
-              companyName: 'ACME Inc',
-              companyPhone: '(987) 654-3210',
+              companyName: 'Tech Solutions Inc',
+              companyPhone: '(555) 987-6543',
               employmentStatus: 'Full-Time',
-              jobTitle: 'Software Engineer',
+              jobTitle: 'Senior Software Engineer',
+              startDate: '2018-03-15',
+              yearsInProfession: 6,
+              monthsInProfession: 8,
+              streetAddress: '789 Corporate Plaza',
+              aptSteNum: 'Suite 1200',
+              city: 'Springfield',
+              state: 'IL',
+              zipCode: '62701'
+            },
+            {
+              companyName: 'Previous Corp',
+              companyPhone: '(555) 123-9876',
+              employmentStatus: 'Full-Time',
+              jobTitle: 'Software Developer',
               startDate: '2015-01-01',
-              yearsInProfession: 8,
+              endDate: '2018-03-14',
+              yearsInProfession: 3,
               monthsInProfession: 2,
-              streetAddress: '456 Corporate Blvd',
-              aptSteNum: 'Suite 300',
-              city: 'Business City',
-              state: 'CA',
-              zipCode: '90210'
+              streetAddress: '321 Business Ave',
+              aptSteNum: '',
+              city: 'Chicago',
+              state: 'IL',
+              zipCode: '60601'
             }
           ]
         }
@@ -706,8 +796,8 @@ const LoanApplication = () => {
       // Property & Loan Info
       propertyInfo: {
         address: {
-          streetAddress: '789 Dream Ave',
-          aptSteNum: '', 
+          streetAddress: '789 Dream Avenue',
+          aptSteNum: '',
           city: 'Paradise City',
           state: 'FL',
           zipCode: '33101',
@@ -718,82 +808,131 @@ const LoanApplication = () => {
         occupancyType: 'Primary Residence',
         numberOfUnits: 1,
         yearBuilt: 2010,
-        isNewConstruction: false
+        isNewConstruction: false,
+        hasAcceptedOffer: 'Yes',
+        contractPurchasePrice: '450000',
+        isMixedUse: 'No',
+        isManufactured: 'No',
+        proposedRentalIncome: '0'
       },
-      
+
       loanInfo: {
         loanType: 'Purchase',
         loanAmount: '360000',
-        purchasePrice: '360000',
+        purchasePrice: '450000',
         downPayment: '90000',
+        loanPurpose: 'Purchase',
+        loanTerm: '30',
+        interestRate: '6.5'
       },
       
-      // Financial Information
+      // Financial Information - Enhanced assets structure
       assets: {
-        bankAccounts: [
+        checkingAndSavings: [
           {
+            id: 'asset1',
             accountType: 'Checking',
-            financialInstitution: 'Big Bank',
+            financialInstitution: 'First National Bank',
             accountNumber: 'XXXX1234',
-            balance: 25000
+            balance: '25000'
           },
           {
+            id: 'asset2',
             accountType: 'Savings',
-            financialInstitution: 'Credit Union',
+            financialInstitution: 'Community Credit Union',
             accountNumber: 'XXXX5678',
-            balance: 50000
+            balance: '75000'
+          }
+        ],
+        stocksAndBonds: [
+          {
+            id: 'stock1',
+            companyName: 'Tech Corp',
+            numberOfShares: '100',
+            sharePrice: '150',
+            totalValue: '15000'
+          }
+        ],
+        lifeInsurance: [
+          {
+            id: 'insurance1',
+            faceAmount: '500000',
+            cashValue: '25000'
+          }
+        ],
+        retirementFunds: [
+          {
+            id: 'retirement1',
+            accountType: '401(k)',
+            currentValue: '150000',
+            vestingPercentage: '100'
           }
         ],
         otherAssets: [
           {
-            assetType: 'Investment',
-            description: '401(k)',
-            value: 150000
-          },
-          {
+            id: 'other1',
             assetType: 'Vehicle',
             description: '2022 Tesla Model 3',
-            value: 40000
+            value: '45000'
           }
         ]
       },
       
-      // Income details
+      // Income details - Enhanced structure
       income: {
-        baseIncome: 9500,
-        overtime: 1200,
-        commissions: 2000,
-        bonuses: 5000,
-        militaryEntitlements: 0,
+        baseIncome: '9500',
+        overtime: '1200',
+        commissions: '2000',
+        bonuses: '5000',
+        militaryEntitlements: '0',
         otherIncome: [
           {
+            id: 'income1',
             sourceType: 'Rental Income',
-            amount: 1800,
-            description: 'Rental property at 123 Rental St'
+            amount: '1800',
+            description: 'Rental property income'
           },
           {
+            id: 'income2',
             sourceType: 'Investment Income',
-            amount: 500,
-            description: 'Dividend payments'
+            amount: '500',
+            description: 'Dividend and interest income'
           }
         ]
       },
       
-      // Debts
+      // Debts - Enhanced structure
       debts: [
-        
+        {
+          id: 'debt1',
+          creditorName: 'Credit Card Company',
+          accountNumber: 'XXXX9876',
+          monthlyPayment: '250',
+          unpaidBalance: '5000',
+          debtType: 'Credit Card'
+        },
+        {
+          id: 'debt2',
+          creditorName: 'Auto Finance Corp',
+          accountNumber: 'XXXX5432',
+          monthlyPayment: '450',
+          unpaidBalance: '18000',
+          debtType: 'Auto Loan'
+        }
       ],
-      
-      // Expenses
+
+      // Expenses - Enhanced structure
       expenses: [
         {
+          id: 'expense1',
           expenseType: 'Utilities',
-          amount: 300,
+          amount: '300',
           description: 'Monthly utilities'
         },
         {
+          id: 'expense2',
           expenseType: 'Insurance',
-          amount: 200,
+          amount: '200',
           description: 'Auto and home insurance'
         }
       ],
@@ -899,16 +1038,135 @@ const LoanApplication = () => {
     // Log message and set toast
     console.log('FILL TEST DATA - Form data set successfully. Navigation buttons should now work.');
     console.log('FILL TEST DATA - You can run window.goToReviewStep() in console to jump to final step');
-    toast.success('Form filled with test data. You can now navigate using the step buttons.');
-    
-    // Attempt to automatically navigate to review step (last step)
-    // setTimeout(() => {
-    //   try {
-    //     console.log('Current formData after fill:', formData);
-    //   } catch (err) {
-    //     console.error('Error logging form data:', err);
-    //   }
-    // }, 500);
+
+    toast.success('Form filled with comprehensive test data!');
+  };
+
+  // Clear form function - Enhanced version matching lender page
+  const clearForm = () => {
+    console.log('CLEAR FORM - Resetting form to initial state');
+
+    setFormData({
+      borrowers: [
+        {
+          firstName: '',
+          middleName: '',
+          lastName: '',
+          suffix: '',
+          maritalStatus: '',
+          dateOfBirth: '',
+          ssn: '',
+          citizenship: '',
+          phone: '',
+          email: '',
+          dependents: [],
+          currentAddress: {},
+          mailingAddress: {
+            sameAsCurrentAddress: false,
+            aptSteNum: '',
+            city: '',
+            state: '',
+            zipCode: '',
+          },
+          previousAddresses: [],
+          employers: [
+            {
+              companyName: '',
+              companyPhone: '',
+              employmentStatus: '',
+              jobTitle: '',
+              startDate: '',
+              yearsInProfession: '',
+              monthsInProfession: '',
+              streetAddress: '',
+              aptSteNum: '',
+              city: '',
+              state: '',
+              zipCode: '',
+            },
+          ],
+        },
+      ],
+      propertyInfo: {
+        address: {
+          streetAddress: '',
+          aptSteNum: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        },
+        propertyValue: '',
+        propertyType: '',
+        occupancyType: '',
+        hasAcceptedOffer: '',
+        contractPurchasePrice: '',
+        isMixedUse: '',
+        isManufactured: '',
+        numberOfUnits: '',
+        yearBuilt: '',
+        proposedRentalIncome: '',
+      },
+      loanInfo: {
+        loanType: '',
+        loanPurpose: '',
+        loanAmount: '',
+        loanTerm: '',
+        interestRate: '',
+        purchasePrice: '',
+        downPayment: '',
+      },
+      assets: {
+        checkingAndSavings: [],
+        stocksAndBonds: [],
+        lifeInsurance: [],
+        retirementFunds: [],
+        otherAssets: [],
+      },
+      income: {
+        baseIncome: '',
+        overtime: '',
+        commissions: '',
+        bonuses: '',
+        militaryEntitlements: '',
+        otherIncome: [],
+      },
+      debts: [],
+      expenses: [],
+      propertiesOwned: {
+        ownsProperty: true,
+        properties: [],
+        rent: '',
+        firstMortgage: '',
+        otherFinancing: '',
+        hazardInsurance: '',
+        realEstateTaxes: '',
+        mortgageInsurance: '',
+        hoaDues: '',
+        otherHousingExpenses: '',
+      },
+      militaryService: {
+        hasServed: false,
+        currentlyServing: false,
+        isRetired: false,
+        isNonActivated: false,
+        isSurvivingSpouse: false,
+        serviceBranch: '',
+        serviceType: '',
+        yearsOfService: 0,
+        dischargeType: '',
+        dischargeDate: '',
+        expirationDate: '',
+      },
+      declarations: {},
+      demographics: {},
+      documents: [],
+    });
+
+    setErrors({});
+    setCurrentStep(1);
+    setCurrentSubStep('personalDetails');
+    window._tempValidateOverride = false;
+    toast.success('Form cleared and reset to step 1');
   };
 
   // Validate form data for each step
@@ -924,26 +1182,30 @@ const LoanApplication = () => {
     // Validate based on current step
     switch (step) {
       case 1: // Borrower step
-        const primaryBorrower = formData.borrowers[0];
+        // Safely access the primary borrower with fallback
+        const primaryBorrower = formData.borrowers?.[0] || {};
+
+        // Personal details validation - Enhanced messages
+        if (!primaryBorrower.firstName) newErrors['borrowers[0].firstName'] = 'First name is required for loan application';
+        if (!primaryBorrower.lastName) newErrors['borrowers[0].lastName'] = 'Last name is required for loan application';
+        if (!primaryBorrower.dateOfBirth) newErrors['borrowers[0].dateOfBirth'] = 'Date of birth is required for loan application';
+        if (!primaryBorrower.ssn) newErrors['borrowers[0].ssn'] = 'SSN is required for loan application';
+        if (!primaryBorrower.email) newErrors['borrowers[0].email'] = 'Email is required for loan application';
+        if (!primaryBorrower.phone) newErrors['borrowers[0].phone'] = 'Phone number is required for loan application';
         
-        // Personal details validation
-        if (!primaryBorrower.firstName) newErrors['borrowers[0].firstName'] = 'First name is required';
-        if (!primaryBorrower.lastName) newErrors['borrowers[0].lastName'] = 'Last name is required';
-        if (!primaryBorrower.dateOfBirth) newErrors['borrowers[0].dateOfBirth'] = 'Date of birth is required';
-        if (!primaryBorrower.ssn) newErrors['borrowers[0].ssn'] = 'SSN is required';
-        if (!primaryBorrower.email) newErrors['borrowers[0].email'] = 'Email is required';
-        if (!primaryBorrower.phone) newErrors['borrowers[0].phone'] = 'Phone number is required';
-        
-        // Address validation
-        if (!primaryBorrower.currentAddress.streetAddress) newErrors['borrowers[0].currentAddress.streetAddress'] = 'Street address is required';
-        if (!primaryBorrower.currentAddress.city) newErrors['borrowers[0].currentAddress.city'] = 'City is required';
-        if (!primaryBorrower.currentAddress.state) newErrors['borrowers[0].currentAddress.state'] = 'State is required';
-        if (!primaryBorrower.currentAddress.zipCode) newErrors['borrowers[0].currentAddress.zipCode'] = 'ZIP code is required';
-        
-        // Employment validation
-        if (primaryBorrower.employers.length > 0) {
-          if (!primaryBorrower.employers[0].companyName) newErrors['borrowers[0].employers[0].companyName'] = 'Company name is required';
-          if (!primaryBorrower.employers[0].jobTitle) newErrors['borrowers[0].employers[0].jobTitle'] = 'Job title is required';
+        // Address validation - safely access nested properties
+        const currentAddress = primaryBorrower.currentAddress || {};
+        if (!currentAddress.streetAddress) newErrors['borrowers[0].currentAddress.streetAddress'] = 'Street address is required';
+        if (!currentAddress.city) newErrors['borrowers[0].currentAddress.city'] = 'City is required';
+        if (!currentAddress.state) newErrors['borrowers[0].currentAddress.state'] = 'State is required';
+        if (!currentAddress.zipCode) newErrors['borrowers[0].currentAddress.zipCode'] = 'ZIP code is required';
+
+        // Employment validation - safely access employers array
+        const employers = primaryBorrower.employers || [];
+        if (employers.length > 0) {
+          const firstEmployer = employers[0] || {};
+          if (!firstEmployer.companyName) newErrors['borrowers[0].employers[0].companyName'] = 'Company name is required';
+          if (!firstEmployer.jobTitle) newErrors['borrowers[0].employers[0].jobTitle'] = 'Job title is required';
         }
         break;
         
@@ -954,6 +1216,7 @@ const LoanApplication = () => {
         
         // Check for street address in either location
         if (!addressData.streetAddress && !directData.streetAddress) {
+          newErrors['propertyInfo.address.streetAddress'] = 'Property address is required for loan processing';
         }
         break;
         
@@ -1078,6 +1341,12 @@ const LoanApplication = () => {
     const newFormData = JSON.parse(JSON.stringify(formData));
     const val = type === 'checkbox' ? checked : value;
     const segments = name.split('.');
+
+    // Ensure borrowers array exists and has at least one borrower
+    if (!newFormData.borrowers || !Array.isArray(newFormData.borrowers) || newFormData.borrowers.length === 0) {
+      newFormData.borrowers = [{}];
+    }
+
     let targetObj = newFormData.borrowers[0];
     // Traverse through nested keys except last
     for (let i = 0; i < segments.length - 1; i++) {
@@ -1141,6 +1410,7 @@ const LoanApplication = () => {
             errors={errors}
             currentSubStep={currentSubStep}
             setCurrentSubStep={setCurrentSubStep}
+            userType="borrower"
           />
         );
       
@@ -1154,6 +1424,7 @@ const LoanApplication = () => {
             nextStep={nextStep}
             prevStep={prevStep}
             errors={errors}
+            userType="borrower"
           />
         );
       
@@ -1166,6 +1437,7 @@ const LoanApplication = () => {
             nextStep={nextStep}
             prevStep={prevStep}
             errors={errors}
+            userType="borrower"
           />
         );
       
@@ -1178,6 +1450,7 @@ const LoanApplication = () => {
             nextStep={nextStep}
             prevStep={prevStep}
             errors={errors}
+            userType="borrower"
           />
         );
       
@@ -1190,6 +1463,7 @@ const LoanApplication = () => {
             nextStep={nextStep}
             prevStep={prevStep}
             errors={errors}
+            userType="borrower"
           />
         );
       
@@ -1200,6 +1474,7 @@ const LoanApplication = () => {
             setCurrentStep={setCurrentStep}
             handleSubmit={handleSubmit}
             loading={loading}
+            userType="borrower"
           />
         );
       
@@ -1236,27 +1511,17 @@ const LoanApplication = () => {
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-semibold text-gray-900">Apply for a Loan</h1>
               
-              {/* Development Tools */}
-              <div className="flex items-center">
+              {/* Development Tools - Enhanced to match lender page */}
+              <div className="flex items-center space-x-2">
                 {process.env.NODE_ENV === 'development' && (
                   <>
                     <button
                       type="button"
                       onClick={fillWithTestData}
-                      className="ml-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+                      className="px-3 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+                      title="Fill form with comprehensive test data (uses standard borrower submission)"
                     >
-                      Fill Test Data
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        console.log('FORM DEBUG - Current data:', formData);
-                        setCurrentStep(currentStep + 1);
-                        toast.success('Forced navigation to next step');
-                      }}
-                      className="ml-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center"
-                    >
-                      Debug Form
+                      🧪 Fill Test Data
                     </button>
                     <button
                       type="button"
@@ -1264,14 +1529,28 @@ const LoanApplication = () => {
                         // Enable validation override and jump to review step
                         window._tempValidateOverride = true;
                         setCurrentStep(6); // Review step
-                        toast.success('Jumped to review step');
+                        toast.success('Jumped to review step with validation bypass');
                       }}
-                      className="ml-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                      className="px-3 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                      title="Jump to review step (bypasses validation, uses standard borrower submission)"
                     >
-                      Jump to Review
+                      ⚡ Jump to Review
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearForm}
+                      className="px-3 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 flex items-center"
+                      title="Clear form and reset to step 1"
+                    >
+                      🗑️ Clear Form
                     </button>
                   </>
                 )}
+                <Link href="/borrower/loans">
+                  <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    ← Back to My Loans
+                  </button>
+                </Link>
               </div>
             </div>
           

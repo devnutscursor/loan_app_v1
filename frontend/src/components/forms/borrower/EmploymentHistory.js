@@ -37,7 +37,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
     // Update local state for immediate response
     setEmployers(updatedEmployers);
     
-    // Pass the updated employers array to the parent component
+    // Pass the updated employers array to the parent component with dot notation
     onChange({
       target: {
         name: 'employers',
@@ -72,7 +72,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
     // Update local state for immediate response
     setEmployers(updatedEmployers);
     
-    // Update the parent component
+    // Update the parent component with dot notation
     onChange({
       target: {
         name: 'employers',
@@ -90,7 +90,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
     // Update local state for immediate response
     setEmployers(updatedEmployers);
     
-    // Update the parent component
+    // Update the parent component with dot notation
     onChange({
       target: {
         name: 'employers',

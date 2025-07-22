@@ -459,6 +459,181 @@ class LoanService {
   }
 
   /**
+   * Submit a loan application for lender manual creation
+   * This method handles the lender-specific flow of creating a borrower first, then the loan
+   * @param {Object} loanData - Loan application data
+   * @param {Array} documents - Optional documents to upload with application
+   * @returns {Promise<Object>} Response with submission status and loan details
+   */
+  async submitLoanForLender(loanData, documents = []) {
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      console.log('Lender loan creation: Starting borrower and loan creation process');
+      console.log('Lender loan data:', loanData);
+
+      // Step 1: Create a borrower record first
+      // Handle both borrowers array format (from lender page) and borrowerDetails format (from borrower page)
+      const borrowerSource = loanData.borrowers?.[0] || loanData.borrowerDetails || {};
+      const borrowerData = {
+        // Extract borrower information from the form data
+        firstName: borrowerSource.firstName || '',
+        lastName: borrowerSource.lastName || '',
+        email: borrowerSource.email || '',
+        phone: borrowerSource.phone || '',
+        dateOfBirth: borrowerSource.dateOfBirth || '',
+        ssn: borrowerSource.ssn || '',
+        maritalStatus: borrowerSource.maritalStatus || '',
+        citizenship: borrowerSource.citizenship || '',
+        currentAddress: borrowerSource.currentAddress || {},
+        employment: borrowerSource.employers?.[0] || {}
+      };
+
+      console.log('Creating borrower with data:', borrowerData);
+
+      // Create the borrower record
+      const borrowerResponse = await fetch(`${baseURL}/api/v1/lenders/borrowers`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(borrowerData)
+      });
+
+      if (!borrowerResponse.ok) {
+        const errorText = await borrowerResponse.text();
+        console.error('Borrower creation error:', borrowerResponse.status, errorText);
+        throw new Error(`Failed to create borrower: ${errorText}`);
+      }
+
+      const borrowerResult = await borrowerResponse.json();
+      const borrowerId = borrowerResult.data._id;
+      
+      console.log('Borrower created successfully with ID:', borrowerId);
+
+      // Step 2: Now create the loan with the borrower ID
+      // Fix data types and add missing fields for loan validation
+      // Handle both property formats (property from borrower page, propertyInfo from lender page)
+      const propertyData = loanData.property || loanData.propertyInfo || {};
+      // Handle both loan formats (loanDetails from borrower page, loanInfo from lender page)
+      const loanInfoData = loanData.loanDetails || loanData.loanInfo || {};
+
+      const processedLoanData = {
+        ...loanData,
+        // Fix boolean fields - convert string "Yes"/"No" to boolean
+        propertyInfo: {
+          ...propertyData,
+          hasAcceptedOffer: propertyData.hasAcceptedOffer === "Yes" || propertyData.hasAcceptedOffer === true,
+          isMixedUse: propertyData.isMixedUse === "Yes" || propertyData.isMixedUse === true,
+          isManufactured: propertyData.isManufactured === "Yes" || propertyData.isManufactured === true
+        },
+        // Ensure loanInfo is available for backend processing
+        loanInfo: loanInfoData,
+        // Fix debts array - add required id field to each debt
+        debts: Array.isArray(loanData.debts) ? loanData.debts.map((debt, index) => ({
+          ...debt,
+          id: debt.id || `debt-${Date.now()}-${index}` // Add required id field
+        })) : [],
+        // Fix expenses array - add id field if needed
+        expenses: Array.isArray(loanData.expenses) ? loanData.expenses.map((expense, index) => ({
+          ...expense,
+          id: expense.id || `expense-${Date.now()}-${index}`
+        })) : []
+      };
+
+      const loanSubmissionData = {
+        ...processedLoanData,
+        borrower: borrowerId, // Add the required borrower ID
+        submittedByLender: true,
+        submissionSource: "manual",
+        lenderSubmission: {
+          createdAt: new Date().toISOString(),
+          source: "lender_manual_creation",
+          validationPassed: true,
+          borrowerCreated: true,
+          borrowerId: borrowerId
+        }
+      };
+
+      console.log('Creating loan with borrower ID:', borrowerId);
+      console.log('Loan submission data:', loanSubmissionData);
+
+      // Submit the loan data
+      const loanResponse = await fetch(`${baseURL}/api/v1/borrower/loans/data`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(loanSubmissionData)
+      });
+
+      if (!loanResponse.ok) {
+        const errorText = await loanResponse.text();
+        console.error('Loan creation error:', loanResponse.status, errorText);
+        throw new Error(`Failed to create loan: ${errorText}`);
+      }
+
+      const loanResult = await loanResponse.json();
+      const loanId = loanResult.data._id;
+
+      console.log('Loan created successfully with ID:', loanId);
+
+      // Step 3: Handle document uploads if any
+      if (documents && documents.length > 0) {
+        const formData = new FormData();
+        formData.append('loanId', loanId);
+        
+        documents.forEach((doc) => {
+          formData.append('documents', doc);
+        });
+        
+        const uploadResponse = await fetch(`${baseURL}/api/v1/borrower/loans/${loanId}/documents`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+          console.warn('Document upload failed, but loan was created');
+        }
+      }
+
+      // Step 4: Log the successful creation
+      try {
+        await AuditLogService.createAuditLog(
+          'lender_loan_creation',
+          `Lender manually created loan application for borrower ${borrowerResult.data.firstName} ${borrowerResult.data.lastName}`,
+          {
+            loanId: loanId,
+            borrowerId: borrowerId,
+            source: 'lender_manual_creation'
+          }
+        );
+      } catch (logError) {
+        console.warn('Failed to create audit log, but loan creation succeeded', logError);
+      }
+
+      return {
+        success: true,
+        data: loanResult.data,
+        borrower: borrowerResult.data
+      };
+
+    } catch (error) {
+      console.error('Lender loan creation error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to create loan application for lender'
+      };
+    }
+  }
+
+  /**
    * Get available loan types
    * @returns {Promise<Object>} Response with available loan types
    */
