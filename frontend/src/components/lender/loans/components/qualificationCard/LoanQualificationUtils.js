@@ -57,16 +57,16 @@ export const calculateMortgageInsurance = (loanAmount, downPaymentPercent, pmiRa
 
   // Calculate LTV (Loan-to-Value) ratio
   const ltv = 100 - downPaymentPercent;
-  
+
   // Find the applicable PMI rate based on LTV
   const pmiRate = pmiRates.find(
     pmi => ltv >= pmi.minLTV && ltv <= pmi.maxLTV
   );
-  
+
   if (!pmiRate) {
     return 0; // No PMI if there's no matching range
   }
-  
+
   // Calculate annual PMI amount and divide by 12 for monthly amount
   return (pmiRate.rate / 100 * loanAmount) / 12;
 };
@@ -218,9 +218,7 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   const defaultDownPayment = defaultLoanAmount * (defaultDownPaymentPercent / 100);
   const defaultLoanTerm = selectedProgram?.loanTerm || 30;
 
-  console.log("---------------------------------");
-  console.log("loanDetails:", loan);
-  console.log("selectedProgram:", selectedProgram);
+
   
   // Calculate principal and interest
   const principalAndInterest = calculatePrincipalAndInterest(

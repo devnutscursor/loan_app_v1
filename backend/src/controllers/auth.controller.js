@@ -31,13 +31,13 @@ const autoSaveLenderRates = async (userId) => {
     logger.info(`Found lender profile: ${lender._id} for user ${userId}`);
     
     // Instead of trying to update existing rates, we'll directly create default rates
-    // Define the default rates that will be created/updated
+    // Current market rates (July 2025) - based on Freddie Mac PMMS and industry standards
     const defaultRates = [
-      { programType: 'conventional', rate: 7.0 },
-      { programType: 'fha', rate: 7.0 },
-      { programType: 'va', rate: 7.0 },
-      { programType: 'usda', rate: 7.0 },
-      { programType: 'jumbo', rate: 7.0 }
+      { programType: 'conventional', rate: 6.75 }, // 30-year fixed conventional (Freddie Mac July 17, 2025)
+      { programType: 'fha', rate: 6.50 },          // FHA typically 0.25% lower than conventional
+      { programType: 'va', rate: 6.25 },           // VA typically 0.5% lower than conventional
+      { programType: 'usda', rate: 6.25 },         // USDA similar to VA rates
+      { programType: 'jumbo', rate: 7.00 }         // Jumbo typically 0.25% higher than conventional
     ];
     
     // Instead of using the controller, directly work with the model
@@ -976,10 +976,10 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         }
       },
       privateMortgageInsurance: [
-        { minLTV: 80, maxLTV: 85, rate: 0.3 },
-        { minLTV: 85, maxLTV: 90, rate: 0.5 },
-        { minLTV: 90, maxLTV: 95, rate: 0.7 },
-        { minLTV: 95, maxLTV: 97, rate: 0.85 }
+        { minLTV: 80.01, maxLTV: 85, rate: 0.3 },
+        { minLTV: 85.01, maxLTV: 90, rate: 0.5 },
+        { minLTV: 90.01, maxLTV: 95, rate: 0.7 },
+        { minLTV: 95.01, maxLTV: 97, rate: 0.85 }
       ],
       upfrontMortgageInsurance: 0,
       mortgageInsurance: 0,

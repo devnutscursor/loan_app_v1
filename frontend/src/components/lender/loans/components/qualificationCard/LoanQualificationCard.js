@@ -385,9 +385,9 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         return;
       }
       
-      // const defaultCalculations = calculateDefaultLoanValues(currentLoan, loanPrograms, selectedProgram);
-      // console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-      // setCalculations(defaultCalculations);
+      const defaultCalculations = calculateDefaultLoanValues(currentLoan, loanPrograms, selectedProgram);
+      console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+      setCalculations(defaultCalculations);
     }
 
     setTimeout(() => {

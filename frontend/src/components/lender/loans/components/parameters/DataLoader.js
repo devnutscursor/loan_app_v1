@@ -269,29 +269,29 @@ const DataLoader = ({
               interestRate = programRate?.rate || 0;
             }
             
-            // If still no interest rate (empty or 0), use a meaningful default based on program type
+            // If still no interest rate (empty or 0), use current market rates (July 2025)
             if (!interestRate) {
-              // Default rates based on program type
+              // Current market rates based on Freddie Mac PMMS and industry standards
               switch (selectedProgramObj?.programType) {
                 case 'conventional':
-                  interestRate = 6.75;
+                  interestRate = 6.75; // 30-year fixed conventional (Freddie Mac July 17, 2025)
                   break;
                 case 'fha':
-                  interestRate = 6.5;
+                  interestRate = 6.50; // FHA typically 0.25% lower than conventional
                   break;
                 case 'va':
-                  interestRate = 6.25;
+                  interestRate = 6.25; // VA typically 0.5% lower than conventional
                   break;
                 case 'usda':
-                  interestRate = 6.25;
+                  interestRate = 6.25; // USDA similar to VA rates
                   break;
                 case 'jumbo':
-                  interestRate = 7.25;
+                  interestRate = 7.00; // Jumbo typically 0.25% higher than conventional
                   break;
                 default:
-                  interestRate = 6.75; // Fallback default
+                  interestRate = 6.75; // Fallback to conventional rate
               }
-              console.log(`[DEBUG] Using default interest rate ${interestRate}% for ${selectedProgramObj?.programType} program`);
+              console.log(`[DEBUG] Using current market rate ${interestRate}% for ${selectedProgramObj?.programType} program`);
             }
           }
 
