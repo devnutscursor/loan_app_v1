@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import PersonalDetails from "./PersonalDetails";
-import ResidenceHistory from "./ResidenceHistory";
-import EmploymentHistory from "./EmploymentHistory";
-import theme from "../../../styles/theme";
-import PropTypes from "prop-types";
+import React, { useState, useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
+import theme from '../../../styles/theme';
+import PersonalDetails from './PersonalDetails';
+import ResidenceHistory from './ResidenceHistory';
+import EmploymentHistory from './EmploymentHistory';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * BorrowerStep Component
@@ -27,13 +28,27 @@ const BorrowerStep = ({
   prevStep,
   errors = {},
   userType = 'borrower',
+  toast,
 }) => {
   const [activeTab, setActiveTab] = useState("personalDetails");
   const borrower = formData.borrowers?.[0] || {}; // Safely access first borrower
 
   // Forward field changes directly to parent
   const handleFieldChange = (e) => {
-    handleChange(e);
+    // For lender context, we need to prefix with borrowers[0]
+    // For borrower context, the parent handles the prefix
+    if (userType === 'lender') {
+      const modifiedEvent = {
+        target: {
+          ...e.target,
+          name: `borrowers[0].${e.target.name}`
+        }
+      };
+      handleChange(modifiedEvent);
+    } else {
+      // For borrower context, pass the event as-is
+      handleChange(e);
+    }
   };
 
   // Tab styling
@@ -43,26 +58,42 @@ const BorrowerStep = ({
     }`;
   };
 
-  // Tab check icon
+  // Tab check icon - simplified to prevent performance issues
   const getTabIcon = (tabName) => {
-    // Determine if tab is complete based on required fields
+    // Simple validation without calling validateStep to prevent performance issues
     let isComplete = false;
 
     if (tabName === "personalDetails") {
-      isComplete = borrower?.firstName && borrower?.lastName;
+      isComplete = 
+        formData.borrowers?.[0]?.firstName && 
+        formData.borrowers?.[0]?.lastName && 
+        formData.borrowers?.[0]?.dateOfBirth && 
+        formData.borrowers?.[0]?.ssn && 
+        formData.borrowers?.[0]?.email && 
+        formData.borrowers?.[0]?.phone && 
+        formData.borrowers?.[0]?.maritalStatus && 
+        formData.borrowers?.[0]?.citizenship;
     } else if (tabName === "residenceHistory") {
-      isComplete =
-        borrower?.currentAddress?.streetAddress &&
-        borrower?.currentAddress?.city &&
-        borrower?.currentAddress?.state &&
-        borrower?.currentAddress?.zipCode;
+      isComplete = 
+        formData.borrowers?.[0]?.currentAddress?.streetAddress && 
+        formData.borrowers?.[0]?.currentAddress?.city && 
+        formData.borrowers?.[0]?.currentAddress?.state && 
+        formData.borrowers?.[0]?.currentAddress?.zipCode && 
+        formData.borrowers?.[0]?.currentAddress?.housingStatus && 
+        formData.borrowers?.[0]?.currentAddress?.yearsAtAddress && 
+        formData.borrowers?.[0]?.currentAddress?.monthsAtAddress;
     } else if (tabName === "employmentHistory") {
-      isComplete =
-        borrower?.employers &&
-        Array.isArray(borrower.employers) &&
-        borrower.employers.length > 0 &&
-        borrower.employers[0]?.companyName &&
-        borrower.employers[0]?.jobTitle;
+      isComplete = 
+        formData.borrowers?.[0]?.employers?.[0]?.companyName && 
+        formData.borrowers?.[0]?.employers?.[0]?.jobTitle && 
+        formData.borrowers?.[0]?.employers?.[0]?.employmentStatus && 
+        formData.borrowers?.[0]?.employers?.[0]?.startDate && 
+        formData.borrowers?.[0]?.employers?.[0]?.yearsInProfession && 
+        formData.borrowers?.[0]?.employers?.[0]?.monthsInProfession && 
+        formData.borrowers?.[0]?.employers?.[0]?.streetAddress && 
+        formData.borrowers?.[0]?.employers?.[0]?.city && 
+        formData.borrowers?.[0]?.employers?.[0]?.state && 
+        formData.borrowers?.[0]?.employers?.[0]?.zipCode;
     }
 
     if (isComplete) {
@@ -124,21 +155,39 @@ const BorrowerStep = ({
   // handle their own state and call the parent onChange with the correct format
   // These functions are left as placeholders in case they're needed later
   const handleDependentChange = (index, field, value) => {
-    handleChange({
-      target: {
-        name: `dependents.${index}.${field}`,
-        value,
-      },
-    });
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: `borrowers[0].dependents.${index}.${field}`,
+          value,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: `dependents.${index}.${field}`,
+          value,
+        },
+      });
+    }
   };
 
   const handleEmployerChange = (index, field, value) => {
-    handleChange({
-      target: {
-        name: `employers.${index}.${field}`,
-        value,
-      },
-    });
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: `borrowers[0].employers.${index}.${field}`,
+          value,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: `employers.${index}.${field}`,
+          value,
+        },
+      });
+    }
   };
 
   const addDependent = () => {
@@ -149,13 +198,22 @@ const BorrowerStep = ({
       { name: "", age: "", relationship: "" },
     ];
 
-    // Properly prefix nested name
-    handleFieldChange({
-      target: {
-        name: "dependents",
-        value: newDependents,
-      },
-    });
+    // Properly prefix nested name based on user type
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: "borrowers[0].dependents",
+          value: newDependents,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: "dependents",
+          value: newDependents,
+        },
+      });
+    }
   };
 
   const removeDependent = (index) => {
@@ -163,13 +221,22 @@ const BorrowerStep = ({
     const dependents = [...(formData.borrowers?.[0]?.dependents || [])];
     dependents.splice(index, 1);
 
-    // Properly prefix nested name
-    handleFieldChange({
-      target: {
-        name: "dependents",
-        value: dependents,
-      },
-    });
+    // Properly prefix nested name based on user type
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: "borrowers[0].dependents",
+          value: dependents,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: "dependents",
+          value: dependents,
+        },
+      });
+    }
   };
 
   const addEmployer = () => {
@@ -196,12 +263,21 @@ const BorrowerStep = ({
       },
     ];
 
-    handleChange({
-      target: {
-        name: "employers",
-        value: newEmployers,
-      },
-    });
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: "borrowers[0].employers",
+          value: newEmployers,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: "employers",
+          value: newEmployers,
+        },
+      });
+    }
   };
 
   const removeEmployer = (index) => {
@@ -209,12 +285,21 @@ const BorrowerStep = ({
     const employers = [...(formData.borrowers?.[0]?.employers || [])];
     employers.splice(index, 1);
 
-    handleChange({
-      target: {
-        name: "employers",
-        value: employers,
-      },
-    });
+    if (userType === 'lender') {
+      handleChange({
+        target: {
+          name: "borrowers[0].employers",
+          value: employers,
+        },
+      });
+    } else {
+      handleChange({
+        target: {
+          name: "employers",
+          value: employers,
+        },
+      });
+    }
   };
 
   // Render the active tab content - keep all components mounted but only show the active one
@@ -363,18 +448,30 @@ const BorrowerStep = ({
               "--focus-ring-color": theme.colors.primary,
             }}
             onClick={() => {
-              // Make sure we have the required information before proceeding
-              if (
-                borrower.employers &&
-                borrower.employers.length > 0 &&
-                borrower.employers[0].companyName &&
-                borrower.employers[0].jobTitle
-              ) {
+              // Validate the current step before proceeding
+              const validationErrors = validateStep(1, activeTab);
+              
+              if (Object.keys(validationErrors).length === 0) {
                 nextStep();
               } else {
-                alert(
-                  "Please complete all required employment information before proceeding"
-                );
+                // Get specific error messages for missing fields
+                const errorMessages = Object.values(validationErrors);
+                
+                if (errorMessages.length > 0) {
+                  // Show the first few error messages
+                  const displayMessages = errorMessages.slice(0, 3);
+                  const message = displayMessages.length === 1 
+                    ? displayMessages[0]
+                    : `Please complete the following required fields: ${displayMessages.join(', ')}${errorMessages.length > 3 ? ` and ${errorMessages.length - 3} more` : ''}`;
+                  
+                  // Use toast instead of alert
+                  if (toast) {
+                    toast.error(message);
+                  } else {
+                    // Fallback to alert if toast is not available
+                    alert(message);
+                  }
+                }
               }
             }}
           >
@@ -393,7 +490,8 @@ BorrowerStep.propTypes = {
   nextStep: PropTypes.func.isRequired,
   prevStep: PropTypes.func.isRequired,
   errors: PropTypes.object,
-  userType: PropTypes.oneOf(['borrower', 'lender'])
+  userType: PropTypes.oneOf(['borrower', 'lender']),
+  toast: PropTypes.object, // Added toast prop type
 };
 
 export default BorrowerStep;

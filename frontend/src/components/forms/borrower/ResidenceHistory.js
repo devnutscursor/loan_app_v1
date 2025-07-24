@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * Residence History Form
@@ -18,7 +19,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
   const [city, setCity] = useState(borrower?.currentAddress?.city || '');
   const [state, setState] = useState(borrower?.currentAddress?.state || '');
   const [zipCode, setZipCode] = useState(borrower?.currentAddress?.zipCode || '');
-  const [ownershipStatus, setOwnershipStatus] = useState(borrower?.currentAddress?.ownershipStatus || '');
+  const [housingStatus, setHousingStatus] = useState(borrower?.currentAddress?.housingStatus || '');
   const [yearsAtAddress, setYearsAtAddress] = useState(borrower?.currentAddress?.yearsAtAddress || '');
   const [monthsAtAddress, setMonthsAtAddress] = useState(borrower?.currentAddress?.monthsAtAddress || '');
   
@@ -33,7 +34,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
     setCity(borrower?.currentAddress?.city || '');
     setState(borrower?.currentAddress?.state || '');
     setZipCode(borrower?.currentAddress?.zipCode || '');
-    setOwnershipStatus(borrower?.currentAddress?.ownershipStatus || '');
+    setHousingStatus(borrower?.currentAddress?.housingStatus || '');
     setYearsAtAddress(borrower?.currentAddress?.yearsAtAddress || '');
     setMonthsAtAddress(borrower?.currentAddress?.monthsAtAddress || '');
     setSameAsCurrentAddress(borrower?.mailingAddress?.sameAsCurrentAddress || false);
@@ -65,8 +66,8 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
       case 'zipCode':
         setZipCode(value);
         break;
-      case 'ownershipStatus':
-        setOwnershipStatus(value);
+      case 'housingStatus':
+        setHousingStatus(value);
         break;
       case 'yearsAtAddress':
         setYearsAtAddress(value);
@@ -81,7 +82,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
     // Send to parent component with dot notation for currentAddress
     onChange({
       target: {
-        name: `currentAddress.${name === 'ownershipStatus' ? 'housingStatus' : name}`,
+        name: `currentAddress.${name}`,
         value
       }
     });
@@ -155,7 +156,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label htmlFor="streetAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Street Address
+              Street Address<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -164,6 +165,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               value={streetAddress}
               onChange={handleCurrentAddressChange}
               className={`text-xs w-full border ${errors['currentAddress.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="123 Main St"
             />
             {errors['currentAddress.streetAddress'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.streetAddress']}</p>
@@ -186,7 +188,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
 
           <div>
             <label htmlFor="city" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              City
+              City<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -195,6 +197,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               value={city}
               onChange={handleCurrentAddressChange}
               className={`text-xs w-full border ${errors['currentAddress.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="Anytown"
             />
             {errors['currentAddress.city'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.city']}</p>
@@ -205,7 +208,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
             <label htmlFor="state" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              State
+              State<RequiredFieldIndicator />
             </label>
             <div className="relative">
               <select
@@ -282,7 +285,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
 
           <div>
             <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Zip Code
+              ZIP Code<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -291,45 +294,39 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               value={zipCode}
               onChange={handleCurrentAddressChange}
               className={`text-xs w-full border ${errors['currentAddress.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="90210"
             />
             {errors['currentAddress.zipCode'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.zipCode']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="housingStatus" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Housing Status<RequiredFieldIndicator />
+            </label>
+            <select
+              id="housingStatus"
+              name="housingStatus"
+              value={housingStatus}
+              onChange={handleCurrentAddressChange}
+              className={`text-xs w-full border ${errors['currentAddress.housingStatus'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            >
+              <option value="">Select</option>
+              <option value="Own">Own</option>
+              <option value="Rent">Rent</option>
+              <option value="LiveRentFree">Live Rent Free</option>
+            </select>
+            {errors['currentAddress.housingStatus'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.housingStatus']}</p>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>
-            <label htmlFor="ownershipStatus" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Ownership Status
-            </label>
-            <div className="relative">
-              <select
-                id="ownershipStatus"
-                name="ownershipStatus"
-                value={borrower.currentAddress?.housingStatus || ownershipStatus}
-                onChange={handleCurrentAddressChange}
-                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Select</option>
-                <option value="own">Own</option>
-                <option value="rent">Rent</option>
-                <option value="livingRentFree">Living Rent Free</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
-            {errors['currentAddress.ownershipStatus'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.ownershipStatus']}</p>
-            )}
-          </div>
-
-          <div>
             <label htmlFor="yearsAtAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Years at Address
+              Years at Address<RequiredFieldIndicator />
             </label>
             <input
               type="number"
@@ -337,14 +334,18 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               name="yearsAtAddress"
               value={yearsAtAddress}
               onChange={handleCurrentAddressChange}
+              className={`text-xs w-full border ${errors['currentAddress.yearsAtAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="2"
               min="0"
-              className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            {errors['currentAddress.yearsAtAddress'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.yearsAtAddress']}</p>
+            )}
           </div>
 
           <div>
             <label htmlFor="monthsAtAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Months at Address
+              Months at Address<RequiredFieldIndicator />
             </label>
             <input
               type="number"
@@ -352,10 +353,14 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               name="monthsAtAddress"
               value={monthsAtAddress}
               onChange={handleCurrentAddressChange}
+              className={`text-xs w-full border ${errors['currentAddress.monthsAtAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              placeholder="6"
               min="0"
               max="11"
-              className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            {errors['currentAddress.monthsAtAddress'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['currentAddress.monthsAtAddress']}</p>
+            )}
           </div>
         </div>
       </div>

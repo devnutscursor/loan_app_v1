@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
-import { LoanService } from '../../services';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import { useAuth } from '../../contexts/AuthContext';
-import Link from 'next/link';
 import BorrowerStep from '../../components/forms/borrower/BorrowerStep';
 import PropertyStep from '../../components/forms/property/PropertyStep';
 import FinancialStep from '../../components/forms/financial/FinancialStep';
 import AdditionalStep from '../../components/forms/additional/AdditionalStep';
 import DeclarationsStep from '../../components/forms/declarations/DeclarationsStep';
 import ReviewStep from '../../components/forms/review/ReviewStep';
+import { LoanService } from '../../services';
+import { validateStep as validateStepRules } from '../../utils/validationRules';
 import Toggle from '../../components/ui/Toggle';
 import StepNavigator from '../../components/ui/StepNavigator';
 
@@ -422,13 +423,34 @@ const LoanApplication = () => {
     // Debug: log the current form data structure to help identify issues
     console.log('Current form data:', formData);
   
-    // If validation bypass is enabled or the step validates successfully
-    if (window._tempValidateOverride || validateStep(currentStep)) {
+    // If validation bypass is enabled, proceed
+    if (window._tempValidateOverride) {
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    
+    // Validate the current step
+    const validationErrors = validateStep(currentStep);
+    
+    // Check if validation passed (no errors)
+    if (Object.keys(validationErrors).length === 0) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Enhanced error message for better user experience
-      toast.error('Please complete all required fields for the loan application');
-      console.log('Validation errors:', errors);
+      // Get specific error messages for missing fields
+      const errorMessages = Object.values(validationErrors);
+      
+      if (errorMessages.length > 0) {
+        // Show the first few error messages
+        const displayMessages = errorMessages.slice(0, 3);
+        const message = displayMessages.length === 1 
+          ? displayMessages[0]
+          : `Please complete the following required fields: ${displayMessages.join(', ')}${errorMessages.length > 3 ? ` and ${errorMessages.length - 3} more` : ''}`;
+        
+        toast.error(message);
+      } else {
+        toast.error('Please complete all required fields for the loan application');
+      }
+      console.log('Validation errors:', validationErrors);
     }
   };
 
@@ -1174,165 +1196,18 @@ const LoanApplication = () => {
     // If we're using test data and the override flag is set, bypass validation
     if (window._tempValidateOverride) {
       console.log('Validation bypassed due to test data override');
-      return true;
+      return {};
     }
 
-    const newErrors = {};
+    // Use the new validation rules
+    const validationErrors = validateStepRules(step, formData, tabName);
     
-    // Validate based on current step
-    switch (step) {
-      case 1: // Borrower step
-        // Safely access the primary borrower with fallback
-        const primaryBorrower = formData.borrowers?.[0] || {};
-
-        // Personal details validation - Enhanced messages
-        if (!primaryBorrower.firstName) newErrors['borrowers[0].firstName'] = 'First name is required for loan application';
-        if (!primaryBorrower.lastName) newErrors['borrowers[0].lastName'] = 'Last name is required for loan application';
-        if (!primaryBorrower.dateOfBirth) newErrors['borrowers[0].dateOfBirth'] = 'Date of birth is required for loan application';
-        if (!primaryBorrower.ssn) newErrors['borrowers[0].ssn'] = 'SSN is required for loan application';
-        if (!primaryBorrower.email) newErrors['borrowers[0].email'] = 'Email is required for loan application';
-        if (!primaryBorrower.phone) newErrors['borrowers[0].phone'] = 'Phone number is required for loan application';
-        
-        // Address validation - safely access nested properties
-        const currentAddress = primaryBorrower.currentAddress || {};
-        if (!currentAddress.streetAddress) newErrors['borrowers[0].currentAddress.streetAddress'] = 'Street address is required';
-        if (!currentAddress.city) newErrors['borrowers[0].currentAddress.city'] = 'City is required';
-        if (!currentAddress.state) newErrors['borrowers[0].currentAddress.state'] = 'State is required';
-        if (!currentAddress.zipCode) newErrors['borrowers[0].currentAddress.zipCode'] = 'ZIP code is required';
-
-        // Employment validation - safely access employers array
-        const employers = primaryBorrower.employers || [];
-        if (employers.length > 0) {
-          const firstEmployer = employers[0] || {};
-          if (!firstEmployer.companyName) newErrors['borrowers[0].employers[0].companyName'] = 'Company name is required';
-          if (!firstEmployer.jobTitle) newErrors['borrowers[0].employers[0].jobTitle'] = 'Job title is required';
-        }
-        break;
-        
-      case 2: // Property & Loan details step
-        // Property validation - check both nested and direct property fields
-        const addressData = formData.propertyInfo.address || {};
-        const directData = formData.propertyInfo || {};
-        
-        // Check for street address in either location
-        if (!addressData.streetAddress && !directData.streetAddress) {
-          newErrors['propertyInfo.address.streetAddress'] = 'Property address is required for loan processing';
-        }
-        break;
-        
-      case 3: // Financial step
-        // Make sure tabName is defined or fallback to validating all
-        if (tabName) {
-          if (tabName === 'assets') {
-            // Asset validation - only check if we have at least one asset
-            if (!formData.assets || (Array.isArray(formData.assets) && formData.assets.length === 0)) {
-              newErrors['assets'] = 'Please add at least one asset';
-            }
-          } else if (tabName === 'income') {
-            // Income validation - only check when leaving the income tab
-            if (!formData.income || !formData.income.baseIncome) {
-              newErrors['income.baseIncome'] = 'Base income is required';
-            }
-          } else if (tabName === 'debts') {
-            // No specific requirements for debts at the moment
-          }
-        } else {
-          // If no tab specified, validate the whole step
-          // Check assets
-          if (!formData.assets || (Array.isArray(formData.assets) && formData.assets.length === 0)) {
-            newErrors['assets'] = 'Please add at least one asset';
-          }
-          
-          // Check income
-          if (!formData.income || !formData.income.baseIncome) {
-            newErrors['income.baseIncome'] = 'Base income is required';
-          }
-        }
-        break;
-        
-      case 4: // Additional Information step
-        if (tabName) {
-          if (tabName === 'propertiesOwned') {
-            // PropertyOwned validation - make sure they've answered the question
-            if (formData.propertiesOwned?.ownsProperty === undefined) {
-              newErrors['propertiesOwned.ownsProperty'] = 'Please indicate if you own additional property';
-            }
-          } else if (tabName === 'militaryService') {
-            // MilitaryService validation - make sure they've answered the question
-            if (formData.militaryService?.hasServed === undefined) {
-              newErrors['militaryService.hasServed'] = 'Please indicate if you have served in the military';
-            }
-          }
-        } else {
-          // If no tab specified, validate the whole step
-          // Check propertyOwned
-          if (formData.propertiesOwned?.ownsProperty === undefined) {
-            newErrors['propertiesOwned.ownsProperty'] = 'Please indicate if you own additional property';
-          }
-          
-          // Check militaryService
-          if (formData.militaryService?.hasServed === undefined) {
-            newErrors['militaryService.hasServed'] = 'Please indicate if you have served in the military';
-          }
-        }
-        break;
-        
-      case 5: // Declarations & Demographics step
-        if (tabName) {
-          if (tabName === 'declarations') {
-            // Declarations validation - make sure they've answered the required questions
-            if (formData.declarations?.occupyAsPrimary === undefined) {
-              newErrors['declarations.occupyAsPrimary'] = 'Please indicate if you will occupy the property as your primary residence';
-            }
-            if (formData.declarations?.firstTimeBuyer === undefined) {
-              newErrors['declarations.firstTimeBuyer'] = 'Please indicate if you are a first time homebuyer';
-            }
-          } else if (tabName === 'demographics') {
-            // Demographics validation - verify required fields
-            if (!formData.demographics?.ethnicity) {
-              newErrors['demographics.ethnicity'] = 'Please select your ethnicity';
-            }
-            if (!formData.demographics?.gender) {
-              newErrors['demographics.gender'] = 'Please select your gender';
-            }
-            if (!formData.demographics?.race) {
-              newErrors['demographics.race'] = 'Please select your race';
-            }
-          }
-        } else {
-          // If no tab specified, validate the whole step
-          // Check declarations
-          if (formData.declarations?.occupyAsPrimary === undefined) {
-            newErrors['declarations.occupyAsPrimary'] = 'Please indicate if you will occupy the property as your primary residence';
-          }
-          if (formData.declarations?.firstTimeBuyer === undefined) {
-            newErrors['declarations.firstTimeBuyer'] = 'Please indicate if you are a first time homebuyer';
-          }
-          
-          // Check demographics
-          if (!formData.demographics?.ethnicity) {
-            newErrors['demographics.ethnicity'] = 'Please select your ethnicity';
-          }
-          if (!formData.demographics?.gender) {
-            newErrors['demographics.gender'] = 'Please select your gender';
-          }
-          if (!formData.demographics?.race) {
-            newErrors['demographics.race'] = 'Please select your race';
-          }
-        }
-        break;
-        
-      case 6: // Review & Submit
-        // For the final step, there's no specific validation as we're just reviewing
-        // We'll validate all steps before submission
-        break;
-        
-      default:
-        break;
+    // Only set errors if they're different from current errors to prevent unnecessary re-renders
+    if (JSON.stringify(validationErrors) !== JSON.stringify(errors)) {
+      setErrors(validationErrors);
     }
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
+    return validationErrors;
   };
 
   // Direct form update handler for borrowers step (supports nested paths)
@@ -1373,11 +1248,30 @@ const LoanApplication = () => {
     
     // Check if it's a propertyInfo or loanInfo field
     if (name.startsWith('propertyInfo.')) {
-      const field = name.replace('propertyInfo.', '');
-      if (!newFormData.propertyInfo) {
-        newFormData.propertyInfo = {};
+      const fieldPath = name.replace('propertyInfo.', '');
+      
+      // Handle nested propertyInfo fields (e.g., propertyInfo.address.streetAddress)
+      if (fieldPath.includes('.')) {
+        const pathParts = fieldPath.split('.');
+        let current = newFormData.propertyInfo;
+        
+        // Create nested structure if it doesn't exist
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (!current[pathParts[i]]) {
+            current[pathParts[i]] = {};
+          }
+          current = current[pathParts[i]];
+        }
+        
+        // Set the final value
+        current[pathParts[pathParts.length - 1]] = value;
+      } else {
+        // Handle direct propertyInfo fields
+        if (!newFormData.propertyInfo) {
+          newFormData.propertyInfo = {};
+        }
+        newFormData.propertyInfo[fieldPath] = value;
       }
-      newFormData.propertyInfo[field] = value;
     } else if (name.startsWith('loanInfo.')) {
       const field = name.replace('loanInfo.', '');
       if (!newFormData.loanInfo) {
@@ -1411,6 +1305,7 @@ const LoanApplication = () => {
             currentSubStep={currentSubStep}
             setCurrentSubStep={setCurrentSubStep}
             userType="borrower"
+            toast={toast}
           />
         );
       

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * Property Information Form
@@ -14,13 +15,13 @@ import theme from '../../../styles/theme';
  */
 const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {}, userType = 'borrower' }) => {
   // Local state for responsive input fields - use a state variable for each field
-  const [zipCode, setZipCode] = useState(propertyInfo.zipCode || '');
+  const [propertyZipCode, setPropertyZipCode] = useState(propertyInfo.zipCode || '');
   const [contractPurchasePrice, setContractPurchasePrice] = useState(propertyInfo.contractPurchasePrice || '');
-  const [streetAddress, setStreetAddress] = useState(propertyInfo.streetAddress || '');
-  const [aptSteNum, setAptSteNum] = useState(propertyInfo.aptSteNum || '');
-  const [city, setCity] = useState(propertyInfo.city || '');
-  const [state, setState] = useState(propertyInfo.state || '');
-  const [propertyAddressZipCode, setPropertyAddressZipCode] = useState(propertyInfo.zipCode || '');
+  const [streetAddress, setStreetAddress] = useState(propertyInfo.address?.streetAddress || '');
+  const [aptSteNum, setAptSteNum] = useState(propertyInfo.address?.aptSteNum || '');
+  const [city, setCity] = useState(propertyInfo.address?.city || '');
+  const [state, setState] = useState(propertyInfo.address?.state || '');
+  const [propertyAddressZipCode, setPropertyAddressZipCode] = useState(propertyInfo.address?.zipCode || '');
   const [occupancyType, setOccupancyType] = useState(propertyInfo.occupancyType || '');
   const [propertyType, setPropertyType] = useState(propertyInfo.propertyType || '');
   const [propertyValue, setPropertyValue] = useState(propertyInfo.propertyValue || '');
@@ -35,13 +36,13 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
   
   // Update local state when propertyInfo changes from parent
   useEffect(() => {
-    setZipCode(propertyInfo.zipCode || '');
+    setPropertyZipCode(propertyInfo.zipCode || '');
     setContractPurchasePrice(propertyInfo.contractPurchasePrice || '');
-    setStreetAddress(propertyInfo.streetAddress || '');
-    setAptSteNum(propertyInfo.aptSteNum || '');
-    setCity(propertyInfo.city || '');
-    setState(propertyInfo.state || '');
-    setPropertyAddressZipCode(propertyInfo.zipCode || '');
+    setStreetAddress(propertyInfo.address?.streetAddress || '');
+    setAptSteNum(propertyInfo.address?.aptSteNum || '');
+    setCity(propertyInfo.address?.city || '');
+    setState(propertyInfo.address?.state || '');
+    setPropertyAddressZipCode(propertyInfo.address?.zipCode || '');
     setOccupancyType(propertyInfo.occupancyType || '');
     setPropertyType(propertyInfo.propertyType || '');
     setPropertyValue(propertyInfo.propertyValue || '');
@@ -62,7 +63,10 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
     // Update local state immediately for responsive typing
     switch(name) {
       case 'zipCode':
-        setZipCode(value);
+        setPropertyZipCode(value);
+        break;
+      case 'propertyAddressZipCode':
+        setPropertyAddressZipCode(value);
         break;
       case 'contractPurchasePrice':
         setContractPurchasePrice(value);
@@ -110,10 +114,19 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
     // Log the property information change for debugging
     console.log(`PropertyInformation update: ${name} = ${value}`);
     
-    // Forward the change to parent component
+    // Forward the change to parent component with proper field mapping
+    let fieldName = `propertyInfo.${name}`;
+    
+    // Map address fields to nested structure
+    if (['streetAddress', 'city', 'state', 'aptSteNum'].includes(name)) {
+      fieldName = `propertyInfo.address.${name}`;
+    } else if (name === 'propertyAddressZipCode') {
+      fieldName = `propertyInfo.address.zipCode`;
+    }
+    
     onChange({
       target: {
-        name: `propertyInfo.${name}`,
+        name: fieldName,
         value
       }
     });
@@ -149,109 +162,115 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           )}
           <hr className="border-t border-gray-300 mb-6" />
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div
-              className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
-                hasAcceptedOffer === true
-                  ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
-                  : 'border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => handleRadioChange('hasAcceptedOffer', true)}
-            >
-              <div className="text-center">
-                <div
-                  className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
-                    hasAcceptedOffer === true
-                      ? 'bg-opacity-20'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                  style={
-                    hasAcceptedOffer === true
-                      ? { backgroundColor: `${theme.colors.primary}20` }
-                      : {}
-                  }
-                >
+          {/* Has Accepted Offer Section */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-4">
+              Do you have an accepted offer on a property?<RequiredFieldIndicator />
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div
+                className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
+                  hasAcceptedOffer === true
+                    ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
+                onClick={() => handleRadioChange('hasAcceptedOffer', true)}
+              >
+                <div className="text-center">
                   <div
+                    className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
+                      hasAcceptedOffer === true
+                        ? 'bg-opacity-20'
+                        : 'bg-gray-100 text-gray-400'
+                    }`}
                     style={
                       hasAcceptedOffer === true
-                        ? { color: theme.colors.primary }
+                        ? { backgroundColor: `${theme.colors.primary}20` }
                         : {}
                     }
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
+                    <div
+                      style={
+                        hasAcceptedOffer === true
+                          ? { color: theme.colors.primary }
+                          : {}
+                      }
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
                   </div>
-                </div>
-                <div
-                  className="mt-2 font-medium"
-                  style={{
-                    color: hasAcceptedOffer === true ? theme.colors.primary : 'inherit',
-                  }}
-                >
-                  Yes
+                  <div
+                    className="mt-2 font-medium"
+                    style={{
+                      color: hasAcceptedOffer === true ? theme.colors.primary : 'inherit',
+                    }}
+                  >
+                    Yes
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div
-              className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
-                hasAcceptedOffer === false
-                  ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
-                  : 'border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => handleRadioChange('hasAcceptedOffer', false)}
-            >
-              <div className="text-center">
-                <div
-                  className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
-                    hasAcceptedOffer === false
-                      ? 'bg-opacity-20'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                  style={
-                    hasAcceptedOffer === false
-                      ? { backgroundColor: `${theme.colors.primary}20` }
-                      : {}
-                  }
-                >
+              <div
+                className={`flex items-center justify-center p-4 border rounded-md cursor-pointer ${
+                  hasAcceptedOffer === false
+                    ? `border-${theme.colors.primary} bg-opacity-10 bg-${theme.colors.primary}`
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
+                onClick={() => handleRadioChange('hasAcceptedOffer', false)}
+              >
+                <div className="text-center">
                   <div
+                    className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${
+                      hasAcceptedOffer === false
+                        ? 'bg-opacity-20'
+                        : 'bg-gray-100 text-gray-400'
+                    }`}
                     style={
                       hasAcceptedOffer === false
-                        ? { color: theme.colors.primary }
+                        ? { backgroundColor: `${theme.colors.primary}20` }
                         : {}
                     }
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
+                    <div
+                      style={
+                        hasAcceptedOffer === false
+                          ? { color: theme.colors.primary }
+                          : {}
+                      }
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
                   </div>
-                </div>
-                <div
-                  className="mt-2 font-medium"
-                  style={{
-                    color: hasAcceptedOffer === false ? theme.colors.primary : 'inherit',
-                  }}
-                >
-                  No
+                  <div
+                    className="mt-2 font-medium"
+                    style={{
+                      color: hasAcceptedOffer === false ? theme.colors.primary : 'inherit',
+                    }}
+                  >
+                    No
+                  </div>
                 </div>
               </div>
             </div>
@@ -261,13 +280,10 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
 
       {/* Fields when "Yes" is selected */}
       {hasAcceptedOffer === true && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
           <div>
-            <label
-              htmlFor="contractPurchasePrice"
-              className="block text-xs uppercase font-medium text-gray-500 mb-1"
-            >
-              Contract Purchase Price
+            <label htmlFor="contractPurchasePrice" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Contract Purchase Price<RequiredFieldIndicator />
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -279,10 +295,17 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
                 name="contractPurchasePrice"
                 value={contractPurchasePrice || ''}
                 onChange={handleChange}
-                className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className={`text-xs pl-7 w-full border ${
+                  errors['propertyInfo.contractPurchasePrice'] ? 'border-red-500' : 'border-gray-300'
+                } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
             </div>
+            {errors['propertyInfo.contractPurchasePrice'] && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors['propertyInfo.contractPurchasePrice']}
+              </p>
+            )}
           </div>
 
           <div>
@@ -293,7 +316,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               type="text"
               id="zipCode"
               name="zipCode"
-              value={zipCode || ''}
+              value={propertyZipCode || ''}
               onChange={handleChange}
               className={`text-xs w-full border ${
                 errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
@@ -309,28 +332,30 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
         </div>
       )}
 
-      {/* Fields when "No" is selected */}
+      {/* Fields when "No" is selected - only Property ZIP Code */}
       {hasAcceptedOffer === false && (
-        <div>
-          <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-            Property ZIP Code (if known)
-          </label>
-          <input
-            type="text"
-            id="zipCode"
-            name="zipCode"
-            value={zipCode || ''}
-            onChange={handleChange}
-            className={`text-xs w-full border ${
-              errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
-            } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-            style={{ '--focus-ring-color': theme.colors.primary }}
-          />
-          {errors['propertyInfo.zipCode'] && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors['propertyInfo.zipCode']}
-            </p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
+          <div>
+            <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Property ZIP Code (if known)
+            </label>
+            <input
+              type="text"
+              id="zipCode"
+              name="zipCode"
+              value={propertyZipCode || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${
+                errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
+              } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            />
+            {errors['propertyInfo.zipCode'] && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors['propertyInfo.zipCode']}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -343,8 +368,8 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           <h3 className="text-md font-medium text-gray-700 mb-4">Property Details</h3>
         )}
 
-        {/* Additional fields for "Yes" selection */}
-        {hasAcceptedOffer === true && (
+        {/* Additional fields for both "Yes" and "No" selections */}
+        {(hasAcceptedOffer === true || hasAcceptedOffer === false) && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
               <div>
@@ -463,29 +488,22 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           {/* Home Purpose */}
           <div>
             <label htmlFor="occupancyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              {userType === 'borrower' ? 'Occupancy Type' : 'Occupancy Type'}
+              Occupancy Type<RequiredFieldIndicator />
             </label>
-            <div className="relative">
-              <select
-                id="occupancyType"
-                name="occupancyType"
-                value={occupancyType || ''}
-                onChange={handleChange}
-                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ '--focus-ring-color': theme.colors.primary }}
-              >
-                <option value="">Select</option>
-                <option value="Primary Residence">Primary Residence</option>
-                <option value="Vacation Home">Vacation Home</option>
-                <option value="Investment">Investment</option>
-                <option value="Other">Other</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
+            <select
+              id="occupancyType"
+              name="occupancyType"
+              value={occupancyType || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.occupancyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            >
+              <option value="">Select Occupancy Type</option>
+              <option value="Primary Residence">Primary Residence</option>
+              <option value="Vacation Home">Vacation Home</option>
+              <option value="Investment">Investment</option>
+              <option value="Other">Other</option>
+            </select>
             {errors['propertyInfo.occupancyType'] && (
               <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.occupancyType']}</p>
             )}
@@ -494,34 +512,128 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           {/* Property Type */}
           <div>
             <label htmlFor="propertyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              {userType === 'borrower' ? 'What Type of Home Is This?' : 'Property Type'}
+              Property Type<RequiredFieldIndicator />
             </label>
-            <div className="relative">
-              <select
-                id="propertyType"
-                name="propertyType"
-                value={propertyType || ''}
-                onChange={handleChange}
-                className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ '--focus-ring-color': theme.colors.primary }}
-              >
-                <option value="">Select</option>
-                <option value="Single Family Home">Single Family Home</option>
-                <option value="Condominium">Condominium</option>
-                <option value="Townhouse">Townhouse</option>
-                <option value="Multi-Family">Multi-Family</option>
-                <option value="Manufactured Home">Manufactured Home</option>
-                <option value="Cooperative">Cooperative</option>
-                <option value="Planned Unit Development (PUD)">Planned Unit Development (PUD)</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
+            <select
+              id="propertyType"
+              name="propertyType"
+              value={propertyType || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.propertyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            >
+              <option value="">Select Property Type</option>
+              <option value="Single Family Home">Single Family Home</option>
+              <option value="Condominium">Condominium</option>
+              <option value="Townhouse">Townhouse</option>
+              <option value="Multi-Family">Multi-Family</option>
+              <option value="Manufactured Home">Manufactured Home</option>
+              <option value="Cooperative">Cooperative</option>
+              <option value="Planned Unit Development (PUD)">Planned Unit Development (PUD)</option>
+            </select>
             {errors['propertyInfo.propertyType'] && (
               <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.propertyType']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="propertyValue" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Property Value<RequiredFieldIndicator />
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 text-xs">$</span>
+              </div>
+              <input
+                type="text"
+                id="propertyValue"
+                name="propertyValue"
+                value={propertyValue || ''}
+                onChange={handleChange}
+                className={`text-xs pl-7 w-full border ${errors['propertyInfo.propertyValue'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                style={{ '--focus-ring-color': theme.colors.primary }}
+              />
+            </div>
+            {errors['propertyInfo.propertyValue'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.propertyValue']}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Property Address Section */}
+      <div className="mt-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Property Address</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label htmlFor="streetAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Street Address<RequiredFieldIndicator />
+            </label>
+            <input
+              type="text"
+              id="streetAddress"
+              name="streetAddress"
+              value={streetAddress || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.address.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            />
+            {errors['propertyInfo.address.streetAddress'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.streetAddress']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="city" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              City<RequiredFieldIndicator />
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={city || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.address.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            />
+            {errors['propertyInfo.address.city'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.city']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="state" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              State<RequiredFieldIndicator />
+            </label>
+            <input
+              type="text"
+              id="state"
+              name="state"
+              value={state || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.address.state'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            />
+            {errors['propertyInfo.address.state'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.state']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="propertyAddressZipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              ZIP Code<RequiredFieldIndicator />
+            </label>
+            <input
+              type="text"
+              id="propertyAddressZipCode"
+              name="propertyAddressZipCode"
+              value={propertyAddressZipCode || ''}
+              onChange={handleChange}
+              className={`text-xs w-full border ${errors['propertyInfo.address.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{ '--focus-ring-color': theme.colors.primary }}
+            />
+            {errors['propertyInfo.address.zipCode'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.zipCode']}</p>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * Loan Details Form
@@ -70,7 +71,12 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
     switch(name) {
       case 'loanType':
         setLoanType(value);
+        // Auto-set loanPurpose to match loanType
+        // setLoanPurpose(value); // Removed as per edit hint
         break;
+      // case 'loanPurpose': // Removed as per edit hint
+      //   setLoanPurpose(value);
+      //   break;
       // Purchase fields
       case 'purchasePrice':
         setPurchasePrice(value);
@@ -200,7 +206,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
       {/* Loan Type */}
       <div>
         <label htmlFor="loanType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-          Loan Type
+          Loan Type<RequiredFieldIndicator />
         </label>
         <div className="relative">
           <select
@@ -401,7 +407,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="loanAmount" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Loan Amount
+                Loan Amount<RequiredFieldIndicator />
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import theme from '../../../styles/theme';
 import PropTypes from 'prop-types';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * Personal Details Form
@@ -88,7 +89,7 @@ const PersonalDetails = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1">
             <label htmlFor="firstName" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              First Name
+              First Name<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -121,7 +122,7 @@ const PersonalDetails = ({
 
           <div className="md:col-span-1">
             <label htmlFor="lastName" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Last Name
+              Last Name<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -157,7 +158,7 @@ const PersonalDetails = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           <div className="md:col-span-1">
             <label htmlFor="maritalStatus" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Marital Status
+              Marital Status<RequiredFieldIndicator />
             </label>
             <div className="relative">
               <select
@@ -165,27 +166,25 @@ const PersonalDetails = ({
                 name="maritalStatus"
                 value={borrower?.maritalStatus || ''}
                 onChange={handleChange}
-                className={`text-xs appearance-none w-full border ${errors.maritalStatus ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                className={`text-xs w-full border ${errors.maritalStatus ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>
-                <option value="married">Married</option>
-                <option value="separated">Separated</option>
-                <option value="unmarried">Unmarried</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+                <option value="Divorced">Divorced</option>
+                <option value="Widowed">Widowed</option>
+                <option value="Separated">Separated</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
+              {errors.maritalStatus && (
+                <p className="text-red-500 text-xs mt-1">{errors.maritalStatus}</p>
+              )}
             </div>
-            {errors.maritalStatus && (
-              <p className="text-red-500 text-xs mt-1">{errors.maritalStatus}</p>
-            )}
           </div>
 
           <div className="md:col-span-1">
             <label htmlFor="dateOfBirth" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Date of Birth
+              Date of Birth<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -203,7 +202,7 @@ const PersonalDetails = ({
 
           <div className="md:col-span-1">
             <label htmlFor="ssn" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              SSN
+              SSN<RequiredFieldIndicator />
             </label>
             <input
               type="text"
@@ -222,7 +221,7 @@ const PersonalDetails = ({
 
           <div className="md:col-span-1">
             <label htmlFor="citizenship" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Citizenship
+              Citizenship<RequiredFieldIndicator />
             </label>
             <div className="relative">
               <select
@@ -230,22 +229,18 @@ const PersonalDetails = ({
                 name="citizenship"
                 value={borrower?.citizenship || ''}
                 onChange={handleChange}
-                className={`text-xs appearance-none w-full border ${errors.citizenship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                className={`text-xs w-full border ${errors.citizenship ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                style={{ '--focus-ring-color': theme.colors.primary }}
               >
                 <option value="">Select</option>
-                <option value="usCitizen">U.S. Citizen</option>
-                <option value="permanentResident">Permanent Resident</option>
-                <option value="nonPermanentResident">Non-Permanent Resident</option>
+                <option value="USCitizen">US Citizen</option>
+                <option value="PermanentResident">Permanent Resident</option>
+                <option value="NonPermanentResident">Non-Permanent Resident</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
+              {errors.citizenship && (
+                <p className="text-red-500 text-xs mt-1">{errors.citizenship}</p>
+              )}
             </div>
-            {errors.citizenship && (
-              <p className="text-red-500 text-xs mt-1">{errors.citizenship}</p>
-            )}
           </div>
         </div>
       </div>
@@ -256,7 +251,7 @@ const PersonalDetails = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="email" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Email
+              Email<RequiredFieldIndicator />
             </label>
             <input
               type="email"
@@ -274,7 +269,7 @@ const PersonalDetails = ({
 
           <div>
             <label htmlFor="phone" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Phone
+              Phone<RequiredFieldIndicator />
             </label>
             <input
               type="tel"

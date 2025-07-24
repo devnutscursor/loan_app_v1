@@ -18,21 +18,25 @@ import theme from '../../styles/theme';
 const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateStep }) => {
   // Handle clicking on a step
   const handleStepClick = (stepNumber) => {
-    // Don't allow clicking on future steps that are more than 1 step ahead
-    if (stepNumber > currentStep + 1) return;
-    
-    // If navigating backward or to the current step, no validation needed
-    if (stepNumber <= currentStep) {
-      setCurrentStep(stepNumber);
-      return;
+    // Only allow navigation to the next step or completed steps
+    if (stepNumber > currentStep + 1) {
+      return; // Don't allow skipping steps
     }
     
     // Validate the current step before allowing navigation to the next step
-    if (validateStep(currentStep)) {
+    const validationErrors = validateStep(currentStep);
+    
+    if (Object.keys(validationErrors).length === 0) {
       setCurrentStep(stepNumber);
     } else {
       // Don't allow navigation if current step isn't valid
-      alert('Please complete all required fields in the current step before proceeding.');
+      // Use a more specific message based on the validation errors
+      const errorMessages = Object.values(validationErrors);
+      const message = errorMessages.length > 0 
+        ? `Please complete: ${errorMessages.slice(0, 2).join(', ')}${errorMessages.length > 2 ? ` and ${errorMessages.length - 2} more fields` : ''}`
+        : 'Please complete all required fields in the current step before proceeding.';
+      
+      alert(message);
     }
   };
 

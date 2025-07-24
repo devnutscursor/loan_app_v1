@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import theme from '../../../styles/theme';
 import PropTypes from 'prop-types';
+import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
 
 /**
  * Employment History form component
@@ -121,17 +122,17 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Company Name
+                Company Name<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
                 value={employer.companyName || ''}
                 onChange={(e) => handleEmployerChange(index, 'companyName', e.target.value)}
-                className={`text-xs w-full border ${errors[`employers[${index}].companyName`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs w-full border ${errors[`employers.${index}.companyName`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
-              {errors[`employers[${index}].companyName`] && (
-                <p className="text-red-500 text-xs mt-1">{errors[`employers[${index}].companyName`]}</p>
+              {errors[`employers.${index}.companyName`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.companyName`]}</p>
               )}
             </div>
             
@@ -152,44 +153,41 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Job Title
+                Job Title<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
                 value={employer.jobTitle || ''}
                 onChange={(e) => handleEmployerChange(index, 'jobTitle', e.target.value)}
-                className={`text-xs w-full border ${errors[`employers[${index}].jobTitle`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                className={`text-xs w-full border ${errors[`employers.${index}.jobTitle`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
-              {errors[`employers[${index}].jobTitle`] && (
-                <p className="text-red-500 text-xs mt-1">{errors[`employers[${index}].jobTitle`]}</p>
+              {errors[`employers.${index}.jobTitle`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.jobTitle`]}</p>
               )}
             </div>
             
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Employment Status
+                Employment Status<RequiredFieldIndicator />
               </label>
               <div className="relative">
                 <select
                   value={employer.employmentStatus || ''}
                   onChange={(e) => handleEmployerChange(index, 'employmentStatus', e.target.value)}
-                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className={`text-xs w-full border ${errors[`employers.${index}.employmentStatus`] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   style={{ '--focus-ring-color': theme.colors.primary }}
                 >
                   <option value="">Select</option>
-                  <option value="currentEmployer">Current Employer</option>
-                  <option value="pastEmployer">Past Employer</option>
+                  <option value="Full-Time">Full-Time</option>
+                  <option value="Part-Time">Part-Time</option>
+                  <option value="Seasonal">Seasonal</option>
+                  <option value="Temporary">Temporary</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
+                {errors[`employers.${index}.employmentStatus`] && (
+                  <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.employmentStatus`]}</p>
+                )}
               </div>
-              {errors[`employers[${index}].employmentStatus`] && (
-                <p className="text-red-500 text-xs mt-1">{errors[`employers[${index}].employmentStatus`]}</p>
-              )}
             </div>
           </div>
           
@@ -246,7 +244,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Start Date
+                Start Date<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
@@ -256,11 +254,14 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.startDate`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.startDate`]}</p>
+              )}
             </div>
             
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Years in Profession
+                Years in Profession<RequiredFieldIndicator />
               </label>
               <input
                 type="number"
@@ -270,11 +271,14 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.yearsInProfession`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.yearsInProfession`]}</p>
+              )}
             </div>
             
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Months in Profession
+                Months in Profession<RequiredFieldIndicator />
               </label>
               <input
                 type="number"
@@ -285,6 +289,9 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.monthsInProfession`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.monthsInProfession`]}</p>
+              )}
             </div>
           </div>
           
@@ -293,7 +300,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Street Address
+                Street Address<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
@@ -302,6 +309,9 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.streetAddress`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.streetAddress`]}</p>
+              )}
             </div>
             
             <div>
@@ -319,7 +329,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
             
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                City
+                City<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
@@ -328,13 +338,16 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.city`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.city`]}</p>
+              )}
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                State
+                State<RequiredFieldIndicator />
               </label>
               <div className="relative">
                 <select
@@ -403,11 +416,14 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                   </svg>
                 </div>
               </div>
+              {errors[`employers.${index}.state`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.state`]}</p>
+              )}
             </div>
             
             <div>
               <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
-                Zip Code
+                Zip Code<RequiredFieldIndicator />
               </label>
               <input
                 type="text"
@@ -416,6 +432,9 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ '--focus-ring-color': theme.colors.primary }}
               />
+              {errors[`employers.${index}.zipCode`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`employers.${index}.zipCode`]}</p>
+              )}
             </div>
           </div>
           
