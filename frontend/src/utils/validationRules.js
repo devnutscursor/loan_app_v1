@@ -83,10 +83,6 @@ export const conditionalFields = {
     'propertyInfo.numberOfUnits': 'Number of units is required when you have an accepted offer',
     'propertyInfo.yearBuilt': 'Year built is required when you have an accepted offer',
     'propertyInfo.propertyValue': 'Property value is required when you have an accepted offer',
-    'propertyInfo.address.streetAddress': 'Property address is required when you have an accepted offer',
-    'propertyInfo.address.city': 'Property city is required when you have an accepted offer',
-    'propertyInfo.address.state': 'Property state is required when you have an accepted offer',
-    'propertyInfo.address.zipCode': 'Property ZIP code is required when you have an accepted offer',
   },
   
   // Properties owned (only when ownsProperty is true)

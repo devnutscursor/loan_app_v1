@@ -15,13 +15,7 @@ import RequiredFieldIndicator from '../../common/RequiredFieldIndicator';
  */
 const PropertyInformation = ({ propertyInfo = {}, onChange, errors = {}, userType = 'borrower' }) => {
   // Local state for responsive input fields - use a state variable for each field
-  const [propertyZipCode, setPropertyZipCode] = useState(propertyInfo.zipCode || '');
   const [contractPurchasePrice, setContractPurchasePrice] = useState(propertyInfo.contractPurchasePrice || '');
-  const [streetAddress, setStreetAddress] = useState(propertyInfo.address?.streetAddress || '');
-  const [aptSteNum, setAptSteNum] = useState(propertyInfo.address?.aptSteNum || '');
-  const [city, setCity] = useState(propertyInfo.address?.city || '');
-  const [state, setState] = useState(propertyInfo.address?.state || '');
-  const [propertyAddressZipCode, setPropertyAddressZipCode] = useState(propertyInfo.address?.zipCode || '');
   const [occupancyType, setOccupancyType] = useState(propertyInfo.occupancyType || '');
   const [propertyType, setPropertyType] = useState(propertyInfo.propertyType || '');
   const [propertyValue, setPropertyValue] = useState(propertyInfo.propertyValue || '');
@@ -36,13 +30,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
   
   // Update local state when propertyInfo changes from parent
   useEffect(() => {
-    setPropertyZipCode(propertyInfo.zipCode || '');
     setContractPurchasePrice(propertyInfo.contractPurchasePrice || '');
-    setStreetAddress(propertyInfo.address?.streetAddress || '');
-    setAptSteNum(propertyInfo.address?.aptSteNum || '');
-    setCity(propertyInfo.address?.city || '');
-    setState(propertyInfo.address?.state || '');
-    setPropertyAddressZipCode(propertyInfo.address?.zipCode || '');
     setOccupancyType(propertyInfo.occupancyType || '');
     setPropertyType(propertyInfo.propertyType || '');
     setPropertyValue(propertyInfo.propertyValue || '');
@@ -62,26 +50,8 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
     
     // Update local state immediately for responsive typing
     switch(name) {
-      case 'zipCode':
-        setPropertyZipCode(value);
-        break;
-      case 'propertyAddressZipCode':
-        setPropertyAddressZipCode(value);
-        break;
       case 'contractPurchasePrice':
         setContractPurchasePrice(value);
-        break;
-      case 'streetAddress':
-        setStreetAddress(value);
-        break;
-      case 'aptSteNum':
-        setAptSteNum(value);
-        break;
-      case 'city':
-        setCity(value);
-        break;
-      case 'state':
-        setState(value);
         break;
       case 'occupancyType':
         setOccupancyType(value);
@@ -117,17 +87,10 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
     // Forward the change to parent component with proper field mapping
     let fieldName = `propertyInfo.${name}`;
     
-    // Map address fields to nested structure
-    if (['streetAddress', 'city', 'state', 'aptSteNum'].includes(name)) {
-      fieldName = `propertyInfo.address.${name}`;
-    } else if (name === 'propertyAddressZipCode') {
-      fieldName = `propertyInfo.address.zipCode`;
-    }
-    
     onChange({
       target: {
         name: fieldName,
-        value
+        value: value
       }
     });
   };
@@ -307,55 +270,13 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               </p>
             )}
           </div>
-
-          <div>
-            <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Property ZIP Code (if known)
-            </label>
-            <input
-              type="text"
-              id="zipCode"
-              name="zipCode"
-              value={propertyZipCode || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${
-                errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
-              } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.zipCode'] && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors['propertyInfo.zipCode']}
-              </p>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Fields when "No" is selected - only Property ZIP Code */}
+      {/* Fields when "No" is selected - no additional fields needed */}
       {hasAcceptedOffer === false && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
-          <div>
-            <label htmlFor="zipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Property ZIP Code (if known)
-            </label>
-            <input
-              type="text"
-              id="zipCode"
-              name="zipCode"
-              value={propertyZipCode || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${
-                errors['propertyInfo.zipCode'] ? 'border-red-500' : 'border-gray-300'
-              } rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.zipCode'] && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors['propertyInfo.zipCode']}
-              </p>
-            )}
-          </div>
+        <div className="mt-4 mb-4">
+          {/* No additional fields needed when "No" is selected */}
         </div>
       )}
 
@@ -545,84 +466,6 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
             </div>
           </>
         )}
-      </div>
-
-      {/* Property Address Section */}
-      <div className="mt-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Property Address</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label htmlFor="streetAddress" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Street Address<RequiredFieldIndicator />
-            </label>
-            <input
-              type="text"
-              id="streetAddress"
-              name="streetAddress"
-              value={streetAddress || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.address.streetAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.address.streetAddress'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.streetAddress']}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="city" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              City<RequiredFieldIndicator />
-            </label>
-            <input
-              type="text"
-              id="city"
-              name="city"
-              value={city || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.address.city'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.address.city'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.city']}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="state" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              State<RequiredFieldIndicator />
-            </label>
-            <input
-              type="text"
-              id="state"
-              name="state"
-              value={state || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.address.state'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.address.state'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.state']}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="propertyAddressZipCode" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              ZIP Code<RequiredFieldIndicator />
-            </label>
-            <input
-              type="text"
-              id="propertyAddressZipCode"
-              name="propertyAddressZipCode"
-              value={propertyAddressZipCode || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.address.zipCode'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            />
-            {errors['propertyInfo.address.zipCode'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.address.zipCode']}</p>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
