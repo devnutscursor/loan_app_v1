@@ -368,15 +368,78 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
           <h3 className="text-md font-medium text-gray-700 mb-4">Property Details</h3>
         )}
 
-        {/* Additional fields for both "Yes" and "No" selections */}
-        {(hasAcceptedOffer === true || hasAcceptedOffer === false) && (
+        {/* Basic fields for both "Yes" and "No" selections */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label htmlFor="occupancyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              Occupancy Type<RequiredFieldIndicator />
+            </label>
+            <div className="relative">
+              <select
+                id="occupancyType"
+                name="occupancyType"
+                value={occupancyType || ''}
+                onChange={handleChange}
+                className={`text-xs appearance-none w-full border ${errors['propertyInfo.occupancyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                style={{ '--focus-ring-color': theme.colors.primary }}
+              >
+                <option value="">Select</option>
+                <option value="Primary Residence">Primary Residence</option>
+                <option value="Vacation Home">Vacation Home</option>
+                <option value="Investment">Investment</option>
+                <option value="Other">Other</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            {errors['propertyInfo.occupancyType'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.occupancyType']}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="propertyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+              What Type of Home is This?<RequiredFieldIndicator />
+            </label>
+            <div className="relative">
+              <select
+                id="propertyType"
+                name="propertyType"
+                value={propertyType || ''}
+                onChange={handleChange}
+                className={`text-xs appearance-none w-full border ${errors['propertyInfo.propertyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                style={{ '--focus-ring-color': theme.colors.primary }}
+              >
+                <option value="">Select Property Type</option>
+                <option value="Single Family Home">Single Family Home</option>
+                <option value="Condominium">Condominium</option>
+                <option value="Townhouse">Townhouse</option>
+                <option value="Multi-Family">Multi-Family</option>
+                <option value="Manufactured Home">Manufactured Home</option>
+                <option value="Cooperative">Cooperative</option>
+                <option value="Planned Unit Development (PUD)">Planned Unit Development (PUD)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            {errors['propertyInfo.propertyType'] && (
+              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.propertyType']}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Additional fields for "Yes" selection only */}
+        {hasAcceptedOffer === true && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
               <div>
-                <label
-                  htmlFor="isMixedUse"
-                  className="block text-xs uppercase font-medium text-gray-500 mb-1"
-                >
+                <label htmlFor="isMixedUse" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   {userType === 'borrower' ? 'Is This Property Mixed-Use?' : 'Mixed-Use Property'}
                 </label>
                 <div className="relative">
@@ -466,7 +529,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                    <span className="text-gray-500 text-xs">$</span>
                   </div>
                   <input
                     type="text"
@@ -480,85 +543,8 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
                 </div>
               </div>
             </div>
-           
           </>
         )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Home Purpose */}
-          <div>
-            <label htmlFor="occupancyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Occupancy Type<RequiredFieldIndicator />
-            </label>
-            <select
-              id="occupancyType"
-              name="occupancyType"
-              value={occupancyType || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.occupancyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            >
-              <option value="">Select Occupancy Type</option>
-              <option value="Primary Residence">Primary Residence</option>
-              <option value="Vacation Home">Vacation Home</option>
-              <option value="Investment">Investment</option>
-              <option value="Other">Other</option>
-            </select>
-            {errors['propertyInfo.occupancyType'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.occupancyType']}</p>
-            )}
-          </div>
-          
-          {/* Property Type */}
-          <div>
-            <label htmlFor="propertyType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Property Type<RequiredFieldIndicator />
-            </label>
-            <select
-              id="propertyType"
-              name="propertyType"
-              value={propertyType || ''}
-              onChange={handleChange}
-              className={`text-xs w-full border ${errors['propertyInfo.propertyType'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-              style={{ '--focus-ring-color': theme.colors.primary }}
-            >
-              <option value="">Select Property Type</option>
-              <option value="Single Family Home">Single Family Home</option>
-              <option value="Condominium">Condominium</option>
-              <option value="Townhouse">Townhouse</option>
-              <option value="Multi-Family">Multi-Family</option>
-              <option value="Manufactured Home">Manufactured Home</option>
-              <option value="Cooperative">Cooperative</option>
-              <option value="Planned Unit Development (PUD)">Planned Unit Development (PUD)</option>
-            </select>
-            {errors['propertyInfo.propertyType'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.propertyType']}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="propertyValue" className="block text-xs uppercase font-medium text-gray-500 mb-1">
-              Property Value<RequiredFieldIndicator />
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 text-xs">$</span>
-              </div>
-              <input
-                type="text"
-                id="propertyValue"
-                name="propertyValue"
-                value={propertyValue || ''}
-                onChange={handleChange}
-                className={`text-xs pl-7 w-full border ${errors['propertyInfo.propertyValue'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                style={{ '--focus-ring-color': theme.colors.primary }}
-              />
-            </div>
-            {errors['propertyInfo.propertyValue'] && (
-              <p className="text-red-500 text-xs mt-1">{errors['propertyInfo.propertyValue']}</p>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Property Address Section */}

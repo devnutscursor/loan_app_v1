@@ -42,11 +42,6 @@ export const propertyRequiredFields = {
   'propertyInfo.hasAcceptedOffer': 'Please indicate if you have an accepted offer on a property',
   'propertyInfo.propertyType': 'Property type is required',
   'propertyInfo.occupancyType': 'Occupancy type is required',
-  'propertyInfo.propertyValue': 'Property value is required',
-  'propertyInfo.address.streetAddress': 'Property address is required',
-  'propertyInfo.address.city': 'Property city is required',
-  'propertyInfo.address.state': 'Property state is required',
-  'propertyInfo.address.zipCode': 'Property ZIP code is required',
 };
 
 // Required fields for loan details
@@ -87,6 +82,29 @@ export const conditionalFields = {
     'propertyInfo.isManufactured': 'Manufactured home status is required when you have an accepted offer',
     'propertyInfo.numberOfUnits': 'Number of units is required when you have an accepted offer',
     'propertyInfo.yearBuilt': 'Year built is required when you have an accepted offer',
+    'propertyInfo.propertyValue': 'Property value is required when you have an accepted offer',
+    'propertyInfo.address.streetAddress': 'Property address is required when you have an accepted offer',
+    'propertyInfo.address.city': 'Property city is required when you have an accepted offer',
+    'propertyInfo.address.state': 'Property state is required when you have an accepted offer',
+    'propertyInfo.address.zipCode': 'Property ZIP code is required when you have an accepted offer',
+  },
+  
+  // Properties owned (only when ownsProperty is true)
+  ownsProperty: {
+    'propertiesOwned.properties.0.propertyAddress.streetAddress': 'Property address is required when you own property',
+    'propertiesOwned.properties.0.propertyAddress.city': 'Property city is required when you own property',
+    'propertiesOwned.properties.0.propertyAddress.state': 'Property state is required when you own property',
+    'propertiesOwned.properties.0.propertyAddress.zipCode': 'Property ZIP code is required when you own property',
+    'propertiesOwned.properties.0.presentMarketValue': 'Market value is required when you own property',
+    'propertiesOwned.properties.0.monthlyCosts': 'Monthly costs are required when you own property',
+    'propertiesOwned.properties.0.statusOfProperty': 'Property status is required when you own property',
+    'propertiesOwned.properties.0.intendedOccupancy': 'Intended occupancy is required when you own property',
+  },
+  
+  // Property has loan (only when hasLoan is true)
+  hasLoan: {
+    'propertiesOwned.properties.0.monthlyPayment': 'Monthly payment is required when property has a loan',
+    'propertiesOwned.properties.0.unpaidBalance': 'Unpaid balance is required when property has a loan',
   },
 };
 
@@ -99,6 +117,10 @@ export const financialRequiredFields = {
 export const additionalRequiredFields = {
   'propertiesOwned.ownsProperty': 'Please indicate if you own additional property',
   'militaryService.hasServed': 'Please indicate if you have served in the military',
+  'militaryService.currentlyServing': 'Please indicate if you are currently serving in the military',
+  'militaryService.isRetired': 'Please indicate if you are retired from the military',
+  'militaryService.isNonActivated': 'Please indicate if you are non-activated military',
+  'militaryService.isSurvivingSpouse': 'Please indicate if you are a surviving spouse',
 };
 
 // Required fields for declarations and demographics
@@ -206,52 +228,39 @@ export const getRequiredFieldsForStep = (step, formData, tabName = null) => {
   return requiredFields;
 };
 
-/**
- * Check if a field should be visible based on form data
- * @param {string} fieldPath - The field path to check
- * @param {Object} formData - Current form data
- * @returns {boolean} Whether the field should be visible
- */
-export const isFieldVisible = (fieldPath, formData) => {
+export function isFieldVisible(fieldPath, formData) {
   // Check loan type conditional fields
-  const loanType = formData.loanInfo?.loanType?.toLowerCase();
-  
-  if (loanType && conditionalFields[loanType]) {
-    if (conditionalFields[loanType][fieldPath]) {
-      return true;
-    }
+  const loanType = formData.loanInfo?.loanType;
+  if (loanType && conditionalFields[loanType.toLowerCase()] && conditionalFields[loanType.toLowerCase()][fieldPath]) {
+    return true;
   }
   
-  // Check loanAmount field - only required for Construction loans
-  if (fieldPath === 'loanInfo.loanAmount') {
-    return loanType === 'construction';
-  }
-  
-  // Check accepted offer conditional fields - show for both true and false, except contract purchase price
+  // Check hasAcceptedOffer conditional fields
   if (formData.propertyInfo?.hasAcceptedOffer !== undefined) {
     if (fieldPath === 'propertyInfo.contractPurchasePrice') {
-      // Only show contract purchase price when hasAcceptedOffer is true
       if (formData.propertyInfo.hasAcceptedOffer === true && conditionalFields.hasAcceptedOffer[fieldPath]) {
         return true;
       }
     } else if (conditionalFields.hasAcceptedOffer[fieldPath]) {
-      // Show other conditional fields for both true and false
       return true;
     }
   }
   
-  // Check if field is in any of the base required field sets
-  const allBaseFields = {
-    ...borrowerRequiredFields,
-    ...propertyRequiredFields,
-    ...loanRequiredFields,
-    ...financialRequiredFields,
-    ...additionalRequiredFields,
-    ...declarationsRequiredFields,
-  };
+  // Check ownsProperty conditional fields
+  if (formData.propertiesOwned?.ownsProperty === true && conditionalFields.ownsProperty[fieldPath]) {
+    return true;
+  }
   
-  return allBaseFields[fieldPath] !== undefined;
-};
+  // Check hasLoan conditional fields (for properties)
+  if (formData.propertiesOwned?.properties && formData.propertiesOwned.properties.length > 0) {
+    const firstProperty = formData.propertiesOwned.properties[0];
+    if (firstProperty.hasLoan === true && conditionalFields.hasLoan[fieldPath]) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 /**
  * Get field value from nested object using dot notation
@@ -289,6 +298,16 @@ export const validateStep = (step, formData, tabName = null) => {
     
     // Skip validation for hasAcceptedOffer if it has been selected (either true or false)
     if (fieldPath === 'propertyInfo.hasAcceptedOffer' && value !== undefined) {
+      continue;
+    }
+    
+    // Skip validation for hasServed if it has been selected (either true or false)
+    if (fieldPath === 'militaryService.hasServed' && value !== undefined) {
+      continue;
+    }
+    
+    // Skip validation for declarations fields if they have been selected (either true or false)
+    if ((fieldPath === 'declarations.occupyAsPrimary' || fieldPath === 'declarations.firstTimeBuyer') && value !== undefined) {
       continue;
     }
     

@@ -26,8 +26,15 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
   }, [formData]);
 
   // Function to handle changes to the property owned section
-  const handlePropertyOwnedChange = (propertyOwned) => {
-    handleChange('propertiesOwned', propertyOwned);
+  const handlePropertyOwnedChange = (event) => {
+    // Handle both direct value and event object
+    if (event && event.target) {
+      // Event object from PropertyOwned component
+      handleChange(event.target.name, event.target.value);
+    } else {
+      // Direct value (fallback)
+      handleChange('propertiesOwned', event);
+    }
   };
 
   // Function to handle changes to the military service section
@@ -136,10 +143,10 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
       case 'propertiesOwned':
         return (
           <PropertyOwned
-            propertyOwned={formData.propertiesOwned || {}}
+            propertiesOwned={formData.propertiesOwned || {}}
             onChange={handlePropertyOwnedChange}
-            borrower={formData.borrowers?.[0] || {}}
             errors={errors}
+            userType="borrower"
           />
         );
       case 'militaryService':

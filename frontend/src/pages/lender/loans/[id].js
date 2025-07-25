@@ -3417,7 +3417,7 @@ const LoanDetails = () => {
                             </div>
                             <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                               <PropertyOwned
-                                propertyOwned={loan.propertiesOwned || {}}
+                                propertiesOwned={loan.propertiesOwned || {}}
                                 onChange={(updatedPropertyOwned) => {
                                   console.log("Updated property owned data:", updatedPropertyOwned);
                                   setLoan((prev) => ({
@@ -3426,6 +3426,7 @@ const LoanDetails = () => {
                                   }));
                                   setHasUnsavedChanges(true);
                                 }}
+                                userType="lender"
                               />
                             </div>
                           </div>

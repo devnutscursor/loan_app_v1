@@ -55,7 +55,20 @@ const PropertiesOwnedCard = ({ loan, formatCurrency }) => {
                     <div>
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Address</span>
                       <p className="mt-1 text-sm text-gray-900 break-words">
-                        {property.address || 'N/A'}
+                        {(() => {
+                          const address = property.propertyAddress;
+                          if (!address) return 'N/A';
+                          
+                          const parts = [
+                            address.streetAddress,
+                            address.apt,
+                            address.city,
+                            address.state,
+                            address.zipCode
+                          ].filter(Boolean);
+                          
+                          return parts.length > 0 ? parts.join(', ') : 'N/A';
+                        })()}
                       </p>
                     </div>
                     

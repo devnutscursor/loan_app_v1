@@ -903,6 +903,7 @@ const LenderManualLoanCreation = () => {
           <BorrowerStep
             formData={formData}
             handleChange={handleChange}
+            validateStep={validateStep}
             errors={errors}
             setErrors={setErrors}
             currentSubStep={currentSubStep}
