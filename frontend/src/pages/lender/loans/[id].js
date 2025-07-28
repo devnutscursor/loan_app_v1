@@ -2062,6 +2062,8 @@ const LoanDetails = () => {
   const [activeTab, setActiveTab] = useState("dashboard"); // Change this line
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [cachedData, setCachedData] = useState(null);
 
   // Tabs where the bar should NOT show
   const NO_SAVE_TABS = ["dashboard", "documents", "milestones"];
@@ -2273,66 +2275,100 @@ const LoanDetails = () => {
     }
   }, [id, activeTab]);
 
-  const fetchLoanDetails = async () => {
+  const fetchLoanDetails = async (forceRefresh = false) => {
     try {
+      // Check if we have cached data and it's less than 30 seconds old
+      const now = Date.now();
+      const cacheAge = now - (lastFetchTime || 0);
+      const cacheValid = cacheAge < 30000; // 30 seconds cache
+
+      if (!forceRefresh && cachedData && cacheValid) {
+        console.log("Using cached data (age:", cacheAge, "ms)");
+        setLoan(cachedData.loan);
+        setDocuments(cachedData.documents);
+        return;
+      }
+
       setLoading(true);
       setError(null);
-      // console.log("Fetching loan details for ID:", id);
 
-      const response = await lenderService.getLoan(id);
+      // Try the optimized endpoint first, fallback to original if it fails
+      let response;
+      try {
+        response = await lenderService.getLoanWithDetails(id);
+        console.log("Response from getLoanWithDetails:", response);
+      } catch (error) {
+        console.warn("getLoanWithDetails failed, falling back to original endpoint:", error);
+        // Fallback to original endpoint
+        response = await lenderService.getLoan(id);
+        console.log("Response from original getLoan:", response);
+      }
       
-      // Print debug info to terminal
-      // console.log('\n=== LOAN DETAILS DEBUG INFO ===');
-      // console.log('Loan ID:', id);
-      // console.log('Full Response:', JSON.stringify(response, null, 2));
-      // console.log('Response Data:', JSON.stringify(response?.data, null, 2));
-      // console.log('Response Data Data:', JSON.stringify(response?.data?.data, null, 2));
-      // console.log('Loan Data:', JSON.stringify(response?.data?.data?.loan, null, 2));
-      // console.log('Borrower Details:', JSON.stringify(response?.data?.data?.loan?.borrowerDetails, null, 2));
-      // console.log('================================\n');
-
-      if (response && (response.data || response.data?.data)) {
-        // Extract loan data, handling different response structures
-        // Based on the API structure in memory, data is nested under response.data.data
-        const loanData =
-          response.data?.data?.loan || response.data?.data || response.data;
-        // console.log("Loan details:", loanData);
-
+      if (response && response.data) {
+        // Handle different response structures from different endpoints
+        let loanData, docsData, milestonesData;
+        
+        if (response.data.loan) {
+          // New optimized endpoint structure
+          loanData = response.data.loan;
+          docsData = response.data.documents;
+          milestonesData = response.data.milestones;
+        } else {
+          // Original endpoint structure
+          loanData = response.data;
+          docsData = []; // Documents will be fetched separately if needed
+          milestonesData = [];
+        }
+        
+        // Handle the case where loanData might be nested differently
+        const actualLoanData = loanData?.data || loanData;
+        
         // Ensure all required properties exist with defaults
         const normalizedData = {
-          borrowerDetails: loanData.borrowerDetails || {},
-          loanDetails: loanData.loanDetails || {},
-          property: loanData.property || {},
-          income: loanData.income || {},
-          assets: loanData.assets || [],
-          debts: loanData.debts || [],
-          propertiesOwned: loanData.propertiesOwned || [],
-          declarations: loanData.declarations || {},
-          demographics: loanData.demographics || {},
-          militaryService: loanData.militaryService || {},
-          ...loanData,
+          borrowerDetails: actualLoanData?.borrowerDetails || {},
+          loanDetails: actualLoanData?.loanDetails || {},
+          property: actualLoanData?.property || {},
+          income: actualLoanData?.income || {},
+          assets: actualLoanData?.assets || [],
+          debts: actualLoanData?.debts || [],
+          propertiesOwned: actualLoanData?.propertiesOwned || [],
+          declarations: actualLoanData?.declarations || {},
+          demographics: actualLoanData?.demographics || {},
+          militaryService: actualLoanData?.militaryService || {},
+          ...actualLoanData,
         };
 
-        // Add console logs to inspect data
         console.log("Normalized data structure:", normalizedData);
-        // console.log("Borrower details:", normalizedData.borrowerDetails);
-        // console.log("Loan details:", normalizedData.loanDetails);
-
         setLoan(normalizedData);
-
-        // Fetch documents separately since they are stored in a different collection
-        try {
-          const docsResponse = await lenderService.getLoanDocuments(id);
-          // console.log("Documents response:", docsResponse);
-
-          if (docsResponse && docsResponse.data) {
-            // Extract documents, handling nested structure
-            const docsData = docsResponse.data?.data || docsResponse.data;
-            setDocuments(Array.isArray(docsData) ? docsData : []);
+        
+        // Set documents and milestones from the same response
+        setDocuments(Array.isArray(docsData) ? docsData : []);
+        
+        // If documents weren't included in the response, fetch them separately
+        if (!Array.isArray(docsData) || docsData.length === 0) {
+          try {
+            const docsResponse = await lenderService.getLoanDocuments(id);
+            if (docsResponse && docsResponse.data) {
+              const separateDocsData = docsResponse.data?.data || docsResponse.data;
+              setDocuments(Array.isArray(separateDocsData) ? separateDocsData : []);
+            }
+          } catch (docError) {
+            console.error("Error fetching loan documents:", docError);
           }
-        } catch (docError) {
-          console.error("Error fetching loan documents:", docError);
-          // Don't fail the whole page load just because documents failed
+        }
+        
+        // Cache the data for future use
+        setCachedData({
+          loan: normalizedData,
+          documents: Array.isArray(docsData) ? docsData : [],
+          milestones: milestonesData || []
+        });
+        setLastFetchTime(Date.now());
+        
+        // Store milestones in state if needed for the dashboard
+        if (activeTab === "dashboard" && milestonesData) {
+          // You can store milestones in state if needed for other components
+          console.log("Milestones loaded:", milestonesData.length);
         }
       } else {
         console.warn("Failed to fetch loan details");
@@ -2341,8 +2377,19 @@ const LoanDetails = () => {
       }
     } catch (error) {
       console.error("Error fetching loan details:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to load loan details. Please try again later.";
+      if (error.response?.status === 404) {
+        errorMessage = "Loan not found. It may have been deleted or you don't have permission to view it.";
+      } else if (error.response?.status === 403) {
+        errorMessage = "You don't have permission to view this loan.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+      
       setError("An error occurred while loading the loan details");
-      toast.error("Failed to load loan details. Please try again later.");
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -2353,6 +2400,11 @@ const LoanDetails = () => {
 
     fetchLoanDetails();
   }, [id]);
+
+  // Function to refresh data (useful for after updates)
+  const refreshData = () => {
+    fetchLoanDetails(true); // Force refresh
+  };
 
   const handleRemoveDocument = async (documentId) => {
     // Document removal is only for borrowers, but we can show a message here

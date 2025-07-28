@@ -148,6 +148,7 @@ export const lenderService = {
   // Loans
   getLoans: (params) => api.get('/loans', { params: { ...params, all: 'true' } }),
   getLoan: (id) => api.get(`/loans/${id}`),
+  getLoanWithDetails: (id) => api.get(`/loans/${id}/with-details`),
   updateLoan: (id, loanData) => api.put(`/borrower/loans/by-number/${loanData.loanDetails?.loanNumber || loanData.loanNumber || id}`, loanData),
   getBorrowerLoans: async (borrowerId, params = {}) => {
     try {

@@ -27,6 +27,9 @@ router.get(
 // Get a specific loan by ID
 router.get('/:id', loanController.getLoan);
 
+// Get a loan with all details (documents, milestones) in a single request
+router.get('/:id/with-details', loanController.getLoanWithDetails);
+
 // Update loan details
 router.put('/:id', loanController.updateLoan);
 

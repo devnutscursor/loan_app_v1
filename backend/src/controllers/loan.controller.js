@@ -10,6 +10,8 @@ const fs = require('fs');
 const path = require('path');
 const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
 const { USE_S3, s3 } = require('../services/s3.service');
+const Document = require("../models/document.model");
+const Milestone = require("../models/milestone.model");
 
 // Check if we should use S3 or local storage
 // const USE_S3 = process.env.USE_S3 === 'true' || false;
@@ -846,7 +848,7 @@ exports.getLoan = async (req, res, next) => {
     const { id } = req.params;
 
     // First find the loan without populating to check permissions
-    const loan = await Loan.findById(id);
+    const loan = await Loan.findById(id).lean();
 
     if (!loan) {
       return next(new ApiError("Loan not found", 404));
@@ -855,7 +857,7 @@ exports.getLoan = async (req, res, next) => {
     // Check permissions based on user role
     if (req.user.role === "borrower") {
       // Get the borrower profile
-      const borrower = await Borrower.findOne({ user: req.user._id });
+      const borrower = await Borrower.findOne({ user: req.user._id }).lean();
 
       if (!borrower) {
         return next(new ApiError("Borrower profile not found", 404));
@@ -863,15 +865,15 @@ exports.getLoan = async (req, res, next) => {
 
       // Check if this borrower is associated with this loan
       const isBorrowerOfLoan =
-        (loan.borrower && loan.borrower.equals(borrower._id)) ||
+        (loan.borrower && loan.borrower.toString() === borrower._id.toString()) ||
         (loan.coBorrowers &&
           loan.coBorrowers.some((coBorrower) =>
-            coBorrower.equals(borrower._id)
+            coBorrower.toString() === borrower._id.toString()
           ));
 
       // Check if the loan is associated with the borrower's lender
       const isLoanFromBorrowersLender =
-        loan.lender && loan.lender.equals(borrower.lender);
+        loan.lender && loan.lender.toString() === borrower.lender.toString();
 
       if (!isBorrowerOfLoan || !isLoanFromBorrowersLender) {
         return next(
@@ -880,14 +882,14 @@ exports.getLoan = async (req, res, next) => {
       }
     } else if (req.user.role === "lender") {
       // Get the lender profile
-      const lender = await Lender.findOne({ user: req.user._id });
+      const lender = await Lender.findOne({ user: req.user._id }).lean();
 
       if (!lender) {
         return next(new ApiError("Lender profile not found", 404));
       }
 
       // Check if this lender is associated with this loan
-      const isLenderOfLoan = loan.lender && loan.lender.equals(lender._id);
+      const isLenderOfLoan = loan.lender && loan.lender.toString() === lender._id.toString();
 
       if (!isLenderOfLoan) {
         return next(
@@ -896,29 +898,31 @@ exports.getLoan = async (req, res, next) => {
       }
     }
 
-    // After permission check, get the fully populated loan
+    // After permission check, get the fully populated loan with optimized queries
     const populatedLoan = await Loan.findById(id)
-      .populate("borrower")
       .populate({
         path: "borrower",
+        select: "firstName lastName email phone user",
         populate: {
           path: "user",
           select: "firstName lastName email phone",
         },
       })
-      .populate("lender")
       .populate({
         path: "lender",
+        select: "firstName lastName email phone user company",
         populate: {
           path: "user",
           select: "firstName lastName email phone",
         },
       })
-      .populate("property")
-      .populate("coBorrowers")
-      .populate("milestones")
-      .populate("documents")
-      .populate("assignedLoanOfficer", "firstName lastName email phone");
+      .populate("assignedLoanOfficer", "firstName lastName email phone")
+      .lean(); // Use lean() for better performance
+
+    // If the loan doesn't exist after population, return error
+    if (!populatedLoan) {
+      return next(new ApiError("Loan not found", 404));
+    }
 
     res.status(200).json({
       status: "success",
@@ -3136,6 +3140,115 @@ exports.sendPreApprovalLetter = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error sending pre-approval letter:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get a loan with all related data (documents, milestones) in a single request
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanWithDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // First find the loan without populating to check permissions
+    const loan = await Loan.findById(id).lean();
+
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    // Check permissions based on user role
+    if (req.user.role === "borrower") {
+      const borrower = await Borrower.findOne({ user: req.user._id }).lean();
+      if (!borrower) {
+        return next(new ApiError("Borrower profile not found", 404));
+      }
+
+      const isBorrowerOfLoan =
+        (loan.borrower && loan.borrower.toString() === borrower._id.toString()) ||
+        (loan.coBorrowers &&
+          loan.coBorrowers.some((coBorrower) =>
+            coBorrower.toString() === borrower._id.toString()
+          ));
+
+      const isLoanFromBorrowersLender =
+        loan.lender && loan.lender.toString() === borrower.lender.toString();
+
+      if (!isBorrowerOfLoan || !isLoanFromBorrowersLender) {
+        return next(new ApiError("You are not authorized to view this loan", 403));
+      }
+    } else if (req.user.role === "lender") {
+      const lender = await Lender.findOne({ user: req.user._id }).lean();
+      if (!lender) {
+        return next(new ApiError("Lender profile not found", 404));
+      }
+
+      const isLenderOfLoan = loan.lender && loan.lender.toString() === lender._id.toString();
+      if (!isLenderOfLoan) {
+        return next(new ApiError("You are not authorized to view this loan", 403));
+      }
+    }
+
+    // Fetch all data in parallel for better performance
+    const [populatedLoan, documents, milestones] = await Promise.all([
+      // Get populated loan data
+      Loan.findById(id)
+        .populate({
+          path: "borrower",
+          select: "firstName lastName email phone user",
+          populate: {
+            path: "user",
+            select: "firstName lastName email phone",
+          },
+        })
+        .populate({
+          path: "lender",
+          select: "firstName lastName email phone user company",
+          populate: {
+            path: "user",
+            select: "firstName lastName email phone",
+          },
+        })
+        .populate("assignedLoanOfficer", "firstName lastName email phone")
+        .lean(),
+      
+      // Get documents
+      Document.find({ loan: id })
+        .select("name description fileUrl s3Key originalFilename mimeType size category documentType status uploadedAt")
+        .sort({ uploadedAt: -1 })
+        .lean(),
+      
+      // Get milestones
+      Milestone.find({ loan: id })
+        .select("name description status dueDate completedDate order")
+        .sort({ order: 1 })
+        .lean()
+    ]);
+
+    if (!populatedLoan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    console.log("Sending response from getLoanWithDetails:", {
+      loanId: id,
+      hasLoan: !!populatedLoan,
+      documentsCount: documents?.length || 0,
+      milestonesCount: milestones?.length || 0
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        loan: populatedLoan,
+        documents: documents || [],
+        milestones: milestones || []
+      },
+    });
+  } catch (error) {
     next(error);
   }
 };

@@ -94,35 +94,8 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
     calculateDocumentStats();
   }, [documents]);
 
-  // Add function to fetch milestones
-  const fetchMilestones = async () => {
-    if (!id) return;
-
-    try {
-      setLoadingMilestones(true);
-      setMilestoneError(null);
-      const response = await milestoneService.getLoanMilestones(id);
-
-      if (response.status === "success") {
-        setMilestones(response.data.milestones || []);
-      } else {
-        setMilestoneError("Failed to load milestones");
-        console.error("Error fetching milestones:", response);
-      }
-    } catch (err) {
-      console.error("Error loading milestones:", err.message);
-      setMilestoneError(err.message || "Error loading milestones");
-    } finally {
-      setLoadingMilestones(false);
-    }
-  };
-
-  // Add useEffect to fetch milestones when component mounts
-  useEffect(() => {
-    if (id) {
-      fetchMilestones();
-    }
-  }, [id]);
+  // Milestones are now fetched with the main loan data, so we don't need separate fetching
+  // The milestones will be passed as props from the parent component
 
   // Add function to calculate milestone counts
   const getMilestoneStats = () => {
