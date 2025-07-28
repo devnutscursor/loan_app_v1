@@ -307,165 +307,202 @@ const LenderDashboard = () => {
   const [borrowerLoans, setBorrowerLoans] = useState({});
   const [activities, setActivities] = useState([]);
   const [shouldRefreshDashboard, setShouldRefreshDashboard] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   
-  const fetchDashboardData = useCallback(async () => {
+  // Cache duration in milliseconds (5 minutes)
+  const CACHE_DURATION = 5 * 60 * 1000;
+  
+  // Progressive loading: Load critical data first, then secondary data
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
+    // Check if we should use cached data
+    const now = Date.now();
+    if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION) {
+      console.log('Using cached dashboard data');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      // Fetch dashboard stats (includes recent loans)
-      const statsResponse = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // PHASE 1: Load critical dashboard data first (stats, recent loans, programs)
+      console.log('Loading critical dashboard data...');
+      const [statsResponse, programsResponse, lenderResponse] = await Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/dashboard?loanLimit=10`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000 // Increased timeout for critical data
+        }),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs?limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        })
+      ]);
 
-      // Fetch borrowers
-      const borrowersResponse = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers?limit=5`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Fetch loan programs
-      const programsResponse = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loan-programs?limit=5`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Process responses
+      // Process critical responses
       const dashboardData = statsResponse.data.data || {};
+      const programsData = programsResponse.data.data || [];
+      const lenderId = lenderResponse.data.data._id;
+
       setStats(dashboardData);
-      
-      // Use the recent loans from the dashboard API response
       setRecentLoans(dashboardData.recentLoans || []);
+      setPrograms(programsData);
+      setLastFetchTime(now);
+
+      // PHASE 2: Load secondary data (borrowers and their loan counts) in parallel
+      console.log('Loading secondary data...');
+      const [borrowersResponse] = await Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/borrowers?limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        })
+      ]);
 
       const borrowersData = borrowersResponse.data.data || [];
       setRecentBorrowers(borrowersData);
 
-      const programsData = programsResponse.data.data || [];
-      setPrograms(programsData);
-
-      // Initialize borrower loan count map
-      const loansMap = {};
-      
-      // Get lender ID
-      let lenderId = null;
-      try {
-        const lenderResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/profile`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        lenderId = lenderResponse.data.data._id;
-      } catch (err) {
-        console.error('Error fetching lender profile:', err);
-      }
-      
-      // Count loans for each borrower
-      if (lenderId) {
-        for (const borrower of borrowersData) {
-          try {
-            // Get loans for this specific borrower from lender's borrower endpoint
-            const response = await axios.get(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrowers/${borrower._id}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            
-            // The response structure has loans array in data.loans
-            const loans = response.data.data.loans || [];
-            loansMap[borrower._id] = loans.length;
-            console.log(`Borrower ${borrower._id} has ${loans.length} loans`);
-          } catch (err) {
-            console.error(`Error fetching loans for borrower ${borrower._id}:`, err);
-            loansMap[borrower._id] = 0;
-          }
-        }
-      }
-      
-      setBorrowerLoans(loansMap);
-      
-      // Fetch real activities from backend
-      try {
-        // Use axios directly to avoid import issues
-        console.log('Fetching activities from API...');
-        const activitiesResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`, // Add cache-busting
-          { 
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000 // 10 second timeout
-          }
-        );
-        
-        console.log('Activities response:', activitiesResponse.data);
-        if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
-          // Map backend icons to Lucide React components
-          const iconMap = {
-            'FileText': FileText,
-            'CheckCircle': CheckCircle, 
-            'Clock': Clock,
-            'AlertTriangle': AlertTriangle,
-            'XCircle': XCircle,
-            'Upload': Upload,
-            'RefreshCw': RefreshCw,
-            'Edit': Edit,
-            'FileCheck': FileCheck,
-            'FilePlus': FilePlus,
-            'FileX': FileX,
-            'FilePen': FilePen,
-            'MessageSquare': MessageSquare
-          };
+      // Optimize borrower loan count fetching - use a single aggregated query if possible
+      if (borrowersData.length > 0 && lenderId) {
+        try {
+          // Try to get borrower loan counts in a single request
+          const borrowerLoanCountsResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrower-loan-counts`,
+            { 
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 5000
+            }
+          );
           
-          // Transform backend activities to frontend format
-          const mappedActivities = activitiesResponse.data.data.map(activity => ({
-            icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
-            title: activity.title,
-            time: activity.time,
-            status: activity.status,
-            statusColor: `bg-${activity.statusColor}-500`,
-            id: activity.id,
-            entityId: activity.entityId,
-            entityType: activity.entityType,
-            description: activity.description,
-            borrowerId: activity.borrowerId
-          }));
-          console.log('Mapped activities:', mappedActivities);
-          setActivities(mappedActivities);
-        } else {
-          console.error('Invalid response format:', activitiesResponse);
-          throw new Error('Invalid activity data format');
-        }
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        // Fallback to sample data if API fails
-        setActivities([
-          { 
-            icon: FileText, 
-            title: 'New loan application submitted',
-            time: '2 hours ago',
-            status: 'New',
-            statusColor: 'bg-blue-500'
-          },
-          { 
-            icon: CheckCircle, 
-            title: 'Loan #12345 approved',
-            time: '5 hours ago',
-            status: 'Completed',
-            statusColor: 'bg-green-500'
-          },
-          { 
-            icon: Clock, 
-            title: 'Document verification pending',
-            time: 'Yesterday',
-            status: 'Pending',
-            statusColor: 'bg-yellow-500'
-          },
-          { 
-            icon: AlertTriangle, 
-            title: 'Credit check failed',
-            time: '2 days ago',
-            status: 'Failed',
-            statusColor: 'bg-red-500'
+          if (borrowerLoanCountsResponse.data?.data) {
+            setBorrowerLoans(borrowerLoanCountsResponse.data.data);
+          } else {
+            // Fallback to individual requests but with shorter timeout
+            const borrowerLoanPromises = borrowersData.map(async (borrower) => {
+              try {
+                const response = await axios.get(
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/${lenderId}/borrowers/${borrower._id}`,
+                  { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    timeout: 3000 // Reduced timeout for individual requests
+                  }
+                );
+                return { borrowerId: borrower._id, loanCount: (response.data.data.loans || []).length };
+              } catch (err) {
+                console.error(`Error fetching loans for borrower ${borrower._id}:`, err);
+                return { borrowerId: borrower._id, loanCount: 0 };
+              }
+            });
+
+            const borrowerLoanResults = await Promise.all(borrowerLoanPromises);
+            const loansMap = {};
+            borrowerLoanResults.forEach(({ borrowerId, loanCount }) => {
+              loansMap[borrowerId] = loanCount;
+            });
+            setBorrowerLoans(loansMap);
           }
-        ]);
+        } catch (error) {
+          console.error('Error fetching borrower loan counts:', error);
+          // Set empty map if all fails
+          const emptyMap = {};
+          borrowersData.forEach(borrower => {
+            emptyMap[borrower._id] = 0;
+          });
+          setBorrowerLoans(emptyMap);
+        }
       }
+      
+      // PHASE 3: Load activities asynchronously (don't block main dashboard)
+      console.log('Loading activities asynchronously...');
+      setActivitiesLoading(true);
+      
+      // Load activities in background without blocking the main dashboard
+      setTimeout(async () => {
+        try {
+          const activitiesResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5`,
+            { 
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 8000 // Increased timeout for activities
+            }
+          );
+          
+          if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
+            const iconMap = {
+              'FileText': FileText,
+              'CheckCircle': CheckCircle, 
+              'Clock': Clock,
+              'AlertTriangle': AlertTriangle,
+              'XCircle': XCircle,
+              'Upload': Upload,
+              'RefreshCw': RefreshCw,
+              'Edit': Edit,
+              'FileCheck': FileCheck,
+              'FilePlus': FilePlus,
+              'FileX': FileX,
+              'FilePen': FilePen,
+              'MessageSquare': MessageSquare
+            };
+            
+            // Transform backend activities to frontend format
+            const mappedActivities = activitiesResponse.data.data.map(activity => ({
+              icon: iconMap[activity.icon] || FileText, // Default to FileText if icon not found
+              title: activity.title,
+              time: activity.time,
+              status: activity.status,
+              statusColor: `bg-${activity.statusColor}-500`,
+              id: activity.id,
+              entityId: activity.entityId,
+              entityType: activity.entityType,
+              description: activity.description,
+              borrowerId: activity.borrowerId
+            }));
+            setActivities(mappedActivities);
+          } else {
+            console.error('Invalid response format:', activitiesResponse);
+            throw new Error('Invalid activity data format');
+          }
+        } catch (err) {
+          console.error('Error fetching activities:', err);
+          // Fallback to sample data if API fails
+          setActivities([
+            { 
+              icon: FileText, 
+              title: 'New loan application submitted',
+              time: '2 hours ago',
+              status: 'New',
+              statusColor: 'bg-blue-500'
+            },
+            { 
+              icon: CheckCircle, 
+              title: 'Loan #12345 approved',
+              time: '5 hours ago',
+              status: 'Completed',
+              statusColor: 'bg-green-500'
+            },
+            { 
+              icon: Clock, 
+              title: 'Document verification pending',
+              time: 'Yesterday',
+              status: 'Pending',
+              statusColor: 'bg-yellow-500'
+            },
+            { 
+              icon: AlertTriangle, 
+              title: 'Credit check failed',
+              time: '2 days ago',
+              status: 'Failed',
+              statusColor: 'bg-red-500'
+            }
+          ]);
+        } finally {
+          setActivitiesLoading(false);
+        }
+      }, 100); // Small delay to ensure main dashboard loads first
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -473,7 +510,7 @@ const LenderDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -851,67 +888,85 @@ const LenderDashboard = () => {
 
                 {/* Recent Activity Timeline */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                  <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-                  <button 
-                    onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token');
-                        toast.loading('Refreshing activities...');
-                        const response = await axios.get(
-                          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`,
-                          { 
-                            headers: { Authorization: `Bearer ${token}` },
-                            timeout: 10000 // 10 second timeout  
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          setActivitiesLoading(true);
+                          const token = localStorage.getItem('token');
+                          toast.loading('Refreshing activities...');
+                          const response = await axios.get(
+                            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/activities?limit=5&_=${Date.now()}`,
+                            { 
+                              headers: { Authorization: `Bearer ${token}` },
+                              timeout: 8000 // Reduced timeout
+                            }
+                          );
+                          
+                          if (response.data && response.data.status === 'success') {
+                            const iconMap = {
+                              'FileText': FileText,
+                              'CheckCircle': CheckCircle, 
+                              'Clock': Clock,
+                              'AlertTriangle': AlertTriangle,
+                              'XCircle': XCircle,
+                              'Upload': Upload,
+                              'RefreshCw': RefreshCw,
+                              'Edit': Edit,
+                              'FileCheck': FileCheck,
+                              'FilePlus': FilePlus,
+                              'FileX': FileX,
+                              'FilePen': FilePen,
+                              'MessageSquare': MessageSquare
+                            };
+                            
+                            const mappedActivities = response.data.data.map(activity => ({
+                              icon: iconMap[activity.icon] || FileText,
+                              title: activity.title,
+                              time: activity.time,
+                              status: activity.status,
+                              statusColor: `bg-${activity.statusColor}-500`,
+                              id: activity.id,
+                              entityId: activity.entityId,
+                              entityType: activity.entityType,
+                              description: activity.description,
+                              borrowerId: activity.borrowerId
+                            }));
+                            
+                            setActivities(mappedActivities);
+                            toast.success('Activities refreshed');
                           }
-                        );
-                        
-                        if (response.data && response.data.status === 'success') {
-                          const iconMap = {
-                            'FileText': FileText,
-                            'CheckCircle': CheckCircle, 
-                            'Clock': Clock,
-                            'AlertTriangle': AlertTriangle,
-                            'XCircle': XCircle,
-                            'Upload': Upload,
-                            'RefreshCw': RefreshCw,
-                            'Edit': Edit,
-                            'FileCheck': FileCheck,
-                            'FilePlus': FilePlus,
-                            'FileX': FileX,
-                            'FilePen': FilePen,
-                            'MessageSquare': MessageSquare
-                          };
-                          
-                          const mappedActivities = response.data.data.map(activity => ({
-                            icon: iconMap[activity.icon] || FileText,
-                            title: activity.title,
-                            time: activity.time,
-                            status: activity.status,
-                            statusColor: `bg-${activity.statusColor}-500`,
-                            id: activity.id,
-                            entityId: activity.entityId,
-                            entityType: activity.entityType,
-                            description: activity.description,
-                            borrowerId: activity.borrowerId
-                          }));
-                          
-                          setActivities(mappedActivities);
-                          toast.success('Activities refreshed');
+                        } catch (error) {
+                          console.error('Error refreshing activities:', error);
+                          toast.error('Failed to refresh activities');
+                        } finally {
+                          setActivitiesLoading(false);
                         }
-                      } catch (error) {
-                        console.error('Error refreshing activities:', error);
-                        toast.error('Failed to refresh activities');
-                      }
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                    Refresh
-                  </button>
-                </div>
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                      disabled={activitiesLoading}
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 mr-1 ${activitiesLoading ? 'animate-spin' : ''}`} />
+                      {activitiesLoading ? 'Loading...' : 'Refresh'}
+                    </button>
+                  </div>
 
-                  {activities.length > 0 ? (
+                  {activitiesLoading && activities.length === 0 ? (
+                    // Loading skeleton for activities
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="flex items-center space-x-4 animate-pulse">
+                          <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full"></div>
+                          <div className="flex-1 min-w-0">
+                            <div className="h-4 w-3/4 bg-gray-200 rounded mb-1"></div>
+                            <div className="h-3 w-1/4 bg-gray-200 rounded"></div>
+                          </div>
+                          <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : activities.length > 0 ? (
                     <ul className="divide-y divide-gray-100">
                       {activities.map((activity) => (
                         <ActivityItem

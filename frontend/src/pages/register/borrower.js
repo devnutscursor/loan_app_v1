@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
@@ -22,15 +22,31 @@ const BorrowerRegister = () => {
   const [errors, setErrors] = useState({});
   const [lenderDetails, setLenderDetails] = useState(null);
   const [lenderNotFound, setLenderNotFound] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Fetch lender details when lenderId is available
   useEffect(() => {
     if (lenderId) {
       const fetchLenderDetails = async () => {
         try {
-          const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/public/${lenderId}`);
-          setLenderDetails(response.data.data);
+          // Check if we have cached lender details
+          const cachedLender = sessionStorage.getItem(`lender_${lenderId}`);
+          if (cachedLender) {
+            setLenderDetails(JSON.parse(cachedLender));
+            setLenderNotFound(false);
+            return;
+          }
+
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/public/${lenderId}`, {
+            timeout: 5000 // 5 second timeout
+          });
+          
+          const lenderData = response.data.data;
+          setLenderDetails(lenderData);
           setLenderNotFound(false);
+          
+          // Cache the lender details
+          sessionStorage.setItem(`lender_${lenderId}`, JSON.stringify(lenderData));
         } catch (error) {
           console.error('Error fetching lender details:', error);
           setLenderNotFound(true);
@@ -42,19 +58,24 @@ const BorrowerRegister = () => {
     }
   }, [lenderId]);
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value
-    });
+    }));
     
+    // Clear error for this field immediately
     if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
-  };
+    
+    // Trigger debounced validation
+    setIsValidating(true);
+  }, [errors]);
 
-  const validateForm = () => {
+  // Memoized validation function
+  const validateForm = useCallback(() => {
     const newErrors = {};
     
     if (!formData.firstName.trim()) {
@@ -95,7 +116,19 @@ const BorrowerRegister = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData, lenderId]);
+
+  // Debounced validation effect
+  useEffect(() => {
+    if (isValidating) {
+      const timeoutId = setTimeout(() => {
+        validateForm();
+        setIsValidating(false);
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [formData, isValidating, validateForm]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,7 +141,13 @@ const BorrowerRegister = () => {
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register/borrower?lenderId=${lenderId}`, 
-        registrationData
+        registrationData,
+        {
+          timeout: 10000, // 10 second timeout
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
       toast.success('Registration successful! Please check your email for verification.');
@@ -116,7 +155,9 @@ const BorrowerRegister = () => {
     } catch (error) {
       console.error('Registration error:', error);
       
-      if (error.response?.data?.message) {
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Registration timed out. Please try again.');
+      } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
         toast.error('Registration failed. Please try again.');

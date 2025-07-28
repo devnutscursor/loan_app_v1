@@ -86,21 +86,21 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
   
   const handleRadioChange = (name, value) => {
     if (name === 'ownsProperty') {
-      setOwnsProperty(value);
-      
+    setOwnsProperty(value);
+    
       let updatedProperties = properties;
       
       // If switching to "Yes" and no properties exist, add a default property
       if (value === true && properties.length === 0) {
-        const defaultProperty = {
-          propertyAddress: {
-            streetAddress: '',
-            apt: '',
-            city: '',
-            state: '',
-            zipCode: ''
-          },
-          propertyType: '',
+      const defaultProperty = {
+        propertyAddress: {
+          streetAddress: '',
+          apt: '',
+          city: '',
+          state: '',
+          zipCode: ''
+        },
+        propertyType: '',
           presentMarketValue: 0,
           unpaidBalance: 0,
           monthlyPayment: 0,
@@ -133,12 +133,12 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
       onChange(updatedPropertiesOwned);
     }
   };
-  
+
   const addProperty = () => {
     const newProperty = {
       propertyAddress: {
         streetAddress: '',
-        apt: '',
+        apt: '', 
         city: '',
         state: '',
         zipCode: ''
@@ -212,7 +212,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
     };
     onChange(updatedPropertiesOwned);
   };
-  
+
   return (
     <div className="space-y-6">
       {/* Property Ownership Question */}
@@ -225,10 +225,10 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Do you currently own any real estate?<RequiredFieldIndicator />
-          </label>
+        </label>
           <div className="flex space-x-4">
-            <button
-              type="button"
+          <button
+            type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -244,9 +244,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               Yes
-            </button>
-            <button
-              type="button"
+          </button>
+          <button
+            type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -262,11 +262,11 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               No
-            </button>
-          </div>
+          </button>
+        </div>
         </div>
       </div>
-      
+
       {/* Real Estate Owned Details */}
       {ownsProperty && (
         <div>
@@ -286,16 +286,16 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                   </svg>
                 </button>
               </div>
-              
+
               {/* Property Address */}
               <div className="mb-6">
                 <h6 className="text-sm font-medium text-gray-700 mb-3">Property Address</h6>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">STREET ADDRESS</label>
-                    <input
-                      type="text"
-                      value={property.propertyAddress?.streetAddress || ''}
+                  <input
+                    type="text"
+                    value={property.propertyAddress?.streetAddress || ''}
                       onChange={(e) => updateProperty(index, 'propertyAddress.streetAddress', e.target.value)}
                       className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -389,7 +389,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                   </div>
                 </div>
               </div>
-              
+
               {/* Property Information */}
               <div className="mb-6">
                 <h6 className="text-sm font-medium text-gray-700 mb-3">Property Information</h6>
@@ -465,7 +465,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">INTENDED OCCUPANCY</label>
-                    <select
+                  <select
                       value={property.intendedOccupancy || ''}
                       onChange={(e) => updateProperty(index, 'intendedOccupancy', e.target.value)}
                       className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -474,12 +474,12 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                       <option value="primaryResidence">Primary Residence</option>
                       <option value="vacationHome">Vacation Home</option>
                       <option value="investment">Investment</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <option value="other">Other</option>
+                  </select>
                   </div>
                 </div>
               </div>
-              
+
               {/* Loan Information */}
               <div className="mb-6">
                 <h6 className="text-sm font-medium text-gray-700 mb-3">Loan Information</h6>
@@ -527,7 +527,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Conditional loan fields */}
                 {property.hasLoan === true && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -564,23 +564,23 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
               </div>
             </div>
           ))}
-          
-          <button
-            type="button"
-            onClick={addProperty}
+
+            <button
+              type="button"
+              onClick={addProperty}
             className="border-2 border-blue-500 text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium"
-          >
+            >
             + Add Another Property
-          </button>
+            </button>
         </div>
       )}
-      
+
       {/* Current Primary Housing Expenses */}
       <div>
         <h4 className="text-md font-medium text-gray-900 mb-4">Current Primary Housing Expenses (Monthly)</h4>
-        <p className="text-sm text-gray-600 mb-4">
-          Enter your current monthly costs for your primary residence, whether you rent or own. Enter 0 if not applicable.
-        </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Enter your current monthly costs for your primary residence, whether you rent or own. Enter 0 if not applicable.
+          </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -663,13 +663,13 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
             </div>
           </div>
           
-          <div>
+            <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">MORTGAGE INSURANCE</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-500 text-xs">$</span>
-              </div>
-              <input
+                </div>
+                <input
                 type="number"
                 name="mortgageInsurance"
                 value={mortgageInsurance || ''}

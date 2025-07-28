@@ -448,7 +448,7 @@ const LoanApplication = () => {
         
         toast.error(message);
       } else {
-        toast.error('Please complete all required fields for the loan application');
+      toast.error('Please complete all required fields for the loan application');
       }
       console.log('Validation errors:', validationErrors);
     }
@@ -1267,9 +1267,9 @@ const LoanApplication = () => {
         current[pathParts[pathParts.length - 1]] = value;
       } else {
         // Handle direct propertyInfo fields
-        if (!newFormData.propertyInfo) {
-          newFormData.propertyInfo = {};
-        }
+      if (!newFormData.propertyInfo) {
+        newFormData.propertyInfo = {};
+      }
         newFormData.propertyInfo[fieldPath] = value;
       }
     } else if (name.startsWith('loanInfo.')) {

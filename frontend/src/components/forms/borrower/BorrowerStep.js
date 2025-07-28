@@ -47,7 +47,7 @@ const BorrowerStep = ({
       handleChange(modifiedEvent);
     } else {
       // For borrower context, pass the event as-is
-      handleChange(e);
+    handleChange(e);
     }
   };
 
@@ -74,7 +74,7 @@ const BorrowerStep = ({
         formData.borrowers?.[0]?.maritalStatus && 
         formData.borrowers?.[0]?.citizenship;
     } else if (tabName === "residenceHistory") {
-      isComplete = 
+      isComplete =
         formData.borrowers?.[0]?.currentAddress?.streetAddress && 
         formData.borrowers?.[0]?.currentAddress?.city && 
         formData.borrowers?.[0]?.currentAddress?.state && 
@@ -83,7 +83,7 @@ const BorrowerStep = ({
         formData.borrowers?.[0]?.currentAddress?.yearsAtAddress && 
         formData.borrowers?.[0]?.currentAddress?.monthsAtAddress;
     } else if (tabName === "employmentHistory") {
-      isComplete = 
+      isComplete =
         formData.borrowers?.[0]?.employers?.[0]?.companyName && 
         formData.borrowers?.[0]?.employers?.[0]?.jobTitle && 
         formData.borrowers?.[0]?.employers?.[0]?.employmentStatus && 
@@ -163,12 +163,12 @@ const BorrowerStep = ({
         },
       });
     } else {
-      handleChange({
-        target: {
-          name: `dependents.${index}.${field}`,
-          value,
-        },
-      });
+    handleChange({
+      target: {
+        name: `dependents.${index}.${field}`,
+        value,
+      },
+    });
     }
   };
 
@@ -181,12 +181,12 @@ const BorrowerStep = ({
         },
       });
     } else {
-      handleChange({
-        target: {
-          name: `employers.${index}.${field}`,
-          value,
-        },
-      });
+    handleChange({
+      target: {
+        name: `employers.${index}.${field}`,
+        value,
+      },
+    });
     }
   };
 
@@ -208,11 +208,11 @@ const BorrowerStep = ({
       });
     } else {
       handleChange({
-        target: {
-          name: "dependents",
-          value: newDependents,
-        },
-      });
+      target: {
+        name: "dependents",
+        value: newDependents,
+      },
+    });
     }
   };
 
@@ -231,11 +231,11 @@ const BorrowerStep = ({
       });
     } else {
       handleChange({
-        target: {
-          name: "dependents",
-          value: dependents,
-        },
-      });
+      target: {
+        name: "dependents",
+        value: dependents,
+      },
+    });
     }
   };
 
@@ -271,12 +271,12 @@ const BorrowerStep = ({
         },
       });
     } else {
-      handleChange({
-        target: {
-          name: "employers",
-          value: newEmployers,
-        },
-      });
+    handleChange({
+      target: {
+        name: "employers",
+        value: newEmployers,
+      },
+    });
     }
   };
 
@@ -293,12 +293,12 @@ const BorrowerStep = ({
         },
       });
     } else {
-      handleChange({
-        target: {
-          name: "employers",
-          value: employers,
-        },
-      });
+    handleChange({
+      target: {
+        name: "employers",
+        value: employers,
+      },
+    });
     }
   };
 

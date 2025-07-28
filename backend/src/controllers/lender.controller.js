@@ -170,47 +170,74 @@ exports.getLenderDashboard = async (req, res, next) => {
       return next(new ApiError('Lender profile not found', 404));
     }
     
-    // Get total active loans
-    const totalLoans = await Loan.countDocuments({ 
-      lender: lender._id,
-      status: { $nin: ['closed', 'rejected', 'withdrawn'] }
-    });
-    
-    // Get approved loans (include Conditional Approval and other approval statuses)
-    const approvedLoans = await Loan.countDocuments({ 
-      lender: lender._id,
-      status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
-    });
-    
-    // Get pending applications - include all applications that are not approved, rejected, or closed
-    const pendingApplications = await Loan.countDocuments({ 
-      lender: lender._id,
-      status: { $nin: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded', 'Rejected', 'Withdrawn'] }
-    });
-    
-    // Calculate total loan volume for loans with 'Conditional Approval' or other approval statuses
-    const loanAmountResult = await Loan.aggregate([
-      { 
-        $match: { 
-          lender: lender._id,
-          status: { $in: ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'] }
+    // Optimize: Get all loan statistics in a single aggregation pipeline
+    const loanStats = await Loan.aggregate([
+      {
+        $match: {
+          lender: lender._id
         }
       },
       {
         $group: {
           _id: null,
-          totalAmount: { $sum: "$loanDetails.loanAmount" }
+          totalLoans: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['closed', 'rejected', 'withdrawn']] } },
+                1,
+                0
+              ]
+            }
+          },
+          approvedLoans: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded']] },
+                1,
+                0
+              ]
+            }
+          },
+          pendingApplications: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded', 'Rejected', 'Withdrawn']] } },
+                1,
+                0
+              ]
+            }
+          },
+          totalProcessedLoans: {
+            $sum: {
+              $cond: [
+                { $ne: ['$status', 'draft'] },
+                1,
+                0
+              ]
+            }
+          },
+          totalAmount: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded']] },
+                { $ifNull: ['$loanDetails.loanAmount', 0] },
+                0
+              ]
+            }
+          }
         }
       }
     ]);
     
-    const totalAmount = loanAmountResult.length > 0 ? loanAmountResult[0].totalAmount : 0;
+    const stats = loanStats.length > 0 ? loanStats[0] : {
+      totalLoans: 0,
+      approvedLoans: 0,
+      pendingApplications: 0,
+      totalProcessedLoans: 0,
+      totalAmount: 0
+    };
     
-    // Calculate approval rate as approved loans divided by total loans (excluding drafts)
-    const totalProcessedLoans = await Loan.countDocuments({
-      lender: lender._id,
-      status: { $ne: 'draft' }
-    });
+    const { totalLoans, approvedLoans, pendingApplications, totalProcessedLoans, totalAmount } = stats;
     
     const approvalRate = totalProcessedLoans > 0 ? Math.round((approvedLoans / totalProcessedLoans) * 100) : 0;
     
@@ -837,8 +864,6 @@ exports.getLenderBorrowerById = async (req, res, next) => {
  * @param {Function} next - Express next middleware function
  */
 exports.getLenderActivities = async (req, res, next) => {
-  // Make sure mongoose is available
-  const mongoose = require('mongoose');
   try {
     console.log('Fetching activities for lender, user ID:', req.user._id);
     
@@ -857,9 +882,92 @@ exports.getLenderActivities = async (req, res, next) => {
     // Get limit from query or use default
     const limit = parseInt(req.query.limit) || 10;
     
-    // Get recent activity logs
+    // Optimize: Get all recent activities in a single aggregation pipeline
     console.log('Fetching activities for lender ID:', lender._id);
     
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    
+    // Get all recent loans with their activities in one query
+    const recentLoans = await Loan.find({
+      lender: lender._id,
+      $or: [
+        { createdAt: { $gte: sevenDaysAgo } },
+        { updatedAt: { $gte: sevenDaysAgo } }
+      ]
+    })
+    .populate('borrower', 'user')
+    .populate({
+      path: 'borrower',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName'
+      }
+    })
+    .sort({ updatedAt: -1 })
+    .limit(20)
+    .lean();
+    
+    console.log(`Found ${recentLoans.length} recent loans for activities`);
+    
+    // Get recent audit logs in a single query
+    const AuditLog = mongoose.model('AuditLog');
+    const recentAuditLogs = await AuditLog.find({
+      $or: [
+        {
+          entityType: 'loan',
+          eventType: { $in: ['loan:status_update', 'loan:status_changed'] },
+          'metadata.lenderId': lender._id,
+          timestamp: { $gte: fourteenDaysAgo }
+        },
+        {
+          entityType: 'document',
+          eventType: { $in: ['document:status_changed', 'document:uploaded', 'document:rejected'] },
+          'metadata.lenderId': lender._id,
+          timestamp: { $gte: fourteenDaysAgo }
+        },
+        {
+          entityType: 'message',
+          eventType: 'message:received',
+          'metadata.lenderId': lender._id,
+          timestamp: { $gte: sevenDaysAgo }
+        }
+      ]
+    })
+    .sort({ timestamp: -1 })
+    .limit(20)
+    .lean();
+    
+    console.log(`Found ${recentAuditLogs.length} recent audit logs`);
+    
+    // Get recent documents in a single query
+    const Document = mongoose.model('Document');
+    const recentDocuments = await Document.find({
+      lender: lender._id,
+      createdAt: { $gte: sevenDaysAgo }
+    })
+    .populate('loan', 'loanNumber borrower')
+    .populate({
+      path: 'loan',
+      populate: {
+        path: 'borrower',
+        select: 'user'
+      }
+    })
+    .populate({
+      path: 'loan.borrower',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName'
+      }
+    })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+    
+    console.log(`Found ${recentDocuments.length} recent documents`);
+    
+    // Process the data into activities
     let recentApplications = [];
     let recentApprovals = [];
     let recentRejections = [];
@@ -871,288 +979,72 @@ exports.getLenderActivities = async (req, res, next) => {
     let recentDocumentStatusChanges = [];
     let recentMessages = [];
     
-    try {
-      // Recent loan applications - include any status
-      recentApplications = await Loan.find({ 
-        lender: lender._id,
-        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
-      })
-      .sort({ createdAt: -1 })
-      .populate({
-        path: 'borrower',
-        select: 'user',
-        populate: {
-          path: 'user',
-          select: 'firstName lastName email'
-        }
-      })
-      .limit(10);
-      
-      // Add borrowerDetails if borrower population fails
-      for (let loan of recentApplications) {
-        if (!loan.borrower || !loan.borrower.user) {
-          // If no borrower info from population, try to use borrowerDetails
-          if (loan.borrowerDetails && (loan.borrowerDetails.firstName || loan.borrowerDetails.lastName)) {
-            console.log(`Using borrowerDetails for loan ${loan._id}`);
-          } else {
-            console.log(`No borrower information available for loan ${loan._id}`);
-          }
-        }
+    // Process recent loans into different activity types
+    recentLoans.forEach(loan => {
+      // Recent applications
+      if (loan.createdAt >= sevenDaysAgo) {
+        recentApplications.push(loan);
       }
       
-      console.log(`Found ${recentApplications.length} recent applications`);
-    } catch (err) {
-      console.error('Error fetching recent applications:', err);
-    }
-    
-    try {
-      // Recently approved loans - find loans with Conditional Approval status
-      recentApprovals = await Loan.find({ 
-        lender: lender._id, 
-        status: { $in: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] }
-      })
-      .sort({ updatedAt: -1 })  // Sort by last update time since we may not have decisionDate
-      .limit(5);
-      
-      // We'll retrieve approval events only through audit logs for consistency
-      // and to avoid duplicates (clear existing results from the DB query)
-      recentApprovals = [];
-      
-      const AuditLog = mongoose.model('AuditLog');
-      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
-      
-      if (loanIds && loanIds.length > 0) {
-        // Track loan IDs we've already processed to avoid duplicates
-        const processedLoanIds = new Set();
-        
-        // Get approval events from audit logs
-        const approvalLogs = await AuditLog.find({
-          eventType: { $in: ['loan:status_update', 'loan:status_changed'] },
-          'metadata.newStatus': { $in: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] },
-          entityId: { $in: loanIds },
-          timestamp: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
-        })
-        .sort({ timestamp: -1 })
-        .limit(10) // Get more than needed to handle potential duplicates
-        .populate('entityId', 'loanNumber loanDetails borrowerDetails')
-        .lean();
-
-        // Process approval logs, ensuring unique loan IDs
-        for (const log of approvalLogs) {
-          if (!log.entityId || processedLoanIds.has(log.entityId._id.toString())) {
-            continue;
-          }
-          
-          processedLoanIds.add(log.entityId._id.toString());
-          
-          recentApprovals.push({
-            _id: log.entityId._id,
-            loanNumber: log.entityId.loanNumber || log.metadata?.loanNumber,
-            loanDetails: log.entityId.loanDetails || log.metadata?.loanDetails,
-            borrowerDetails: log.entityId.borrowerDetails,
-            borrowerName: log.metadata?.borrowerName,
-            decisionDate: log.timestamp,
-            fromAuditLog: true,
-            eventId: log._id // Track the specific event ID to avoid duplicates
-          });
-          
-          // Limit to 5 unique loans
-          if (recentApprovals.length >= 5) {
-            break;
-          }
-        }
+      // Recent approvals
+      if (loan.status && ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'].includes(loan.status) && 
+          loan.updatedAt >= fourteenDaysAgo) {
+        recentApprovals.push(loan);
       }
       
-      // Limit to 5 most recent approvals after combining both sources
-      recentApprovals.sort((a, b) => 
-        new Date(b.decisionDate || b.updatedAt) - new Date(a.decisionDate || a.updatedAt)
-      );
-      recentApprovals = recentApprovals.slice(0, 5);
+      // Recent rejections
+      if (loan.status === 'rejected' && loan.updatedAt >= fourteenDaysAgo) {
+        recentRejections.push(loan);
+      }
       
-      console.log(`Found ${recentApprovals.length} approved loans`);
-    } catch (err) {
-      console.error('Error fetching approved loans:', err);
-    }
+      // Document verifications needed
+      if (loan.status === 'pending_documents') {
+        documentVerifications.push(loan);
+      }
+      
+      // Credit check issues
+      if (loan.underwritingFlags && loan.underwritingFlags.creditIssues) {
+        creditChecks.push(loan);
+      }
+    });
     
-    try {
-      // Recently rejected loans
-      recentRejections = await Loan.find({ 
-        lender: lender._id, 
-        status: 'rejected',
-        decisionDate: { $exists: true }
-      })
-      .sort({ decisionDate: -1 })
-      .limit(5);
-      
-      console.log(`Found ${recentRejections.length} rejected loans`);
-    } catch (err) {
-      console.error('Error fetching rejected loans:', err);
-    }
+    // Process recent documents
+    recentDocuments.forEach(doc => {
+      recentDocumentUploads.push(doc);
+    });
     
-    try {
-      // Recent document verifications needed
-      documentVerifications = await Loan.find({
-        lender: lender._id,
-        status: 'pending_documents'
-      })
-      .sort({ updatedAt: -1 })
-      .limit(5);
-      
-      console.log(`Found ${documentVerifications.length} document verifications`);
-    } catch (err) {
-      console.error('Error fetching document verifications:', err);
-    }
+    // Process audit logs
+    recentAuditLogs.forEach(log => {
+      if (log.entityType === 'loan' && log.eventType && log.eventType.includes('status')) {
+        recentStatusChanges.push(log);
+      } else if (log.entityType === 'document') {
+        recentDocumentStatusChanges.push(log);
+      } else if (log.entityType === 'message') {
+        recentMessages.push(log);
+      }
+    });
     
-    try {
-      // Recent credit check failures or issues
-      creditChecks = await Loan.find({
-        lender: lender._id,
-        'underwritingFlags.creditIssues': true
-      })
-      .sort({ updatedAt: -1 })
-      .limit(5);
-      
-      console.log(`Found ${creditChecks.length} credit checks`);
-    } catch (err) {
-      console.error('Error fetching credit checks:', err);
-    }
-    
-    try {
-      // Recently uploaded documents
-      const Document = mongoose.model('Document');
-      
-      // First get loan IDs for this lender
-      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
-      
-      // Then get recent document uploads for these loans
-      if (loanIds && loanIds.length > 0) {
-        recentDocumentUploads = await Document.find({
-          loan: { $in: loanIds },
-          createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
-        })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('loan', 'loanNumber')
-        .populate('uploadedBy', 'firstName lastName')
-        .lean();
-        
-        console.log(`Found ${recentDocumentUploads.length} document uploads`);
-        
-        // Add document status changes - find recent document status changes from AuditLog
-        const AuditLog = mongoose.model('AuditLog');
-        recentDocumentStatusChanges = await AuditLog.find({
-          entityType: 'document',
-          'metadata.loanId': { $in: loanIds },
-          eventType: 'document:status_changed',
-          timestamp: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
-        })
-        .sort({ timestamp: -1 })
-        .limit(10)
-        .lean();
-        
-        console.log(`Found ${recentDocumentStatusChanges.length} document status changes`);
-        
-        // If we don't have enough data from audit logs, query documents directly
-        if (recentDocumentStatusChanges.length < 2) {
-          // Find documents with review dates (indicates their status was changed)
-          const reviewedDocuments = await Document.find({
-            loan: { $in: loanIds },
-            reviewDate: { $exists: true, $ne: null },
-            reviewedAt: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } // Last 14 days
-          })
-          .sort({ reviewDate: -1 })
-          .limit(10)
-          .populate('loan', 'loanNumber')
-          .populate('reviewedBy', 'firstName lastName')
-          .lean();
-          
-          console.log(`Found ${reviewedDocuments.length} reviewed documents`);
-          
-          // Create audit-like entries from reviewed documents
-          reviewedDocuments.forEach(doc => {
-            recentDocumentStatusChanges.push({
-              _id: `doc-status-${doc._id}`,
-              entityId: doc._id,
-              entityType: 'document',
-              timestamp: doc.reviewDate || doc.updatedAt,
-              metadata: {
-                documentName: doc.name,
-                newStatus: doc.status,
-                loanId: doc.loan?._id,
-                loanNumber: doc.loan?.loanNumber,
-                reviewedBy: doc.reviewedBy ? `${doc.reviewedBy.firstName} ${doc.reviewedBy.lastName}` : 'Unknown'
-              }
-            });
-          });
+    // Add borrowerDetails if borrower population fails
+    for (let loan of recentApplications) {
+      if (!loan.borrower || !loan.borrower.user) {
+        // If no borrower info from population, try to use borrowerDetails
+        if (loan.borrowerDetails && (loan.borrowerDetails.firstName || loan.borrowerDetails.lastName)) {
+          console.log(`Using borrowerDetails for loan ${loan._id}`);
+        } else {
+          console.log(`No borrower information available for loan ${loan._id}`);
         }
       }
-    } catch (err) {
-      console.error('Error fetching document uploads or status changes:', err);
     }
     
-    try {
-      // Recent status changes (from audit logs)
-      const AuditLog = mongoose.model('AuditLog');
-      
-      // Get loan IDs for this lender
-      const loanIds = await Loan.find({ lender: lender._id }).distinct('_id');
-      
-      if (loanIds && loanIds.length > 0) {
-        // We'll exclude loan status changes that became approvals, since we're handling those separately
-        recentStatusChanges = await AuditLog.find({
-          entityType: 'loan',
-          entityId: { $in: loanIds },
-          eventType: { $in: ['loan:status_changed', 'loan:status_update', 'loan:updated'] },
-          // Exclude the approval statuses we're handling separately
-          'metadata.newStatus': { 
-            $nin: ['Conditional Approval', 'Clear to Close', 'Approved', 'approved'] 
-          },
-          timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
-        })
-        .sort({ timestamp: -1 })
-        .limit(10) // Get more and filter later
-        .lean();
-        
-        console.log(`Found ${recentStatusChanges.length} status changes in audit logs`);
-        
-        // If we don't have audit logs, check for loan updates directly
-        if (recentStatusChanges.length === 0) {
-          recentLoanUpdates = await Loan.find({
-            lender: lender._id,
-            updatedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
-            createdAt: { $ne: '$updatedAt' } // Ensure it was actually updated after creation
-          })
-          .sort({ updatedAt: -1 })
-          .limit(5)
-          .populate('borrower', 'firstName lastName')
-          .lean();
-          
-          console.log(`Found ${recentLoanUpdates.length} loan updates`);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching status changes:', err);
-    }
-    
-    // Fetch recent messages from borrowers
-    try {
-      const AuditLog = mongoose.model('AuditLog');
-      
-      // Find recent message audit logs where borrowers sent messages to this lender
-      recentMessages = await AuditLog.find({
-        entityType: 'message',
-        eventType: 'message:received',
-        'metadata.lenderId': lender._id,
-        timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
-      })
-      .sort({ timestamp: -1 })
-      .limit(5)
-      .lean();
-      
-      console.log(`Found ${recentMessages.length} recent messages from borrowers`);
-    } catch (err) {
-      console.error('Error fetching recent messages:', err);
-    }
+    console.log(`Found ${recentApplications.length} recent applications`);
+    console.log(`Found ${recentApprovals.length} approved loans`);
+    console.log(`Found ${recentRejections.length} rejected loans`);
+    console.log(`Found ${documentVerifications.length} document verifications`);
+    console.log(`Found ${creditChecks.length} credit checks`);
+    console.log(`Found ${recentDocumentUploads.length} document uploads`);
+    console.log(`Found ${recentStatusChanges.length} recent status changes`);
+    console.log(`Found ${recentLoanUpdates.length} recent loan updates`);
+    console.log(`Found ${recentMessages.length} recent messages from borrowers`);
     
     // Transform into activities format
     const activities = [];
@@ -1361,9 +1253,9 @@ exports.getLenderActivities = async (req, res, next) => {
         description: `${doc.name} ${uploaderInfo}`.trim(),
         timestamp: doc.createdAt,
         type: 'document_upload',
-        status: 'New',
-        statusColor: 'purple',
-        entityId: doc.loan ? doc.loan._id : null,
+        status: 'Uploaded',
+        statusColor: 'blue',
+        entityId: doc.loan?._id || null,
         entityType: 'loan',
         icon: 'Upload',
         loanNumber: loanNumber
@@ -1375,53 +1267,36 @@ exports.getLenderActivities = async (req, res, next) => {
       console.log('recentDocumentStatusChanges is not an array:', recentDocumentStatusChanges);
       recentDocumentStatusChanges = [];
     }
-
+    
     recentDocumentStatusChanges.forEach(log => {
-      let title = 'Document status changed';
+      let title = 'Document status updated';
       let statusColor = 'blue';
       let status = 'Updated';
-      let icon = 'RefreshCw';
+      let icon = 'FileCheck';
       
-      // Get loan number from metadata if available
-      const loanNumber = log.metadata?.loanNumber ? `#${log.metadata.loanNumber}` : 
-                        (log.metadata?.loanId ? `#${log.metadata.loanId.toString().substr(-5)}` : '');
-      
-      // Format status-specific information
-      if (log.metadata && log.metadata.newStatus) {
-        const newStatus = log.metadata.newStatus;
-        
-        if (newStatus.toLowerCase().includes('approved')) {
-          title = `Document approved for loan ${loanNumber}`;
-          status = 'Approved';
-          statusColor = 'green';
-          icon = 'FileCheck';
-        } else if (newStatus.toLowerCase().includes('rejected')) {
-          title = `Document rejected for loan ${loanNumber}`;
-          status = 'Rejected';
-          statusColor = 'red';
-          icon = 'FileX';
-        } else if (newStatus.toLowerCase().includes('correction')) {
-          title = `Document needs correction for loan ${loanNumber}`;
-          status = 'Correction';
-          statusColor = 'yellow';
-          icon = 'FilePen';
-        }
+      // Try to get loan number from metadata
+      let loanNumber = '';
+      if (log.metadata && log.metadata.loanNumber) {
+        loanNumber = `#${log.metadata.loanNumber}`;
+      } else if (log.metadata && log.metadata.loanId) {
+        loanNumber = `#${log.metadata.loanId.toString().substr(-5)}`;
       }
       
-      // Description with document name
-      const description = log.metadata?.documentName ? 
-        `${log.metadata.documentName} status changed from "${log.metadata.previousStatus || 'Unknown'}" to "${log.metadata.newStatus}"` : 
-        `Document status changed from "${log.metadata?.previousStatus || 'Unknown'}" to "${log.metadata?.newStatus}"`;
+      // Create a unique activity key
+      const activityKey = `document-status-${log._id}`;
       
-      // Create a unique ID for this document status change
-      const activityKey = `doc-status-${log._id}`;
-      
-      // Skip if we've already processed this activity
+      // Skip if we've already processed this document status change
       if (processedActivities.has(activityKey)) {
         return;
       }
       
       processedActivities.add(activityKey);
+      
+      // Get description
+      let description = log.description || 'Document status changed';
+      if (log.metadata && log.metadata.documentName) {
+        description = `${log.metadata.documentName} - ${log.metadata.newStatus || 'Status updated'}`;
+      }
       
       activities.push({
         id: activityKey,
@@ -1460,49 +1335,13 @@ exports.getLenderActivities = async (req, res, next) => {
       
       // Create a unique activity key using loan ID for important statuses
       let activityKey;
-      
-      if (log.eventType === 'loan:status_changed' || log.eventType === 'loan:status_update') {
-        // Default title if we don't have metadata
-        title = `Loan ${loanNumber} status changed`;
-        
-        if (log.metadata && log.metadata.newStatus) {
-          // Get new status
-          const newStatus = log.metadata.newStatus;
-          
-          // For approved/conditional approval, use a more specific title
-          if (newStatus === 'Conditional Approval' || newStatus.toLowerCase().includes('approved')) {
-            title = `Loan ${loanNumber} approved`;
-            statusColor = 'green';
-            status = 'Approved';
-            icon = 'CheckCircle';
-            // Use loan ID for deduplication
-            activityKey = `loan-approval-${log.entityId}`;
-          } else if (newStatus.toLowerCase() === 'rejected' || newStatus.toLowerCase() === 'declined') {
-            title = `Loan ${loanNumber} rejected`;
-            statusColor = 'red';
-            status = 'Rejected';
-            icon = 'XCircle';
-            activityKey = `loan-rejection-${log.entityId}`;
-          } else if (newStatus.toLowerCase().includes('review') || newStatus.toLowerCase().includes('processing') || newStatus.toLowerCase().includes('underwriting')) {
-            title = `Loan ${loanNumber} in review`;
-            statusColor = 'yellow';
-            status = 'In Review';
-            activityKey = `status-change-${log._id}`;
-          } else {
-            // For other status changes
-            title = `Loan ${loanNumber} status changed to ${newStatus}`;
-            activityKey = `status-change-${log._id}`;
-          }
-        } else {
-          activityKey = `status-change-${log._id}`;
-        }
+      if (log.metadata && log.metadata.newStatus) {
+        activityKey = `status-change-${log.entityId}-${log.metadata.newStatus}`;
       } else {
-        // For general loan updates
-        title = `Loan ${loanNumber} updated`;
         activityKey = `status-change-${log._id}`;
       }
       
-      // Skip if we've already processed a similar activity for this loan
+      // Skip if we've already processed this status change
       if (processedActivities.has(activityKey)) {
         return;
       }
@@ -1529,40 +1368,6 @@ exports.getLenderActivities = async (req, res, next) => {
         entityId: log.entityId,
         entityType: 'loan',
         icon: icon || 'RefreshCw',
-        loanNumber: loanNumber
-      });
-    });
-    
-    // Add loan updates (if no audit logs were found)
-    if (!recentLoanUpdates || !Array.isArray(recentLoanUpdates)) {
-      console.log('recentLoanUpdates is not an array:', recentLoanUpdates);
-      recentLoanUpdates = [];
-    }
-    
-    recentLoanUpdates.forEach(loan => {
-      const borrowerInfo = loan.borrower ? `for ${loan.borrower.firstName} ${loan.borrower.lastName}` : '';
-      const loanNumber = loan.loanNumber ? `#${loan.loanNumber}` : `#${loan._id.toString().substr(-5)}`;
-      
-      const activityKey = `loan-update-${loan._id}`;
-      
-      // Skip if we've already processed this loan update
-      if (processedActivities.has(activityKey)) {
-        return;
-      }
-      
-      processedActivities.add(activityKey);
-      
-      activities.push({
-        id: activityKey,
-        title: `Loan ${loanNumber} updated`,
-        description: borrowerInfo.trim(),
-        timestamp: loan.updatedAt,
-        type: 'loan_update',
-        status: 'Updated',
-        statusColor: 'blue',
-        entityId: loan._id,
-        entityType: 'loan',
-        icon: 'Edit',
         loanNumber: loanNumber
       });
     });
@@ -1843,6 +1648,76 @@ exports.createBorrowerForLender = async (req, res, next) => {
       return next(new ApiError('A user with this email already exists', 400));
     }
     
+    next(error);
+  }
+};
+
+/**
+ * Get borrower loan counts for dashboard optimization
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getBorrowerLoanCounts = async (req, res, next) => {
+  try {
+    const lenderId = req.params.lenderId;
+    
+    // Find the lender profile
+    const lender = await Lender.findById(lenderId);
+    
+    if (!lender) {
+      return next(new ApiError('Lender not found', 404));
+    }
+    
+    // Get all borrowers for this lender
+    const borrowers = await Borrower.find({ lender: lenderId })
+      .select('_id')
+      .lean();
+    
+    if (borrowers.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        data: {}
+      });
+    }
+    
+    const borrowerIds = borrowers.map(b => b._id);
+    
+    // Get loan counts for all borrowers in a single aggregation
+    const loanCounts = await Loan.aggregate([
+      {
+        $match: {
+          borrower: { $in: borrowerIds },
+          lender: lender._id
+        }
+      },
+      {
+        $group: {
+          _id: '$borrower',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Convert to the format expected by frontend
+    const borrowerLoanMap = {};
+    loanCounts.forEach(item => {
+      borrowerLoanMap[item._id.toString()] = item.count;
+    });
+    
+    // Ensure all borrowers have a count (even if 0)
+    borrowerIds.forEach(borrowerId => {
+      if (!borrowerLoanMap[borrowerId.toString()]) {
+        borrowerLoanMap[borrowerId.toString()] = 0;
+      }
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      data: borrowerLoanMap
+    });
+  } catch (error) {
+    logger.error('Error in getBorrowerLoanCounts:', error);
     next(error);
   }
 };

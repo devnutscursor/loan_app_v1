@@ -453,22 +453,17 @@ const BorrowerDashboard = () => {
   const [stats, setStats] = useState({
     totalLoans: 0,
     activeLoans: 0,
-    pendingApplications: 0,
-    totalAmount: 0,
-    percentChanges: {
-      loans: 0,
-      applications: 0,
-      amount: 0
-    }
+    completedLoans: 0,
+    totalAmount: 0
   });
-  const [recentLoans, setRecentLoans] = useState([]);
+  const [loans, setLoans] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [resources, setResources] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState({
-    totalPaid: 0,
-    upcomingPayment: 0,
-    nextDueDate: null
-  });
+  const [notifications, setNotifications] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  
+  // Cache duration in milliseconds (5 minutes)
+  const CACHE_DURATION = 5 * 60 * 1000;
   
   // Storage key for notifications
   const NOTIFICATIONS_STORAGE_KEY = 'borrower_notifications';
@@ -566,7 +561,7 @@ const BorrowerDashboard = () => {
       console.error('Failed to restore messages from localStorage', e);
     }
     
-    if (!recentLoans || recentLoans.length === 0) {
+    if (!loans || loans.length === 0) {
       // If user has no loans, clear all notifications except messages
       setActivities(prevActivities => {
         // Combine existing message notifications with stored ones
@@ -599,8 +594,8 @@ const BorrowerDashboard = () => {
     }
 
     // Extract loan IDs and numbers for validation
-    const loanIds = recentLoans.map(loan => loan._id);
-    const loanNumbers = recentLoans.map(loan => loan.loanNumber).filter(Boolean);
+    const loanIds = loans.map(loan => loan._id);
+    const loanNumbers = loans.map(loan => loan.loanNumber).filter(Boolean);
     
     console.log(`Cleaning up notifications based on ${loanIds.length} loans with numbers:`, loanNumbers);
     
@@ -1135,20 +1130,60 @@ useEffect(() => {
   // Fetch fresh data from the backend so we stay up-to-date
   fetchDashboardData();
 }, []);
+
+// Extract userId from token when component mounts
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      if (decoded.id) {
+        setUserId(decoded.id);
+        console.log('[DEBUG] User ID set from token:', decoded.id);
+      }
+    } catch (error) {
+      console.error('Failed to decode token for userId:', error);
+    }
+  }
+}, []);
+  
+  // Call cleanup on initial mount
+  useEffect(() => {
+    cleanupDuplicateMessages();
+    cleanupDuplicateDocuments();
+}, []);
   
   // Fetch dashboard data and activities
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
+    // Check if we should use cached data
+    const now = Date.now();
+    if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION && loans.length > 0) {
+      console.log('Using cached borrower dashboard data');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('[DEBUG] Starting dashboard data fetch...');
       const token = localStorage.getItem('token');
       
+      if (!token) {
+        console.error('No token found');
+        setLoading(false);
+        return;
+      }
+      
       // Extract user ID from token
+      let userId = null;
       if (token) {
         const payload = token.split('.')[1];
         try {
           const decoded = JSON.parse(atob(payload));
           if (decoded.id) {
-            setUserId(decoded.id);
+            userId = decoded.id;
+            setUserId(decoded.id); // Set the userId state
             console.log('[DEBUG] User ID from token:', decoded.id);
           }
         } catch (error) {
@@ -1157,10 +1192,13 @@ useEffect(() => {
       }
       
       // Fetch dashboard stats
-      console.log('[DEBUG] Fetching dashboard stats...');
+      console.log('[DEBUG] Fetching dashboard stats from:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/dashboard`);
       const statsResponse = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/dashboard`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        }
       );
       
       // Process the stats data
@@ -1170,7 +1208,7 @@ useEffect(() => {
       setStats({
         totalLoans: statsData.totalLoans || 0,
         activeLoans: statsData.activeLoans || 0,
-        pendingApplications: statsData.pendingApplications || 0,
+        completedLoans: statsData.completedLoans || 0,
         totalAmount: statsData.totalAmount || 0,
         percentChanges: statsData.percentChanges || {
           loans: 0,
@@ -1182,313 +1220,46 @@ useEffect(() => {
       // Process recent loans
       const enrichedLoans = statsData.recentLoans || [];
       console.log('[DEBUG] Recent loans:', enrichedLoans.length);
-      setRecentLoans(enrichedLoans);
-      
-      // Extract loan IDs and numbers for filtering notifications
-      const loanIds = enrichedLoans.map(loan => loan._id);
-      const loanNumbers = enrichedLoans.map(loan => loan.loanNumber).filter(Boolean);
-      
-      // Also use any additional loan info provided by the backend
-      if (statsData.loanInfo) {
-        console.log('[DEBUG] Additional loan info from backend:', statsData.loanInfo);
-        // Merge any additional loan IDs and numbers that might not be in the recent loans
-        if (statsData.loanInfo.loanIds && Array.isArray(statsData.loanInfo.loanIds)) {
-          statsData.loanInfo.loanIds.forEach(id => {
-            if (!loanIds.includes(id)) loanIds.push(id);
-          });
-        }
-        if (statsData.loanInfo.loanNumbers && Array.isArray(statsData.loanInfo.loanNumbers)) {
-          statsData.loanInfo.loanNumbers.forEach(num => {
-            if (!loanNumbers.includes(num)) loanNumbers.push(num);
-          });
-        }
-      }
-      
-      console.log('[DEBUG] Current borrower has loans:', loanIds.length, 'with numbers:', loanNumbers);
-      
-      // If this is a new borrower with no loans, clear all notifications
-      if (enrichedLoans.length === 0) {
-        console.log('[DEBUG] New borrower with no loans - clearing all notifications');
-        setActivities([]);
-        localStorage.removeItem(activitiesKey);
-        localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
-        localStorage.removeItem('borrower_messages');
-        localStorage.removeItem('borrower_documents');
-        localStorage.removeItem('borrower_activity_seen');
-        return;
-      }
-      
-      // Load stored messages before fetching new activities
-      let storedMessages = [];
-      try {
-        storedMessages = JSON.parse(localStorage.getItem('borrower_messages') || '[]');
-        if (storedMessages.length > 0) {
-          console.log('[DEBUG] Found stored messages:', storedMessages.length);
-        }
-      } catch (e) {
-        console.error('[DEBUG] Failed to parse stored messages:', e);
-      }
-      
-      // Fetch recent activities
-      console.log('[DEBUG] Fetching activities...');
-      const activitiesResponse = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/borrower/activities?limit=20&_=${Date.now()}`,
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 15000
-        }
-      );
-      
-      // Process activities from API
-      if (activitiesResponse.data && activitiesResponse.data.status === 'success') {
-        const apiActivities = activitiesResponse.data.data.activities || [];
-        console.log('[DEBUG] Activities received from API:', apiActivities.length);
-        
-        // Skip processing if no activities
-        if (apiActivities.length === 0 && storedMessages.length === 0) {
-          console.log('[DEBUG] No activities received from API and no stored messages');
-          return;
-        }
-        
-        // Map backend icons to Lucide React components
-        const iconMap = {
-          'FileText': FileText,
-          'CheckCircle': CheckCircle, 
-          'Clock': Clock,
-          'AlertTriangle': AlertTriangle,
-          'XCircle': XCircle,
-          'Upload': Upload,
-          'RefreshCw': RefreshCw,
-          'Edit': Edit,
-          'FileCheck': FileCheck,
-          'FilePlus': FilePlus,
-          'FileX': FileX,
-          'FilePen': FilePen,
-          'MessageSquare': MessageSquare,
-          'ArrowRightCircle': ArrowRightCircle,
-          'BadgeDollarSign': BadgeDollarSign,
-          'Calendar': Calendar,
-          'ClipboardList': ClipboardList,
-          'BarChart3': BarChart3,
-          'Bell': Bell,
-          'Wallet': Wallet,
-          'User': User
-        };
-        
-        // Filter activities to only those related to existing loans
-        let filteredActivities = apiActivities.filter(activity => {
-          // Always keep message notifications
-          if (activity.entityType === 'message' || 
-              activity.type === 'message' || 
-              (activity.title && activity.title.toLowerCase().includes('message'))) {
-            console.log('[DEBUG] Keeping message notification:', activity.title);
-            return true;
-          }
-          
-          // Skip any notifications without loan information
-          if (!activity.entityId && !activity.loanNumber && 
-              (!activity.description || !activity.description.includes('loan #'))) {
-            console.log('[DEBUG] Skipping API notification without loan info:', activity);
-            return false;
-          }
-          
-          // Validate by entityId (loan ID)
-          if (activity.entityId && loanIds.some(id => id === activity.entityId)) {
-            console.log('[DEBUG] Keeping activity - matched by entityId:', activity.entityId);
-            return true;
-          }
-          
-          // Validate by loanNumber
-          if (activity.loanNumber) {
-            // Extract just the numeric part of the loan number
-            const cleanNumber = activity.loanNumber.replace(/[^0-9]/g, '');
-            
-            // Check if this loan number matches any of the borrower's loans
-            const matchesLoanNumber = loanNumbers.some(num => {
-              if (!num) return false;
-              const cleanBorrowerNum = num.replace(/[^0-9]/g, '');
-              return cleanNumber === cleanBorrowerNum;
-            });
-            
-            if (matchesLoanNumber) {
-              console.log('[DEBUG] Keeping activity - matched by loanNumber:', activity.loanNumber);
-              return true;
-            }
-          }
-          
-          // Validate by description - look for loan number in description
-          if (activity.description) {
-            // Extract loan number from description if it exists
-            const loanNumberMatch = activity.description.match(/for loan #?(\d+)/i);
-            if (loanNumberMatch && loanNumberMatch[1]) {
-              const descriptionLoanNumber = loanNumberMatch[1];
-              
-              // Check if this matches any of the borrower's loan numbers
-              const matchesLoanNumberInDesc = loanNumbers.some(num => {
-                if (!num) return false;
-                const cleanBorrowerNum = num.replace(/[^0-9]/g, '');
-                return descriptionLoanNumber === cleanBorrowerNum;
-              });
-              
-              if (matchesLoanNumberInDesc) {
-                console.log('[DEBUG] Keeping activity - matched by loan number in description:', descriptionLoanNumber);
-                return true;
-              }
-            }
-          }
-          
-          console.log('[DEBUG] Skipping API notification that does not match loans:', activity);
-          return false;
-        });
-        
-        console.log(`[DEBUG] Filtered API activities from ${apiActivities.length} to ${filteredActivities.length}`);
-        
-        // Process each activity
-        const processedActivities = filteredActivities.map(activity => {
-          // Get icon
-          const iconName = activity.icon || 'FileText';
-          const icon = iconMap[iconName] || FileText;
-          
-          // Format status color
-          let statusColor = activity.statusColor || 'blue';
-          
-          // Create notification object
-          return {
-            id: activity.id || generateNotificationId(activity.entityType || 'notification', activity),
-            icon: icon,
-            title: activity.title || 'Activity update',
-            time: formatRelativeTime(activity.timestamp || activity.date),
-            status: activity.status || 'Info',
-            statusColor: statusColor,
-            entityId: activity.entityId,
-            entityType: activity.entityType || 'notification',
-            description: activity.description,
-            url: activity.url,
-            loanNumber: activity.loanNumber,
-            timestamp: activity.timestamp || new Date().toISOString(),
-            // Mark document and message notifications as persistent
-            persistent: activity.entityType === 'document' || activity.entityType === 'message' || activity.persistent
-          };
-        });
-        
-        // Add stored messages to the processed activities
-        let allActivities = [...processedActivities];
-        
-        // Add stored messages that aren't already in the activities
-        if (storedMessages.length > 0) {
-          // Create a set of existing message signatures for better deduplication
-          const processedSignatures = new Set();
-          processedActivities.forEach(activity => {
-            if (activity.entityType === 'message' || activity.title?.toLowerCase().includes('message')) {
-              const signature = `${activity.title || ''}-${activity.description || ''}`.toLowerCase().trim();
-              if (signature.length >= 5) {
-                processedSignatures.add(signature);
-              }
-            }
-          });
-          
-          // Filter out duplicate messages based on content
-          const uniqueStoredMessages = storedMessages.filter(message => {
-            // Skip messages without ID
-            if (!message.id) return false;
-            
-            // Check for duplicate by content
-            const messageSignature = `${message.title || ''}-${message.description || ''}`.toLowerCase().trim();
-            if (messageSignature.length >= 5 && processedSignatures.has(messageSignature)) {
-              return false;
-            }
-            
-            // Add signature to set to prevent future duplicates
-            if (messageSignature.length >= 5) {
-              processedSignatures.add(messageSignature);
-            }
-            
-            return true;
-          });
-          
-          // Add unique stored messages to activities
-          uniqueStoredMessages.forEach(message => {
-            // Make sure the message has the proper icon
-            const iconName = message.icon || 'MessageSquare';
-            const icon = typeof iconName === 'string' ? (iconMap[iconName] || MessageSquare) : MessageSquare;
-            
-            allActivities.push({
-              ...message,
-              icon: icon,
-              entityType: 'message',
-              persistent: true
-            });
-          });
-          
-          console.log(`[DEBUG] Added ${allActivities.length - processedActivities.length} stored messages to activities`);
-        }
-        
-        // Merge with existing activities instead of replacing them
-        setActivities(prevActivities => {
-          // Create a map of existing activities by ID
-          const existingMap = {};
-          prevActivities.forEach(activity => {
-            if (activity.id) {
-              existingMap[activity.id] = true;
-            }
-          });
-          
-          // Filter out duplicates
-          const newActivities = allActivities.filter(activity => !existingMap[activity.id]);
-          
-          console.log(`[DEBUG] Adding ${newActivities.length} new activities to ${prevActivities.length} existing activities`);
-          
-          // Combine and sort by timestamp
-          const combined = [...prevActivities, ...newActivities].sort((a, b) => {
-            const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
-            const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
-            return dateB - dateA; // Most recent first
-          });
-          
-          // Save to localStorage
-          try {
-            localStorage.setItem(activitiesKey, JSON.stringify(combined));
-            localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(combined));
-            
-            // Also save document notifications to document-specific storage
-            const documentNotifications = combined.filter(activity => activity.entityType === 'document');
-            if (documentNotifications.length > 0) {
-              localStorage.setItem('borrower_documents', JSON.stringify(documentNotifications));
-            }
-            
-            // Also save message notifications to message-specific storage
-            const messageNotifications = combined.filter(activity => 
-              activity.entityType === 'message' || 
-              activity.title?.toLowerCase().includes('message')
-            );
-            if (messageNotifications.length > 0) {
-              localStorage.setItem('borrower_messages', JSON.stringify(messageNotifications));
-              console.log(`[DEBUG] Saved ${messageNotifications.length} message notifications to localStorage`);
-            }
-          } catch (error) {
-            console.error('Failed to save merged activities to localStorage:', error);
-          }
-          
-          return combined;
-        });
-      }
-      
-      // Process payment summary
-      const paymentSummary = {
-        totalPaid: statsData.paymentSummary?.totalPaid || 0,
-        upcomingPayment: statsData.paymentSummary?.upcomingPayment || 0,
-        nextDueDate: statsData.paymentSummary?.nextDueDate || null
-      };
-      
-      setPaymentSummary(paymentSummary);
-      
+      setLoans(enrichedLoans);
+      setLastFetchTime(now);
+      setLoading(false); // Stop loading after successful data fetch
+      console.log('[DEBUG] Dashboard data fetch completed successfully');
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      // Set default data even if API fails
+      setStats({
+        totalLoans: 0,
+        activeLoans: 0,
+        completedLoans: 0,
+        totalAmount: 0,
+        percentChanges: {
+          loans: 0,
+          applications: 0,
+          amount: 0
+        }
+      });
+      setLoans([]);
       setLoading(false);
+      
+      if (error.response?.status === 401) {
+        toast.error('Please log in again');
+        router.push('/login');
+      } else {
+        toast.error('Failed to load dashboard data. Showing empty dashboard.');
+      }
     }
-  };
+  }, [lastFetchTime, loans, router]);
+
+  // Fetch fresh data from the backend so we stay up-to-date
+  useEffect(() => {
+    fetchDashboardData();
+  }, []); // Remove fetchDashboardData from dependencies to prevent infinite loops
   
   const handleViewLoan = (loanId) => {
     router.push(`/borrower/loans/${loanId}`);
@@ -1661,7 +1432,7 @@ useEffect(() => {
       const enrichedLoans = statsData.recentLoans || [];
       
       // Update the loans state
-      setRecentLoans(enrichedLoans);
+      setLoans(enrichedLoans);
       
       // Make a direct API call to get the latest activities
       const response = await axios.get(
@@ -1818,12 +1589,12 @@ useEffect(() => {
   
   // Run cleanup on loans change
   useEffect(() => {
-    if (recentLoans && recentLoans.length > 0) {
+    if (loans && loans.length > 0) {
       console.log('Running notification cleanup after loans loaded');
       // Slight delay to ensure loans are fully processed
       setTimeout(cleanupInvalidNotifications, 500);
     }
-  }, [recentLoans]);
+  }, [loans]);
   
   // Add this to useEffect for initialization to load messages on startup
   useEffect(() => {
@@ -2083,12 +1854,6 @@ useEffect(() => {
     }
   };
   
-  // Call cleanup on initial mount
-  useEffect(() => {
-    cleanupDuplicateMessages();
-    cleanupDuplicateDocuments();
-  }, []);
-  
   return (
     <MainLayout title="Borrower Dashboard">
       {/* Activity Manager for real-time updates - ensure it's loaded first */}
@@ -2104,6 +1869,14 @@ useEffect(() => {
           </div>
           
           <div className="flex space-x-3">
+            <button
+              onClick={() => fetchDashboardData(true)}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
             <Link href="/borrower/apply"
               className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
               Apply for a Loan
@@ -2316,9 +2089,9 @@ useEffect(() => {
                   </Link>
                 </div>
 
-                {recentLoans.length > 0 ? (
+                {loans.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {recentLoans.map((loan) => {
+                    {loans.map((loan) => {
                       // Debug: log the loan object structure to see what fields are available
                       console.log('Loan object for card:', JSON.stringify(loan, null, 2));
                       
@@ -2365,7 +2138,7 @@ useEffect(() => {
                 )}
 
                 {/* Payment Summary */}
-                {/* {recentLoans.length > 0 && (
+                {/* {loans.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-medium text-gray-900">Payment Summary</h3>

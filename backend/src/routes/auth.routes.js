@@ -17,6 +17,9 @@ router.post('/reset-password', authController.resetPassword);
 router.get('/verify-email/:token', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerificationEmail);
 
+// Email test route (for debugging)
+router.post('/test-email', authController.testEmail);
+
 // Email change verification route (public)
 router.get('/verify-email-change/:token', userController.verifyEmailChange);
 

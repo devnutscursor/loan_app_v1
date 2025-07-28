@@ -12,6 +12,250 @@ const emailService = require('../utils/email/emailService');
 const config = require('../config');
 
 /**
+ * Create default loan programs for a new lender
+ * @param {string} userId - The user ID of the lender
+ * @param {string} lenderId - The lender profile ID
+ * @returns {Promise<void>}
+ */
+exports.createDefaultLoanPrograms = async (userId, lenderId) => {
+  const LoanProgram = mongoose.model('LoanProgram');
+  
+  try {
+    // 1. Conventional Loan Program
+    await LoanProgram.create({
+      programName: 'Conventional',
+      displayName: 'Conventional Mortgage',
+      programType: 'conventional',
+      isAvailableToBorrower: true,
+      loanHelpText: 'Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 45
+        },
+        downPaymentRestriction: {
+          min: 3,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: 726200 // 2023 conforming loan limit
+        }
+      },
+      privateMortgageInsurance: [
+        { minLTV: 80.01, maxLTV: 85, rate: 0.3 },
+        { minLTV: 85.01, maxLTV: 90, rate: 0.5 },
+        { minLTV: 90.01, maxLTV: 95, rate: 0.7 },
+        { minLTV: 95.01, maxLTV: 97, rate: 0.85 }
+      ],
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0,
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 2. FHA Loan Program
+    await LoanProgram.create({
+      programName: 'FHA',
+      displayName: 'FHA Mortgage',
+      programType: 'fha',
+      isAvailableToBorrower: true,
+      loanHelpText: 'FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 43
+        },
+        downPaymentRestriction: {
+          min: 3.5,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: 726200 // 2023 FHA limit for most areas
+        }
+      },
+      upfrontMortgageInsurance: 1.75, // FHA upfront MIP
+      mortgageInsurance: 0.55, // FHA annual MIP (varies based on loan terms and LTV)
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 3. VA Loan Program
+    await LoanProgram.create({
+      programName: 'VA',
+      displayName: 'VA Home Loan',
+      programType: 'va',
+      isAvailableToBorrower: true,
+      loanHelpText: 'VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 41
+        },
+        downPaymentRestriction: {
+          min: 0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: null // No VA loan limit for those with full entitlement
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0, // VA loans don't have monthly mortgage insurance
+      fundingFee: 2.15, // VA funding fee for first-time use with no down payment
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 4. USDA Loan Program
+    await LoanProgram.create({
+      programName: 'USDA',
+      displayName: 'USDA Rural Development',
+      programType: 'usda',
+      isAvailableToBorrower: true,
+      loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
+      rateAdjustment: 0,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 41
+        },
+        downPaymentRestriction: {
+          min: 0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: null,
+          max: null
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0.4, // USDA annual fee
+      fundingFee: 1.0, // USDA upfront guarantee fee
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 500,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    // 5. Jumbo Loan Program
+    await LoanProgram.create({
+      programName: 'Jumbo',
+      displayName: 'Jumbo Mortgage',
+      programType: 'jumbo',
+      isAvailableToBorrower: true,
+      loanHelpText: 'A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000.',
+      rateAdjustment: 0.25,
+      loanTerm: 30,
+      restrictions: {
+        dtiRestriction: {
+          max: 40
+        },
+        downPaymentRestriction: {
+          min: 10.0,
+          max: null
+        },
+        loanAmountRestriction: {
+          min: 726000,
+          max: 2000000
+        }
+      },
+      upfrontMortgageInsurance: 0,
+      mortgageInsurance: 0,
+      fundingFee: 0,
+      originationFees: {
+        type: 'percentage',
+        value: 1,
+        frequency: 'once'
+      },
+      closingCosts: {
+        type: 'percentage',
+        value: 2,
+        frequency: 'once'
+      },
+      otherFees: {
+        type: 'flat',
+        value: 1000,
+        frequency: 'once'
+      },
+      lender: lenderId,
+      createdBy: userId
+    });
+    
+    logger.info(`Created default loan programs for lender ID: ${lenderId}`);
+  } catch (error) {
+    logger.error(`Error creating default loan programs: ${error.message}`);
+    // We don't want to fail the user registration if loan program creation fails
+    // This is a background task that can be retried later
+  }
+};
+
+/**
  * Helper function to automatically save loan rates for lenders upon login
  * @param {string} userId - The user ID of the lender
  * @returns {Promise<boolean>} - Returns true if rates were saved, false otherwise
@@ -197,103 +441,272 @@ async function sendVerificationEmail(user, req) {
 }
 
 /**
+ * Test email sending (for debugging)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.testEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return next(new ApiError('Email is required', 400));
+    }
+    
+    logger.info(`Testing email sending to: ${email}`);
+    
+    // Send a simple test email
+    const result = await emailService.sendEmail({
+      to: email,
+      subject: 'Test Email - Loan Application System',
+      text: `This is a test email sent at ${new Date().toISOString()}`,
+      html: `<p>This is a test email sent at ${new Date().toISOString()}</p>`
+    });
+    
+    if (result.success) {
+      res.status(200).json({
+        status: 'success',
+        message: 'Test email sent successfully',
+        data: result
+      });
+    } else {
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to send test email',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    logger.error(`Test email error: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
  * Register a new user
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
 exports.register = async (req, res, next) => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const { firstName, lastName, email, password, phone, role, nmls } = req.body;
+  try {
+    const { firstName, lastName, email, password, phone, role, nmls } = req.body;
 
-      // Normalize email to lowercase
-      const normalizedEmail = email.toLowerCase();
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase();
 
-      // Check if user already exists with this email
-      const existingUser = await User.findOne({ email: normalizedEmail });
-      if (existingUser) {
-        return reject(new ApiError('Email already in use', 400));
-      }
+    // Check if user already exists with this email
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return next(new ApiError('Email already in use', 400));
+    }
 
-      // Create new user
-      const user = await User.create({
-        firstName,
-        lastName,
-        email: normalizedEmail,
-        password,
-        phone,
-        role: role || 'borrower',
-        nmls,
-        isEmailVerified: false
+    // Create new user
+    const user = await User.create({
+      firstName,
+      lastName,
+      email: normalizedEmail,
+      password,
+      phone,
+      role: role || 'borrower',
+      nmls,
+      isEmailVerified: false
+    });
+
+    // Create corresponding profile based on role
+    if (user.role === 'borrower') {
+      const borrower = await Borrower.create({
+        user: user._id
+      });
+    } else if (user.role === 'lender') {
+      const lender = await Lender.create({
+        user: user._id,
+        nmls: nmls || ''
       });
 
-      // Create corresponding profile based on role
-      if (user.role === 'borrower') {
-        const borrower = await Borrower.create({
-          user: user._id
-        });
-      } else if (user.role === 'lender') {
-        const lender = await Lender.create({
-          user: user._id,
-          nmls: nmls || ''
-        });
+      // Create default loan programs for new lender
+      if (lender) {
+        // Temporarily create programs directly to avoid hoisting issue
+        try {
+          const LoanProgram = mongoose.model('LoanProgram');
+          
+          // Create Conventional Loan Program
+          await LoanProgram.create({
+            programName: 'Conventional',
+            displayName: 'Conventional Mortgage',
+            programType: 'conventional',
+            isAvailableToBorrower: true,
+            loanHelpText: 'Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment.',
+            rateAdjustment: 0,
+            loanTerm: 30,
+            restrictions: {
+              dtiRestriction: { max: 45 },
+              downPaymentRestriction: { min: 3, max: null },
+              loanAmountRestriction: { min: null, max: 726200 }
+            },
+            privateMortgageInsurance: [
+              { minLTV: 80.01, maxLTV: 85, rate: 0.3 },
+              { minLTV: 85.01, maxLTV: 90, rate: 0.5 },
+              { minLTV: 90.01, maxLTV: 95, rate: 0.7 },
+              { minLTV: 95.01, maxLTV: 97, rate: 0.85 }
+            ],
+            upfrontMortgageInsurance: 0,
+            mortgageInsurance: 0,
+            fundingFee: 0,
+            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
+            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
+            otherFees: { type: 'flat', value: 500, frequency: 'once' },
+            lender: lender._id,
+            createdBy: user._id
+          });
 
-        // Create default loan programs for new lender
-        if (lender) {
-          this.createDefaultLoanPrograms(user._id, lender._id)
-            .then(() => {
-              logger.info(`Created default loan programs for new lender: ${lender._id}`);
-            })
-            .catch(error => {
-              logger.error(`Error creating default loan programs: ${error.message}`);
-            });
+          // Create FHA Loan Program
+          await LoanProgram.create({
+            programName: 'FHA',
+            displayName: 'FHA Mortgage',
+            programType: 'fha',
+            isAvailableToBorrower: true,
+            loanHelpText: 'FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments.',
+            rateAdjustment: 0,
+            loanTerm: 30,
+            restrictions: {
+              dtiRestriction: { max: 43 },
+              downPaymentRestriction: { min: 3.5, max: null },
+              loanAmountRestriction: { min: null, max: 726200 }
+            },
+            upfrontMortgageInsurance: 1.75,
+            mortgageInsurance: 0.55,
+            fundingFee: 0,
+            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
+            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
+            otherFees: { type: 'flat', value: 500, frequency: 'once' },
+            lender: lender._id,
+            createdBy: user._id
+          });
 
-          // Create default loan rates
-          try {
-            await createDefaultLoanRates(user._id, lender._id);
-            logger.info(`Created default loan rates for new lender: ${lender._id}`);
-          } catch (error) {
-            logger.error(`Error creating default loan rates: ${error.message}`);
-          }
+          // Create VA Loan Program
+          await LoanProgram.create({
+            programName: 'VA',
+            displayName: 'VA Home Loan',
+            programType: 'va',
+            isAvailableToBorrower: true,
+            loanHelpText: 'VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses.',
+            rateAdjustment: 0,
+            loanTerm: 30,
+            restrictions: {
+              dtiRestriction: { max: 41 },
+              downPaymentRestriction: { min: 0, max: null },
+              loanAmountRestriction: { min: null, max: null }
+            },
+            upfrontMortgageInsurance: 0,
+            mortgageInsurance: 0,
+            fundingFee: 2.15,
+            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
+            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
+            otherFees: { type: 'flat', value: 500, frequency: 'once' },
+            lender: lender._id,
+            createdBy: user._id
+          });
+
+          // Create USDA Loan Program
+          await LoanProgram.create({
+            programName: 'USDA',
+            displayName: 'USDA Rural Development',
+            programType: 'usda',
+            isAvailableToBorrower: true,
+            loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
+            rateAdjustment: 0,
+            loanTerm: 30,
+            restrictions: {
+              dtiRestriction: { max: 41 },
+              downPaymentRestriction: { min: 0, max: null },
+              loanAmountRestriction: { min: null, max: null }
+            },
+            upfrontMortgageInsurance: 0,
+            mortgageInsurance: 0.4,
+            fundingFee: 1.0,
+            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
+            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
+            otherFees: { type: 'flat', value: 500, frequency: 'once' },
+            lender: lender._id,
+            createdBy: user._id
+          });
+
+          // Create Jumbo Loan Program
+          await LoanProgram.create({
+            programName: 'Jumbo',
+            displayName: 'Jumbo Mortgage',
+            programType: 'jumbo',
+            isAvailableToBorrower: true,
+            loanHelpText: 'A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000.',
+            rateAdjustment: 0.25,
+            loanTerm: 30,
+            restrictions: {
+              dtiRestriction: { max: 40 },
+              downPaymentRestriction: { min: 10.0, max: null },
+              loanAmountRestriction: { min: 726000, max: 2000000 }
+            },
+            upfrontMortgageInsurance: 0,
+            mortgageInsurance: 0,
+            fundingFee: 0,
+            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
+            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
+            otherFees: { type: 'flat', value: 1000, frequency: 'once' },
+            lender: lender._id,
+            createdBy: user._id
+          });
+
+          logger.info(`Created default loan programs for new lender: ${lender._id}`);
+        } catch (error) {
+          logger.error(`Error creating default loan programs: ${error.message}`);
+        }
+
+        // Create default loan rates
+        try {
+          await createDefaultLoanRates(user._id, lender._id);
+          logger.info(`Created default loan rates for new lender: ${lender._id}`);
+        } catch (error) {
+          logger.error(`Error creating default loan rates: ${error.message}`);
         }
       }
+    }
 
-      // Send verification email
-      try {
-        logger.info(`Attempting to send verification email for new user: ${user._id}, ${user.email}`);
-        const emailSent = await sendVerificationEmail(user, req);
-        if (emailSent) {
-          logger.info(`Verification email successfully triggered for user: ${user._id}`);
-        } else {
-          logger.error(`Verification email sending returned false for user: ${user._id}`);
-        }
-      } catch (error) {
+    // Send verification email asynchronously (don't wait for it)
+    sendVerificationEmail(user, req)
+      .then(() => {
+        logger.info(`Verification email successfully sent for user: ${user._id}`);
+      })
+      .catch((error) => {
         logger.error(`Failed to send verification email: ${error.message}`, {
           stack: error.stack,
           userId: user._id,
           email: user.email
         });
-        // Continue with registration even if email fails
-      }
+        // Don't fail registration if email fails - user can request resend later
+      });
 
-      logger.info(`User registered successfully: ${user._id} (${user.role})`);
-      
-      // Return success without sending token (require login)
-      return resolve(res.status(201).json({
-        status: 'success',
-        message: 'Registration successful! Please check your email to verify your account before logging in.',
-        data: {
-          userId: user._id,
-          role: user.role,
-          verified: false
+    logger.info(`User registered successfully: ${user._id} (${user.role})`);
+    
+    // Return success immediately without waiting for email
+    res.status(201).json({
+      status: 'success',
+      message: 'Registration successful. Please check your email to verify your account. If you don\'t receive the email, you can request a new one.',
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role
         }
-      }));
-    } catch (error) {
-      logger.error(`Registration error: ${error.message}`);
-      return reject(new ApiError(error.message || 'Registration failed', 500));
-    }
-  }).catch(next);
+      }
+    });
+  } catch (error) {
+    logger.error(`Registration error: ${error.message}`);
+    next(error);
+  }
 };
 
 /**
@@ -347,38 +760,47 @@ exports.verifyEmail = async (req, res, next) => {
  * @param {Function} next - Express next middleware function
  */
 exports.resendVerificationEmail = async (req, res, next) => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return reject(new ApiError('Email is required', 400));
-      }
-      
-      // Find user by email
-      const user = await User.findOne({ email: email.toLowerCase() });
-      
-      if (!user) {
-        return reject(new ApiError('User not found', 404));
-      }
-      
-      if (user.isEmailVerified) {
-        return reject(new ApiError('Email is already verified', 400));
-      }
-      
-      // Send new verification email
-      await sendVerificationEmail(user, req);
-      
-      // Return success
-      return resolve(res.status(200).json({
-        status: 'success',
-        message: 'Verification email resent successfully',
-      }));
-    } catch (error) {
-      logger.error(`Resend verification error: ${error.message}`);
-      return reject(new ApiError(error.message || 'Failed to resend verification email', 500));
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return next(new ApiError('Email is required', 400));
     }
-  }).catch(next);
+    
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      return next(new ApiError('User not found', 404));
+    }
+    
+    if (user.isEmailVerified) {
+      return next(new ApiError('Email is already verified', 400));
+    }
+    
+    // Send new verification email asynchronously (don't wait for it)
+    sendVerificationEmail(user, req)
+      .then(() => {
+        logger.info(`Verification email resent successfully for user: ${user._id}`);
+      })
+      .catch((error) => {
+        logger.error(`Failed to resend verification email: ${error.message}`, {
+          stack: error.stack,
+          userId: user._id,
+          email: user.email
+        });
+        // Don't fail the request if email fails
+      });
+    
+    // Return success immediately without waiting for email
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification email resent successfully',
+    });
+  } catch (error) {
+    logger.error(`Resend verification error: ${error.message}`);
+    next(error);
+  }
 };
 
 /**
@@ -388,84 +810,82 @@ exports.resendVerificationEmail = async (req, res, next) => {
  * @param {Function} next - Express next middleware function
  */
 exports.login = async (req, res, next) => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-      // Validate input
-      if (!email || !password) {
-        return reject(new ApiError('Please provide email and password', 400));
-      }
-
-      // Find user with password field included (select)
-      const user = await User.findOne({ email: email.toLowerCase() });
-
-      // Check if user exists and password is correct
-      if (!user || !(await user.comparePassword(password))) {
-        return reject(new ApiError('Invalid credentials', 401));
-      }
-      
-      // Check if email is verified
-      if (!user.isEmailVerified) {
-        return reject(new ApiError('Please verify your email before logging in. Check your inbox or request a new verification email.', 403, { requiresVerification: true }));
-      }
-
-      // Update last login time
-      user.lastLogin = Date.now();
-      await user.save({ validateBeforeSave: false });
-      
-      // Auto-save loan rates for lenders
-      if (user.role === 'lender') {
-        autoSaveLenderRates(user._id)
-          .then(saved => {
-            if (saved) {
-              logger.info(`Auto-saved loan rates for lender user: ${user._id}`);
-            }
-          })
-          .catch(error => {
-            logger.error(`Error auto-saving loan rates: ${error.message}`);
-          });
-      }
-      
-      // Generate JWT token
-      const token = generateToken(user._id);
-      const refreshToken = generateRefreshToken(user._id);
-
-      let profileData = null;
-      
-      // Get profile data based on role
-      if (user.role === 'borrower') {
-        profileData = await Borrower.findOne({ user: user._id });
-      } else if (user.role === 'lender') {
-        profileData = await Lender.findOne({ user: user._id });
-      }
-
-      // Respond with user data and token
-      return resolve(res.status(200).json({
-        status: 'success',
-        message: 'Login successful',
-        data: {
-          user: {
-            id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            role: user.role,
-            phone: user.phone,
-            profileImage: user.profileImage,
-            createdAt: user.createdAt,
-            profileId: profileData ? profileData._id : null,
-            isEmailVerified: user.isEmailVerified
-          },
-          token,
-          refreshToken
-        }
-      }));
-    } catch (error) {
-      logger.error(`Login error: ${error.message}`);
-      return reject(new ApiError(error.message || 'Login failed', 500));
+    // Validate input
+    if (!email || !password) {
+      return next(new ApiError('Please provide email and password', 400));
     }
-  }).catch(next);
+
+    // Find user with password field included (select)
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    // Check if user exists and password is correct
+    if (!user || !(await user.comparePassword(password))) {
+      return next(new ApiError('Invalid credentials', 401));
+    }
+    
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return next(new ApiError('Please verify your email before logging in. Check your inbox or request a new verification email.', 403, { requiresVerification: true }));
+    }
+
+    // Update last login time
+    user.lastLogin = Date.now();
+    await user.save({ validateBeforeSave: false });
+    
+    // Auto-save loan rates for lenders
+    if (user.role === 'lender') {
+      autoSaveLenderRates(user._id)
+        .then(saved => {
+          if (saved) {
+            logger.info(`Auto-saved loan rates for lender user: ${user._id}`);
+          }
+        })
+        .catch(error => {
+          logger.error(`Error auto-saving loan rates: ${error.message}`);
+        });
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    let profileData = null;
+    
+    // Get profile data based on role
+    if (user.role === 'borrower') {
+      profileData = await Borrower.findOne({ user: user._id });
+    } else if (user.role === 'lender') {
+      profileData = await Lender.findOne({ user: user._id });
+    }
+
+    // Respond with user data and token
+    res.status(200).json({
+      status: 'success',
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          profileImage: user.profileImage,
+          createdAt: user.createdAt,
+          profileId: profileData ? profileData._id : null,
+          isEmailVerified: user.isEmailVerified
+        },
+        token,
+        refreshToken
+      }
+    });
+  } catch (error) {
+    logger.error(`Login error: ${error.message}`);
+    next(error);
+  }
 };
 
 /**
@@ -528,27 +948,24 @@ exports.registerBorrower = async (req, res, next) => {
     const token = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Send verification email
-    try {
-      logger.info(`Attempting to send verification email for new borrower: ${user._id}, ${user.email}`);
-      const emailSent = await sendVerificationEmail(user, req);
-      if (emailSent) {
-        logger.info(`Verification email successfully triggered for borrower: ${user._id}`);
-      } else {
-        logger.error(`Verification email sending returned false for borrower: ${user._id}`);
-      }
-    } catch (error) {
-      logger.error(`Failed to send verification email to borrower: ${error.message}`, {
-        stack: error.stack,
-        userId: user._id,
-        email: user.email
+    // Send verification email asynchronously (don't wait for it)
+    sendVerificationEmail(user, req)
+      .then(() => {
+        logger.info(`Verification email successfully sent for borrower: ${user._id}`);
+      })
+      .catch((error) => {
+        logger.error(`Failed to send verification email to borrower: ${error.message}`, {
+          stack: error.stack,
+          userId: user._id,
+          email: user.email
+        });
+        // Don't fail registration if email fails
       });
-      // Continue with registration even if email fails
-    }
     
     // Log borrower registration
     logger.info(`New borrower registered: ${user.email} under lender ID: ${lenderId}`);
 
+    // Return success immediately without waiting for email
     res.status(201).json({
       status: 'success',
       message: 'Borrower registered successfully. Please check your email to verify your account.',
@@ -941,249 +1358,6 @@ exports.logout = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
-  }
-};
-
-/**
- * Create default loan programs for a new lender
- * @param {ObjectId} userId - The user ID of the lender
- * @param {ObjectId} lenderId - The lender ID
- */
-exports.createDefaultLoanPrograms = async (userId, lenderId) => {
-  const LoanProgram = mongoose.model('LoanProgram');
-  
-  try {
-    // 1. Conventional Loan Program
-    await LoanProgram.create({
-      programName: 'Conventional',
-      displayName: 'Conventional Mortgage',
-      programType: 'conventional',
-      isAvailableToBorrower: true,
-      loanHelpText: 'Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment.',
-      rateAdjustment: 0,
-      loanTerm: 30,
-      restrictions: {
-        dtiRestriction: {
-          max: 45
-        },
-        downPaymentRestriction: {
-          min: 3,
-          max: null
-        },
-        loanAmountRestriction: {
-          min: null,
-          max: 726200 // 2023 conforming loan limit
-        }
-      },
-      privateMortgageInsurance: [
-        { minLTV: 80.01, maxLTV: 85, rate: 0.3 },
-        { minLTV: 85.01, maxLTV: 90, rate: 0.5 },
-        { minLTV: 90.01, maxLTV: 95, rate: 0.7 },
-        { minLTV: 95.01, maxLTV: 97, rate: 0.85 }
-      ],
-      upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0,
-      fundingFee: 0,
-      originationFees: {
-        type: 'percentage',
-        value: 1,
-        frequency: 'once'
-      },
-      closingCosts: {
-        type: 'percentage',
-        value: 2,
-        frequency: 'once'
-      },
-      otherFees: {
-        type: 'flat',
-        value: 500,
-        frequency: 'once'
-      },
-      lender: lenderId,
-      createdBy: userId
-    });
-    
-    // 2. FHA Loan Program
-    await LoanProgram.create({
-      programName: 'FHA',
-      displayName: 'FHA Mortgage',
-      programType: 'fha',
-      isAvailableToBorrower: true,
-      loanHelpText: 'FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments.',
-      rateAdjustment: 0,
-      loanTerm: 30,
-      restrictions: {
-        dtiRestriction: {
-          max: 43
-        },
-        downPaymentRestriction: {
-          min: 3.5,
-          max: null
-        },
-        loanAmountRestriction: {
-          min: null,
-          max: 726200 // 2023 FHA limit for most areas
-        }
-      },
-      upfrontMortgageInsurance: 1.75, // FHA upfront MIP
-      mortgageInsurance: 0.55, // FHA annual MIP (varies based on loan terms and LTV)
-      fundingFee: 0,
-      originationFees: {
-        type: 'percentage',
-        value: 1,
-        frequency: 'once'
-      },
-      closingCosts: {
-        type: 'percentage',
-        value: 2,
-        frequency: 'once'
-      },
-      otherFees: {
-        type: 'flat',
-        value: 500,
-        frequency: 'once'
-      },
-      lender: lenderId,
-      createdBy: userId
-    });
-    
-    // 3. VA Loan Program
-    await LoanProgram.create({
-      programName: 'VA',
-      displayName: 'VA Home Loan',
-      programType: 'va',
-      isAvailableToBorrower: true,
-      loanHelpText: 'VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses.',
-      rateAdjustment: 0,
-      loanTerm: 30,
-      restrictions: {
-        dtiRestriction: {
-          max: 41
-        },
-        downPaymentRestriction: {
-          min: 0,
-          max: null
-        },
-        loanAmountRestriction: {
-          min: null,
-          max: null // No VA loan limit for those with full entitlement
-        }
-      },
-      upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0, // VA loans don't have monthly mortgage insurance
-      fundingFee: 2.15, // VA funding fee for first-time use with no down payment
-      originationFees: {
-        type: 'percentage',
-        value: 1,
-        frequency: 'once'
-      },
-      closingCosts: {
-        type: 'percentage',
-        value: 2,
-        frequency: 'once'
-      },
-      otherFees: {
-        type: 'flat',
-        value: 500,
-        frequency: 'once'
-      },
-      lender: lenderId,
-      createdBy: userId
-    });
-    
-    // 4. USDA Loan Program
-    await LoanProgram.create({
-      programName: 'USDA',
-      displayName: 'USDA Rural Development',
-      programType: 'usda',
-      isAvailableToBorrower: true,
-      loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
-      rateAdjustment: 0,
-      loanTerm: 30,
-      restrictions: {
-        dtiRestriction: {
-          max: 41
-        },
-        downPaymentRestriction: {
-          min: 0,
-          max: null
-        },
-        loanAmountRestriction: {
-          min: null,
-          max: null
-        }
-      },
-      upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0.4, // USDA annual fee
-      fundingFee: 1.0, // USDA upfront guarantee fee
-      originationFees: {
-        type: 'percentage',
-        value: 1,
-        frequency: 'once'
-      },
-      closingCosts: {
-        type: 'percentage',
-        value: 2,
-        frequency: 'once'
-      },
-      otherFees: {
-        type: 'flat',
-        value: 500,
-        frequency: 'once'
-      },
-      lender: lenderId,
-      createdBy: userId
-    });
-    
-    // 5. Jumbo Loan Program
-    await LoanProgram.create({
-      programName: 'Jumbo',
-      displayName: 'Jumbo Mortgage',
-      programType: 'jumbo',
-      isAvailableToBorrower: true,
-      loanHelpText: 'A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000.',
-      rateAdjustment: 0.25,
-      loanTerm: 30,
-      restrictions: {
-        dtiRestriction: {
-          max: 40
-        },
-        downPaymentRestriction: {
-          min: 10.0,
-          max: null
-        },
-        loanAmountRestriction: {
-          min: 726000,
-          max: 2000000
-        }
-      },
-      upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0,
-      fundingFee: 0,
-      originationFees: {
-        type: 'percentage',
-        value: 1,
-        frequency: 'once'
-      },
-      closingCosts: {
-        type: 'percentage',
-        value: 2,
-        frequency: 'once'
-      },
-      otherFees: {
-        type: 'flat',
-        value: 1000,
-        frequency: 'once'
-      },
-      lender: lenderId,
-      createdBy: userId
-    });
-    
-    logger.info(`Created default loan programs for lender ID: ${lenderId}`);
-  } catch (error) {
-    logger.error(`Error creating default loan programs: ${error.message}`);
-    // We don't want to fail the user registration if loan program creation fails
-    // This is a background task that can be retried later
   }
 };
 

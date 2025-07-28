@@ -299,29 +299,29 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
             {errors['currentAddress.zipCode'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.zipCode']}</p>
             )}
-          </div>
+        </div>
 
           <div>
             <label htmlFor="housingStatus" className="block text-xs uppercase font-medium text-gray-500 mb-1">
               Housing Status<RequiredFieldIndicator />
             </label>
-            <select
+              <select
               id="housingStatus"
               name="housingStatus"
               value={housingStatus}
-              onChange={handleCurrentAddressChange}
+                onChange={handleCurrentAddressChange}
               className={`text-xs w-full border ${errors['currentAddress.housingStatus'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-            >
-              <option value="">Select</option>
+              >
+                <option value="">Select</option>
               <option value="Own">Own</option>
               <option value="Rent">Rent</option>
               <option value="LiveRentFree">Live Rent Free</option>
-            </select>
+              </select>
             {errors['currentAddress.housingStatus'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.housingStatus']}</p>
             )}
           </div>
-        </div>
+          </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>

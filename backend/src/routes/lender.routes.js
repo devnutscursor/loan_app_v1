@@ -48,6 +48,13 @@ router.get(
   lenderController.getLenderActivities
 );
 
+// Get borrower loan counts for dashboard optimization
+router.get(
+  '/:lenderId/borrower-loan-counts',
+  authorize('lender', 'admin'),
+  lenderController.getBorrowerLoanCounts
+);
+
 // Admin-only routes
 // Get all lenders
 router.get('/', authorize('admin'), lenderController.getAllLenders);

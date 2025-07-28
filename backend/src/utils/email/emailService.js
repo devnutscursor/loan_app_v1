@@ -55,10 +55,15 @@ class EmailService {
       delete logMailOptions.html;
       logger.info('Sending email with options:', logMailOptions);
 
-      // Verify the SMTP connection before sending
+      // Verify the SMTP connection before sending (with shorter timeout)
       logger.info('Verifying SMTP connection...');
       await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('SMTP verification timeout'));
+        }, 30000); // Increased to 10 second timeout for verification
+        
         this.transporter.verify((error, success) => {
+          clearTimeout(timeout);
           if (error) {
             logger.error('SMTP verification failed:', { error: error.message, code: error.code });
             reject(error);
@@ -69,23 +74,56 @@ class EmailService {
         });
       });
       
-      // Send the email
+      // Send the email with retry logic
       logger.info(`Attempting to send email to ${options.to}`, { subject: options.subject });
-      const info = await this.transporter.sendMail(mailOptions);
       
-      // Log detailed information about the send result
-      logger.info(`Email sent successfully to ${options.to}`, { 
-        messageId: info.messageId,
-        response: info.response,
-        envelope: info.envelope
+      let lastError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const info = await Promise.race([
+            this.transporter.sendMail(mailOptions),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Email send timeout')), 30000) // Increased to 30 second timeout
+            )
+          ]);
+          
+          // Log detailed information about the send result
+          logger.info(`Email sent successfully to ${options.to}`, { 
+            messageId: info.messageId,
+            response: info.response,
+            envelope: info.envelope,
+            attempt: attempt
+          });
+          
+          return { 
+            success: true, 
+            messageId: info.messageId,
+            response: info.response,
+            envelope: info.envelope 
+          };
+        } catch (error) {
+          lastError = error;
+          logger.warn(`Email send attempt ${attempt} failed:`, { 
+            error: error.message,
+            attempt: attempt,
+            recipient: options.to
+          });
+          
+          // Wait before retry (exponential backoff)
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          }
+        }
+      }
+      
+      // All attempts failed
+      logger.error(`All email send attempts failed for ${options.to}`, { 
+        error: lastError.message,
+        stack: lastError.stack,
+        code: lastError.code,
+        command: lastError.command
       });
-      
-      return { 
-        success: true, 
-        messageId: info.messageId,
-        response: info.response,
-        envelope: info.envelope 
-      };
+      return { success: false, error: lastError.message, code: lastError.code };
     } catch (error) {
       logger.error(`Failed to send email to ${options.to}`, { 
         error: error.message,
