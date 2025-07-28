@@ -75,10 +75,10 @@ const EmailVerificationPending = ({ isOpen, onClose, pendingEmail, onVerificatio
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <h3 className="text-lg font-semibold text-gray-900">Email Verification Pending</h3>
           <button
             onClick={onClose}
@@ -88,8 +88,8 @@ const EmailVerificationPending = ({ isOpen, onClose, pendingEmail, onVerificatio
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6">
+        {/* Body - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Status Icon */}
           <div className="flex justify-center mb-6">
             <div className="relative">
