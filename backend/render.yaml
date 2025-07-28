@@ -16,4 +16,12 @@ services:
       - key: FRONTEND_URL
         value: https://www.loanapp360.com
       - key: USE_S3
-        value: false 
+        value: true
+      - key: AWS_ACCESS_KEY_ID
+        value: AKIASU566NB2LSNWJKEP
+      - key: AWS_SECRET_ACCESS_KEY
+        value: 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
+      - key: AWS_REGION
+        value: eu-west-2
+      - key: AWS_S3_BUCKET
+        value: lawprobucket 

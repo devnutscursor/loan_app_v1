@@ -9,7 +9,7 @@ const xml2js = require('xml2js');
 const fs = require('fs');
 const path = require('path');
 const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones');
-const { USE_S3, s3Client } = require('../services/s3.service');
+const { USE_S3, s3 } = require('../services/s3.service');
 
 // Check if we should use S3 or local storage
 // const USE_S3 = process.env.USE_S3 === 'true' || false;
@@ -2504,14 +2504,11 @@ exports.importFromXML = async (req, res, next) => {
     
     let xmlString;
     if (USE_S3) {
-        const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
-        const s3 = new S3Client({ region: process.env.AWS_REGION });
-        const command = new GetObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET_NAME,
+        const result = await s3.getObject({
+            Bucket: process.env.AWS_S3_BUCKET,
             Key: req.file.key,
-        });
-        const { Body } = await s3.send(command);
-        xmlString = await Body.transformToString('utf8');
+        }).promise();
+        xmlString = result.Body.toString('utf8');
     } else {
         xmlString = fs.readFileSync(req.file.path, 'utf8');
     }
@@ -2616,12 +2613,10 @@ exports.importFromXML = async (req, res, next) => {
     // Cleanup S3 file if exists
     if (USE_S3 && s3FileKey) {
       try {
-        const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-        const s3 = new S3Client({ region: process.env.AWS_REGION });
-        await s3.send(new DeleteObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET_NAME,
+        await s3.deleteObject({
+          Bucket: process.env.AWS_S3_BUCKET,
           Key: s3FileKey
-        }));
+        }).promise();
       } catch (s3Error) {
         console.error('Failed to cleanup S3 file:', s3Error);
       }
