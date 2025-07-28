@@ -44,7 +44,7 @@ console.log('   - NODE_ENV: production');
 console.log('   - PORT: 10000');
 console.log('   - MONGODB_URI: (your MongoDB connection string)');
 console.log('   - JWT_SECRET: (generate a secure string)');
-console.log('   - FRONTEND_URL: https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app');
+console.log('   - FRONTEND_URL: https://www.loanapp360.com');
 console.log('   - USE_S3: false');
 console.log('\n6. Once deployed, update the frontend Vercel env variable:');
 console.log('   - NEXT_PUBLIC_API_URL: https://your-render-backend-url.onrender.com'); 

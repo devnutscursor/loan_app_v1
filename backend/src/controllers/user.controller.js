@@ -117,9 +117,12 @@ exports.requestEmailChange = async (req, res, next) => {
       emailChangeExpires: expiresIn
     });
 
-    // Determine base URL
-    let baseUrl = `${req.protocol}://${req.get('host')}`;
-    if (baseUrl.includes(':5000') && process.env.NODE_ENV === 'development') {
+    // Use FRONTEND_URL environment variable for the base URL
+    // This ensures emails always point to the correct frontend URL
+    let baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    // For local development, if FRONTEND_URL is not set, use localhost
+    if (process.env.NODE_ENV === 'development' && !process.env.FRONTEND_URL) {
       baseUrl = 'http://localhost:3000';
     }
 

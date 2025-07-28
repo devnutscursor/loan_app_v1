@@ -403,14 +403,14 @@ async function sendVerificationEmail(user, req) {
     logger.info(`Generating verification token for user: ${user._id}`);
     const token = await generateVerificationToken(user._id);
     
-    // Determine base URL from request or environment
-    // For local development, req.protocol might be http but the frontend uses http://localhost:3001
-    let baseUrl = `${req.protocol}://${req.get('host')}`;
+    // Use FRONTEND_URL environment variable for the base URL
+    // This ensures emails always point to the correct frontend URL
+    let baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
-    // Special case for local development - if port is 5000 (backend), we assume frontend is on 3001
-    if (baseUrl.includes(':5000') && process.env.NODE_ENV === 'development') {
+    // For local development, if FRONTEND_URL is not set, use localhost
+    if (process.env.NODE_ENV === 'development' && !process.env.FRONTEND_URL) {
       baseUrl = 'http://localhost:3000';
-      logger.info(`Using frontend URL for local development: ${baseUrl}`);
+      logger.info(`Using localhost for development: ${baseUrl}`);
     }
     
     logger.info(`Sending verification email to: ${user.email} with base URL: ${baseUrl}`);

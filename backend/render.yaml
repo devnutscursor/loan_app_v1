@@ -14,6 +14,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app
+        value: https://www.loanapp360.com
       - key: USE_S3
         value: false 
