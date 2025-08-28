@@ -19,6 +19,7 @@ const LenderManualLoanCreation = () => {
   const [loading, setLoading] = useState(false);
   const [loanTypes, setLoanTypes] = useState([]);
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState(new Set([1])); // Track actually completed steps
   const [formData, setFormData] = useState({
     borrowers: [
       {
@@ -150,6 +151,87 @@ const LenderManualLoanCreation = () => {
   });
   const [errors, setErrors] = useState({});
 
+  // Local storage keys for form persistence
+  const STORAGE_KEYS = {
+    FORM_DATA: 'lender_loan_form_data',
+    CURRENT_STEP: 'lender_loan_current_step',
+    CURRENT_SUB_STEP: 'lender_loan_current_sub_step',
+    TIMESTAMP: 'lender_loan_form_timestamp'
+  };
+
+  // Form persistence functions
+  const saveFormToStorage = (formData, currentStep, currentSubStep) => {
+    try {
+      // Only save if there's meaningful data (not just default empty values)
+      const hasData = formData.borrowers[0].firstName || 
+                     formData.borrowers[0].email || 
+                     formData.propertyInfo.address.streetAddress ||
+                     formData.loanInfo.loanAmount;
+
+      if (hasData) {
+        localStorage.setItem(STORAGE_KEYS.FORM_DATA, JSON.stringify(formData));
+        localStorage.setItem(STORAGE_KEYS.CURRENT_STEP, currentStep.toString());
+        localStorage.setItem(STORAGE_KEYS.CURRENT_SUB_STEP, currentSubStep);
+        localStorage.setItem(STORAGE_KEYS.TIMESTAMP, Date.now().toString());
+        console.log('Form data saved to localStorage');
+      }
+    } catch (error) {
+      console.error('Error saving form data to localStorage:', error);
+    }
+  };
+
+  const loadFormFromStorage = () => {
+    try {
+      const savedFormData = localStorage.getItem(STORAGE_KEYS.FORM_DATA);
+      const savedCurrentStep = localStorage.getItem(STORAGE_KEYS.CURRENT_STEP);
+      const savedCurrentSubStep = localStorage.getItem(STORAGE_KEYS.CURRENT_SUB_STEP);
+      const savedTimestamp = localStorage.getItem(STORAGE_KEYS.TIMESTAMP);
+
+      if (savedFormData && savedCurrentStep && savedTimestamp) {
+        // Check if saved data is not too old (24 hours)
+        const timestamp = parseInt(savedTimestamp);
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const isDataFresh = Date.now() - timestamp < twentyFourHours;
+
+        if (isDataFresh) {
+          const parsedFormData = JSON.parse(savedFormData);
+          const parsedCurrentStep = parseInt(savedCurrentStep);
+          const parsedCurrentSubStep = savedCurrentSubStep || 'personalDetails';
+
+          console.log('Loading saved form data from localStorage');
+          
+          return {
+            formData: parsedFormData,
+            currentStep: parsedCurrentStep,
+            currentSubStep: parsedCurrentSubStep,
+            hasRestoredData: true
+          };
+        } else {
+          // Clear old data
+          clearFormFromStorage();
+        }
+      }
+    } catch (error) {
+      console.error('Error loading form data from localStorage:', error);
+      // Clear corrupted data
+      clearFormFromStorage();
+    }
+    
+    return null;
+  };
+
+  const clearFormFromStorage = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.FORM_DATA);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_STEP);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_SUB_STEP);
+      localStorage.removeItem(STORAGE_KEYS.TIMESTAMP);
+      console.log('Form data cleared from localStorage');
+    } catch (error) {
+      console.error('Error clearing form data from localStorage:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchLoanTypes = async () => {
       try {
@@ -162,8 +244,27 @@ const LenderManualLoanCreation = () => {
       }
     };
 
+    // Load saved form data on component mount
+    const savedData = loadFormFromStorage();
+    if (savedData) {
+      setFormData(savedData.formData);
+      setCurrentStep(savedData.currentStep);
+      setCurrentSubStep(savedData.currentSubStep);
+      
+      // Form data restored silently (no toast notification)
+    }
+
     fetchLoanTypes();
   }, []);
+
+  // Auto-save form data whenever it changes (with debouncing)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      saveFormToStorage(formData, currentStep, currentSubStep);
+    }, 1000); // Save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [formData, currentStep, currentSubStep]);
 
   // Handle form input changes (simplified version from borrower/apply.js)
   const handleChange = (nameOrEvent, valueOrNull = null) => {
@@ -272,6 +373,9 @@ const LenderManualLoanCreation = () => {
       return true;
     }
 
+    console.log(`🔍 VALIDATING STEP ${step} (tabName: ${tabName})`);
+    console.log('📊 Current form data:', formData);
+    
     const newErrors = {};
 
     // Validate based on current step
@@ -317,19 +421,60 @@ const LenderManualLoanCreation = () => {
         break;
 
       case 2: // Property & Loan details step
-        // Property validation - check both nested and direct property fields
-        const addressData = formData.propertyInfo.address || {};
-        const directData = formData.propertyInfo || {};
+        // Property validation - check the actual fields that exist in the form
+        const propertyData = formData.propertyInfo || {};
 
-        // Check for street address in either location
-        if (!addressData.streetAddress && !directData.streetAddress) {
-          // Lender-specific message for property validation
-          newErrors["propertyInfo.address.streetAddress"] =
-            "Property address is required for loan processing";
+        // Check for required property fields that actually exist in the form
+        if (!propertyData.occupancyType) {
+          newErrors["propertyInfo.occupancyType"] = "Occupancy type is required";
         }
+        
+        if (!propertyData.propertyType) {
+          newErrors["propertyInfo.propertyType"] = "Property type is required";
+        }
+
+        // Loan information validation
+        const loanData = formData.loanInfo || {};
+        
+        // Check loan type
+        if (!loanData.loanType) {
+          newErrors["loanInfo.loanType"] = "Loan type is required";
+        }
+        
+        // For purchase loans, check purchase price and down payment
+        if (loanData.loanType === "Purchase") {
+          if (!loanData.purchasePrice) {
+            newErrors["loanInfo.purchasePrice"] = "Purchase price is required for purchase loans";
+          }
+          if (!loanData.downPayment) {
+            newErrors["loanInfo.downPayment"] = "Down payment is required for purchase loans";
+          }
+        }
+        
+        // For refinance loans, check current loan balance and requested amount
+        if (loanData.loanType === "Refinance") {
+          if (!loanData.currentLoanBalance) {
+            newErrors["loanInfo.currentLoanBalance"] = "Current loan balance is required for refinance loans";
+          }
+          if (!loanData.requestedLoanAmount) {
+            newErrors["loanInfo.requestedLoanAmount"] = "Requested loan amount is required for refinance loans";
+          }
+        }
+        
+        // For construction loans, check loan amount
+        if (loanData.loanType === "Construction") {
+          if (!loanData.loanAmount) {
+            newErrors["loanInfo.loanAmount"] = "Loan amount is required for construction loans";
+          }
+        }
+        
         break;
 
       case 3: // Financial step
+        console.log('🔍 STEP 3 VALIDATION - Financial step');
+        console.log('📊 Assets data:', formData.assets);
+        console.log('💰 Income data:', formData.income);
+        
         // Make sure tabName is defined or fallback to validating all
         if (tabName) {
           if (tabName === "assets") {
@@ -338,35 +483,52 @@ const LenderManualLoanCreation = () => {
               !formData.assets ||
               (Array.isArray(formData.assets) && formData.assets.length === 0)
             ) {
+              console.log('❌ Missing assets');
               newErrors["assets"] =
                 "Please add at least one asset for loan qualification";
+            } else {
+              console.log('✅ Assets found');
             }
           } else if (tabName === "income") {
             // Income validation - only check when leaving the income tab
             if (!formData.income || !formData.income.baseIncome) {
+              console.log('❌ Missing base income');
               newErrors["income.baseIncome"] =
                 "Base income is required for loan qualification";
+            } else {
+              console.log('✅ Base income found');
             }
           } else if (tabName === "debts") {
             // No specific requirements for debts at the moment
+            console.log('✅ Debts tab - no validation required');
           }
         } else {
           // If no tab specified, validate the whole step
+          console.log('🔍 Validating entire Step 3');
+          
           // Check assets
           if (
             !formData.assets ||
             (Array.isArray(formData.assets) && formData.assets.length === 0)
           ) {
+            console.log('❌ Missing assets');
             newErrors["assets"] =
               "Please add at least one asset for loan qualification";
+          } else {
+            console.log('✅ Assets found');
           }
 
           // Check income
           if (!formData.income || !formData.income.baseIncome) {
+            console.log('❌ Missing base income');
             newErrors["income.baseIncome"] =
               "Base income is required for loan qualification";
+          } else {
+            console.log('✅ Base income found');
           }
         }
+        
+        console.log('🔍 Step 3 validation errors:', newErrors);
         break;
 
       case 4: // Additional Information step
@@ -461,6 +623,10 @@ const LenderManualLoanCreation = () => {
         break;
     }
 
+    console.log('🔍 FINAL VALIDATION RESULT:');
+    console.log('❌ Errors found:', newErrors);
+    console.log('✅ Validation passed:', Object.keys(newErrors).length === 0);
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0; // Return true if no errors
   };
@@ -758,7 +924,10 @@ const LenderManualLoanCreation = () => {
 
     // If validation bypass is enabled or the step validates successfully
     if (window._tempValidateOverride || validateStep(currentStep)) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      // Immediately save the new step
+      saveFormToStorage(formData, newStep, currentSubStep);
     } else {
       // More detailed error message for lender context
       toast.error(
@@ -769,7 +938,10 @@ const LenderManualLoanCreation = () => {
   };
 
   const prevStep = () => {
-    setCurrentStep(currentStep - 1);
+    const newStep = currentStep - 1;
+    setCurrentStep(newStep);
+    // Immediately save the new step
+    saveFormToStorage(formData, newStep, currentSubStep);
   };
 
   const handleSubmit = async (e) => {
@@ -823,6 +995,9 @@ const LenderManualLoanCreation = () => {
       const response = await LoanService.submitLoanForLender(submissionData);
 
       if (response.success) {
+        // Clear saved form data since submission was successful
+        clearFormFromStorage();
+        
         toast.success("Borrower loan application created successfully!");
 
         // Redirect to loan details page if loan ID is available
@@ -1368,6 +1543,8 @@ const LenderManualLoanCreation = () => {
                         });
                         setErrors({});
                         window._tempValidateOverride = false;
+                        // Clear localStorage as well
+                        clearFormFromStorage();
                         toast.success("Form cleared and reset to step 1");
                       }}
                       className="px-3 py-2 border border-transparent rounded-md shadow-sm text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 flex items-center"
@@ -1377,12 +1554,178 @@ const LenderManualLoanCreation = () => {
                     </button>
                   </>
                 )}
+                
+                {/* Clear Form Button - Always Visible */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear all form data? This action cannot be undone.')) {
+                      // Reset form to initial state
+                      setCurrentStep(1);
+                      setCurrentSubStep("personalDetails");
+                      setFormData({
+                        borrowers: [
+                          {
+                            firstName: "",
+                            middleName: "",
+                            lastName: "",
+                            suffix: "",
+                            maritalStatus: "",
+                            dateOfBirth: "",
+                            ssn: "",
+                            citizenship: "",
+                            phone: "",
+                            email: "",
+                            dependents: [],
+                            currentAddress: {},
+                            mailingAddress: {
+                              sameAsCurrentAddress: false,
+                              aptSteNum: "",
+                              city: "",
+                              state: "",
+                              zipCode: "",
+                            },
+                            previousAddresses: [],
+                            employers: [
+                              {
+                                companyName: "",
+                                companyPhone: "",
+                                employmentStatus: "",
+                                jobTitle: "",
+                                startDate: "",
+                                yearsInProfession: "",
+                                monthsInProfession: "",
+                                streetAddress: "",
+                                aptSteNum: "",
+                                city: "",
+                                state: "",
+                                zipCode: "",
+                              },
+                            ],
+                          },
+                        ],
+                        propertyInfo: {
+                          address: {
+                            streetAddress: "",
+                            aptSteNum: "",
+                            city: "",
+                            state: "",
+                            zipCode: "",
+                          },
+                          propertyValue: "",
+                          propertyType: "",
+                          occupancyType: "",
+                          hasAcceptedOffer: "",
+                          contractPurchasePrice: "",
+                          isMixedUse: "",
+                          isManufactured: "",
+                          numberOfUnits: "",
+                          yearBuilt: "",
+                          proposedRentalIncome: "",
+                        },
+                        loanInfo: {
+                          loanType: "",
+                          loanPurpose: "",
+                          loanAmount: "",
+                          loanTerm: "",
+                          interestRate: "",
+                          purchasePrice: "",
+                          downPayment: "",
+                          yearAcquired: "",
+                          currentLoanBalance: "",
+                          requestedLoanAmount: "",
+                          refinanceType: "",
+                          yearLotAcquired: "",
+                          originalCost: "",
+                          existingLoans: "",
+                          presentValueOfLot: "",
+                          costOfImprovements: "",
+                          constructionType: "",
+                        },
+                        assets: {
+                          checkingAndSavings: [],
+                          stocksAndBonds: [],
+                          giftsAndGrants: [],
+                          miscellaneous: {
+                            earnestMoney: 0,
+                            lifeInsurance: 0,
+                            vestedInterestInRetirement: 0,
+                            otherAssets: 0,
+                          },
+                        },
+                        income: {
+                          baseIncome: "",
+                          overtime: "",
+                          commissions: "",
+                          bonuses: "",
+                          militaryEntitlements: "",
+                          otherIncome: [],
+                        },
+                        debts: [],
+                        expenses: [],
+                        propertiesOwned: {
+                          ownsProperty: true,
+                          properties: [],
+                          rent: "",
+                          firstMortgage: "",
+                          otherFinancing: "",
+                          hazardInsurance: "",
+                          realEstateTaxes: "",
+                          mortgageInsurance: "",
+                          hoaDues: "",
+                          otherHousingExpenses: "",
+                        },
+                        militaryService: {
+                          hasServed: false,
+                          currentlyServing: false,
+                          isRetired: false,
+                          isNonActivated: false,
+                          isSurvivingSpouse: false,
+                          serviceBranch: "",
+                          serviceType: "",
+                          yearsOfService: 0,
+                          dischargeType: "",
+                          dischargeDate: "",
+                          expirationDate: "",
+                        },
+                        declarations: {},
+                        demographics: {},
+                        documents: [],
+                      });
+                      setErrors({});
+                      // Clear localStorage
+                      clearFormFromStorage();
+                      toast.success("Form cleared successfully!");
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  title="Clear all form data"
+                >
+                  🗑️ Clear Form
+                </button>
+                
                 <button
                   onClick={() => router.push("/lender/loans")}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   ← Back to Loans
                 </button>
+              </div>
+            </div>
+
+            {/* Form Auto-Save Info Banner */}
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Auto-Save Enabled:</strong> Your form data is automatically saved as you type and will be restored if you refresh the page or return later. Data is kept for 24 hours.
+                  </p>
+                </div>
               </div>
             </div>
 

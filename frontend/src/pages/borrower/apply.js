@@ -190,9 +190,81 @@ const LoanApplication = () => {
   });
   const [errors, setErrors] = useState({});
 
+  // Local storage keys for form persistence
+  const STORAGE_KEYS = {
+    FORM_DATA: 'borrower_loan_form_data',
+    CURRENT_STEP: 'borrower_loan_current_step',
+    CURRENT_SUB_STEP: 'borrower_loan_current_sub_step',
+    TIMESTAMP: 'borrower_loan_form_timestamp'
+  };
+
+  // Form persistence functions
+  const saveFormToStorage = (formData, currentStep, currentSubStep) => {
+    try {
+      // Only save if there's meaningful data (not just default empty values)
+      const hasData = formData.borrowers?.[0]?.firstName || 
+                     formData.propertyInfo?.propertyAddress?.streetAddress ||
+                     formData.loanInfo?.loanAmount ||
+                     formData.assets?.checkingAccount ||
+                     formData.additionalInfo?.hasDeclaredBankruptcy;
+      
+      if (hasData) {
+        const dataToSave = {
+          formData,
+          currentStep,
+          currentSubStep,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEYS.FORM_DATA, JSON.stringify(dataToSave));
+        localStorage.setItem(STORAGE_KEYS.TIMESTAMP, Date.now().toString());
+      }
+    } catch (error) {
+      console.error('Error saving form to localStorage:', error);
+    }
+  };
+
+  const loadFormFromStorage = () => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEYS.FORM_DATA);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        // Check if data is not too old (24 hours)
+        const isRecent = Date.now() - parsedData.timestamp < 24 * 60 * 60 * 1000;
+        if (isRecent) {
+          return parsedData;
+        } else {
+          // Clear old data
+          clearFormFromStorage();
+        }
+      }
+    } catch (error) {
+      console.error('Error loading form from localStorage:', error);
+    }
+    return null;
+  };
+
+  const clearFormFromStorage = () => {
+    try {
+      Object.values(STORAGE_KEYS).forEach(key => {
+        localStorage.removeItem(key);
+      });
+    } catch (error) {
+      console.error('Error clearing form from localStorage:', error);
+    }
+  };
+
   useEffect(() => {
     console.log('Form data:', formData);
   }, [formData]);
+
+  // Auto-save form data whenever it changes (with debouncing)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      saveFormToStorage(formData, currentStep, currentSubStep);
+    }, 1000); // Save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [formData, currentStep, currentSubStep]);
 
   // Ensure form data structure is properly initialized
   useEffect(() => {
@@ -285,10 +357,25 @@ const LoanApplication = () => {
       }
     };
 
+    // Load saved form data from localStorage (only if no draft is being loaded)
+    const loadSavedFormData = () => {
+      if (!draft) { // Only load saved data if we're not loading a specific draft
+        const savedData = loadFormFromStorage();
+        if (savedData) {
+          setFormData(savedData.formData);
+          setCurrentStep(savedData.currentStep);
+          setCurrentSubStep(savedData.currentSubStep);
+          
+          // Form data restored silently (no toast notification)
+        }
+      }
+    };
+
     // Only run when router is ready
     if (router.isReady) {
       loadDraft();
       fetchLoanTypes();
+      loadSavedFormData();
     }
   }, [router.isReady, draft]); // Re-run when router becomes ready or draft ID changes
 
@@ -425,7 +512,10 @@ const LoanApplication = () => {
   
     // If validation bypass is enabled, proceed
     if (window._tempValidateOverride) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      // Save the step change
+      saveFormToStorage(formData, newStep, currentSubStep);
       return;
     }
     
@@ -434,7 +524,10 @@ const LoanApplication = () => {
     
     // Check if validation passed (no errors)
     if (Object.keys(validationErrors).length === 0) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      // Save the step change
+      saveFormToStorage(formData, newStep, currentSubStep);
     } else {
       // Get specific error messages for missing fields
       const errorMessages = Object.values(validationErrors);
@@ -455,7 +548,10 @@ const LoanApplication = () => {
   };
 
   const prevStep = () => {
-    setCurrentStep(currentStep - 1);
+    const newStep = currentStep - 1;
+    setCurrentStep(newStep);
+    // Save the step change
+    saveFormToStorage(formData, newStep, currentSubStep);
   };
 
   const handleSubmit = async (e) => {
@@ -668,6 +764,9 @@ const LoanApplication = () => {
       console.log('FORM SUBMISSION - API Response:', response);
       
       if (response.success) {
+        // Clear saved form data since submission was successful
+        clearFormFromStorage();
+        
         toast.success('Loan application submitted successfully!');
         
         // Delete the draft after successful submission if there was one and it's not an LN number
@@ -1188,6 +1287,8 @@ const LoanApplication = () => {
     setCurrentStep(1);
     setCurrentSubStep('personalDetails');
     window._tempValidateOverride = false;
+    // Clear localStorage as well
+    clearFormFromStorage();
     toast.success('Form cleared and reset to step 1');
   };
 
@@ -1458,6 +1559,22 @@ const LoanApplication = () => {
                 formData={formData}
                 validateStep={validateStep}
               />
+            </div>
+
+            {/* Form Auto-Save Info Banner */}
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Auto-Save Enabled:</strong> Your form data is automatically saved as you type. If you refresh the page or return later, your progress will be restored.
+                  </p>
+                </div>
+              </div>
             </div>
             
             {/* Form */}

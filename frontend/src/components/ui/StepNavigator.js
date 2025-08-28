@@ -18,25 +18,40 @@ import theme from '../../styles/theme';
 const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateStep }) => {
   // Handle clicking on a step
   const handleStepClick = (stepNumber) => {
-    // Only allow navigation to the next step or completed steps
-    if (stepNumber > currentStep + 1) {
-      return; // Don't allow skipping steps
-    }
-    
-    // Validate the current step before allowing navigation to the next step
-    const validationErrors = validateStep(currentStep);
-    
-    if (Object.keys(validationErrors).length === 0) {
-      setCurrentStep(stepNumber);
-    } else {
-      // Don't allow navigation if current step isn't valid
-      // Use a more specific message based on the validation errors
-      const errorMessages = Object.values(validationErrors);
-      const message = errorMessages.length > 0 
-        ? `Please complete: ${errorMessages.slice(0, 2).join(', ')}${errorMessages.length > 2 ? ` and ${errorMessages.length - 2} more fields` : ''}`
-        : 'Please complete all required fields in the current step before proceeding.';
+    // Only allow navigation to the next step (currentStep + 1) if current step is valid
+    if (stepNumber === currentStep + 1) {
+      // Validate the current step before allowing navigation to the next step
+      const validationResult = validateStep(currentStep);
       
-      alert(message);
+      // Handle both boolean and object return types
+      let isValid = false;
+      let errorMessages = [];
+      
+      if (typeof validationResult === 'boolean') {
+        // Lender form returns boolean
+        isValid = validationResult;
+      } else if (typeof validationResult === 'object') {
+        // Borrower form returns error object
+        isValid = Object.keys(validationResult).length === 0;
+        errorMessages = Object.values(validationResult);
+      }
+      
+      if (isValid) {
+        setCurrentStep(stepNumber);
+      } else {
+        // Don't allow navigation if current step isn't valid
+        const message = errorMessages.length > 0 
+          ? `Please complete: ${errorMessages.slice(0, 2).join(', ')}${errorMessages.length > 2 ? ` and ${errorMessages.length - 2} more fields` : ''}`
+          : 'Please complete all required fields in the current step before proceeding.';
+        
+        alert(message);
+      }
+    } else if (stepNumber < currentStep) {
+      // Allow going back to previous steps
+      setCurrentStep(stepNumber);
+    } else if (stepNumber > currentStep + 1) {
+      // Don't allow jumping to future steps - show alert
+      alert('Please complete the current step before proceeding to future steps.');
     }
   };
 
