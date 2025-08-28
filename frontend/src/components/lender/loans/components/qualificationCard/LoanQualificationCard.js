@@ -6,7 +6,12 @@ import DTICircleIndicator from "./DTICircleIndicator";
 import PaymentInfoSection from "./PaymentInfoSection";
 import LoanInfoSection from "./LoanInfoSection";
 import LoadingSkeleton from "./LoadingSkeleton";
-import { calculateDefaultLoanValues } from "./LoanQualificationUtils";
+import { 
+  calculateDefaultLoanValues,
+  calculateMortgageInsurance,
+  calculateVAFundingFee,
+  calculateUSDAFees
+} from "./LoanQualificationUtils";
 import LoanParametersModal from "../../LoanParametersModal";
 
 // Import calculation utilities from the modal's dependencies
@@ -24,6 +29,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false); // Track if we're silently processing data
+  const hasProcessedRef = useRef(false); // Track if we've already processed this loan
   const [calculations, setCalculations] = useState({
     loanAmount: 0,
     downPayment: 0,
@@ -76,35 +82,19 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     }
   }, [loan?._id, selectedProgram, hasFetchedLoan]);
 
+  // Reset processing flag when loan ID changes
   useEffect(() => {
-    if (!isLoading && loan?._id && selectedProgram) {
-      const fetchFreshData = async () => {
-        try {
-          const response = await fetchAPI(`/loans/${loan._id}`);
-          if (response.status === "success" && response.data) {
-            const updatedLoan = {
-              ...loan,
-              loanParameters: response.data.loanParameters || {},
-              loanCalculations: response.data.loanCalculations || {},
-            };
-            console.log("2222222222222222222222222222222222");
-            calculateLoanValues(updatedLoan);
-          setHasFetchedLoan(true);
-          if (onUpdate) onUpdate(updatedLoan);
-          }
-        } catch (error) {
-          console.error("Error fetching fresh loan data:", error);
-        }
-      };
+    hasProcessedRef.current = false;
+    setHasFetchedLoan(false);
+    setIsProcessing(false);
+  }, [loan?._id]);
 
-      fetchFreshData();
-    }
-  }, [isLoading]);
+  // Removed redundant effect that was causing additional API calls
 
   // ✅ Initial fetch after all dependencies are ready
   useEffect(() => {
     const fetchInitialLoanData = async () => {
-      if (!loan?._id || loanPrograms.length === 0 || loanRates.length === 0) return;
+      if (!loan?._id || loanPrograms.length === 0 || loanRates.length === 0 || hasProcessedRef.current) return;
 
       try {
         const response = await fetchAPI(`/loans/${loan._id}`);
@@ -123,6 +113,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           console.log("333333333333333333333333333333333");
 
           calculateLoanValues(updatedLoan);
+          setHasFetchedLoan(true);
           if (onUpdate) onUpdate(updatedLoan);
         }
       } catch (e) {
@@ -253,10 +244,13 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   // }, []);
 
   // Check if the loan data is complete and trigger silent processing if needed
-  
+  // This effect runs only once when the component has all necessary data
   useEffect(() => {
-    // Only run this check if we've already fetched loan data but something is missing
-    if (hasFetchedLoan && !isLoading && !isModalOpen && !isProcessing && loan?._id) {
+    // Only run this check if we have all dependencies but haven't processed this specific loan yet
+    if (loan?._id && loanPrograms.length > 0 && loanRates.length > 0 && !hasProcessedRef.current && !isProcessing && !isModalOpen) {
+      // Mark as processed to prevent re-running
+      hasProcessedRef.current = true;
+      
       // Check if we have all the required data
       const hasRequiredData = 
         loan.loanParameters && 
@@ -269,7 +263,6 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         
         // Silently process the data
         setIsProcessing(true);
-        console.log("@@@@3333333333");
         setIsLoading(true);
         
         processLoanDataSilently(loan, loanPrograms, loanRates, (updatedLoanData) => {
@@ -289,9 +282,13 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           setIsProcessing(false);
           setIsLoading(false);
         });
+      } else {
+        // We already have the required data, just mark as fetched
+        setHasFetchedLoan(true);
+        setIsLoading(false);
       }
     }
-  }, [hasFetchedLoan, isLoading, isModalOpen, isProcessing, loan?._id]);
+  }, [loan?._id, loanPrograms.length, loanRates.length, isProcessing, isModalOpen]);
 
   const calculateLoanValues = (updatedLoan = null) => {
     const currentLoan = updatedLoan || loan;
@@ -621,13 +618,13 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       
       // Get or calculate important values
       let loanAmount = loanData.loanParameters?.loanAmount;
-      if (!loanAmount) {
+      if (!loanAmount || loanAmount === 0) {
         if (loanData.loanDetails?.loanType === "Purchase") {
-          loanAmount = loanData.loanDetails?.purchasePrice || 0;
+          loanAmount = loanData.loanDetails?.purchasePrice || loanData.loanDetails?.loanAmount || 300000;
         } else if (loanData.loanDetails?.loanType === "Refinance") {
-          loanAmount = loanData.loanDetails?.requestedLoanAmount || 0;
+          loanAmount = loanData.loanDetails?.requestedLoanAmount || loanData.loanDetails?.loanAmount || 300000;
         } else {
-          loanAmount = loanData.loanDetails?.loanAmount || 0;
+          loanAmount = loanData.loanDetails?.loanAmount || 300000;
         }
       }
       
@@ -635,7 +632,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       let downPayment = loanData.loanParameters?.downPayment;
       let downPaymentPercent = loanData.loanParameters?.downPaymentPercent;
       
-      if (!downPayment) {
+      if (!downPayment || downPayment === 0) {
         if (loanData.loanDetails?.loanType === "Purchase") {
           downPayment = loanData.loanDetails?.downPayment || 0;
         } else {
@@ -648,6 +645,10 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       
       if (!downPaymentPercent && loanAmount > 0 && downPayment > 0) {
         downPaymentPercent = (downPayment / loanAmount) * 100;
+      } else if (!downPaymentPercent && loanAmount > 0) {
+        // If we still don't have a down payment percent, use a default
+        downPaymentPercent = 3;
+        downPayment = loanAmount * (downPaymentPercent / 100);
       }
       
       // Get interest rate based on program
@@ -712,14 +713,45 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       const insurance = localParams.homeownersInsurance / (toggleStates.homeownersInsurance.isYearly ? 12 : 1);
       const hoa = localParams.hoaFees / (toggleStates.hoaFees.isYearly ? 12 : 1);
       
-      // Calculate mortgage insurance
+      // Calculate mortgage insurance using the same method as initial calculation
       let mortgageInsurance = 0;
-      if (selectedProgram.programType === 'fha') {
-        // FHA MIP calculation
-        mortgageInsurance = (principal * 0.0055) / 12; // Annual MIP rate of 0.55%
-      } else if (selectedProgram.programType === 'conventional' && downPaymentPercent < 20) {
-        // Conventional PMI calculation (simplified)
-        mortgageInsurance = (principal * 0.005) / 12; // Rough estimate of 0.5% annually
+      let upfrontFee = 0;
+      
+      if (selectedProgram) {
+        if (selectedProgram.programType === 'conventional') {
+          // Calculate PMI for conventional loans using proper PMI rates
+          mortgageInsurance = calculateMortgageInsurance(
+            principal,
+            downPaymentPercent,
+            selectedProgram?.privateMortgageInsurance
+          );
+        } else if (selectedProgram.programType === 'va') {
+          // Calculate VA funding fee (one-time fee)
+          upfrontFee = calculateVAFundingFee(
+            principal,
+            downPaymentPercent,
+            selectedProgram
+          );
+          // VA loans don't have monthly mortgage insurance
+          mortgageInsurance = 0;
+        } else if (selectedProgram.programType === 'fha') {
+          // FHA loans have monthly mortgage insurance premium
+          mortgageInsurance = (selectedProgram.mortgageInsurance / 100 * principal) / 12;
+          // Plus upfront MIP (not included in monthly payment)
+          upfrontFee = (selectedProgram.upfrontMortgageInsurance / 100) * principal;
+        } else if (selectedProgram.programType === 'usda') {
+          // USDA loans have upfront fee and annual fee
+          const usdaFees = calculateUSDAFees(principal, selectedProgram);
+          upfrontFee = usdaFees.upfrontFee;
+          mortgageInsurance = usdaFees.annualFee;
+        } else if (selectedProgram.programType === 'jumbo') {
+          // Jumbo loans don't have mortgage insurance
+          mortgageInsurance = 0;
+        }
+      } else {
+        // Default to conventional PMI if no program selected
+        mortgageInsurance = (principal > 0 && downPaymentPercent < 20) ? 
+          (0.5 / 100 * principal) / 12 : 0;
       }
       
       // Total monthly payment
@@ -777,6 +809,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         hoaFees: localParams.hoaFees,
         hoaFeesUnit: toggleStates.hoaFees.isPercent ? 'percent' : 'dollar',
         hoaFeesFrequency: toggleStates.hoaFees.isYearly ? 'yearly' : 'monthly',
+        mortgageInsurance: mortgageInsurance, // Add mortgage insurance to loan parameters
         interestRate: localParams.interestRate,
         loanTerm: localParams.loanTerm,
         selectedProgramId: localParams.selectedProgramId,

@@ -24,10 +24,10 @@ import LoanQualificationCard from "@/components/lender/loans/LoanQualificationCa
 // Add milestone service import
 import milestoneService from "../../../services/api/milestone.service";
 
-const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
-  // Add state for milestones
-  const [milestones, setMilestones] = useState([]);
-  const [loadingMilestones, setLoadingMilestones] = useState(true);
+const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milestones: propMilestones }) => {
+  // Use milestones from props instead of local state
+  const [milestones, setMilestones] = useState(propMilestones || []);
+  const [loadingMilestones, setLoadingMilestones] = useState(true); // Start with loading true
   const [milestoneError, setMilestoneError] = useState(null);
   // ...existing state
   const [documentStats, setDocumentStats] = useState({
@@ -94,12 +94,32 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
     calculateDocumentStats();
   }, [documents]);
 
+  // Update milestones when prop changes
+  useEffect(() => {
+    console.log("🔍 [DEBUG] LoanDashboard - propMilestones changed:", propMilestones);
+    console.log("🔍 [DEBUG] LoanDashboard - propMilestones type:", typeof propMilestones);
+    console.log("🔍 [DEBUG] LoanDashboard - propMilestones length:", Array.isArray(propMilestones) ? propMilestones.length : 'Not an array');
+    
+    if (propMilestones) {
+      setMilestones(propMilestones);
+      setLoadingMilestones(false);
+      setMilestoneError(null);
+      console.log("🔍 [DEBUG] LoanDashboard - Milestones updated from props");
+    } else {
+      console.log("🔍 [DEBUG] LoanDashboard - No milestones prop provided");
+    }
+  }, [propMilestones]);
+
   // Milestones are now fetched with the main loan data, so we don't need separate fetching
   // The milestones will be passed as props from the parent component
 
   // Add function to calculate milestone counts
   const getMilestoneStats = () => {
+    console.log("🔍 [DEBUG] getMilestoneStats - milestones:", milestones);
+    console.log("🔍 [DEBUG] getMilestoneStats - milestones length:", milestones?.length);
+    
     if (!milestones || milestones.length === 0) {
+      console.log("🔍 [DEBUG] getMilestoneStats - No milestones, returning zeros");
       return {
         completed: 0,
         total: 0,
@@ -110,12 +130,16 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
     const completedCount = milestones.filter(
       (m) => m.status === "completed"
     ).length;
-    return {
+    
+    const stats = {
       completed: completedCount,
       total: milestones.length,
       percent:
         milestones.length > 0 ? (completedCount / milestones.length) * 100 : 0,
     };
+    
+    console.log("🔍 [DEBUG] getMilestoneStats - calculated stats:", stats);
+    return stats;
   };
 
   // Get milestone statistics
@@ -655,6 +679,12 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents }) => {
               </Link>
             </div>
             <div className="p-4">
+              {(() => {
+                console.log("🔍 [DEBUG] Rendering milestones section - loadingMilestones:", loadingMilestones);
+                console.log("🔍 [DEBUG] Rendering milestones section - milestones:", milestones);
+                console.log("🔍 [DEBUG] Rendering milestones section - milestones.length:", milestones?.length);
+                return null;
+              })()}
               {loadingMilestones ? (
                 <div className="space-y-4">
     {/* Skeleton for milestone stats */}

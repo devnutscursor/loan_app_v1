@@ -563,55 +563,94 @@ const LenderManualLoanCreation = () => {
         break;
 
       case 5: // Declarations & Demographics step
+        console.log('🔍 STEP 5 VALIDATION - Declarations & Demographics');
+        console.log('📊 Declarations data:', formData.declarations);
+        console.log('📊 Demographics data:', formData.demographics);
+        
         if (tabName) {
           if (tabName === "declarations") {
+            console.log('🔍 Validating declarations tab');
             // Declarations validation - make sure they've answered the required questions
             if (formData.declarations?.occupyAsPrimary === undefined) {
+              console.log('❌ Missing occupyAsPrimary');
               newErrors["declarations.occupyAsPrimary"] =
                 "Please indicate if borrower will occupy the property as primary residence";
+            } else {
+              console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
             }
             if (formData.declarations?.firstTimeBuyer === undefined) {
+              console.log('❌ Missing firstTimeBuyer');
               newErrors["declarations.firstTimeBuyer"] =
                 "Please indicate if borrower is a first time homebuyer";
+            } else {
+              console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
             }
           } else if (tabName === "demographics") {
+            console.log('🔍 Validating demographics tab');
             // Demographics validation - verify required fields
             if (!formData.demographics?.ethnicity) {
+              console.log('❌ Missing ethnicity');
               newErrors["demographics.ethnicity"] =
                 "Please select borrower ethnicity";
+            } else {
+              console.log('✅ ethnicity found:', formData.demographics.ethnicity);
             }
             if (!formData.demographics?.gender) {
+              console.log('❌ Missing gender');
               newErrors["demographics.gender"] =
                 "Please select borrower gender";
+            } else {
+              console.log('✅ gender found:', formData.demographics.gender);
             }
             if (!formData.demographics?.race) {
+              console.log('❌ Missing race');
               newErrors["demographics.race"] = "Please select borrower race";
+            } else {
+              console.log('✅ race found:', formData.demographics.race);
             }
           }
         } else {
+          console.log('🔍 Validating entire Step 5');
           // If no tab specified, validate the whole step
           // Check declarations
           if (formData.declarations?.occupyAsPrimary === undefined) {
+            console.log('❌ Missing occupyAsPrimary');
             newErrors["declarations.occupyAsPrimary"] =
               "Please indicate if borrower will occupy the property as primary residence";
+          } else {
+            console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
           }
           if (formData.declarations?.firstTimeBuyer === undefined) {
+            console.log('❌ Missing firstTimeBuyer');
             newErrors["declarations.firstTimeBuyer"] =
               "Please indicate if borrower is a first time homebuyer";
+          } else {
+            console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
           }
 
           // Check demographics
           if (!formData.demographics?.ethnicity) {
+            console.log('❌ Missing ethnicity');
             newErrors["demographics.ethnicity"] =
               "Please select borrower ethnicity";
+          } else {
+            console.log('✅ ethnicity found:', formData.demographics.ethnicity);
           }
           if (!formData.demographics?.gender) {
+            console.log('❌ Missing gender');
             newErrors["demographics.gender"] = "Please select borrower gender";
+          } else {
+            console.log('✅ gender found:', formData.demographics.gender);
           }
           if (!formData.demographics?.race) {
+            console.log('❌ Missing race');
             newErrors["demographics.race"] = "Please select borrower race";
+          } else {
+            console.log('✅ race found:', formData.demographics.race);
           }
         }
+        
+        console.log('🔍 Step 5 validation errors:', newErrors);
         break;
 
       case 6: // Review & Submit
@@ -640,6 +679,17 @@ const LenderManualLoanCreation = () => {
       purpose: "Purchase",
       completionPercentage: 100,
       primaryBorrowerId: "67fa2aa7f5010213147f8529", // Default borrower ID
+      
+      // Additional required fields
+      loanDetails: {
+        loanType: "Purchase",
+        loanAmount: "360000",
+        purchasePrice: "450000",
+        downPayment: "90000",
+        loanPurpose: "Purchase",
+        loanTerm: "30",
+        interestRate: "6.5",
+      },
 
       borrowers: [
         {
@@ -654,6 +704,12 @@ const LenderManualLoanCreation = () => {
           citizenship: "USCitizen",
           phone: "(123) 456-7890",
           email: `john.smith.${Date.now()}@example.com`, // Unique email to avoid conflicts
+          
+          // Additional personal information
+          gender: "Male",
+          ethnicity: "Not Hispanic or Latino",
+          race: "White",
+          veteranStatus: "No",
 
           // Dependents - ensure we have proper array data
           dependents: [
@@ -697,10 +753,10 @@ const LenderManualLoanCreation = () => {
           // Employment history - ensure proper array data
           employers: [
             {
-              companyName: "ACME Inc",
+              companyName: "Tech Solutions Inc",
               companyPhone: "(987) 654-3210",
               employmentStatus: "Full-Time",
-              jobTitle: "Software Engineer",
+              jobTitle: "Senior Software Engineer",
               startDate: "2015-01-01",
               yearsInProfession: 8,
               monthsInProfession: 2,
@@ -709,6 +765,25 @@ const LenderManualLoanCreation = () => {
               city: "Business City",
               state: "CA",
               zipCode: "90210",
+              monthlyIncome: 12000,
+              annualIncome: 144000,
+            },
+            {
+              companyName: "Previous Company LLC",
+              companyPhone: "(555) 123-4567",
+              employmentStatus: "Previous",
+              jobTitle: "Software Developer",
+              startDate: "2010-06-01",
+              endDate: "2014-12-31",
+              yearsInProfession: 4,
+              monthsInProfession: 6,
+              streetAddress: "789 Old Office Dr",
+              aptSteNum: "",
+              city: "Previous City",
+              state: "CA",
+              zipCode: "90211",
+              monthlyIncome: 8000,
+              annualIncome: 96000,
             },
           ],
         },
@@ -747,65 +822,123 @@ const LenderManualLoanCreation = () => {
         interestRate: "6.5",
       },
 
-      // Financial Information
+      // Financial Information - Enhanced Assets
       assets: {
         checkingAndSavings: [
           {
+            id: `account-${Date.now()}-1`,
             accountType: "Checking",
-            financialInstitution: "Big Bank",
-            accountNumber: "XXXX1234",
+            institution: "Chase Bank",
+            bankName: "Chase Bank",
+            accountNumber: "1234",
+            value: 25000,
             balance: 25000,
+            isVerified: true,
+            isLiquid: true,
           },
           {
+            id: `account-${Date.now()}-2`,
             accountType: "Savings",
-            financialInstitution: "Credit Union",
-            accountNumber: "XXXX5678",
+            institution: "Wells Fargo",
+            bankName: "Wells Fargo",
+            accountNumber: "5678",
+            value: 50000,
             balance: 50000,
+            isVerified: true,
+            isLiquid: true,
+          },
+          {
+            id: `account-${Date.now()}-3`,
+            accountType: "Money Market",
+            institution: "Bank of America",
+            bankName: "Bank of America",
+            accountNumber: "9012",
+            value: 35000,
+            balance: 35000,
+            isVerified: true,
+            isLiquid: true,
           },
         ],
         stocksAndBonds: [
           {
-            description: "Investment Portfolio",
-            value: 75000,
+            id: `stock-${Date.now()}-1`,
+            description: "Apple Inc. (AAPL)",
+            value: 45000,
+          },
+          {
+            id: `stock-${Date.now()}-2`,
+            description: "Microsoft Corporation (MSFT)",
+            value: 30000,
+          },
+          {
+            id: `bond-${Date.now()}-1`,
+            description: "US Treasury Bonds",
+            value: 25000,
           },
         ],
-        giftsAndGrants: [],
+        giftsAndGrants: [
+          {
+            id: `gift-${Date.now()}-1`,
+            source: "Relative",
+            value: 15000,
+            deposited: true,
+            assetType: "Cash Gift",
+          },
+          {
+            id: `gift-${Date.now()}-2`,
+            source: "Employer",
+            value: 5000,
+            deposited: true,
+            assetType: "Down Payment Assistance",
+          },
+        ],
         miscellaneous: {
-          earnestMoney: 5000,
-          lifeInsurance: 25000,
-          vestedInterestInRetirement: 150000,
-          otherAssets: 10000,
+          earnestMoney: 10000,
+          lifeInsurance: 50000,
+          vestedInterestInRetirement: 200000,
+          otherAssets: 15000,
         },
       },
 
-      // Income details
+      // Income details - Enhanced
       income: {
-        baseIncome: 9500,
-        overtime: 1200,
-        commissions: 2000,
-        bonuses: 5000,
+        baseIncome: 12000,
+        overtime: 1500,
+        commissions: 3000,
+        bonuses: 8000,
         militaryEntitlements: 0,
         otherIncome: [
           {
             sourceType: "Rental Income",
-            amount: 1800,
+            amount: 2200,
             description: "Rental property at 123 Rental St",
           },
           {
             sourceType: "Investment Income",
-            amount: 500,
-            description: "Dividend payments",
+            amount: 800,
+            description: "Dividend payments from stock portfolio",
+          },
+          {
+            sourceType: "Freelance Income",
+            amount: 1200,
+            description: "Consulting work",
           },
         ],
       },
 
-      // Debts
+      // Debts - Enhanced
       debts: [
         {
           debtType: "Credit Card",
           creditorName: "Chase Bank",
-          monthlyPayment: 250,
-          unpaidBalance: 5000,
+          monthlyPayment: 350,
+          unpaidBalance: 7500,
+        },
+        {
+          debtType: "Credit Card",
+          creditorName: "American Express",
+          monthlyPayment: 200,
+          unpaidBalance: 4000,
         },
         {
           debtType: "Auto Loan",
@@ -813,28 +946,55 @@ const LenderManualLoanCreation = () => {
           monthlyPayment: 450,
           unpaidBalance: 18000,
         },
+        {
+          debtType: "Student Loan",
+          creditorName: "Federal Student Aid",
+          monthlyPayment: 300,
+          unpaidBalance: 25000,
+        },
+        {
+          debtType: "Personal Loan",
+          creditorName: "Wells Fargo",
+          monthlyPayment: 150,
+          unpaidBalance: 5000,
+        },
       ],
 
-      // Expenses
+      // Expenses - Enhanced
       expenses: [
         {
           expenseType: "Utilities",
-          amount: 300,
-          description: "Monthly utilities",
+          amount: 350,
+          description: "Electric, gas, water, internet",
         },
         {
           expenseType: "Insurance",
-          amount: 200,
+          amount: 250,
           description: "Auto and home insurance",
+        },
+        {
+          expenseType: "Childcare",
+          amount: 800,
+          description: "Daycare for 2 children",
+        },
+        {
+          expenseType: "Healthcare",
+          amount: 400,
+          description: "Health insurance and medical expenses",
+        },
+        {
+          expenseType: "Transportation",
+          amount: 300,
+          description: "Gas, maintenance, public transit",
         },
       ],
 
-      // Additional Information
+      // Additional Information - Enhanced Properties Owned
       propertiesOwned: {
         ownsProperty: true,
         properties: [
           {
-            id: `property-${Date.now()}`,
+            id: `property-${Date.now()}-1`,
             propertyAddress: {
               streetAddress: "123 Rental St",
               apt: "",
@@ -843,25 +1003,45 @@ const LenderManualLoanCreation = () => {
               zipCode: "77777",
             },
             propertyType: "Single Family",
-            presentMarketValue: "300000",
+            presentMarketValue: "350000",
             statusOfProperty: "retained",
             intendedOccupancy: "investment",
-            monthlyCosts: "450",
-            grossRentalIncome: "1800",
-            netRentalIncome: "1500",
+            monthlyCosts: "500",
+            grossRentalIncome: "2200",
+            netRentalIncome: "1800",
             hasLoan: true,
-            monthlyPayment: "1200",
-            unpaidBalance: "200000",
+            monthlyPayment: "1400",
+            unpaidBalance: "220000",
+          },
+          {
+            id: `property-${Date.now()}-2`,
+            propertyAddress: {
+              streetAddress: "456 Condo Ave",
+              apt: "Unit 2B",
+              city: "Beach City",
+              state: "FL",
+              zipCode: "33101",
+            },
+            propertyType: "Condo",
+            presentMarketValue: "180000",
+            statusOfProperty: "retained",
+            intendedOccupancy: "investment",
+            monthlyCosts: "300",
+            grossRentalIncome: "1200",
+            netRentalIncome: "900",
+            hasLoan: true,
+            monthlyPayment: "800",
+            unpaidBalance: "120000",
           },
         ],
         rent: "0",
-        firstMortgage: "1500",
+        firstMortgage: "2200",
         otherFinancing: "0",
-        hazardInsurance: "120",
-        realEstateTaxes: "350",
-        mortgageInsurance: "75",
-        hoaDues: "0",
-        otherHousingExpenses: "0",
+        hazardInsurance: "200",
+        realEstateTaxes: "500",
+        mortgageInsurance: "100",
+        hoaDues: "150",
+        otherHousingExpenses: "50",
       },
 
       militaryService: {

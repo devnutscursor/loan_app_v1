@@ -188,11 +188,11 @@ export const calculateDefaultInsurance = (propertyValue) => {
 
  
 export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) => {
-  // Get program-specific default interest rate
-  let defaultInterestRate = 6.75; // General default
+  // Use saved interest rate if available, otherwise get program-specific default
+  let defaultInterestRate = loan?.loanParameters?.interestRate || 6.75; // Use saved value or general default
   
-  if (selectedProgram) {
-    // Get rate based on program type
+  if (!loan?.loanParameters?.interestRate && selectedProgram) {
+    // Get rate based on program type only if no saved rate
     switch(selectedProgram.programType) {
       case 'conventional':
         defaultInterestRate = 6.75;
@@ -212,11 +212,11 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
     }
   }
   
-  // Use default values for new loans
-  const defaultLoanAmount = loan?.loanDetails?.purchasePrice || 300000;
-  const defaultDownPaymentPercent = selectedProgram?.restrictions?.downPaymentRestriction?.min || 3.5;
-  const defaultDownPayment = defaultLoanAmount * (defaultDownPaymentPercent / 100);
-  const defaultLoanTerm = selectedProgram?.loanTerm || 30;
+  // Use saved values if available, otherwise use defaults
+  const defaultLoanAmount = loan?.loanParameters?.loanAmount || loan?.loanDetails?.purchasePrice || 300000;
+  const defaultDownPaymentPercent = loan?.loanParameters?.downPaymentPercent || selectedProgram?.restrictions?.downPaymentRestriction?.min || 3.5;
+  const defaultDownPayment = loan?.loanParameters?.downPayment || (defaultLoanAmount * (defaultDownPaymentPercent / 100));
+  const defaultLoanTerm = loan?.loanParameters?.loanTerm || selectedProgram?.loanTerm || 30;
 
 
   
@@ -237,14 +237,32 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
     // Fallback to default estimate when property taxes not yet set
     taxes = calculateDefaultPropertyTax(defaultLoanAmount);
   }
-  const insurance = calculateDefaultInsurance(defaultLoanAmount);
-  const hoaFees = loan?.property?.hoaFees || 0;
   
-  // Calculate appropriate insurance based on loan program type
+  // Use saved insurance if available (including zero), otherwise calculate default
+  let insurance;
+  if (loan?.loanParameters && typeof loan.loanParameters.homeownersInsurance === 'number') {
+    insurance = loan.loanParameters.homeownersInsurance; // Already stored in monthly value
+  } else {
+    insurance = calculateDefaultInsurance(defaultLoanAmount);
+  }
+  
+  // Use saved HOA fees if available (including zero), otherwise use 0
+  let hoaFees;
+  if (loan?.loanParameters && typeof loan.loanParameters.hoaFees === 'number') {
+    hoaFees = loan.loanParameters.hoaFees; // Already stored in monthly value
+  } else {
+    hoaFees = 0;
+  }
+  
+  // Use saved mortgage insurance if available, otherwise calculate based on loan program type
   let mortgageInsurance = 0;
   let upfrontFee = 0;
   
-  if (selectedProgram) {
+  // Check if mortgage insurance is already saved
+  if (loan?.loanParameters && typeof loan.loanParameters.mortgageInsurance === 'number') {
+    mortgageInsurance = loan.loanParameters.mortgageInsurance; // Already stored in monthly value
+  } else if (selectedProgram) {
+    // Calculate mortgage insurance based on program type
     if (selectedProgram.programType === 'conventional') {
       // Calculate PMI for conventional loans
       mortgageInsurance = calculateMortgageInsurance(

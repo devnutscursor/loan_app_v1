@@ -2055,6 +2055,7 @@ const LoanDetails = () => {
   const { id } = router.query;
   const [loan, setLoan] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -2308,17 +2309,22 @@ const LoanDetails = () => {
         // Handle different response structures from different endpoints
         let loanData, docsData, milestonesData;
         
-        if (response.data.loan) {
+        if (response.data.data.loan) {
           // New optimized endpoint structure
-          loanData = response.data.loan;
-          docsData = response.data.documents;
-          milestonesData = response.data.milestones;
+          loanData = response.data.data.loan;
+          docsData = response.data.data.documents;
+          milestonesData = response.data.data.milestones;
+          console.log("🔍 [DEBUG] Using new endpoint structure");
         } else {
           // Original endpoint structure
-          loanData = response.data;
+          loanData = response.data.data;
           docsData = []; // Documents will be fetched separately if needed
           milestonesData = [];
+          console.log("🔍 [DEBUG] Using original endpoint structure");
         }
+        
+        console.log("🔍 [DEBUG] Full response structure:", response.data);
+        console.log("🔍 [DEBUG] response.data.data:", response.data.data);
         
         // Handle the case where loanData might be nested differently
         const actualLoanData = loanData?.data || loanData;
@@ -2343,6 +2349,12 @@ const LoanDetails = () => {
         
         // Set documents and milestones from the same response
         setDocuments(Array.isArray(docsData) ? docsData : []);
+        setMilestones(Array.isArray(milestonesData) ? milestonesData : []);
+        
+        // Debug logging for milestones
+        console.log("🔍 [DEBUG] Milestones data from API:", milestonesData);
+        console.log("🔍 [DEBUG] Milestones array length:", Array.isArray(milestonesData) ? milestonesData.length : 'Not an array');
+        console.log("🔍 [DEBUG] Milestones data type:", typeof milestonesData);
         
         // If documents weren't included in the response, fetch them separately
         if (!Array.isArray(docsData) || docsData.length === 0) {
@@ -3277,13 +3289,17 @@ const LoanDetails = () => {
                       {/* Dashboard Tab */}
                       {/* Dashboard Tab Content */}
                       {activeTab === "dashboard" && (
-                        <LoanDashboard
-                          loan={loan}
-                          setLoan={setLoan}
-                          fetchLoanDetails={fetchLoanDetails}
-                          id={id}
-                          documents={documents}
-                        />
+                        <>
+                          {console.log("🔍 [DEBUG] Passing milestones to LoanDashboard:", milestones)}
+                          <LoanDashboard
+                            loan={loan}
+                            setLoan={setLoan}
+                            fetchLoanDetails={fetchLoanDetails}
+                            id={id}
+                            documents={documents}
+                            milestones={milestones}
+                          />
+                        </>
                       )}
                       {/* Loan Details Tab */}
                       {activeTab === "loan" && (

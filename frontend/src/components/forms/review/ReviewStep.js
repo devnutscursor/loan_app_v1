@@ -150,30 +150,8 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   const renderPropertyInfo = () => {
     const propertyInfo = formData.propertyInfo || {};
     
-    // Handle property address - try multiple possible structures
-    const formatPropertyAddress = () => {
-      // Try the structured approach first
-      if (propertyInfo.address && typeof propertyInfo.address === 'object') {
-        return formatAddress(propertyInfo.address);
-      }
-      
-      // Alternative: fields could be directly in propertyInfo
-      if (propertyInfo.streetAddress || propertyInfo.city || propertyInfo.state || propertyInfo.zipCode) {
-        return formatAddress({
-          streetAddress: propertyInfo.streetAddress,
-          aptSteNum: propertyInfo.aptSteNum,
-          city: propertyInfo.city,
-          state: propertyInfo.state,
-          zipCode: propertyInfo.zipCode
-        });
-      }
-      
-      return 'Not provided';
-    };
-    
     return (
       <div>
-        <p className="mb-2"><strong>Property Address:</strong> {formatPropertyAddress()}</p>
         <p className="mb-2"><strong>Property Type:</strong> {propertyInfo?.propertyType || 'Not provided'}</p>
         <p className="mb-2"><strong>Property Value:</strong> {formatCurrency(propertyInfo?.propertyValue) || 'Not provided'}</p>
         <p className="mb-2"><strong>Occupancy Type:</strong> {propertyInfo?.occupancyType || 'Not provided'}</p>
@@ -200,13 +178,21 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
   const renderLoanInfo = () => (
     <div>
       <p className="mb-2"><strong>Loan Type:</strong> {formData.loanInfo?.loanType || 'Not provided'}</p>
-      <p className="mb-2"><strong>Loan Purpose:</strong> {formData.loanInfo?.loanPurpose || 'Not provided'}</p>
       
-      {formData.loanInfo?.loanType === 'refinance' ? (
+      {formData.loanInfo?.loanType === 'Refinance' ? (
         <>
           <p className="mb-2"><strong>Current Loan Balance:</strong> {formatCurrency(formData.loanInfo?.currentLoanBalance) || 'Not provided'}</p>
           <p className="mb-2"><strong>Requested Loan Amount:</strong> {formatCurrency(formData.loanInfo?.requestedLoanAmount) || 'Not provided'}</p>
           <p className="mb-2"><strong>Refinance Type:</strong> {formData.loanInfo?.refinanceType || 'Not provided'}</p>
+        </>
+      ) : formData.loanInfo?.loanType === 'Purchase' ? (
+        <>
+          <p className="mb-2"><strong>Purchase Price:</strong> {formatCurrency(formData.loanInfo?.purchasePrice) || 'Not provided'}</p>
+          <p className="mb-2"><strong>Down Payment:</strong> {formatCurrency(formData.loanInfo?.downPayment) || 'Not provided'}</p>
+        </>
+      ) : formData.loanInfo?.loanType === 'Construction' ? (
+        <>
+          <p className="mb-2"><strong>Loan Amount:</strong> {formatCurrency(formData.loanInfo?.loanAmount) || 'Not provided'}</p>
         </>
       ) : (
         <>
@@ -214,9 +200,6 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
           <p className="mb-2"><strong>Down Payment:</strong> {formatCurrency(formData.loanInfo?.downPayment) || 'Not provided'}</p>
         </>
       )}
-      
-      <p className="mb-2"><strong>Loan Term:</strong> {formData.loanInfo?.loanTerm || 'Not provided'}</p>
-      <p className="mb-2"><strong>Interest Rate Type:</strong> {formData.loanInfo?.interestRateType || 'Not provided'}</p>
     </div>
   );
 

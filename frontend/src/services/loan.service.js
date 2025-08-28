@@ -522,12 +522,12 @@ class LoanService {
 
       const processedLoanData = {
         ...loanData,
-        // Fix boolean fields - convert string "Yes"/"No" to boolean
+        // Keep string values for enum fields - backend expects "Yes"/"No" strings
         propertyInfo: {
           ...propertyData,
           hasAcceptedOffer: propertyData.hasAcceptedOffer === "Yes" || propertyData.hasAcceptedOffer === true,
-          isMixedUse: propertyData.isMixedUse === "Yes" || propertyData.isMixedUse === true,
-          isManufactured: propertyData.isManufactured === "Yes" || propertyData.isManufactured === true
+          isMixedUse: propertyData.isMixedUse || "No", // Keep as string, default to "No"
+          isManufactured: propertyData.isManufactured || "No" // Keep as string, default to "No"
         },
         // Ensure loanInfo is available for backend processing
         loanInfo: loanInfoData,

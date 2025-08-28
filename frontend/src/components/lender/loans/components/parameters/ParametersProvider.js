@@ -219,9 +219,9 @@ const ParametersProvider = ({
     if (selectedProgram) {
       if (selectedProgram.programType === 'conventional') {
         mortgageInsurance = calculateMortgageInsurance(
-          purchasePrice,
+          actualLoanAmount,
           params.downPaymentPercent,
-          selectedProgram
+          selectedProgram?.privateMortgageInsurance
         );
       } else if (selectedProgram.programType === 'fha') {
         mortgageInsurance = (selectedProgram.mortgageInsurance / 100) * 
@@ -233,9 +233,9 @@ const ParametersProvider = ({
         mortgageInsurance = 0;
       } else {
         mortgageInsurance = calculateMortgageInsurance(
-          purchasePrice,
+          actualLoanAmount,
           params.downPaymentPercent,
-          selectedProgram
+          selectedProgram?.privateMortgageInsurance
         );
       }
     }

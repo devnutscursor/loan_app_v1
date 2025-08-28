@@ -316,18 +316,18 @@ const DataLoader = ({
               // Final fallback
               0,
             homeownersInsurance:
-              loanData.loanParameters?.homeownersInsurance ||
-              loanData.propertiesOwned?.hazardInsurance ||
+              typeof loanData.loanParameters?.homeownersInsurance === 'number' ? loanData.loanParameters.homeownersInsurance :
+              typeof loanData.propertiesOwned?.hazardInsurance === 'number' ? loanData.propertiesOwned.hazardInsurance :
               0,
             hoaFees:
-              loanData.loanParameters?.hoaFees ||
-              loanData.propertiesOwned?.hoaDues ||
+              typeof loanData.loanParameters?.hoaFees === 'number' ? loanData.loanParameters.hoaFees :
+              typeof loanData.propertiesOwned?.hoaDues === 'number' ? loanData.propertiesOwned.hoaDues :
               0,
             selectedProgramId: savedProgramId || prev.selectedProgramId,
             interestRate,
             rateAdjustment: 
-              loanData.loanParameters?.rateAdjustment || 
-              selectedProgramObj?.rateAdjustment || 
+              typeof loanData.loanParameters?.rateAdjustment === 'number' ? loanData.loanParameters.rateAdjustment :
+              typeof selectedProgramObj?.rateAdjustment === 'number' ? selectedProgramObj.rateAdjustment :
               0,
             loanTerm,
 
