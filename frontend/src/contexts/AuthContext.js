@@ -194,10 +194,31 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Set a flag to prevent multiple logout toasts
+    localStorage.setItem("logoutInProgress", "true");
+    
+    // Clear auth data
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    
+    // Clear axios default headers
+    delete axios.defaults.headers.common["Authorization"];
+    
+    // Reset user state
     setUser(null);
-    router.push("/login");
+    
+    // Show success toast
     toast.success("Logged out successfully");
+    
+    // Redirect to login
+    router.push("/login");
+    
+    // Clear the logout flag after a short delay
+    setTimeout(() => {
+      localStorage.removeItem("logoutInProgress");
+    }, 1000);
   };
 
   const updateProfile = async (userData) => {

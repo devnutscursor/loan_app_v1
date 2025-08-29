@@ -44,7 +44,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     if (loading || redirecting) return;
     
     // For temporary API errors, we should try a few times before redirecting
-    const MAX_AUTH_ATTEMPTS = 3;
+    const MAX_AUTH_ATTEMPTS = 2;
     
     // Log authentication status for debugging
     // console.log('Auth state:', { isAuthenticated, user, loading, roles, authAttempts });
@@ -60,8 +60,10 @@ const ProtectedRoute = ({ children, roles = [] }) => {
         });
         return;
       } else {
-        // Increment attempts counter
-        setAuthAttempts(prev => prev + 1);
+        // Increment attempts counter with a small delay to prevent rapid attempts
+        setTimeout(() => {
+          setAuthAttempts(prev => prev + 1);
+        }, 100);
         // console.log(`Auth attempt ${authAttempts + 1} of ${MAX_AUTH_ATTEMPTS}`);
         return;
       }

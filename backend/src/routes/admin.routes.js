@@ -19,6 +19,12 @@ router.patch('/users/:id/role', adminController.updateUserRole);
 
 // Admin user creation
 router.post('/users/admin', adminController.createAdminUser);
+router.post('/users/lender', adminController.createLenderUser);
+
+// Loan management
+router.get('/loans', adminController.getAllLoans);
+router.get('/loans/:id', adminController.getLoanById);
+router.patch('/loans/:id', adminController.updateLoan);
 
 // System logs
 router.get('/logs', adminController.getSystemLogs);

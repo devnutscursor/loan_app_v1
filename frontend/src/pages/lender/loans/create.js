@@ -679,7 +679,7 @@ const LenderManualLoanCreation = () => {
       purpose: "Purchase",
       completionPercentage: 100,
       primaryBorrowerId: "67fa2aa7f5010213147f8529", // Default borrower ID
-      
+
       // Additional required fields
       loanDetails: {
         loanType: "Purchase",

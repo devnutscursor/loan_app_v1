@@ -37,94 +37,7 @@ const StatCard = ({ title, value, icon, change, changeType }) => {
   );
 };
 
-const RecentActivity = ({ activities }) => {
-  const formatDate = (dateString) => {
-    const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
-  };
-  
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'new_application':
-        return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-            <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-              <path d="M8 11a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0-3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-            </svg>
-          </div>
-        );
-      case 'status_change':
-        return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
-            <svg className="h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-        );
-      case 'user_registration':
-        return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
-            <svg className="h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 12.094A5.973 5.973 0 004 15v1H1v-1a3 3 0 013.75-2.906z" />
-            </svg>
-          </div>
-        );
-      case 'document_upload':
-        return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
-            <svg className="h-5 w-5 text-yellow-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-            <svg className="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-        );
-    }
-  };
-  
-  return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
-      </div>
-      <div className="bg-white overflow-hidden">
-        <ul className="divide-y divide-gray-200">
-          {activities.length > 0 ? (
-            activities.map((activity, index) => (
-              <li key={index} className="px-4 py-4 sm:px-6">
-                <div className="flex items-center space-x-4">
-                  {getActivityIcon(activity.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {activity.description}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {activity.userType} • {activity.userEmail}
-                    </p>
-                  </div>
-                  <div className="inline-flex items-center text-sm text-gray-500">
-                    {formatDate(activity.timestamp)}
-                  </div>
-                </div>
-              </li>
-            ))
-          ) : (
-            <li className="px-4 py-5 text-center text-sm text-gray-500">
-              No recent activity
-            </li>
-          )}
-        </ul>
-      </div>
-    </div>
-  );
-};
+
 
 const UserStatistics = ({ users }) => {
   return (
@@ -223,19 +136,28 @@ const AdminDashboard = () => {
       rejected: 0,
       totalVolume: 0,
       averageAmount: 0
-    },
-    recentActivity: []
+    }
   });
   
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        // Check if logout is in progress to prevent unnecessary API calls
+        const isLogoutInProgress = localStorage.getItem('logoutInProgress');
+        if (isLogoutInProgress) {
+          return;
+        }
+        
         setLoading(true);
         const response = await adminService.getDashboard();
         setDashboardData(response.data.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        toast.error('Failed to load dashboard data');
+        // Only show error toast if not during logout
+        const isLogoutInProgress = localStorage.getItem('logoutInProgress');
+        if (!isLogoutInProgress) {
+          toast.error('Failed to load dashboard data');
+        }
       } finally {
         setLoading(false);
       }
@@ -343,45 +265,6 @@ const AdminDashboard = () => {
             <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
               <LoanStatistics loanStats={dashboardData.loanStats} />
               <UserStatistics users={dashboardData.users} />
-            </div>
-            
-            <div className="mt-5">
-              <RecentActivity activities={dashboardData.recentActivity} />
-            </div>
-            
-            {/* Quick Action Buttons */}
-            <div className="mt-8 bg-white shadow rounded-lg overflow-hidden">
-              <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Actions</h3>
-              </div>
-              <div className="px-4 py-5 sm:p-6">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  <a
-                    href="/admin/users"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                  >
-                    Manage Users
-                  </a>
-                  <a
-                    href="/admin/loans"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Manage Loans
-                  </a>
-                  <a
-                    href="/admin/documents"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    Document Management
-                  </a>
-                  <a
-                    href="/admin/settings"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  >
-                    System Settings
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
         </div>

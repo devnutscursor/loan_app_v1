@@ -109,6 +109,15 @@ const updateUser = async (userId, data) => {
   }
 };
 
+  // Update user status
+const updateUserStatus = async (userId, isActive) => {
+  try {
+    return await API.patch(`/users/${userId}/status`, { isActive });
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
 // Get all loans
 const getAllLoans = async (filters = {}) => {
   try {
@@ -188,6 +197,7 @@ export const adminService = {
   // User management
   getAllUsers,
   updateUser,
+  updateUserStatus,
   
   // Loan management
   getAllLoans,

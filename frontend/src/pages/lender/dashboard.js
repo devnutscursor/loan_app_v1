@@ -315,6 +315,12 @@ const LenderDashboard = () => {
   
   // Progressive loading: Load critical data first, then secondary data
   const fetchDashboardData = useCallback(async (forceRefresh = false) => {
+    // Check if logout is in progress to prevent unnecessary API calls
+    const isLogoutInProgress = localStorage.getItem('logoutInProgress');
+    if (isLogoutInProgress) {
+      return;
+    }
+    
     // Check if we should use cached data
     const now = Date.now();
     if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION) {
@@ -506,7 +512,11 @@ const LenderDashboard = () => {
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      // Only show error toast if not during logout
+      const isLogoutInProgress = localStorage.getItem('logoutInProgress');
+      if (!isLogoutInProgress) {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }

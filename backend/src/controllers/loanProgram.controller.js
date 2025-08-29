@@ -81,6 +81,8 @@ exports.getAllLoanPrograms = async (req, res, next) => {
     
     const loanPrograms = await LoanProgram.find(filter);
     
+    console.log(`[DEBUG] Loan Programs API - Found ${loanPrograms.length} programs:`, loanPrograms.map(p => ({ id: p._id, name: p.programName, type: p.programType })));
+    
     res.status(200).json({
       status: 'success',
       results: loanPrograms.length,

@@ -51,45 +51,26 @@ const Login = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, formData);
+      // Use AuthContext login function to avoid conflicts
+      const result = await login(formData.email, formData.password);
       
-      const { user, token, refreshToken } = response.data.data;
-      
-      // Save to localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      // Save to sessionStorage if "Remember me" is not checked
-      if (!rememberMe) {
-        sessionStorage.setItem('token', token);
-        sessionStorage.setItem('user', JSON.stringify(user));
-      }
-      
-      toast.success('Login successful!');
-      
-      // Redirect based on user role
-      const { role } = user;
-      if (role === 'borrower') {
-        router.push('/borrower/dashboard');
-      } else if (role === 'lender') {
-        router.push('/lender/dashboard');
-      } else if (role === 'admin') {
-        router.push('/admin/dashboard');
+      if (result === true) {
+        // Login successful - AuthContext will handle redirect
+        // Save remember me preference
+        if (!rememberMe) {
+          sessionStorage.setItem('token', localStorage.getItem('token'));
+          sessionStorage.setItem('user', localStorage.getItem('user'));
+        }
+      } else if (result?.requiresVerification) {
+        // Email verification required - AuthContext handles redirect
+        return;
       } else {
-        router.push('/');
+        // Login failed
+        setErrors({ ...errors, password: 'Invalid email or password' });
       }
     } catch (error) {
       console.error('Login error:', error);
-      
-      if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Login failed. Please try again.');
-      }
-      
-      if (error.response?.status === 401) {
-        setErrors({ ...errors, password: 'Invalid email or password' });
-      }
+      setErrors({ ...errors, password: 'Login failed. Please try again.' });
     } finally {
       setLoading(false);
     }

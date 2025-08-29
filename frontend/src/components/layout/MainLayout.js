@@ -5,9 +5,11 @@ import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import { Toaster } from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MainLayout = ({ children, title = 'Loan Application System', noSidebarMargin = true }) => {
   const router = useRouter();
+  const { user, loading } = useAuth(); // Use AuthContext instead of local state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     // Try to get the saved sidebar state from localStorage
@@ -18,9 +20,6 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
     }
     return false;
   });
-  // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
     // Save sidebar state to localStorage whenever it changes
   useEffect(() => {
@@ -28,68 +27,54 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
       localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
     }
   }, [isSidebarCollapsed]);
-  // Check if user is logged in
+  // Handle redirects for authenticated users on auth pages
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const token = localStorage.getItem('token');
-        const userData = JSON.parse(localStorage.getItem('user'));
-        
-        if (!token || !userData) {
-          // Public routes that don't require authentication
-          const publicRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy', '/email-verification-sent', '/verify-email', '/resend-verification'];
-          
-          if (!publicRoutes.some(route => router.pathname.startsWith(route))) {
-            router.push('/login');
-            return false;
-          }
+    if (!loading && user) {
+      // Redirect if accessing authentication pages while logged in
+      // Exception: Allow admins to access /register for creating new users
+      const authRoutes = ['/login', '/forgot-password', '/reset-password'];
+      const registerRoute = '/register';
+      
+      if (authRoutes.includes(router.pathname)) {
+        if (user.role === 'borrower') {
+          router.push('/borrower/dashboard');
+        } else if (user.role === 'lender') {
+          router.push('/lender/dashboard');
+        } else if (user.role === 'admin') {
+          router.push('/admin/dashboard');
         } else {
-          setUser(userData);
-          
-          // Redirect if accessing authentication pages while logged in
-          const authRoutes = ['/login', '/register', '/forgot-password', '/reset-password'];
-          if (authRoutes.includes(router.pathname)) {
-            if (userData.role === 'borrower') {
-              router.push('/borrower/dashboard');
-            } else if (userData.role === 'lender') {
-              router.push('/lender/dashboard');
-            } else if (userData.role === 'admin') {
-              router.push('/admin/dashboard');
-            } else {
-              router.push('/');
-            }
-            return false;
-          }
+          router.push('/');
         }
-        return true;
-      } catch (error) {
-        console.error('Authentication check error:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        
-        if (router.pathname !== '/login' && router.pathname !== '/register') {
-          router.push('/login');
-          return false;
-        }
-        return true;
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
-    
-    // Only run auth check if the pathname changes
-    if (loading) {
-      const shouldRender = checkAuth();
-      if (!shouldRender) return;
+      
+      // Special handling for register route - only redirect non-admins
+      if (router.pathname === registerRoute && user.role !== 'admin') {
+        if (user.role === 'borrower') {
+          router.push('/borrower/dashboard');
+        } else if (user.role === 'lender') {
+          router.push('/lender/dashboard');
+        } else {
+          router.push('/');
+        }
+        return;
+      }
     }
-  }, [router.pathname, loading]);
+  }, [user, loading, router]);
 
   // Determine if sidebar should be shown
   const showSidebar = () => {
     if (!user) return false;
     
     // Public pages or auth pages don't need sidebar
-    const noSidebarRoutes = ['/', '/login', '/register', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy'];
+    // Exception: Show sidebar for admins on /register page
+    const noSidebarRoutes = ['/', '/login', '/register/borrower', '/forgot-password', '/reset-password', '/terms', '/privacy'];
+    
+    // Special case: Show sidebar for admins on register page
+    if (router.pathname === '/register' && user.role === 'admin') {
+      return true;
+    }
+    
     if (noSidebarRoutes.includes(router.pathname)) return false;
     
     return true;

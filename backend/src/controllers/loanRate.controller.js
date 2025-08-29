@@ -98,17 +98,24 @@ exports.getAllLoanRates = async (req, res, next) => {
       const Lender = mongoose.model('Lender');
       const lenderProfile = await Lender.findOne({ user: req.user._id });
       
+      console.log(`[DEBUG] Loan Rates API - User ID: ${req.user._id}, Role: ${req.user.role}`);
+      console.log(`[DEBUG] Loan Rates API - Lender Profile:`, lenderProfile);
+      
       if (!lenderProfile) {
+        console.log(`[ERROR] Loan Rates API - No lender profile found for user ${req.user._id}`);
         return next(new ApiError('Lender profile not found', 404));
       }
       
       filter.lender = lenderProfile._id;
+      console.log(`[DEBUG] Loan Rates API - Filter:`, filter);
     } else if (req.query.lender) {
       // If admin is filtering by lender
       filter.lender = req.query.lender;
     }
     
     const loanRates = await LoanRate.find(filter).sort({ programType: 1 });
+    
+    console.log(`[DEBUG] Loan Rates API - Found ${loanRates.length} rates:`, loanRates.map(r => ({ id: r._id, type: r.programType, rate: r.rate })));
     
     res.status(200).json({
       status: 'success',

@@ -81,13 +81,35 @@ const Register = () => {
     const { confirmPassword, termsAccepted, ...registrationData } = formData;
     
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, 
-        registrationData
-      );
+      // Check if this is an admin creating a user (admin is logged in)
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const isAdminCreatingUser = currentUser && currentUser.role === 'admin';
       
-      toast.success('Registration successful! Please check your email for verification.');
-      router.push(`/email-verification-sent?email=${encodeURIComponent(formData.email)}`);
+      let response;
+      if (isAdminCreatingUser && registrationData.role === 'lender') {
+        // Admin creating a lender - use admin endpoint that skips email verification
+        response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/lender`, 
+          registrationData,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        toast.success(`Lender account created successfully! ${registrationData.firstName} ${registrationData.lastName} can now log in.`);
+        router.push('/admin/dashboard');
+      } else {
+        // Regular registration flow - email verification required
+        response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, 
+          registrationData
+        );
+        
+        toast.success('Registration successful! Please check your email for verification.');
+        router.push(`/email-verification-sent?email=${encodeURIComponent(formData.email)}`);
+      }
     } catch (error) {
       console.error('Registration error:', error);
       
@@ -109,17 +131,14 @@ const Register = () => {
     <MainLayout>
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Create your account
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-                Sign in
-              </Link>
-            </p>
-          </div>
+                     <div className="text-center mb-8">
+             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+               Create Lender Account
+             </h2>
+             <p className="mt-2 text-sm text-gray-600">
+               Create a new lender account for your loan application system
+             </p>
+           </div>
           
           <div className="bg-white py-8 px-6 shadow rounded-xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -270,10 +289,10 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                    I am a
+                    User Type
                   </label>
                   <select
                     id="role"
@@ -281,12 +300,13 @@ const Register = () => {
                     value={formData.role}
                     onChange={handleChange}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                    disabled
                   >
-                    <option value="borrower">Borrower</option>
                     <option value="lender">Lender</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">Admins can only create Lender accounts</p>
                 </div>
-              </div> */}
+              </div>
 
               <div className="flex items-start">
                 <div className="flex items-center h-5">

@@ -15,42 +15,84 @@ const logger = require('../utils/logger');
  */
 exports.getDashboardStats = async (req, res, next) => {
   try {
-    // Get user counts
-    const totalUsers = await User.countDocuments();
-    const borrowerCount = await User.countDocuments({ role: 'borrower' });
-    const lenderCount = await User.countDocuments({ role: 'lender' });
-    const adminCount = await User.countDocuments({ role: 'admin' });
+    // Optimize: Get all user counts in a single aggregation
+    const userStats = await User.aggregate([
+      {
+        $group: {
+          _id: '$role',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
     
-    // Get loan statistics
-    const totalLoans = await Loan.countDocuments();
+    // Convert to object for easy access
+    const userCounts = userStats.reduce((acc, stat) => {
+      acc[stat._id] = stat.count;
+      return acc;
+    }, {});
     
-    const activeLoans = await Loan.countDocuments({ 
-      status: { $nin: ['Rejected', 'Cancelled', 'Closed'] }
-    });
+    const totalUsers = userCounts.borrower + userCounts.lender + userCounts.admin;
+    const borrowerCount = userCounts.borrower || 0;
+    const lenderCount = userCounts.lender || 0;
+    const adminCount = userCounts.admin || 0;
     
-    const pendingApprovalLoans = await Loan.countDocuments({
-      status: 'Pending Approval'
-    });
+    // Optimize: Get all loan statistics in a single aggregation
+    const loanStats = await Loan.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalLoans: { $sum: 1 },
+          totalAmount: { $sum: '$loanDetails.loanAmount' },
+          activeLoans: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['Rejected', 'Cancelled', 'Closed']] } },
+                1,
+                0
+              ]
+            }
+          },
+          pendingApprovalLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Pending Approval'] }, 1, 0]
+            }
+          },
+          approvedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0]
+            }
+          },
+          rejectedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0]
+            }
+          },
+          closedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Closed'] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
     
-    const approvedLoans = await Loan.countDocuments({
-      status: 'Approved'
-    });
+    const stats = loanStats[0] || {
+      totalLoans: 0,
+      totalAmount: 0,
+      activeLoans: 0,
+      pendingApprovalLoans: 0,
+      approvedLoans: 0,
+      rejectedLoans: 0,
+      closedLoans: 0
+    };
     
-    const rejectedLoans = await Loan.countDocuments({
-      status: 'Rejected'
-    });
-    
-    const closedLoans = await Loan.countDocuments({
-      status: 'Closed'
-    });
-    
-    // Calculate total loan amount
-    const loanAmountsPipeline = [
-      { $group: { _id: null, total: { $sum: '$loanDetails.loanAmount' } } }
-    ];
-    
-    const loanAmounts = await Loan.aggregate(loanAmountsPipeline);
-    const totalLoanAmount = loanAmounts.length > 0 ? loanAmounts[0].total : 0;
+    const totalLoans = stats.totalLoans;
+    const activeLoans = stats.activeLoans;
+    const pendingApprovalLoans = stats.pendingApprovalLoans;
+    const approvedLoans = stats.approvedLoans;
+    const rejectedLoans = stats.rejectedLoans;
+    const closedLoans = stats.closedLoans;
+    const totalLoanAmount = stats.totalAmount;
     
     // Company statistics
     const companyCount = await Company.countDocuments();
@@ -60,48 +102,32 @@ exports.getDashboardStats = async (req, res, next) => {
     const totalDocuments = await Document.countDocuments();
     const pendingReviewDocuments = await Document.countDocuments({ status: 'Pending Review' });
     
-    // Get recent system activity
-    const recentLoans = await Loan.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('primaryBorrower', 'firstName lastName')
-      .populate('lender', 'name')
-      .select('loanNumber loanDetails.loanAmount status createdAt');
+    // Note: Recent activity data removed from dashboard for performance
     
-    const recentUsers = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('firstName lastName email role createdAt');
-    
+    // Calculate average loan amount
+    const averageLoanAmount = totalLoans > 0 ? totalLoanAmount / totalLoans : 0;
+
     res.status(200).json({
       status: 'success',
       data: {
+        summary: {
+          totalLoans: totalLoans,
+          totalUsers: totalUsers,
+          totalVolume: totalLoanAmount,
+          activeLoans: activeLoans
+        },
         users: {
-          total: totalUsers,
           borrowers: borrowerCount,
           lenders: lenderCount,
           admins: adminCount
         },
-        loans: {
-          total: totalLoans,
-          active: activeLoans,
-          pendingApproval: pendingApprovalLoans,
+        loanStats: {
+          totalApplications: totalLoans,
           approved: approvedLoans,
+          pending: pendingApprovalLoans,
           rejected: rejectedLoans,
-          closed: closedLoans,
-          totalAmount: totalLoanAmount
-        },
-        companies: {
-          total: companyCount,
-          active: activeCompanies
-        },
-        documents: {
-          total: totalDocuments,
-          pendingReview: pendingReviewDocuments
-        },
-        recent: {
-          loans: recentLoans,
-          users: recentUsers
+          totalVolume: totalLoanAmount,
+          averageAmount: averageLoanAmount
         }
       }
     });
@@ -362,6 +388,75 @@ exports.createAdminUser = async (req, res, next) => {
 };
 
 /**
+ * Create a new lender user (admin only, no email verification required)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.createLenderUser = async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, phone } = req.body;
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ApiError('Email already in use', 400));
+    }
+    
+    // Create new lender user with email verified (since admin created it)
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      role: 'lender',
+      isEmailVerified: true, // Skip email verification for admin-created users
+      isActive: true
+    });
+    
+    // Create lender profile
+    const lender = await Lender.create({
+      user: user._id,
+      name: `${firstName} ${lastName}`,
+      email: email,
+      phone: phone,
+      isActive: true
+    });
+    
+    // Create default loan programs and rates for the new lender
+    // Import the functions we need
+    const { createDefaultLoanPrograms } = require('./auth.controller');
+    const { createDefaultLoanRates } = require('./loanRate.controller');
+    
+    try {
+      await createDefaultLoanPrograms(user._id, lender._id);
+      await createDefaultLoanRates(user._id, lender._id);
+      logger.info(`Default loan programs and rates created for lender ${lender._id}`);
+    } catch (setupError) {
+      logger.error(`Error creating default programs/rates for lender ${lender._id}:`, setupError);
+      // Don't fail the user creation if this fails, just log it
+    }
+    
+    // Remove password from response
+    user.password = undefined;
+    
+    logger.info(`Lender user created: ${email} by admin ${req.user._id}`);
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Lender user created successfully',
+      data: {
+        user,
+        lender
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get system settings
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -387,6 +482,121 @@ exports.getSystemSettings = async (req, res, next) => {
         emailNotifications: true,
         maintenanceMode: false
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get all loans with filtering and pagination
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getAllLoans = async (req, res, next) => {
+  try {
+    // Implement pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Build filter based on query parameters
+    const filter = {};
+    
+    // Filter by status
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    
+    // Search by loan number, borrower name, or amount
+    if (req.query.search) {
+      filter.$or = [
+        { loanNumber: { $regex: req.query.search, $options: 'i' } },
+        { amount: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    
+    // Get loans with borrower information
+    const loans = await Loan.find(filter)
+      .populate('borrower', 'firstName lastName email')
+      .populate('lender', 'name email')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+    
+    // Get total count for pagination
+    const total = await Loan.countDocuments(filter);
+    
+    res.status(200).json({
+      status: 'success',
+      results: loans.length,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit
+      },
+      data: loans
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get loan details by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLoanById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const loan = await Loan.findById(id)
+      .populate('borrower', 'firstName lastName email phone')
+      .populate('lender', 'name email phone')
+      .populate('milestones')
+      .populate('documents');
+    
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: loan
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update loan
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateLoan = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const loan = await Loan.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('borrower', 'firstName lastName email');
+    
+    if (!loan) {
+      return next(new ApiError('Loan not found', 404));
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: loan
     });
   } catch (error) {
     next(error);

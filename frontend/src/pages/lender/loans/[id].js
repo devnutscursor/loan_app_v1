@@ -3291,14 +3291,14 @@ const LoanDetails = () => {
                       {activeTab === "dashboard" && (
                         <>
                           {console.log("🔍 [DEBUG] Passing milestones to LoanDashboard:", milestones)}
-                          <LoanDashboard
-                            loan={loan}
-                            setLoan={setLoan}
-                            fetchLoanDetails={fetchLoanDetails}
-                            id={id}
-                            documents={documents}
+                        <LoanDashboard
+                          loan={loan}
+                          setLoan={setLoan}
+                          fetchLoanDetails={fetchLoanDetails}
+                          id={id}
+                          documents={documents}
                             milestones={milestones}
-                          />
+                        />
                         </>
                       )}
                       {/* Loan Details Tab */}

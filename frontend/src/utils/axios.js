@@ -34,10 +34,11 @@ instance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Clear auth data on unauthorized
       if (typeof window !== 'undefined') {
+        const isLogoutInProgress = localStorage.getItem('logoutInProgress');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Redirect to login if not already there
-        if (window.location.pathname !== '/login') {
+        // Redirect to login if not already there and not during logout
+        if (window.location.pathname !== '/login' && !isLogoutInProgress) {
           window.location.href = '/login';
         }
       }

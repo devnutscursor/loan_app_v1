@@ -51,8 +51,9 @@ api.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           
-          // Only show toast if not already on login page
-          if (window.location.pathname !== '/login') {
+          // Only show toast if not already on login page and not during logout
+          const isLogoutInProgress = localStorage.getItem('logoutInProgress');
+          if (window.location.pathname !== '/login' && !isLogoutInProgress) {
             toast.error('Your session has expired. Please log in again.');
             window.location.href = `/login?returnUrl=${window.location.pathname}`;
           }

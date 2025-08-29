@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
   const router = useRouter();
+  const { logout } = useAuth(); // Use AuthContext logout
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
@@ -39,9 +41,7 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
   }, [scrolled]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+    logout(); // Use AuthContext logout function
   };
 
   const navLinks = [
@@ -110,12 +110,6 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                   className="px-4 py-2 text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors"
                 >
                   Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-md hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm"
-                >
-                  Sign Up
                 </Link>
               </div>
             ) : (

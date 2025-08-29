@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import { adminService } from '../../services/api';
-import { toast } from 'react-hot-toast';
 import {
-  FileText,
+  User,
   Calendar,
-  DollarSign,
   Search,
   ChevronDown,
   X,
-  CreditCard,
+  Users,
   ExternalLink
 } from 'lucide-react';
 
@@ -58,67 +55,56 @@ const formatDate = (dateString) =>
     day: 'numeric',
   });
 
-const AdminLoansPage = () => {
-  const router = useRouter();
-  const [loans, setLoans] = useState([]);
-  const [borrowers, setBorrowers] = useState([]);
+const AdminUsersPage = () => {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [selectedBorrower, setSelectedBorrower] = useState('all');
+  const [filters, setFilters] = useState({
+    role: 'all',
+    status: 'all'
+  });
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUsers = async () => {
       try {
         setLoading(true);
+        const response = await adminService.getUsers({ limit: 1000 }); // Get all users
+        console.log('Admin users response:', response.data);
+        const data = response.data.data || [];
         
-        // Fetch loans and borrowers in parallel
-        const [loansResponse, borrowersResponse] = await Promise.all([
-          adminService.getLoans(),
-          adminService.getUsers({ role: 'borrower' })
-        ]);
-        
-        console.log('Admin loans response:', loansResponse.data);
-        console.log('Admin borrowers response:', borrowersResponse.data);
-        
-        const loansData = loansResponse.data.data || loansResponse.data.loans || [];
-        const borrowersData = borrowersResponse.data.data || borrowersResponse.data.users || [];
-        
-        // Debug: Check if Asad Ali is in the borrowers list
-        const asadAli = borrowersData.find(borrower => 
-          borrower.firstName?.toLowerCase() === 'asad' && 
-          borrower.lastName?.toLowerCase() === 'ali'
+        // Debug: Check if Asad Ali is in the users list
+        const asadAli = data.find(user => 
+          user.firstName?.toLowerCase() === 'asad' && 
+          user.lastName?.toLowerCase() === 'ali'
         );
-        console.log('Asad Ali found in borrowers:', asadAli);
-        console.log('All borrower IDs:', borrowersData.map(b => ({ id: b._id, name: `${b.firstName} ${b.lastName}` })));
+        console.log('Asad Ali found in users:', asadAli);
+        console.log('All user IDs:', data.map(u => ({ id: u._id, name: `${u.firstName} ${u.lastName}` })));
         
-        setLoans(loansData);
-        setBorrowers(borrowersData);
+        setUsers(data);
       } catch (e) {
-        console.error('Error fetching admin data:', e);
-        toast.error('Failed to load data');
-        setError('Failed to load data');
+        console.error('Error fetching admin users:', e);
+        toast.error('Failed to load users');
+        setError('Failed to load users');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchUsers();
   }, []);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleFilterChange = (filter) => {
-    setActiveFilter(filter);
-  };
-
-  const handleBorrowerChange = (e) => {
-    setSelectedBorrower(e.target.value);
+  const handleFilterChange = (field, value) => {
+    setFilters({
+      ...filters,
+      [field]: value
+    });
   };
 
   const toggleSortDirection = () => {
@@ -144,64 +130,56 @@ const AdminLoansPage = () => {
     );
   };
 
-  const filteredLoans = useMemo(() => {
-    if (!loans.length) return [];
+  const filteredUsers = useMemo(() => {
+    if (!users.length) return [];
 
-    let results = [...loans];
-
-    // Apply borrower filter
-    if (selectedBorrower !== 'all') {
-      results = results.filter(loan => 
-        loan.borrower && loan.borrower._id === selectedBorrower
-      );
-    }
+    let results = [...users];
 
     // Apply search
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim();
-      results = results.filter(loan =>
-        (loan.borrowerDetails?.firstName + ' ' + loan.borrowerDetails?.lastName).toLowerCase().includes(search) ||
-        (loan.loanNumber || '').toLowerCase().includes(search) ||
-        (loan._id || '').toLowerCase().includes(search) ||
-        (loan.loanDetails?.loanAmount || 0).toString().includes(search)
+      results = results.filter(user =>
+        (user.firstName + ' ' + user.lastName).toLowerCase().includes(search) ||
+        (user.email || '').toLowerCase().includes(search) ||
+        (user.role || '').toLowerCase().includes(search)
       );
     }
+
+    // Apply role filter
+    if (filters.role !== 'all') {
+      results = results.filter(user => user.role === filters.role);
+    }
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      const isActive = filters.status === 'active';
+      results = results.filter(user => user.isActive === isActive);
+    }
     
-    // Create local variables for sorting based on the active filter
+    // Create local variables for sorting
     let localSortBy = sortBy;
     let localSortDirection = sortDirection;
-    
-    // Set appropriate sort parameters based on the active filter
-    if (activeFilter === 'recent') {
-      // For 'Recent' filter: Sort by date (newest first)
-      localSortBy = 'date';
-      localSortDirection = 'desc';
-    } else if (activeFilter === 'highValue') {
-      // For 'High Value' filter: Sort by loan amount (highest first)
-      localSortBy = 'amount';
-      localSortDirection = 'desc';
-    }
 
     // Apply sorting
     results.sort((a, b) => {
       let compareA, compareB;
 
       switch (localSortBy) {
-        case 'borrower':
-          compareA = `${a.borrowerDetails?.firstName || ''} ${a.borrowerDetails?.lastName || ''}`.toLowerCase();
-          compareB = `${b.borrowerDetails?.firstName || ''} ${b.borrowerDetails?.lastName || ''}`.toLowerCase();
+        case 'name':
+          compareA = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
+          compareB = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
           break;
-        case 'amount':
-          compareA = a.loanDetails?.loanAmount || 0;
-          compareB = b.loanDetails?.loanAmount || 0;
+        case 'role':
+          compareA = a.role || '';
+          compareB = b.role || '';
+          break;
+        case 'status':
+          compareA = a.isActive ? 1 : 0;
+          compareB = b.isActive ? 1 : 0;
           break;
         case 'date':
           compareA = new Date(a.createdAt || 0).getTime();
           compareB = new Date(b.createdAt || 0).getTime();
-          break;
-        case 'loanNumber':
-          compareA = a.loanNumber || '';
-          compareB = b.loanNumber || '';
           break;
         default:
           return 0;
@@ -212,7 +190,44 @@ const AdminLoansPage = () => {
     });
 
     return results;
-  }, [loans, searchTerm, activeFilter, selectedBorrower, sortBy, sortDirection]);
+  }, [users, searchTerm, filters, sortBy, sortDirection]);
+
+  const getRoleBadge = (role) => {
+    const roleClasses = {
+      admin: 'bg-purple-100 text-purple-800',
+      lender: 'bg-blue-100 text-blue-800',
+      borrower: 'bg-green-100 text-green-800'
+    };
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleClasses[role] || 'bg-gray-100 text-gray-800'}`}>
+        {role}
+      </span>
+    );
+  };
+
+  const getStatusBadge = (isActive) => {
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        {isActive ? 'active' : 'inactive'}
+      </span>
+    );
+  };
+
+  const handleUserStatusChange = async (userId, newStatus) => {
+    try {
+      await adminService.updateUserStatus(userId, { isActive: newStatus });
+      toast.success('User status updated successfully');
+      
+      // Update user in state
+      setUsers(users.map(user => 
+        user._id === userId ? { ...user, isActive: newStatus } : user
+      ));
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      toast.error('Failed to update user status');
+    }
+  };
 
   return (
     <ProtectedRoute roles={['admin']}>
@@ -220,9 +235,9 @@ const AdminLoansPage = () => {
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Active Loans</h1>
+              <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
               <p className="mt-2 text-gray-600">
-                List of active loan applications from all borrowers across all lenders
+                Manage all users in the system including borrowers, lenders, and admins
               </p>
             </div>
           </div>
@@ -257,7 +272,7 @@ const AdminLoansPage = () => {
                     <input
                       id="search-input"
                       type="text"
-                      placeholder="Search by borrower name or loan number..."
+                      placeholder="Search by name or email..."
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       value={searchTerm}
                       onChange={handleSearchChange}
@@ -267,71 +282,65 @@ const AdminLoansPage = () => {
 
                 {/* Filter Dropdowns */}
                 <div className="flex gap-4">
-                  {/* Borrower Filter */}
                   <div>
-                    <label htmlFor="borrower-filter" className="block text-sm font-medium text-gray-700">
-                      Borrower
+                    <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700">
+                      Role
                     </label>
                     <select
-                      id="borrower-filter"
-                      value={selectedBorrower}
-                      onChange={handleBorrowerChange}
+                      id="role-filter"
+                      value={filters.role}
+                      onChange={(e) => handleFilterChange('role', e.target.value)}
                       className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                     >
-                      <option value="all">All Borrowers</option>
-                      {borrowers.map((borrower) => (
-                        <option key={borrower._id} value={borrower._id}>
-                          {borrower.firstName} {borrower.lastName}
-                        </option>
-                      ))}
+                      <option value="all">All Roles</option>
+                      <option value="lender">Lender</option>
+                      <option value="borrower">Borrower</option>
                     </select>
                   </div>
-
-                  {/* Filter Dropdown */}
+                  
                   <div>
-                    <label htmlFor="filter-dropdown" className="block text-sm font-medium text-gray-700">
-                      Filter
+                    <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
+                      Status
                     </label>
                     <select
-                      id="filter-dropdown"
-                      value={activeFilter}
-                      onChange={(e) => handleFilterChange(e.target.value)}
+                      id="status-filter"
+                      value={filters.status}
+                      onChange={(e) => handleFilterChange('status', e.target.value)}
                       className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                     >
-                      <option value="all">All Loans</option>
-                      <option value="recent">Recent</option>
-                      <option value="highValue">High Value</option>
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {loans.length === 0 ? (
+              {users.length === 0 ? (
                 <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8 text-center">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600">
-                    <CreditCard className="h-8 w-8" />
+                    <Users className="h-8 w-8" />
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No active loans</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No users found</h3>
                   <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                    There are no active loan applications in the system yet.
+                    There are no users in the system yet.
                   </p>
                 </div>
-              ) : filteredLoans.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8 text-center">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-600">
                     <Search className="h-8 w-8" />
                   </div>
                   <h3 className="mt-4 text-lg font-medium text-gray-900">No results found</h3>
                   <p className="mt-2 text-sm text-gray-500">
-                    No loans match your search criteria. Try adjusting your search or filters.
+                    No users match your search criteria. Try adjusting your search or filters.
                   </p>
                   <div className="mt-6">
                     <button
                       type="button"
                       onClick={() => {
                         setSearchTerm('');
-                        setActiveFilter('all');
-                        setSelectedBorrower('all');
+                        setFilters({ role: 'all', status: 'all' });
                       }}
                       className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
@@ -345,25 +354,25 @@ const AdminLoansPage = () => {
                   {/* Table Header */}
                   <div className="bg-gray-50 border-b border-gray-200">
                     <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('borrower')}>
+                      <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('name')}>
                         <div className="flex items-center">
-                          <span>Borrower</span>
-                          {getSortIcon('borrower')}
+                          <span>User</span>
+                          {getSortIcon('name')}
                         </div>
                       </div>
-                      <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('loanNumber')}>
+                      <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('role')}>
                         <div className="flex items-center">
-                          <span>Loan #</span>
-                          {getSortIcon('loanNumber')}
+                          <span>Role</span>
+                          {getSortIcon('role')}
                         </div>
                       </div>
-                      <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('amount')}>
+                      <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('status')}>
                         <div className="flex items-center">
-                          <span>Loan Amount</span>
-                          {getSortIcon('amount')}
+                          <span>Status</span>
+                          {getSortIcon('status')}
                         </div>
                       </div>
-                      <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('date')}>
+                      <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('date')}>
                         <div className="flex items-center">
                           <span>Created</span>
                           {getSortIcon('date')}
@@ -375,52 +384,56 @@ const AdminLoansPage = () => {
 
                   {/* Table Content */}
                   <div className="divide-y divide-gray-200">
-                    {filteredLoans.map((loan) => (
+                    {filteredUsers.map((user) => (
                       <div
-                        key={loan._id}
+                        key={user._id}
                         className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-colors duration-150 items-center"
                       >
                         <div className="col-span-3 flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <span className="text-lg font-medium">
-                              {loan.borrowerDetails?.firstName?.charAt(0)}{loan.borrowerDetails?.lastName?.charAt(0)}
+                              {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                             </span>
                           </div>
                           <div className="ml-4">
                             <div className="font-medium text-gray-900">
-                              {loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}
+                              {user.firstName} {user.lastName}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {loan.borrowerDetails?.email}
+                              {user.email}
                             </div>
                           </div>
                         </div>
 
                         <div className="col-span-2">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <FileText className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                            <span>{loan.loanNumber || 'N/A'}</span>
+                          <div className="flex items-center">
+                            {getRoleBadge(user.role)}
                           </div>
                         </div>
 
-                        <div className="col-span-3">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <DollarSign className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                            <span>${loan.loanDetails?.loanAmount?.toLocaleString() || '0'}</span>
+                        <div className="col-span-2">
+                          <div className="flex items-center">
+                            {getStatusBadge(user.isActive)}
                           </div>
                         </div>
 
-                        <div className="col-span-2 flex items-center">
+                        <div className="col-span-3 flex items-center">
                           <div className="flex items-center text-sm text-gray-500">
                             <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                            <span>{formatDate(loan.createdAt)}</span>
+                            <span>{formatDate(user.createdAt)}</span>
                           </div>
                         </div>
                         <div className="col-span-2 flex justify-end items-center space-x-3">
-                          <Link href={`/lender/loans/${loan._id}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            <span>View Details</span>
-                          </Link>
+                          <button
+                            onClick={() => handleUserStatusChange(user._id, !user.isActive)}
+                            className={`inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md ${
+                              user.isActive
+                                ? 'text-red-700 bg-red-100 hover:bg-red-200'
+                                : 'text-green-700 bg-green-100 hover:bg-green-200'
+                            }`}
+                          >
+                            {user.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -435,4 +448,4 @@ const AdminLoansPage = () => {
   );
 };
 
-export default AdminLoansPage;
+export default AdminUsersPage;

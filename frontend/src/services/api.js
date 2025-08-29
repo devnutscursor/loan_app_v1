@@ -262,7 +262,7 @@ export const adminService = {
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
   getUser: (id) => api.get(`/admin/users/${id}`),
-  updateUserStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { status }),
+  updateUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
   updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
 
   // Loans
