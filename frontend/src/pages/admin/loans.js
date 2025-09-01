@@ -69,6 +69,7 @@ const AdminLoansPage = () => {
   const [selectedBorrower, setSelectedBorrower] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [borrowerIdMapping, setBorrowerIdMapping] = useState({}); // Maps user ID to borrower ID
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,8 +118,34 @@ const AdminLoansPage = () => {
     setActiveFilter(filter);
   };
 
-  const handleBorrowerChange = (e) => {
-    setSelectedBorrower(e.target.value);
+  // Function to get borrower ID for a given user ID
+  const getBorrowerIdForUser = async (userId) => {
+    // Check if we already have the mapping
+    if (borrowerIdMapping[userId]) {
+      return borrowerIdMapping[userId];
+    }
+
+    try {
+      const response = await adminService.getBorrowerByUserId(userId);
+      const borrowerId = response.data.data.borrowerId;
+      
+      // Store the mapping for future use
+      setBorrowerIdMapping(prev => ({
+        ...prev,
+        [userId]: borrowerId
+      }));
+      
+      return borrowerId;
+    } catch (error) {
+      console.error('Error getting borrower ID for user:', error);
+      toast.error('Failed to get borrower information');
+      return null;
+    }
+  };
+
+  const handleBorrowerChange = async (e) => {
+    const selectedUserId = e.target.value;
+    setSelectedBorrower(selectedUserId);
   };
 
   const toggleSortDirection = () => {
@@ -144,75 +171,94 @@ const AdminLoansPage = () => {
     );
   };
 
-  const filteredLoans = useMemo(() => {
-    if (!loans.length) return [];
+  const [filteredLoans, setFilteredLoans] = useState([]);
+  const [filterLoading, setFilterLoading] = useState(false);
 
-    let results = [...loans];
-
-    // Apply borrower filter
-    if (selectedBorrower !== 'all') {
-      results = results.filter(loan => 
-        loan.borrower && loan.borrower._id === selectedBorrower
-      );
-    }
-
-    // Apply search
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase().trim();
-      results = results.filter(loan =>
-        (loan.borrowerDetails?.firstName + ' ' + loan.borrowerDetails?.lastName).toLowerCase().includes(search) ||
-        (loan.loanNumber || '').toLowerCase().includes(search) ||
-        (loan._id || '').toLowerCase().includes(search) ||
-        (loan.loanDetails?.loanAmount || 0).toString().includes(search)
-      );
-    }
-    
-    // Create local variables for sorting based on the active filter
-    let localSortBy = sortBy;
-    let localSortDirection = sortDirection;
-    
-    // Set appropriate sort parameters based on the active filter
-    if (activeFilter === 'recent') {
-      // For 'Recent' filter: Sort by date (newest first)
-      localSortBy = 'date';
-      localSortDirection = 'desc';
-    } else if (activeFilter === 'highValue') {
-      // For 'High Value' filter: Sort by loan amount (highest first)
-      localSortBy = 'amount';
-      localSortDirection = 'desc';
-    }
-
-    // Apply sorting
-    results.sort((a, b) => {
-      let compareA, compareB;
-
-      switch (localSortBy) {
-        case 'borrower':
-          compareA = `${a.borrowerDetails?.firstName || ''} ${a.borrowerDetails?.lastName || ''}`.toLowerCase();
-          compareB = `${b.borrowerDetails?.firstName || ''} ${b.borrowerDetails?.lastName || ''}`.toLowerCase();
-          break;
-        case 'amount':
-          compareA = a.loanDetails?.loanAmount || 0;
-          compareB = b.loanDetails?.loanAmount || 0;
-          break;
-        case 'date':
-          compareA = new Date(a.createdAt || 0).getTime();
-          compareB = new Date(b.createdAt || 0).getTime();
-          break;
-        case 'loanNumber':
-          compareA = a.loanNumber || '';
-          compareB = b.loanNumber || '';
-          break;
-        default:
-          return 0;
+  // Effect to handle filtering with async borrower ID lookup
+  useEffect(() => {
+    const applyFilters = async () => {
+      if (!loans.length) {
+        setFilteredLoans([]);
+        return;
       }
 
-      const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
-      return localSortDirection === 'asc' ? compareResult : -compareResult;
-    });
+      setFilterLoading(true);
+      let results = [...loans];
 
-    return results;
-  }, [loans, searchTerm, activeFilter, selectedBorrower, sortBy, sortDirection]);
+      // Apply borrower filter
+      if (selectedBorrower !== 'all') {
+        const borrowerId = await getBorrowerIdForUser(selectedBorrower);
+        if (borrowerId) {
+          results = results.filter(loan => 
+            loan.borrower && loan.borrower._id === borrowerId
+          );
+        } else {
+          // If we can't get borrower ID, show no results
+          results = [];
+        }
+      }
+
+          // Apply search
+      if (searchTerm.trim()) {
+        const search = searchTerm.toLowerCase().trim();
+        results = results.filter(loan =>
+          (loan.borrowerDetails?.firstName + ' ' + loan.borrowerDetails?.lastName).toLowerCase().includes(search) ||
+          (loan.loanNumber || '').toLowerCase().includes(search) ||
+          (loan._id || '').toLowerCase().includes(search) ||
+          (loan.loanDetails?.loanAmount || 0).toString().includes(search)
+        );
+      }
+      
+      // Create local variables for sorting based on the active filter
+      let localSortBy = sortBy;
+      let localSortDirection = sortDirection;
+      
+      // Set appropriate sort parameters based on the active filter
+      if (activeFilter === 'recent') {
+        // For 'Recent' filter: Sort by date (newest first)
+        localSortBy = 'date';
+        localSortDirection = 'desc';
+      } else if (activeFilter === 'highValue') {
+        // For 'High Value' filter: Sort by loan amount (highest first)
+        localSortBy = 'amount';
+        localSortDirection = 'desc';
+      }
+
+      // Apply sorting
+      results.sort((a, b) => {
+        let compareA, compareB;
+
+        switch (localSortBy) {
+          case 'borrower':
+            compareA = `${a.borrowerDetails?.firstName || ''} ${a.borrowerDetails?.lastName || ''}`.toLowerCase();
+            compareB = `${b.borrowerDetails?.firstName || ''} ${b.borrowerDetails?.lastName || ''}`.toLowerCase();
+            break;
+          case 'amount':
+            compareA = a.loanDetails?.loanAmount || 0;
+            compareB = b.loanDetails?.loanAmount || 0;
+            break;
+          case 'date':
+            compareA = new Date(a.createdAt || 0).getTime();
+            compareB = new Date(b.createdAt || 0).getTime();
+            break;
+          case 'loanNumber':
+            compareA = a.loanNumber || '';
+            compareB = b.loanNumber || '';
+            break;
+          default:
+            return 0;
+        }
+
+        const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
+        return localSortDirection === 'asc' ? compareResult : -compareResult;
+      });
+
+      setFilteredLoans(results);
+      setFilterLoading(false);
+    };
+
+    applyFilters();
+  }, [loans, searchTerm, activeFilter, selectedBorrower, sortBy, sortDirection, borrowerIdMapping]);
 
   return (
     <ProtectedRoute roles={['admin']}>
@@ -227,7 +273,7 @@ const AdminLoansPage = () => {
             </div>
           </div>
 
-          {loading ? (
+          {loading || filterLoading ? (
             <SkeletonLoader />
           ) : error ? (
             <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">

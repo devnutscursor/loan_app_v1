@@ -14,6 +14,7 @@ router.get('/dashboard', adminController.getDashboardStats);
 // User management
 router.get('/users', adminController.getAllUsers);
 router.get('/users/:id', adminController.getUserById);
+router.get('/users/:userId/borrower', adminController.getBorrowerByUserId);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.patch('/users/:id/role', adminController.updateUserRole);
 

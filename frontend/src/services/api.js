@@ -262,6 +262,7 @@ export const adminService = {
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
   getUser: (id) => api.get(`/admin/users/${id}`),
+  getBorrowerByUserId: (userId) => api.get(`/admin/users/${userId}/borrower`),
   updateUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
   updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
 

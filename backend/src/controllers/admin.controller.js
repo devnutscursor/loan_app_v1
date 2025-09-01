@@ -545,6 +545,34 @@ exports.getAllLoans = async (req, res, next) => {
 };
 
 /**
+ * Get borrower ID by user ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getBorrowerByUserId = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    
+    const borrower = await Borrower.findOne({ user: userId });
+    
+    if (!borrower) {
+      return next(new ApiError('Borrower not found for this user', 404));
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        borrowerId: borrower._id,
+        userId: userId
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get loan details by ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
