@@ -6,6 +6,14 @@ const companySchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  password: {
+    type: String,
+    required: true
+  },
+  maxLenders: {
+    type: Number,
+    required: true
+  },
   logo: {
     type: String
   },
@@ -46,10 +54,12 @@ const companySchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    required: true,
     trim: true
   },
   email: {
     type: String,
+    required: true,
     trim: true,
     lowercase: true
   },
@@ -95,7 +105,6 @@ const companySchema = new mongoose.Schema({
     defaultMilestones: [{
       title: {
         type: String,
-        required: true,
         trim: true
       },
       description: {
@@ -104,7 +113,7 @@ const companySchema = new mongoose.Schema({
       },
       order: {
         type: Number,
-        required: true
+        required: false
       },
       isInternal: {
         type: Boolean,
@@ -114,7 +123,6 @@ const companySchema = new mongoose.Schema({
     defaultConditions: [{
       title: {
         type: String,
-        required: true,
         trim: true
       },
       description: {
@@ -131,8 +139,7 @@ const companySchema = new mongoose.Schema({
           'Employment',
           'Insurance',
           'Other'
-        ],
-        required: true
+        ]
       }
     }],
     complianceSettings: {
@@ -227,5 +234,6 @@ const companySchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
 
 module.exports = mongoose.model('Company', companySchema);

@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Create company - available to lenders and admins
-router.post('/', authorize('lender', 'admin'), companyController.createCompany);
+router.post('/', authorize('admin'), companyController.createCompany);
 
 // Get all companies
 router.get('/', companyController.getAllCompanies);

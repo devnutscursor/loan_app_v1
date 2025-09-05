@@ -395,7 +395,7 @@ exports.createAdminUser = async (req, res, next) => {
  */
 exports.createLenderUser = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password, phone } = req.body;
+    const { firstName, lastName, email, password, phone, companyId } = req.body;
     
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -415,12 +415,23 @@ exports.createLenderUser = async (req, res, next) => {
       isActive: true
     });
     
-    // Create lender profile
+    // Validate company if provided (required by schema)
+    if (!companyId) {
+      return next(new ApiError('companyId is required to create a lender', 400));
+    }
+
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+
+    // Create lender profile associated to company
     const lender = await Lender.create({
       user: user._id,
       name: `${firstName} ${lastName}`,
       email: email,
       phone: phone,
+      company: company._id,
       isActive: true
     });
     
@@ -441,7 +452,7 @@ exports.createLenderUser = async (req, res, next) => {
     // Remove password from response
     user.password = undefined;
     
-    logger.info(`Lender user created: ${email} by admin ${req.user._id}`);
+    logger.info(`Lender user created: ${email} by admin ${req.user._id} (company ${company._id})`);
     
     res.status(201).json({
       status: 'success',
