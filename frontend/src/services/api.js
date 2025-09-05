@@ -254,6 +254,38 @@ export const lenderService = {
   },
 };
 
+// Company Services
+export const companyService = {
+  // Dashboard - combines stats and top lenders
+  getDashboard: async (companyId) => {
+    const [statsResponse, topLendersResponse] = await Promise.all([
+      api.get(`/companies/${companyId}/stats`),
+      api.get(`/companies/${companyId}/top-lenders`)
+    ]);
+    
+    return {
+      data: {
+        stats: statsResponse.data.data,
+        topLenders: topLendersResponse.data.data.lenders || []
+      }
+    };
+  },
+
+  // Company Stats
+  getStats: (companyId) => api.get(`/companies/${companyId}/stats`),
+  
+  // Top Lenders
+  getTopLenders: (companyId, params) => api.get(`/companies/${companyId}/top-lenders`, { params }),
+  
+  // Company Lenders
+  getLenders: (companyId) => api.get(`/companies/${companyId}/lenders`),
+  getLender: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}`),
+  
+  // Company Profile
+  getProfile: (companyId) => api.get(`/companies/${companyId}`),
+  updateProfile: (companyId, companyData) => api.patch(`/companies/${companyId}`, companyData),
+};
+
 // Admin Services
 export const adminService = {
   // Dashboard
@@ -273,6 +305,7 @@ export const adminService = {
   // Companies
   getCompanies: (params) => api.get('/admin/companies', { params }),
   getCompany: (id) => api.get(`/admin/companies/${id}`),
+  createCompany: (companyData) => api.post('/admin/companies', companyData),
   updateCompanyStatus: (id, status) => api.patch(`/admin/companies/${id}/status`, { status }),
 };
 

@@ -25,6 +25,12 @@ router.patch('/:id/branding', companyController.updateBranding);
 // Get company lenders
 router.get('/:id/lenders', companyController.getCompanyLenders);
 
+// Get company statistics
+router.get('/:id/stats', companyController.getCompanyStats);
+
+// Get top lenders for a company
+router.get('/:id/top-lenders', companyController.getTopLenders);
+
 // Admin-only routes
 // Update company subscription
 router.patch('/:id/subscription', authorize('admin'), companyController.updateSubscription);

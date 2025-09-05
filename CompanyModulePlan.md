@@ -60,28 +60,39 @@
   - Returns accurate counts for seeded data; enforces access properly.
 - Dependencies: Task 1 (role recognition). Optional: Task 7 indexes can improve performance but not required.
 
-### Task 5: Top lenders endpoint with sorting
-- Description: Provide top lenders by borrower count or total amount.
+### Task 5: Top 5 lenders endpoint with sorting
+
+- Description: Provide the top 5 lenders for a company, ranked by borrower count (default) or total loan amount.
+
 - Steps:
+
   - Add handler `getTopLenders` in `company.controller.js`.
-  - Inputs: `:id`, `sortBy=borrowers|amount` (default borrowers), `limit`, `page` (optional).
+  - Inputs: `:id`, `sortBy=borrowers|amount` (default borrowers).
   - Aggregations:
+
     - For each lender under company: calculate borrower count and total loan amount.
-    - Sort by requested metric and return.
+    - Sort by requested metric.
+    - Return only the **top 5 lenders**.
   - Populate `lender.user` basic fields for display.
   - Authorization same as Task 4.
   - Route: `GET /companies/:id/top-lenders`.
+
 - Deliverables:
-  - Endpoint returning ranked lender list with metrics.
+
+  - Endpoint returning top 5 ranked lenders with metrics.
+
 - Acceptance:
-  - Sorting toggle produces expected order; access control enforced.
+
+  - Sorting toggle (`borrowers` or `amount`) changes the ranking correctly.
+  - Only 5 lenders are returned.
+  - Access control enforced.
 - Dependencies: Task 1. Optional: Task 7 for performance.
 
 ### Task 6: Company lenders listing (API hardening)
 - Description: Ensure lenders list endpoint is ready for the company module UI.
 - Steps:
   - Review/extend existing `getCompanyLenders`:
-    - Support admin (any company) and company users (own company).
+    - Support admin and company user (own company).
     - Pagination and sorting.
     - Return enough fields for UI actions (lender id, `user` name/email).
   - Route: Use existing `/companies/:id/lenders`.
@@ -148,7 +159,7 @@
 - Description: List company’s lenders with actions that reuse lender pages.
 - Steps:
   - Page `/company/lenders`.
-  - Fetch `GET /companies/:id/lenders` with pagination.
+  - Fetch `GET /companies/:id/lenders`.
   - Table columns: Lender name, email, optional counts/volume, actions:
     - View Stats → route to existing lender dashboard page (pass `lenderId` as query or path per current design).
     - View Borrowers → route to lender’s borrowers list page.

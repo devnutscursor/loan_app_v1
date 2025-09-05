@@ -40,6 +40,8 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
           router.push('/borrower/dashboard');
         } else if (user.role === 'lender') {
           router.push('/lender/dashboard');
+        } else if (user.role === 'company') {
+          router.push('/company/dashboard');
         } else if (user.role === 'admin') {
           router.push('/admin/dashboard');
         } else {
@@ -54,6 +56,8 @@ const MainLayout = ({ children, title = 'Loan Application System', noSidebarMarg
           router.push('/borrower/dashboard');
         } else if (user.role === 'lender') {
           router.push('/lender/dashboard');
+        } else if (user.role === 'company') {
+          router.push('/company/dashboard');
         } else {
           router.push('/');
         }

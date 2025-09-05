@@ -6,6 +6,7 @@ const Company = require('../models/company.model');
 const Document = require('../models/document.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
+const mongoose = require('mongoose');
 
 /**
  * Get system dashboard statistics
@@ -388,6 +389,96 @@ exports.createAdminUser = async (req, res, next) => {
 };
 
 /**
+ * Create a new Company with primary contact (admin only)
+ * Body: { companyName, password, phone, email, maxLenders, primaryContact: { firstName, lastName, email, phone, password } }
+ */
+exports.createCompanyWithPrimaryContact = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { companyName, password, phone, email, maxLenders, primaryContact } = req.body;
+    console.log('Creating company with primary contact:', companyName);
+
+    if (!companyName || !password || !phone || !email || typeof maxLenders !== 'number' || !primaryContact) {
+      return next(new ApiError('Missing required fields for company or primary contact', 400));
+    }
+    const { firstName, lastName, email: pcEmail, phone: pcPhone, password: pcPassword } = primaryContact;
+    if (!firstName || !lastName || !pcEmail || !pcPassword) {
+      return next(new ApiError('Missing required primary contact fields', 400));
+    }
+
+    // Uniqueness checks
+    const existingCompany = await Company.findOne({ name: companyName }).session(session);
+    if (existingCompany) {
+      return next(new ApiError('A company with this name already exists', 400));
+    }
+    const existingPCUser = await User.findOne({ email: pcEmail.toLowerCase() }).session(session);
+    if (existingPCUser) {
+      return next(new ApiError('Primary contact email already in use', 400));
+    }
+
+    // Create company
+    const [company] = await Company.create([
+      {
+        name: companyName,
+        password,
+        phone,
+        email: email.toLowerCase(),
+        maxLenders,
+        isActive: true
+      }
+    ], { session });
+
+    // Create primary contact user (role company)
+    const [user] = await User.create([
+      {
+        firstName,
+        lastName,
+        email: pcEmail.toLowerCase(),
+        phone: pcPhone,
+        password: pcPassword,
+        role: 'company',
+        company: company._id,
+        isEmailVerified: true
+      }
+    ], { session });
+
+    // Link in company
+    company.primaryContact = user._id;
+    company.users = company.users || [];
+    company.users.push(user._id);
+    await company.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Hide sensitive
+    const safeCompany = company.toObject();
+    delete safeCompany.password;
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Company and primary contact created successfully',
+      data: {
+        company: safeCompany,
+        primaryContact: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role
+        }
+      }
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    next(error);
+  }
+};
+
+/**
  * Create a new lender user (admin only, no email verification required)
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -423,6 +514,14 @@ exports.createLenderUser = async (req, res, next) => {
     const company = await Company.findById(companyId);
     if (!company) {
       return next(new ApiError('Company not found', 404));
+    }
+
+    // Enforce maxLenders capacity
+    try {
+      const { assertCompanyCapacity } = require('../services/company.service');
+      await assertCompanyCapacity(company._id);
+    } catch (capErr) {
+      return next(capErr);
     }
 
     // Create lender profile associated to company

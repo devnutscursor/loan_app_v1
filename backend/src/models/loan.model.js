@@ -1020,4 +1020,11 @@ loanSchema.pre('save', async function(next) {
   }
 });
 
+// Indexes for performance optimization
+loanSchema.index({ lender: 1 });
+loanSchema.index({ borrower: 1 });
+loanSchema.index({ lender: 1, status: 1 });
+loanSchema.index({ status: 1 });
+loanSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Loan', loanSchema);

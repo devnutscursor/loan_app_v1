@@ -22,6 +22,9 @@ router.patch('/users/:id/role', adminController.updateUserRole);
 router.post('/users/admin', adminController.createAdminUser);
 router.post('/users/lender', adminController.createLenderUser);
 
+// Companies
+router.post('/companies', adminController.createCompanyWithPrimaryContact);
+
 // Loan management
 router.get('/loans', adminController.getAllLoans);
 router.get('/loans/:id', adminController.getLoanById);

@@ -1,5 +1,8 @@
 const Company = require('../models/company.model');
 const Lender = require('../models/lender.model');
+const Borrower = require('../models/borrower.model');
+const Loan = require('../models/loan.model');
+const User = require('../models/user.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 
@@ -120,7 +123,8 @@ exports.getCompany = async (req, res, next) => {
     const { id } = req.params;
     
     const company = await Company.findById(id)
-      .populate('createdBy', 'firstName lastName email');
+      .populate('primaryContact', 'firstName lastName email')
+      .populate('users', 'firstName lastName email role');
     
     if (!company) {
       return next(new ApiError('Company not found', 404));
@@ -144,7 +148,8 @@ exports.getCompany = async (req, res, next) => {
 exports.updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, website, logo, address, contactEmail, contactPhone, description } = req.body;
+    const { name, email, phone } = req.body;
+
     
     // Find company
     const company = await Company.findById(id);
@@ -164,12 +169,8 @@ exports.updateCompany = async (req, res, next) => {
     // Update company
     const updateData = {
       name: name || company.name,
-      website: website || company.website,
-      logo: logo || company.logo,
-      address: address || company.address,
-      contactEmail: contactEmail || company.contactEmail,
-      contactPhone: contactPhone || company.contactPhone,
-      description: description || company.description,
+      email: email || company.email,
+      phone: phone || company.phone,
     };
     
     const updatedCompany = await Company.findByIdAndUpdate(
@@ -292,49 +293,205 @@ exports.updateCompanyStatus = async (req, res, next) => {
 };
 
 /**
- * Get company lenders
+ * Get company lenders (enhanced for company module UI)
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
 exports.getCompanyLenders = async (req, res, next) => {
+  const startTime = Date.now();
   try {
-    const { id } = req.params;
+    let companyId = req.params.id;
+    const { page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', search } = req.query;
     
-    // Find company
-    const company = await Company.findById(id);
+    // For company users, use their own company ID
+    if (req.user.role === 'company' && !companyId) {
+      companyId = req.user.company;
+    }
     
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    if (!companyId) {
+      return next(new ApiError('Company ID is required', 400));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
     if (!company) {
       return next(new ApiError('Company not found', 404));
     }
     
-    // Implement pagination
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 20;
-    const skip = (page - 1) * limit;
+    // Validate pagination parameters
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
     
-    // Find lenders associated with company
-    const lenders = await Lender.find({ company: id })
-      .populate('user', 'firstName lastName email profilePicture')
+    if (isNaN(pageNum) || pageNum < 1) {
+      return next(new ApiError('Page must be a positive integer', 400));
+    }
+    
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+      return next(new ApiError('Limit must be between 1 and 100', 400));
+    }
+    
+    // Validate sort parameters
+    const allowedSortFields = ['createdAt', 'firstName', 'lastName', 'email'];
+    if (!allowedSortFields.includes(sortBy)) {
+      return next(new ApiError(`sortBy must be one of: ${allowedSortFields.join(', ')}`, 400));
+    }
+    
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Build search filter
+    let searchFilter = {};
+    if (search && search.trim()) {
+      searchFilter = {
+        $or: [
+          { 'user.firstName': { $regex: search.trim(), $options: 'i' } },
+          { 'user.lastName': { $regex: search.trim(), $options: 'i' } },
+          { 'user.email': { $regex: search.trim(), $options: 'i' } }
+        ]
+      };
+    }
+    
+    // Build sort object
+    let sortObject = {};
+    if (sortBy === 'firstName' || sortBy === 'lastName' || sortBy === 'email') {
+      sortObject[`user.${sortBy}`] = sortDirection;
+    } else {
+      sortObject[sortBy] = sortDirection;
+    }
+    
+    // Find lenders with enhanced data
+    const lenders = await Lender.find({ company: companyId })
+      .populate({
+        path: 'user',
+        select: 'firstName lastName email profileImage isActive lastLogin',
+        match: searchFilter.user ? searchFilter : {}
+      })
+      .select('_id user nmls title isActive createdAt')
       .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+      .limit(limitNum)
+      .sort(sortObject);
     
-    // Get total count for pagination
-    const total = await Lender.countDocuments({ company: id });
+    // Filter out lenders where user doesn't match search criteria
+    const filteredLenders = lenders.filter(lender => lender.user !== null);
+    
+    // Get additional metrics for each lender
+    const lendersWithMetrics = await Promise.all(
+      filteredLenders.map(async (lender) => {
+        // Get borrower count
+        const borrowerCount = await Borrower.countDocuments({ lender: lender._id });
+        
+        // Get loan count and total amount
+        const loanStats = await Loan.aggregate([
+          {
+            $match: { lender: lender._id }
+          },
+          {
+            $group: {
+              _id: null,
+              totalLoans: { $sum: 1 },
+              totalAmount: { $sum: '$loanDetails.loanAmount' },
+              activeLoans: {
+                $sum: {
+                  $cond: [
+                    { $not: { $in: ['$status', ['Rejected', 'Cancelled', 'Closed']] } },
+                    1,
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        ]);
+        
+        const stats = loanStats[0] || {
+          totalLoans: 0,
+          totalAmount: 0,
+          activeLoans: 0
+        };
+        
+        return {
+          id: lender._id,
+          user: {
+            id: lender.user._id,
+            firstName: lender.user.firstName,
+            lastName: lender.user.lastName,
+            email: lender.user.email,
+            profileImage: lender.user.profileImage,
+            isActive: lender.user.isActive,
+            lastLogin: lender.user.lastLogin
+          },
+          nmls: lender.nmls,
+          title: lender.title,
+          isActive: lender.isActive,
+          createdAt: lender.createdAt,
+          metrics: {
+            borrowerCount,
+            totalLoans: stats.totalLoans,
+            totalLoanAmount: stats.totalAmount,
+            activeLoans: stats.activeLoans
+          }
+        };
+      })
+    );
+    
+    // Get total count for pagination (with search filter)
+    const totalQuery = { company: companyId };
+    if (search && search.trim()) {
+      // For search, we need to count lenders whose users match the search criteria
+      const matchingUsers = await User.find({
+        $or: [
+          { firstName: { $regex: search.trim(), $options: 'i' } },
+          { lastName: { $regex: search.trim(), $options: 'i' } },
+          { email: { $regex: search.trim(), $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      const matchingUserIds = matchingUsers.map(user => user._id);
+      totalQuery.user = { $in: matchingUserIds };
+    }
+    
+    const total = await Lender.countDocuments(totalQuery);
     
     res.status(200).json({
       status: 'success',
-      results: lenders.length,
+      results: lendersWithMetrics.length,
       pagination: {
         total,
-        page,
-        pages: Math.ceil(total / limit),
-        limit
+        page: pageNum,
+        pages: Math.ceil(total / limitNum),
+        limit: limitNum
       },
-      data: lenders
+      data: {
+        company: {
+          id: company._id,
+          name: company.name,
+          maxLenders: company.maxLenders
+        },
+        lenders: lendersWithMetrics
+      }
+    });
+    
+    // Performance monitoring
+    const duration = Date.now() - startTime;
+    logger.debug(`Company lenders query completed in ${duration}ms for company ${companyId}`, {
+      companyId,
+      duration,
+      page: pageNum,
+      limit: limitNum,
+      sortBy,
+      sortOrder,
+      search: search || null,
+      totalLenders: total,
+      returnedLenders: lendersWithMetrics.length
     });
   } catch (error) {
+    logger.error(`Error getting company lenders: ${error.message}`);
     next(error);
   }
 };
@@ -400,6 +557,299 @@ exports.updateBranding = async (req, res, next) => {
       data: updatedCompany.branding
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get company statistics (aggregated metrics)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getCompanyStats = async (req, res, next) => {
+  const startTime = Date.now();
+  try {
+    let companyId = req.params.id;
+    
+    // For company users, use their own company ID
+    if (req.user.role === 'company' && !companyId) {
+      companyId = req.user.company;
+    }
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company statistics', 403));
+    }
+    
+    if (!companyId) {
+      return next(new ApiError('Company ID is required', 400));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Get all lenders under this company
+    const companyLenders = await Lender.find({ company: companyId }).select('_id');
+    const lenderIds = companyLenders.map(lender => lender._id);
+    
+    // Get total lenders count
+    const totalLenders = lenderIds.length;
+    
+    // Get total borrowers across all company lenders
+    const totalBorrowers = await Borrower.countDocuments({ 
+      lender: { $in: lenderIds } 
+    });
+    
+    // Get loan statistics
+    const loanStats = await Loan.aggregate([
+      {
+        $match: {
+          lender: { $in: lenderIds }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalLoans: { $sum: 1 },
+          totalLoanVolume: { $sum: '$loanDetails.loanAmount' },
+          activeLoans: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['Rejected', 'Cancelled', 'Closed']] } },
+                1,
+                0
+              ]
+            }
+          },
+          pendingLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Pending Approval'] }, 1, 0]
+            }
+          },
+          approvedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0]
+            }
+          },
+          rejectedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0]
+            }
+          },
+          closedLoans: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Closed'] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+    
+    const stats = loanStats[0] || {
+      totalLoans: 0,
+      totalLoanVolume: 0,
+      activeLoans: 0,
+      pendingLoans: 0,
+      approvedLoans: 0,
+      rejectedLoans: 0,
+      closedLoans: 0
+    };
+    
+    // Calculate average loan amount
+    const averageLoanAmount = stats.totalLoans > 0 ? stats.totalLoanVolume / stats.totalLoans : 0;
+    
+    // Performance monitoring
+    const duration = Date.now() - startTime;
+    logger.debug(`Company stats query completed in ${duration}ms for company ${companyId}`, {
+      companyId,
+      duration,
+      totalLenders,
+      totalBorrowers,
+      totalLoans: stats.totalLoans
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        company: {
+          id: company._id,
+          name: company.name,
+          maxLenders: company.maxLenders
+        },
+        summary: {
+          totalLenders,
+          totalBorrowers,
+          totalLoans: stats.totalLoans,
+          totalLoanVolume: stats.totalLoanVolume,
+          activeLoans: stats.activeLoans,
+          averageLoanAmount: Math.round(averageLoanAmount * 100) / 100
+        },
+        loanBreakdown: {
+          pending: stats.pendingLoans,
+          approved: stats.approvedLoans,
+          rejected: stats.rejectedLoans,
+          closed: stats.closedLoans
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Error getting company stats: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get top lenders for a company with sorting options
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getTopLenders = async (req, res, next) => {
+  const startTime = Date.now();
+  try {
+    let companyId = req.params.id;
+    const { sortBy = 'borrowers', limit = 5 } = req.query;
+    
+    // For company users, use their own company ID
+    if (req.user.role === 'company' && !companyId) {
+      companyId = req.user.company;
+    }
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    if (!companyId) {
+      return next(new ApiError('Company ID is required', 400));
+    }
+    
+    // Validate sortBy parameter
+    if (!['borrowers', 'amount'].includes(sortBy)) {
+      return next(new ApiError('sortBy must be either "borrowers" or "amount"', 400));
+    }
+    
+    // Validate limit parameter
+    const limitNum = parseInt(limit, 10);
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 20) {
+      return next(new ApiError('limit must be a number between 1 and 20', 400));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Get all lenders under this company with their user data
+    const companyLenders = await Lender.find({ company: companyId })
+      .populate('user', 'firstName lastName email profileImage')
+      .select('_id user');
+    
+    if (companyLenders.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          company: {
+            id: company._id,
+            name: company.name
+          },
+          topLenders: [],
+          sortBy,
+          totalLenders: 0
+        }
+      });
+    }
+    
+    const lenderIds = companyLenders.map(lender => lender._id);
+    
+    // Aggregate borrower counts and loan amounts for each lender
+    const lenderStats = await Promise.all(
+      companyLenders.map(async (lender) => {
+        // Get borrower count for this lender
+        const borrowerCount = await Borrower.countDocuments({ lender: lender._id });
+        
+        // Get loan amount for this lender
+        const loanAmountResult = await Loan.aggregate([
+          {
+            $match: { lender: lender._id }
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: '$loanDetails.loanAmount' }
+            }
+          }
+        ]);
+        
+        const totalLoanAmount = loanAmountResult[0]?.totalAmount || 0;
+        
+        return {
+          lender: lender,
+          borrowerCount,
+          totalLoanAmount
+        };
+      })
+    );
+    
+    // Sort by the requested metric
+    const sortedLenders = lenderStats.sort((a, b) => {
+      if (sortBy === 'borrowers') {
+        return b.borrowerCount - a.borrowerCount;
+      } else {
+        return b.totalLoanAmount - a.totalLoanAmount;
+      }
+    });
+    
+    // Take only the top N lenders
+    const topLenders = sortedLenders.slice(0, limitNum).map((item, index) => ({
+      rank: index + 1,
+      lender: {
+        id: item.lender._id,
+        user: {
+          id: item.lender.user._id,
+          firstName: item.lender.user.firstName,
+          lastName: item.lender.user.lastName,
+          email: item.lender.user.email,
+          profileImage: item.lender.user.profileImage
+        }
+      },
+      metrics: {
+        borrowerCount: item.borrowerCount,
+        totalLoanAmount: item.totalLoanAmount
+      }
+    }));
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        company: {
+          id: company._id,
+          name: company.name
+        },
+        topLenders,
+        sortBy,
+        totalLenders: companyLenders.length,
+        limit: limitNum
+      }
+    });
+    
+    // Performance monitoring
+    const duration = Date.now() - startTime;
+    logger.debug(`Top lenders query completed in ${duration}ms for company ${companyId}`, {
+      companyId,
+      duration,
+      sortBy,
+      limit: limitNum,
+      totalLenders: companyLenders.length,
+      returnedLenders: topLenders.length
+    });
+  } catch (error) {
+    logger.error(`Error getting top lenders: ${error.message}`);
     next(error);
   }
 };

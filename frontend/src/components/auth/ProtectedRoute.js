@@ -91,6 +91,8 @@ const ProtectedRoute = ({ children, roles = [] }) => {
           router.push('/borrower/dashboard');
         } else if (userRole === 'lender') {
           router.push('/lender/dashboard');
+        } else if (userRole === 'company') {
+          router.push('/company/dashboard');
         } else if (userRole === 'admin') {
           router.push('/admin/dashboard');
         } else {

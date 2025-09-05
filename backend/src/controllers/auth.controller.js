@@ -876,7 +876,8 @@ exports.login = async (req, res, next) => {
           profileImage: user.profileImage,
           createdAt: user.createdAt,
           profileId: profileData ? profileData._id : null,
-          isEmailVerified: user.isEmailVerified
+          isEmailVerified: user.isEmailVerified,
+          company: user.company || null
         },
         token,
         refreshToken

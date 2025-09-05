@@ -374,4 +374,9 @@ const borrowerSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for performance optimization
+borrowerSchema.index({ lender: 1 });
+borrowerSchema.index({ user: 1 });
+borrowerSchema.index({ lender: 1, isActive: 1 });
+
 module.exports = mongoose.model('Borrower', borrowerSchema);

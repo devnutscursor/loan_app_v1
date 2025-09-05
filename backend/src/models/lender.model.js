@@ -171,4 +171,9 @@ const lenderSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for performance optimization
+lenderSchema.index({ company: 1 });
+lenderSchema.index({ user: 1 });
+lenderSchema.index({ company: 1, isActive: 1 });
+
 module.exports = mongoose.model('Lender', lenderSchema);

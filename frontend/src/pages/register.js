@@ -4,6 +4,10 @@ import Link from 'next/link';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../components/layout/MainLayout';
+import RoleSelector from '../components/forms/RoleSelector';
+import LenderRegistrationForm from '../components/forms/LenderRegistrationForm';
+import CompanyRegistrationForm from '../components/forms/CompanyRegistrationForm';
+import FormFooter from '../components/forms/FormFooter';
 
 const Register = () => {
   const router = useRouter();
@@ -15,7 +19,18 @@ const Register = () => {
     confirmPassword: '',
     phone: '',
     role: 'lender',
-    termsAccepted: false
+    termsAccepted: false,
+    // Company-specific fields
+    companyName: '',
+    companyEmail: '',
+    companyPhone: '',
+    maxLenders: 10,
+    primaryContactFirstName: '',
+    primaryContactLastName: '',
+    primaryContactEmail: '',
+    primaryContactPhone: '',
+    primaryContactPassword: '',
+    primaryContactConfirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -35,32 +50,84 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-    
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
+    if (formData.role === 'lender') {
+      // Lender validation
+      if (!formData.firstName.trim()) {
+        newErrors.firstName = 'First name is required';
+      }
+      
+      if (!formData.lastName.trim()) {
+        newErrors.lastName = 'Last name is required';
+      }
+      
+      if (!formData.email) {
+        newErrors.email = 'Email is required';
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = 'Invalid email format';
+      }
 
-    if (formData.phone && !/^\+?[\d\s-()]{10,}$/.test(formData.phone.replace(/\s+/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      if (formData.phone && !/^\+?[\d\s-()]{10,}$/.test(formData.phone.replace(/\s+/g, ''))) {
+        newErrors.phone = 'Please enter a valid phone number';
+      }
+      
+      if (!formData.password) {
+        newErrors.password = 'Password is required';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters';
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
+    } else if (formData.role === 'company') {
+      // Company validation
+      if (!formData.companyName.trim()) {
+        newErrors.companyName = 'Company name is required';
+      }
+      
+      if (!formData.companyEmail) {
+        newErrors.companyEmail = 'Company email is required';
+      } else if (!/\S+@\S+\.\S+/.test(formData.companyEmail)) {
+        newErrors.companyEmail = 'Invalid email format';
+      }
+
+      if (formData.companyPhone && !/^\+?[\d\s-()]{10,}$/.test(formData.companyPhone.replace(/\s+/g, ''))) {
+        newErrors.companyPhone = 'Please enter a valid phone number';
+      }
+
+      // Primary contact validation
+      if (!formData.primaryContactFirstName.trim()) {
+        newErrors.primaryContactFirstName = 'Primary contact first name is required';
+      }
+      
+      if (!formData.primaryContactLastName.trim()) {
+        newErrors.primaryContactLastName = 'Primary contact last name is required';
+      }
+      
+      if (!formData.primaryContactEmail) {
+        newErrors.primaryContactEmail = 'Primary contact email is required';
+      } else if (!/\S+@\S+\.\S+/.test(formData.primaryContactEmail)) {
+        newErrors.primaryContactEmail = 'Invalid email format';
+      }
+
+      if (formData.primaryContactPhone && !/^\+?[\d\s-()]{10,}$/.test(formData.primaryContactPhone.replace(/\s+/g, ''))) {
+        newErrors.primaryContactPhone = 'Please enter a valid phone number';
+      }
+      
+      if (!formData.primaryContactPassword) {
+        newErrors.primaryContactPassword = 'Primary contact password is required';
+      } else if (formData.primaryContactPassword.length < 8) {
+        newErrors.primaryContactPassword = 'Password must be at least 8 characters';
+      }
+      
+      if (formData.primaryContactPassword !== formData.primaryContactConfirmPassword) {
+        newErrors.primaryContactConfirmPassword = 'Passwords do not match';
+      }
+
+      // Validate maxLenders
+      if (formData.maxLenders < 1 || formData.maxLenders > 100) {
+        newErrors.maxLenders = 'Max lenders must be between 1 and 100';
+      }
     }
     
     if (!formData.termsAccepted) {
@@ -78,30 +145,59 @@ const Register = () => {
     
     setLoading(true);
     
-    const { confirmPassword, termsAccepted, ...registrationData } = formData;
-    
     try {
       // Check if this is an admin creating a user (admin is logged in)
       const currentUser = JSON.parse(localStorage.getItem('user'));
       const isAdminCreatingUser = currentUser && currentUser.role === 'admin';
       
       let response;
-      if (isAdminCreatingUser && registrationData.role === 'lender') {
-        // Admin creating a lender - use admin endpoint that skips email verification
-        response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/lender`, 
-          registrationData,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+      if (isAdminCreatingUser) {
+        if (formData.role === 'lender') {
+          // Admin creating a lender - use admin endpoint that skips email verification
+          const { confirmPassword, termsAccepted, ...registrationData } = formData;
+          response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/lender`, 
+            registrationData,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
             }
-          }
-        );
-        
-        toast.success(`Lender account created successfully! ${registrationData.firstName} ${registrationData.lastName} can now log in.`);
+          );
+          
+          toast.success(`Lender account created successfully! ${registrationData.firstName} ${registrationData.lastName} can now log in.`);
+        } else if (formData.role === 'company') {
+          // Admin creating a company - use admin endpoint with correct data format
+          const companyData = {
+            companyName: formData.companyName,
+            phone: formData.companyPhone,
+            email: formData.companyEmail,
+            maxLenders: parseInt(formData.maxLenders),
+            primaryContact: {
+              firstName: formData.primaryContactFirstName,
+              lastName: formData.primaryContactLastName,
+              email: formData.primaryContactEmail,
+              phone: formData.primaryContactPhone,
+              password: formData.primaryContactPassword
+            }
+          };
+          
+          response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/companies`, 
+            companyData,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+          
+          toast.success(`Company account created successfully! ${formData.companyName} and primary contact ${formData.primaryContactFirstName} ${formData.primaryContactLastName} can now log in.`);
+        }
         router.push('/admin/dashboard');
       } else {
         // Regular registration flow - email verification required
+        const { confirmPassword, termsAccepted, ...registrationData } = formData;
         response = await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, 
           registrationData
@@ -131,230 +227,63 @@ const Register = () => {
     <MainLayout>
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl">
-                     <div className="text-center mb-8">
-             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-               Create Lender Account
-             </h2>
-             <p className="mt-2 text-sm text-gray-600">
-               Create a new lender account for your loan application system
-             </p>
-           </div>
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+              {formData.role === 'company' ? 'Create Company Account' : 'Create Lender Account'}
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {formData.role === 'company' 
+                ? 'Create a new company account with primary contact for your loan application system'
+                : 'Create a new lender account for your loan application system'
+              }
+            </p>
+          </div>
           
           <div className="bg-white py-8 px-6 shadow rounded-xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                    First Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="firstName"
-                      name="firstName"
-                      type="text"
-                      autoComplete="given-name"
-                      required
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className={`appearance-none block w-full px-3 py-2 border ${
-                        errors.firstName ? 'border-red-300' : 'border-gray-300'
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                      placeholder="John"
-                    />
-                  </div>
-                  {errors.firstName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                    Last Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="lastName"
-                      name="lastName"
-                      type="text"
-                      autoComplete="family-name"
-                      required
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className={`appearance-none block w-full px-3 py-2 border ${
-                        errors.lastName ? 'border-red-300' : 'border-gray-300'
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                      placeholder="Doe"
-                    />
-                  </div>
-                  {errors.lastName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
-                  )}
-                </div>
-              </div>
+              {/* Role selector - always visible at the top */}
+              <RoleSelector formData={formData} handleChange={handleChange} />
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`appearance-none block w-full px-3 py-2 border ${
-                      errors.email ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    placeholder="you@example.com"
-                  />
-                </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone number
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className={`appearance-none block w-full px-3 py-2 border ${
-                      errors.phone ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    placeholder="(123) 456-7890"
-                  />
-                </div>
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={formData.password}
-                      onChange={handleChange}
-                      className={`appearance-none block w-full px-3 py-2 border ${
-                        errors.password ? 'border-red-300' : 'border-gray-300'
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Confirm Password
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className={`appearance-none block w-full px-3 py-2 border ${
-                        errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                    User Type
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                    disabled
-                  >
-                    <option value="lender">Lender</option>
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">Admins can only create Lender accounts</p>
-                </div>
-              </div>
-
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="termsAccepted"
-                    name="termsAccepted"
-                    type="checkbox"
-                    checked={formData.termsAccepted}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label htmlFor="termsAccepted" className="font-medium text-gray-700">
-                    I agree to the{' '}
-                    <a href="#" className="text-blue-600 hover:text-blue-500">
-                      Terms of Service
-                    </a>{' '}
-                    and{' '}
-                    <a href="#" className="text-blue-600 hover:text-blue-500">
-                      Privacy Policy
-                    </a>
-                  </label>
-                </div>
-              </div>
-              {errors.termsAccepted && (
-                <p className="mt-1 text-sm text-red-600">{errors.termsAccepted}</p>
-              )}
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5"
+              {/* Dynamic form content with smooth transitions */}
+              <div className="relative overflow-hidden">
+                <div 
+                  className={`transition-all duration-500 ease-in-out transform ${
+                    formData.role === 'lender' 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-full absolute inset-0'
+                  }`}
                 >
-                  {loading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Creating account...
-                    </span>
-                  ) : (
-                    'Create account'
-                  )}
-                </button>
+                  <LenderRegistrationForm 
+                    formData={formData} 
+                    errors={errors} 
+                    handleChange={handleChange}
+                    currentRole={formData.role}
+                  />
+                </div>
+                
+                <div 
+                  className={`transition-all duration-500 ease-in-out transform ${
+                    formData.role === 'company' 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 translate-x-full absolute inset-0'
+                  }`}
+                >
+                  <CompanyRegistrationForm 
+                    formData={formData} 
+                    errors={errors} 
+                    handleChange={handleChange}
+                    currentRole={formData.role}
+                  />
+                </div>
               </div>
+
+              {/* Form footer - always visible at the bottom */}
+              <FormFooter 
+                formData={formData} 
+                errors={errors} 
+                handleChange={handleChange} 
+                loading={loading} 
+              />
             </form>
 
             {/* <div className="mt-6">

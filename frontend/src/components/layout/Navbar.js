@@ -187,6 +187,16 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                           </Link>
                         )}
                         
+                        {user.role === 'company' && (
+                          <Link 
+                            href="/company/dashboard" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Dashboard
+                          </Link>
+                        )}
+                        
                         {user.role === 'admin' && (
                           <Link 
                             href="/admin/dashboard" 
@@ -214,6 +224,16 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                             onClick={() => setDropdownOpen(false)}
                           >
                             Your Profile
+                          </Link>
+                        )}
+                        
+                        {user.role === 'company' && (
+                          <Link 
+                            href="/company/profile" 
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Company Profile
                           </Link>
                         )}
                         

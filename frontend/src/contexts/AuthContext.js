@@ -144,6 +144,8 @@ export const AuthProvider = ({ children }) => {
         router.push("/borrower/dashboard");
       } else if (normalizedUser.role === "lender") {
         router.push("/lender/dashboard");
+      } else if (normalizedUser.role === "company") {
+        router.push("/company/dashboard");
       } else if (normalizedUser.role === "admin") {
         router.push("/admin/dashboard");
       } else {

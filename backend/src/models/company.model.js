@@ -24,7 +24,6 @@ const companySchema = new mongoose.Schema({
   address: {
     addressLine1: {
       type: String,
-      required: true,
       trim: true
     },
     addressLine2: {
@@ -33,17 +32,14 @@ const companySchema = new mongoose.Schema({
     },
     city: {
       type: String,
-      required: true,
       trim: true
     },
     state: {
       type: String,
-      required: true,
       trim: true
     },
     zipCode: {
       type: String,
-      required: true,
       trim: true
     },
     country: {

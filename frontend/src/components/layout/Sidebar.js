@@ -42,6 +42,13 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
       ];
     }
 
+    if (user.role === 'company') {
+      return [
+        { name: 'Dashboard', href: '/company/dashboard', icon: 'home' },
+        { name: 'Lenders', href: '/company/lenders', icon: 'users' }
+      ];
+    }
+
     if (user.role === 'admin') {
       return [
         { name: 'Dashboard', href: '/admin/dashboard', icon: 'home' },
