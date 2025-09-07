@@ -20,6 +20,8 @@ const Register = () => {
     phone: '',
     role: 'lender',
     termsAccepted: false,
+    // Lender-specific fields
+    companyId: '',
     // Company-specific fields
     companyName: '',
     companyEmail: '',
@@ -78,6 +80,13 @@ const Register = () => {
       
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
+      }
+
+      // Check if admin is creating a lender (companyId required)
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const isAdminCreatingUser = currentUser && currentUser.role === 'admin';
+      if (isAdminCreatingUser && !formData.companyId) {
+        newErrors.companyId = 'Company selection is required';
       }
     } else if (formData.role === 'company') {
       // Company validation
@@ -146,18 +155,22 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Check if this is an admin creating a user (admin is logged in)
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      const isAdminCreatingUser = currentUser && currentUser.role === 'admin';
       
       let response;
-      if (isAdminCreatingUser) {
         if (formData.role === 'lender') {
-          // Admin creating a lender - use admin endpoint that skips email verification
-          const { confirmPassword, termsAccepted, ...registrationData } = formData;
+          // Admin creating a lender - only send lender-specific data
+          const lenderData = {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            phone: formData.phone,
+            companyId: formData.companyId // This will need to be added to the form
+          };
+          
           response = await axios.post(
             `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/lender`, 
-            registrationData,
+            lenderData,
             {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -165,9 +178,9 @@ const Register = () => {
             }
           );
           
-          toast.success(`Lender account created successfully! ${registrationData.firstName} ${registrationData.lastName} can now log in.`);
+          toast.success(`Lender account created successfully! ${lenderData.firstName} ${lenderData.lastName} can now log in.`);
         } else if (formData.role === 'company') {
-          // Admin creating a company - use admin endpoint with correct data format
+          // Admin creating a company - only send company-specific data
           const companyData = {
             companyName: formData.companyName,
             phone: formData.companyPhone,
@@ -195,17 +208,7 @@ const Register = () => {
           toast.success(`Company account created successfully! ${formData.companyName} and primary contact ${formData.primaryContactFirstName} ${formData.primaryContactLastName} can now log in.`);
         }
         router.push('/admin/dashboard');
-      } else {
-        // Regular registration flow - email verification required
-        const { confirmPassword, termsAccepted, ...registrationData } = formData;
-        response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, 
-          registrationData
-        );
-        
-        toast.success('Registration successful! Please check your email for verification.');
-        router.push(`/email-verification-sent?email=${encodeURIComponent(formData.email)}`);
-      }
+     
     } catch (error) {
       console.error('Registration error:', error);
       
@@ -216,7 +219,8 @@ const Register = () => {
       }
       
       if (error.response?.status === 400 && error.response?.data?.message?.includes('email')) {
-        setErrors({ ...errors, email: 'Email already in use' });
+        const emailField = formData.role === 'company' ? 'primaryContactEmail' : 'email';
+        setErrors({ ...errors, [emailField]: 'Email already in use' });
       }
     } finally {
       setLoading(false);

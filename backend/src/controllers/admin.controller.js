@@ -396,14 +396,14 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { companyName, password, phone, email, maxLenders, primaryContact } = req.body;
+    const { companyName, phone, email, maxLenders, primaryContact } = req.body;
     console.log('Creating company with primary contact:', companyName);
 
-    if (!companyName || !password || !phone || !email || typeof maxLenders !== 'number' || !primaryContact) {
+    if (!companyName || !phone || !email || typeof maxLenders !== 'number' || !primaryContact) {
       return next(new ApiError('Missing required fields for company or primary contact', 400));
     }
-    const { firstName, lastName, email: pcEmail, phone: pcPhone, password: pcPassword } = primaryContact;
-    if (!firstName || !lastName || !pcEmail || !pcPassword) {
+    const { firstName, lastName, email: primaryContactEmail, phone: primaryContactPhone, password } = primaryContact;
+    if (!firstName || !lastName || !primaryContactEmail || !password) {
       return next(new ApiError('Missing required primary contact fields', 400));
     }
 
@@ -412,7 +412,7 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
     if (existingCompany) {
       return next(new ApiError('A company with this name already exists', 400));
     }
-    const existingPCUser = await User.findOne({ email: pcEmail.toLowerCase() }).session(session);
+    const existingPCUser = await User.findOne({ email: primaryContactEmail.toLowerCase() }).session(session);
     if (existingPCUser) {
       return next(new ApiError('Primary contact email already in use', 400));
     }
@@ -434,9 +434,9 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
       {
         firstName,
         lastName,
-        email: pcEmail.toLowerCase(),
-        phone: pcPhone,
-        password: pcPassword,
+        email: primaryContactEmail.toLowerCase(),
+        phone: primaryContactPhone,
+        password: password,
         role: 'company',
         company: company._id,
         isEmailVerified: true

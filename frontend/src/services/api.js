@@ -266,7 +266,7 @@ export const companyService = {
     return {
       data: {
         stats: statsResponse.data.data,
-        topLenders: topLendersResponse.data.data.lenders || []
+        topLenders: topLendersResponse.data.data.topLenders || []
       }
     };
   },
@@ -280,6 +280,7 @@ export const companyService = {
   // Company Lenders
   getLenders: (companyId) => api.get(`/companies/${companyId}/lenders`),
   getLender: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}`),
+  createLender: (companyId, lenderData) => api.post(`/companies/${companyId}/lenders`, lenderData),
   
   // Company Profile
   getProfile: (companyId) => api.get(`/companies/${companyId}`),
@@ -511,3 +512,4 @@ export const noteService = {
 };
 
 export default api;
+

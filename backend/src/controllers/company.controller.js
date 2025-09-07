@@ -88,7 +88,7 @@ exports.getAllCompanies = async (req, res, next) => {
     
     // Get companies
     const companies = await Company.find(filter)
-      .populate('createdBy', 'firstName lastName email')
+      .populate('primaryContact', 'firstName lastName email')
       .skip(skip)
       .limit(limit)
       .sort({ name: 1 });
@@ -369,10 +369,10 @@ exports.getCompanyLenders = async (req, res, next) => {
     const lenders = await Lender.find({ company: companyId })
       .populate({
         path: 'user',
-        select: 'firstName lastName email profileImage isActive lastLogin',
+        select: 'firstName lastName email phone profileImage isActive lastLogin company',
         match: searchFilter.user ? searchFilter : {}
       })
-      .select('_id user nmls title isActive createdAt')
+      .select('_id user nmls title isActive createdAt company')
       .skip(skip)
       .limit(limitNum)
       .sort(sortObject);
@@ -424,7 +424,9 @@ exports.getCompanyLenders = async (req, res, next) => {
             email: lender.user.email,
             profileImage: lender.user.profileImage,
             isActive: lender.user.isActive,
-            lastLogin: lender.user.lastLogin
+            lastLogin: lender.user.lastLogin,
+            company: lender.user.company,
+            phone: lender.user.phone,
           },
           nmls: lender.nmls,
           title: lender.title,
@@ -698,6 +700,100 @@ exports.getCompanyStats = async (req, res, next) => {
     });
   } catch (error) {
     logger.error(`Error getting company stats: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Create a new lender for the company
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.createCompanyLender = async (req, res, next) => {
+  try {
+    const { id: companyId } = req.params;
+    const { firstName, lastName, email, password, phone } = req.body;
+    
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      return next(new ApiError('First name, last name, email, and password are required', 400));
+    }
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ApiError('Email already in use', 400));
+    }
+    
+    // Verify company exists and user has access
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    if (req.user.role === 'company' && req.user.company.toString() !== companyId) {
+      return next(new ApiError('You can only create lenders for your own company', 403));
+    }
+    
+    // Enforce maxLenders capacity
+    try {
+      const { assertCompanyCapacity } = require('../services/company.service');
+      await assertCompanyCapacity(company._id);
+    } catch (capErr) {
+      return next(capErr);
+    }
+    
+    // Create new lender user with email verified (since company created it)
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      role: 'lender',
+      isEmailVerified: true, // Skip email verification for company-created users
+      isActive: true
+    });
+    
+    // Create lender profile associated to company
+    const lender = await Lender.create({
+      user: user._id,
+      name: `${firstName} ${lastName}`,
+      email: email,
+      phone: phone,
+      company: company._id,
+      isActive: true
+    });
+    
+    // Create default loan programs and rates for the new lender
+    try {
+      const { createDefaultLoanPrograms } = require('./auth.controller');
+      const { createDefaultLoanRates } = require('./loanRate.controller');
+      
+      await createDefaultLoanPrograms(user._id, lender._id);
+      await createDefaultLoanRates(user._id, lender._id);
+      logger.info(`Default loan programs and rates created for lender ${lender._id}`);
+    } catch (setupError) {
+      logger.error(`Error creating default programs/rates for lender ${lender._id}:`, setupError);
+      // Don't fail the user creation if this fails, just log it
+    }
+    
+    // Remove password from response
+    user.password = undefined;
+    
+    logger.info(`Lender user created: ${email} by ${req.user.role} ${req.user._id} for company ${company._id}`);
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Lender created successfully',
+      data: {
+        user,
+        lender
+      }
+    });
+  } catch (error) {
+    logger.error(`Error creating company lender: ${error.message}`);
     next(error);
   }
 };

@@ -25,6 +25,9 @@ router.patch('/:id/branding', companyController.updateBranding);
 // Get company lenders
 router.get('/:id/lenders', companyController.getCompanyLenders);
 
+// Create a new lender for the company
+router.post('/:id/lenders', companyController.createCompanyLender);
+
 // Get company statistics
 router.get('/:id/stats', companyController.getCompanyStats);
 

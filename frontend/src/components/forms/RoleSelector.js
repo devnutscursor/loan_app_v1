@@ -1,6 +1,7 @@
 import React from 'react';
 
 const RoleSelector = ({ formData, handleChange }) => {
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
@@ -17,7 +18,6 @@ const RoleSelector = ({ formData, handleChange }) => {
           <option value="lender">Lender</option>
           <option value="company">Company</option>
         </select>
-        <p className="mt-1 text-xs text-gray-500">Select the type of account to create</p>
       </div>
     </div>
   );

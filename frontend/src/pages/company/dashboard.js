@@ -122,7 +122,7 @@ const CompanyDashboard = () => {
   const fetchTopLenders = async () => {
     try {
       const topLendersResponse = await companyService.getTopLenders(user.company);
-      setTopLenders(topLendersResponse.data.data.lenders || []);
+      setTopLenders(topLendersResponse.data.data.topLenders || []);
     } catch (error) {
       console.error('Error fetching top lenders:', error);
       toast.error('Failed to load top lenders');
@@ -234,10 +234,10 @@ const CompanyDashboard = () => {
               <div className="space-y-3">
                 {topLenders.map((lender, index) => (
                   <TopLenderCard
-                    key={lender._id}
-                    lender={lender}
+                    key={lender.lender.user.id}
+                    lender={lender.lender.user}
                     rank={index + 1}
-                    onClick={() => handleLenderClick(lender._id)}
+                    onClick={() => handleLenderClick(lender.lender.user.id)}
                     sortBy={sortBy}
                   />
                 ))}
