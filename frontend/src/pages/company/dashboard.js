@@ -55,20 +55,20 @@ const TopLenderCard = ({ lender, rank, onClick, sortBy }) => (
           {rank}
         </div>
         <div>
-          <h4 className="font-semibold text-gray-900">{lender.name}</h4>
-          <p className="text-sm text-gray-600">{lender.email}</p>
+          <h4 className="font-semibold text-gray-900">{lender.lender.user.name}</h4>
+          <p className="text-sm text-gray-600">{lender.lender.user.email}</p>
         </div>
       </div>
       <div className="text-right">
         {sortBy === 'borrowerCount' ? (
           <>
-            <p className="text-sm font-bold text-primary">{lender.borrowerCount} borrowers</p>
-            <p className="text-xs text-gray-600">${lender.totalLoanAmount?.toLocaleString() || '0'}</p>
+            <p className="text-sm font-bold text-primary">{lender.metrics.borrowerCount} borrowers</p>
+            <p className="text-xs text-gray-600">${lender.metrics.totalLoanAmount?.toLocaleString() || '0'}</p>
           </>
         ) : (
           <>
-            <p className="text-sm font-bold text-primary">${lender.totalLoanAmount?.toLocaleString() || '0'}</p>
-            <p className="text-xs text-gray-600">{lender.borrowerCount} borrowers</p>
+            <p className="text-sm font-bold text-primary">${lender.metrics.totalLoanAmount?.toLocaleString() || '0'}</p>
+            <p className="text-xs text-gray-600">{lender.metrics.borrowerCount} borrowers</p>
           </>
         )}
       </div>
@@ -106,7 +106,7 @@ const CompanyDashboard = () => {
       
       // Fetch company stats
       const statsResponse = await companyService.getStats(user.company);
-      setStats(statsResponse.data.data);
+      setStats(statsResponse.data.data.summary);
 
       // Fetch top lenders with current sort
       await fetchTopLenders();
@@ -235,7 +235,7 @@ const CompanyDashboard = () => {
                 {topLenders.map((lender, index) => (
                   <TopLenderCard
                     key={lender.lender.user.id}
-                    lender={lender.lender.user}
+                    lender={lender}
                     rank={index + 1}
                     onClick={() => handleLenderClick(lender.lender.user.id)}
                     sortBy={sortBy}

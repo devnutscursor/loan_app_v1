@@ -249,36 +249,24 @@ const Register = () => {
               <RoleSelector formData={formData} handleChange={handleChange} />
 
               {/* Dynamic form content with smooth transitions */}
-              <div className="relative overflow-hidden">
-                <div 
-                  className={`transition-all duration-500 ease-in-out transform ${
-                    formData.role === 'lender' 
-                      ? 'opacity-100 translate-x-0' 
-                      : 'opacity-0 -translate-x-full absolute inset-0'
-                  }`}
-                >
+              <div className="relative overflow-hidden transition-all duration-500 ease-in-out">
+                {formData.role === 'lender' && (
                   <LenderRegistrationForm 
                     formData={formData} 
                     errors={errors} 
                     handleChange={handleChange}
                     currentRole={formData.role}
                   />
-                </div>
-                
-                <div 
-                  className={`transition-all duration-500 ease-in-out transform ${
-                    formData.role === 'company' 
-                      ? 'opacity-100 translate-x-0' 
-                      : 'opacity-0 translate-x-full absolute inset-0'
-                  }`}
-                >
+                )}
+
+                {formData.role === 'company' && (
                   <CompanyRegistrationForm 
                     formData={formData} 
                     errors={errors} 
                     handleChange={handleChange}
                     currentRole={formData.role}
                   />
-                </div>
+                )}
               </div>
 
               {/* Form footer - always visible at the bottom */}

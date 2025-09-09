@@ -949,3 +949,515 @@ exports.getTopLenders = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get lender dashboard data for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderDashboard = async (req, res, next) => {
+  try {
+    const { companyId, lenderId } = req.params;
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId })
+      .populate('user', 'firstName lastName email phone');
+    
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    // Get loan statistics for this lender
+    const loanStats = await Loan.aggregate([
+      {
+        $match: {
+          lender: lender._id
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalLoans: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['closed', 'rejected', 'withdrawn']] } },
+                1,
+                0
+              ]
+            }
+          },
+          approvedLoans: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded']] },
+                1,
+                0
+              ]
+            }
+          },
+          pendingApplications: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded', 'Rejected', 'Withdrawn']] } },
+                1,
+                0
+              ]
+            }
+          },
+          totalAmount: {
+            $sum: '$loanDetails.loanAmount'
+          }
+        }
+      }
+    ]);
+    
+    const stats = loanStats[0] || {
+      totalLoans: 0,
+      approvedLoans: 0,
+      pendingApplications: 0,
+      totalAmount: 0
+    };
+
+    // Calculate performance metrics
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    // Get loans from last 30 days for metrics calculation
+    const recentLoanStats = await Loan.aggregate([
+      {
+        $match: {
+          lender: lender._id,
+          createdAt: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalRecentLoans: { $sum: 1 },
+          approvedRecentLoans: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded']] },
+                1,
+                0
+              ]
+            }
+          },
+          avgProcessingTime: {
+            $avg: {
+              $cond: [
+                { $in: ['$status', ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded']] },
+                {
+                  $divide: [
+                    { $subtract: ['$updatedAt', '$createdAt'] },
+                    1000 * 60 * 60 * 24 // Convert to days
+                  ]
+                },
+                null
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const recentStats = recentLoanStats[0] || {
+      totalRecentLoans: 0,
+      approvedRecentLoans: 0,
+      avgProcessingTime: 0
+    };
+
+    // Calculate approval rate
+    const approvalRate = recentStats.totalRecentLoans > 0 
+      ? Math.round((recentStats.approvedRecentLoans / recentStats.totalRecentLoans) * 100)
+      : 0;
+
+    // Calculate average processing time
+    const avgProcessingTime = recentStats.avgProcessingTime 
+      ? Math.round(recentStats.avgProcessingTime)
+      : 0;
+
+    // Mock trend data (in a real app, you'd calculate this from historical data)
+    const metrics = {
+      approvalRate,
+      approvalRateTrend: Math.floor(Math.random() * 20) - 10, // Random trend between -10% and +10%
+      avgProcessingTime,
+      processingTimeTrend: Math.floor(Math.random() * 20) - 10 // Random trend between -10% and +10%
+    };
+    
+    // Get recent loans
+    const recentLoans = await Loan.find({ lender: lender._id })
+      .populate({
+        path: 'borrower',
+        select: 'user',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName'
+        }
+      })
+      .select('loanDetails status createdAt updatedAt')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+    
+    // Transform recent loans data
+    const transformedLoans = recentLoans.map(loan => ({
+      _id: loan._id,
+      loanNumber: loan.loanDetails?.loanNumber,
+      status: loan.status,
+      loanAmount: loan.loanDetails?.loanAmount,
+      borrowerDetails: {
+        firstName: loan.borrower?.user?.firstName,
+        lastName: loan.borrower?.user?.lastName
+      },
+      createdAt: loan.createdAt,
+      updatedAt: loan.updatedAt
+    }));
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        lender: {
+          _id: lender._id,
+          name: `${lender.user.firstName} ${lender.user.lastName}`,
+          email: lender.user.email,
+          phone: lender.user.phone,
+          isActive: lender.isActive
+        },
+        stats: {
+          totalLoans: stats.totalLoans,
+          approvedLoans: stats.approvedLoans,
+          pendingApplications: stats.pendingApplications,
+          totalAmount: stats.totalAmount,
+          metrics: metrics
+        },
+        recentLoans: transformedLoans
+      }
+    });
+  } catch (error) {
+    logger.error(`Error getting lender dashboard: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get lender borrowers for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderBorrowers = async (req, res, next) => {
+  try {
+    const { companyId, lenderId } = req.params;
+    const { limit = 10, page = 1 } = req.query;
+
+    console.log("companyId", companyId);
+    console.log("lenderId", lenderId);
+    console.log("req.user", req.user);
+
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId });
+    console.log("lender", lender);
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    const limitNum = parseInt(limit, 10);
+    const pageNum = parseInt(page, 10);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Get borrowers for this lender
+    const borrowers = await Borrower.find({ lender: lenderId })
+      .populate('user', 'firstName lastName email phone')
+      .select('_id user')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    // Get loan counts for each borrower
+    const borrowersWithLoanCounts = await Promise.all(
+      borrowers.map(async (borrower) => {
+        const loanCount = await Loan.countDocuments({ borrower: borrower._id });
+        return {
+          _id: borrower._id,
+          user: borrower.user,
+          loanCount
+        };
+      })
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: borrowersWithLoanCounts
+    });
+  } catch (error) {
+    logger.error(`Error getting lender borrowers: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get lender activities for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderActivities = async (req, res, next) => {
+  try {
+    const { companyId, lenderId } = req.params;
+    const { limit = 5 } = req.query;
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId });
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    const limitNum = parseInt(limit, 10);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Get recent loans for activities
+    const recentLoans = await Loan.find({ 
+      lender: lenderId,
+      createdAt: { $gte: sevenDaysAgo }
+    })
+      .populate({
+        path: 'borrower',
+        select: 'user',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName'
+        }
+      })
+      .select('status createdAt updatedAt loanDetails')
+      .sort({ updatedAt: -1 })
+      .limit(limitNum)
+      .lean();
+    
+    // Transform loans into activities
+    const activities = recentLoans.map((loan, index) => {
+      const borrowerName = loan.borrower?.user ? 
+        `${loan.borrower.user.firstName} ${loan.borrower.user.lastName}` : 
+        'Unknown Borrower';
+      
+      let title, icon, statusColor;
+      
+      switch (loan.status) {
+        case 'Conditional Approval':
+        case 'Clear to Close':
+        case 'Approved':
+          title = `Loan approved for ${borrowerName}`;
+          icon = 'CheckCircle';
+          statusColor = 'green';
+          break;
+        case 'Rejected':
+          title = `Loan rejected for ${borrowerName}`;
+          icon = 'XCircle';
+          statusColor = 'red';
+          break;
+        case 'Application Submitted':
+        case 'Under Review':
+          title = `New application from ${borrowerName}`;
+          icon = 'FileText';
+          statusColor = 'blue';
+          break;
+        default:
+          title = `Loan updated for ${borrowerName}`;
+          icon = 'RefreshCw';
+          statusColor = 'yellow';
+      }
+      
+      return {
+        id: `activity-${loan._id}-${index}`,
+        title,
+        description: `Loan #${loan.loanDetails?.loanNumber || loan._id.toString().slice(-6)}`,
+        time: new Date(loan.updatedAt).toLocaleString(),
+        status: loan.status,
+        icon,
+        statusColor,
+        entityId: loan._id,
+        entityType: 'loan',
+        borrowerId: loan.borrower?._id
+      };
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      data: activities
+    });
+  } catch (error) {
+    logger.error(`Error getting lender activities: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get a specific lender for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLender = async (req, res, next) => {
+  try {
+    const { companyId, lenderId } = req.params;
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId })
+      .populate('user', 'firstName lastName email phone profileImage isActive lastLogin')
+      .select('_id user nmls title isActive createdAt company');
+    
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    // Get additional metrics
+    const borrowerCount = await Borrower.countDocuments({ lender: lender._id });
+    
+    const loanStats = await Loan.aggregate([
+      {
+        $match: { lender: lender._id }
+      },
+      {
+        $group: {
+          _id: null,
+          totalLoans: { $sum: 1 },
+          totalAmount: { $sum: '$loanDetails.loanAmount' },
+          activeLoans: {
+            $sum: {
+              $cond: [
+                { $not: { $in: ['$status', ['Rejected', 'Cancelled', 'Closed']] } },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+    
+    const stats = loanStats[0] || {
+      totalLoans: 0,
+      totalAmount: 0,
+      activeLoans: 0
+    };
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        _id: lender._id,
+        name: `${lender.user.firstName} ${lender.user.lastName}`,
+        email: lender.user.email,
+        phone: lender.user.phone,
+        profileImage: lender.user.profileImage,
+        isActive: lender.isActive,
+        lastLogin: lender.user.lastLogin,
+        nmls: lender.nmls,
+        title: lender.title,
+        createdAt: lender.createdAt,
+        company: lender.company,
+        metrics: {
+          borrowerCount,
+          totalLoans: stats.totalLoans,
+          totalLoanAmount: stats.totalAmount,
+          activeLoans: stats.activeLoans
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Error getting lender: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get lender programs for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderPrograms = async (req, res, next) => {
+  try {
+    const { companyId, lenderId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId });
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    const limitNum = parseInt(limit, 10);
+    
+    // Get loan programs for this lender
+    const LoanProgram = require('../models/loanProgram.model');
+    const programs = await LoanProgram.find({ lender: lenderId })
+      .select('programName programType loanTerm minLoanAmount maxLoanAmount interestRate isActive createdAt')
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .lean();
+    
+    res.status(200).json({
+      status: 'success',
+      data: programs
+    });
+  } catch (error) {
+    logger.error(`Error getting lender programs: ${error.message}`);
+    next(error);
+  }
+};

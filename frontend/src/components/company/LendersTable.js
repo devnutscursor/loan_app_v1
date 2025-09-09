@@ -105,7 +105,7 @@ const LendersTable = ({
               <div className="flex items-center">
                 <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-500">
-                  {lender?.user?.borrowerCount || 0} borrowers
+                  {lender?.metrics?.borrowerCount || 0} borrowers
                 </span>
               </div>
             </div>
@@ -114,14 +114,14 @@ const LendersTable = ({
               <div className="flex items-center">
                 <DollarSign className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-500">
-                  ${lender?.user?.totalLoanAmount?.toLocaleString() || '0'}
+                  ${lender?.metrics?.totalLoanAmount?.toLocaleString() || '0'}
                 </span>
               </div>
             </div>
 
             <div className="col-span-2 flex justify-end items-center space-x-3">
               <button
-                onClick={() => onViewStats(lender?.user?._id)}
+                onClick={() => onViewStats(lender?.id)}
                 className="text-sm text-primary hover:text-primary-dark font-medium flex items-center"
                 title="View Stats"
               >
@@ -129,7 +129,7 @@ const LendersTable = ({
                 <span>Stats</span>
               </button>
               <button
-                onClick={() => onViewBorrowers(lender?.user?._id)}
+                onClick={() => onViewBorrowers(lender?.id)}
                 className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center"
                 title="View Borrowers"
               >

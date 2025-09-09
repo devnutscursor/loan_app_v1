@@ -282,6 +282,13 @@ export const companyService = {
   getLender: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}`),
   createLender: (companyId, lenderData) => api.post(`/companies/${companyId}/lenders`, lenderData),
   
+  // Lender Dashboard Data for Company Access
+  getLenderDashboard: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}/dashboard`),
+  getLenderBorrowers: (companyId, lenderId, params) => api.get(`/companies/${companyId}/lenders/${lenderId}/borrowers`, { params }),
+  getLenderActivities: (companyId, lenderId, params) => api.get(`/companies/${companyId}/lenders/${lenderId}/activities`, { params }),
+  getLender: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}`),
+  getLenderPrograms: (companyId, lenderId, params) => api.get(`/companies/${companyId}/lenders/${lenderId}/programs`, { params }),
+  
   // Company Profile
   getProfile: (companyId) => api.get(`/companies/${companyId}`),
   updateProfile: (companyId, companyData) => api.patch(`/companies/${companyId}`, companyData),
