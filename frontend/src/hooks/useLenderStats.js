@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { companyService } from '../services/api';
 import { mapActivityIcons, transformActivities, transformStats, transformBorrowerLoans } from '../utils/lenderStatsUtils';
@@ -35,7 +35,13 @@ export const useLenderStats = (user, lenderId) => {
   // Cache duration in milliseconds (5 minutes)
   const CACHE_DURATION = 5 * 60 * 1000;
 
-  const fetchAll = useCallback(async (lenderId, forceRefresh = false) => {
+  const fetchAll = useCallback(async (currentLenderId, forceRefresh = false) => {
+    // Early return if user is not available or not a company user
+    if (!user || user.role !== 'company' || !user.company || !currentLenderId) {
+      setLoading(false);
+      return;
+    }
+
     // Check if we should use cached data
     const now = Date.now();
     if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION) {
@@ -49,37 +55,37 @@ export const useLenderStats = (user, lenderId) => {
 
       // Use the new company API endpoints
       const [dashboardRes, borrowersRes, activitiesRes, lenderRes, programsRes] = await Promise.all([
-        companyService.getLenderDashboard(user.company, lenderId),
-        companyService.getLenderBorrowers(user.company, lenderId, { limit: 10 }),
-        companyService.getLenderActivities(user.company, lenderId, { limit: 5 }),
-        companyService.getLender(user.company, lenderId),
-        companyService.getLenderPrograms(user.company, lenderId, { limit: 5 })
+        companyService.getLenderDashboard(user.company, currentLenderId),
+        companyService.getLenderBorrowers(user.company, currentLenderId, { limit: 10 }),
+        companyService.getLenderActivities(user.company, currentLenderId, { limit: 5 }),
+        companyService.getLender(user.company, currentLenderId),
+        companyService.getLenderPrograms(user.company, currentLenderId, { limit: 5 })
       ]);
 
       // Extract data from responses
       const dashboardData = dashboardRes.data.data;
-      const recentBorrowers = borrowersRes.data.data || [];
-      const activities = activitiesRes.data.data || [];
+      const recentBorrowersData = borrowersRes.data.data || [];
+      const activitiesData = activitiesRes.data.data || [];
       const lenderData = lenderRes.data.data;
-      const programs = programsRes.data.data || [];
+      const programsData = programsRes.data.data || [];
 
       // Map activities to include icons
       const iconMap = mapActivityIcons();
-      const mappedActivities = transformActivities(activities, iconMap);
+      const mappedActivities = transformActivities(activitiesData, iconMap);
 
       // Extract stats from dashboard data
       const transformedStats = transformStats(dashboardData);
 
       // Get recent loans from dashboard data
-      const recentLoans = dashboardData.recentLoans || [];
+      const recentLoansData = dashboardData.recentLoans || [];
 
       // Get loan counts for borrowers
-      const loansMap = transformBorrowerLoans(recentBorrowers);
+      const loansMap = transformBorrowerLoans(recentBorrowersData);
 
       setStats(transformedStats);
-      setRecentLoans(recentLoans);
-      setRecentBorrowers(recentBorrowers);
-      setPrograms(programs);
+      setRecentLoans(recentLoansData);
+      setRecentBorrowers(recentBorrowersData);
+      setPrograms(programsData);
       setActivities(mappedActivities);
       setLenderHeader(dashboardData.lender);
       setBorrowerLoans(loansMap);
@@ -90,13 +96,25 @@ export const useLenderStats = (user, lenderId) => {
     } finally {
       setLoading(false);
     }
-  }, [user.company, lastFetchTime]);
+  }, [user?.company, lastFetchTime]);
 
-  const refreshActivities = useCallback(async (lenderId) => {
+  const refreshActivities = useCallback(async (currentLenderId) => {
+    if (!user || user.role !== 'company' || !currentLenderId) {
+      return;
+    }
+
     try {
       setActivitiesLoading(true);
       toast.loading('Refreshing activities...');
-      await fetchAll(lenderId, true);
+      
+      const activitiesRes = await companyService.getLenderActivities(user.company, currentLenderId, { limit: 5 });
+      const activitiesData = activitiesRes.data.data || [];
+      
+      // Map activities to include icons
+      const iconMap = mapActivityIcons();
+      const mappedActivities = transformActivities(activitiesData, iconMap);
+      
+      setActivities(mappedActivities);
       toast.success('Activities refreshed');
     } catch (error) {
       console.error('Error refreshing activities:', error);
@@ -104,7 +122,7 @@ export const useLenderStats = (user, lenderId) => {
     } finally {
       setActivitiesLoading(false);
     }
-  }, [fetchAll]);
+  }, [user?.company]);
 
   return {
     loading,

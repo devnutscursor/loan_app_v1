@@ -59,7 +59,7 @@ const LendersTable = ({
               {getSortIcon('totalLoanAmount')}
             </div>
           </div>
-          <div className="col-span-2 text-right">Actions</div>
+          <div className="col-span-2 flex items-center justify-center">Actions</div>
         </div>
       </div>
 
