@@ -1,270 +1,50 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { toast } from 'react-hot-toast';
-import Link from 'next/link';
 import CompanyLayout from '../../components/layout/CompanyLayout';
-import { companyService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLenderStats } from '../../hooks/useLenderStats';
+import { LenderStatsSkeleton } from '../../components/company/lender-stats/LenderStatsSkeleton';
+import StatCard from '../../components/company/lender-stats/StatCard';
+import LoanCard from '../../components/company/lender-stats/LoanCard';
+import BorrowerItem from '../../components/company/lender-stats/BorrowerItem';
+import ActivityItem from '../../components/company/lender-stats/ActivityItem';
+import { formatCurrency } from '../../utils/lenderStatsUtils';
 import { 
   ArrowLeft,
   Users, 
   DollarSign, 
   FileText, 
-  TrendingUp,
   User,
   Mail,
   Phone,
   CheckCircle,
   Clock,
   RefreshCw,
-  XCircle,
-  Upload,
-  ChevronRight,
-  Calendar,
-  AlertTriangle,
   Briefcase,
   Home,
-  BadgeDollarSign,
-  ClipboardList,
-  ArrowRightCircle,
-  LineChart,
-  Edit,
-  FileCheck,
-  FilePlus,
-  FileX,
-  FilePen,
-  MessageSquare
+  BadgeDollarSign
 } from 'lucide-react';
 
-// Component for stat cards (reused from lender dashboard)
-const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass }) => (
-  <div className={`rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md ${bgClass}`}>
-    <div className="px-4 py-5 sm:p-6">
-      <div className="flex items-center">
-        <div className="flex-shrink-0 bg-white bg-opacity-20 rounded-full p-3">
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-        <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-white text-opacity-80 truncate">{title}</dt>
-            <dd className="flex items-baseline">
-              <div className="text-2xl font-semibold text-white">{value}</div>
-              {trend && (
-                <div className={`ml-2 flex items-baseline text-xs font-medium ${
-                  trendValue >= 0 ? 'text-green-100' : 'text-red-100'
-                }`}>
-                  {trendValue >= 0 ? (
-                    <svg className="self-center flex-shrink-0 h-4 w-4 text-green-100" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <svg className="self-center flex-shrink-0 h-4 w-4 text-red-100" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  <span>{Math.abs(trendValue)}%</span>
-                </div>
-              )}
-            </dd>
-          </dl>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// Recent loan card component (reused from lender dashboard)
-const LoanCard = ({ loan, onView }) => {
-  const formatCurrency = (amount) => {
-    if (!amount) return "$0";
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const options = { month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
-  };
-  
-  // Status styling
-  const getStatusStyle = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'application submitted':
-        return "bg-yellow-100 text-yellow-800";
-      case 'approved':
-      case 'clear to close':
-      case 'conditional approval':
-        return "bg-green-100 text-green-800";
-      case 'rejected':
-      case 'declined':
-        return "bg-red-100 text-red-800";
-      case 'funded':
-      case 'closed':
-        return "bg-blue-100 text-blue-800";
-      case 'processing':
-      case 'underwriting':
-        return "bg-purple-100 text-purple-800";
-      case 'pending':
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200">
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium">
-              {loan.borrowerDetails?.firstName?.charAt(0) || "B"}
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900">{loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}</h4>
-              <p className="text-xs text-gray-500">Loan# {loan.loanNumber || loan._id.slice(-6)}</p>
-            </div>
-          </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || 'Status'}
-          </span>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-2 text-xs mb-3">
-          <div>
-            <p className="text-gray-500 mb-1">Amount</p>
-            <p className="font-semibold text-gray-900">{formatCurrency(loan.loanAmount)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 mb-1">Program</p>
-            <p className="font-semibold text-gray-900">N/A</p>
-          </div>
-          <div>
-            <p className="text-gray-500 mb-1">Applied</p>
-            <p className="font-semibold text-gray-900">{formatDate(loan.createdAt)}</p>
-          </div>
-        </div>
-        
-        <button
-          onClick={() => onView(loan._id)}
-          className="w-full mt-2 flex items-center justify-center py-1.5 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
-        >
-          View Details
-          <ChevronRight className="ml-1 h-3 w-3" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Borrower item component (reused from lender dashboard)
-const BorrowerItem = ({ borrower, borrowerLoans }) => {
-  return (
-    <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors">
-      <div className="flex items-center space-x-3">
-        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
-          <span className="text-sm font-medium">
-            {borrower.user?.firstName?.charAt(0)}{borrower.user?.lastName?.charAt(0)}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {borrower.user?.firstName} {borrower.user?.lastName}
-          </p>
-          <p className="text-xs text-gray-500 truncate">{borrower.user?.email}</p>
-        </div>
-      </div>
-      <div className="flex items-center">
-        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
-          {borrowerLoans[borrower._id] || 0} loans
-        </span>
-        <ArrowRightCircle className="ml-2 h-4 w-4 text-gray-500" />
-      </div>
-    </div>
-  );
-};
-
-// Activity item component (reused from lender dashboard)
-const ActivityItem = ({ icon: Icon, title, time, status, statusColor, entityId, entityType, loanNumber, description, borrowerId }) => {
-  const router = useRouter();
-  
-  // Handle click on activity item to navigate to related entity
-  const handleActivityClick = () => {
-    if (entityType === 'loan' && entityId) {
-      // For company users, we can't navigate to lender-specific pages
-      // Instead, we could show a modal or redirect to a company view
-      toast('Loan details view not available for company users', {
-        icon: 'ℹ️',
-        duration: 3000,
-      });
-    } else if (entityType === 'borrower' && borrowerId) {
-      toast('Borrower details view not available for company users', {
-        icon: 'ℹ️',
-        duration: 3000,
-      });
-    }
-  };
-  
-  return (
-    <li className="py-3">
-      <div className="flex items-center space-x-4">
-        <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${statusColor} bg-opacity-20`}>
-          <Icon className={`h-4 w-4 ${statusColor.replace('bg-', 'text-')}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
-          <p className="text-xs text-gray-500">{time}</p>
-          {description && <p className="text-xs text-gray-500 truncate">{description}</p>}
-        </div>
-        <div>
-          <button
-            onClick={handleActivityClick}
-            className="flex items-center justify-center py-1 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
-            disabled={!entityId && !borrowerId}
-          >
-            View
-            <ChevronRight className="ml-1 h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    </li>
-  );
-};
 
 const LenderStats = () => {
   const { user } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [showLoanModal, setShowLoanModal] = useState(false);
-  const [stats, setStats] = useState({
-    totalLoans: 0,
-    approvedLoans: 0,
-    pendingApplications: 0,
-    totalAmount: 0,
-    approvalRate: 0,
-    avgProcessingTime: 0,
-    processingTimeTrend: 0,
-    approvalRateTrend: 0,
-    percentChanges: {
-      loans: 0,
-      applications: 0,
-      amount: 0
-    }
-  });
-  const [recentLoans, setRecentLoans] = useState([]);
-  const [recentBorrowers, setRecentBorrowers] = useState([]);
-  const [programs, setPrograms] = useState([]);
-  const [borrowerLoans, setBorrowerLoans] = useState({});
-  const [activities, setActivities] = useState([]);
-  const [lenderHeader, setLenderHeader] = useState(null);
-  const [activitiesLoading, setActivitiesLoading] = useState(false);
-  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const { lenderId } = router.query;
   
-  // Cache duration in milliseconds (5 minutes)
-  const CACHE_DURATION = 5 * 60 * 1000;
+  const {
+    loading,
+    stats,
+    recentLoans,
+    recentBorrowers,
+    programs,
+    borrowerLoans,
+    activities,
+    lenderHeader,
+    activitiesLoading,
+    fetchAll,
+    refreshActivities
+  } = useLenderStats(user, lenderId);
 
   useEffect(() => {
     if (!user || user.role !== 'company') {
@@ -272,96 +52,10 @@ const LenderStats = () => {
       return;
     }
 
-    const { lenderId } = router.query;
     if (lenderId) {
       fetchAll(lenderId);
     }
-  }, [user, router]);
-
-  const fetchAll = useCallback(async (lenderId, forceRefresh = false) => {
-    // Check if we should use cached data
-    const now = Date.now();
-    if (!forceRefresh && (now - lastFetchTime) < CACHE_DURATION) {
-      console.log('Using cached lender stats data');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Use the new company API endpoints
-      const [dashboardRes, borrowersRes, activitiesRes, lenderRes, programsRes] = await Promise.all([
-        companyService.getLenderDashboard(user.company, lenderId),
-        companyService.getLenderBorrowers(user.company, lenderId, { limit: 10 }),
-        companyService.getLenderActivities(user.company, lenderId, { limit: 5 }),
-        companyService.getLender(user.company, lenderId),
-        companyService.getLenderPrograms(user.company, lenderId, { limit: 5 })
-      ]);
-
-      // Extract data from responses
-      const dashboardData = dashboardRes.data.data;
-      const recentBorrowers = borrowersRes.data.data || [];
-      const activities = activitiesRes.data.data || [];
-      const lenderData = lenderRes.data.data;
-      const programs = programsRes.data.data || [];
-
-      // Map activities to include icons
-      const iconMap = { 
-        FileText, CheckCircle, Clock, RefreshCw, XCircle, Upload, 
-        Edit, FileCheck, FilePlus, FileX, FilePen, MessageSquare 
-      };
-      const mappedActivities = activities.map(a => ({
-        ...a,
-        icon: iconMap[a.icon] || FileText,
-        statusColor: `bg-${a.statusColor}-500`
-      }));
-
-      console.log("Metrics", dashboardData.stats);
-
-      // Extract stats from dashboard data
-      const stats = {
-        totalLoans: dashboardData.stats?.totalLoans || 0,
-        approvedLoans: dashboardData.stats?.approvedLoans || 0,
-        pendingApplications: dashboardData.stats?.pendingApplications || 0,
-        totalAmount: dashboardData.stats?.totalAmount || 0,
-        metrics: {
-          approvalRate: dashboardData.stats?.metrics?.approvalRate || 0,
-          avgProcessingTime: dashboardData.stats?.metrics?.avgProcessingTime || 0,
-          processingTimeTrend: dashboardData.stats?.metrics?.processingTimeTrend || 0,
-          approvalRateTrend: dashboardData.stats?.metrics?.approvalRateTrend || 0,
-        },
-        percentChanges: {
-          loans: 0,
-          applications: 0,
-          amount: 0
-        }
-      };
-
-      // Get recent loans from dashboard data
-      const recentLoans = dashboardData.recentLoans || [];
-
-      // Get loan counts for borrowers
-      const loansMap = {};
-      recentBorrowers.forEach(borrower => {
-        loansMap[borrower._id] = borrower.loanCount || 0;
-      });
-
-      setStats(stats);
-      setRecentLoans(recentLoans);
-      setRecentBorrowers(recentBorrowers);
-      setPrograms(programs);
-      setActivities(mappedActivities);
-      setLenderHeader(dashboardData.lender);
-      setBorrowerLoans(loansMap);
-      setLastFetchTime(now);
-    } catch (error) {
-      console.error('Error fetching lender dashboard data:', error);
-      toast.error('Failed to load lender data');
-    } finally {
-      setLoading(false);
-    }
-  }, [user.company, lastFetchTime]);
+  }, [user, router, lenderId, fetchAll]);
 
   const handleBack = () => {
     router.push('/company/lenders');
@@ -375,189 +69,11 @@ const LenderStats = () => {
     });
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(amount || 0);
-  };
 
   if (loading) {
     return (
       <CompanyLayout title="Lender Stats">
-        <div className="py-6">
-          {/* Header Skeleton */}
-          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
-            <div className="flex items-start justify-center space-x-4 flex-col">
-              <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-4 ml-5"></div>
-              <div>
-                <div className="h-8 w-96 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            </div>
-            <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-
-          {/* Lender Info Card Skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse"></div>
-              <div className="flex-1">
-                <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-                <div className="flex items-center space-x-4 mt-2">
-                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                <div className="mt-2">
-                  <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Grid Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-36 bg-gradient-to-br from-gray-200 to-gray-100 rounded-xl animate-pulse"></div>
-            ))}
-          </div>
-
-          {/* Main Content Layout Skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Loans Section Skeleton */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
-              <div className="flex items-center justify-between mb-5">
-                <div className="h-7 w-48 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {[1, 2].map(i => (
-                  <div key={i} className="bg-white rounded-lg border border-gray-100 p-4 animate-pulse">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="h-9 w-9 bg-gray-200 rounded-full"></div>
-                        <div>
-                          <div className="h-5 w-24 bg-gray-200 rounded mb-1"></div>
-                          <div className="h-3 w-16 bg-gray-200 rounded"></div>
-                        </div>
-                      </div>
-                      <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {[1, 2, 3].map(j => (
-                        <div key={j} className="w-full">
-                          <div className="h-3 w-12 bg-gray-200 rounded mb-1"></div>
-                          <div className="h-4 w-16 bg-gray-200 rounded"></div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="h-8 w-full bg-gray-200 rounded"></div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Performance Metrics Skeleton */}
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-5 w-36 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                      <div className="h-4 w-24 bg-gray-200 rounded mb-3"></div>
-                      <div className="flex items-end space-x-2 mb-2">
-                        <div className="h-10 w-16 bg-gray-200 rounded"></div>
-                        <div className="h-4 w-8 bg-gray-200 rounded"></div>
-                      </div>
-                      <div className="h-3 w-32 bg-gray-200 rounded"></div>
-                    </div>
-                    <div>
-                      <div className="h-4 w-32 bg-gray-200 rounded mb-3"></div>
-                      <div className="flex items-end space-x-2 mb-2">
-                        <div className="h-10 w-8 bg-gray-200 rounded"></div>
-                        <div className="h-5 w-12 bg-gray-200 rounded"></div>
-                        <div className="h-4 w-8 bg-gray-200 rounded"></div>
-                      </div>
-                      <div className="h-3 w-40 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column Skeleton */}
-            <div className="space-y-6">
-              {/* Borrowers Card Skeleton */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-6 w-36 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                
-                <div className="space-y-1">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="p-3 animate-pulse">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-                          <div>
-                            <div className="h-4 w-24 bg-gray-200 rounded mb-1"></div>
-                            <div className="h-3 w-32 bg-gray-200 rounded"></div>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="h-5 w-16 bg-gray-200 rounded"></div>
-                          <div className="h-4 w-4 bg-gray-200 rounded-full ml-2"></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Recent Activity Timeline Skeleton */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-6 w-36 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="flex items-center space-x-4 animate-pulse">
-                      <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1 min-w-0">
-                        <div className="h-4 w-3/4 bg-gray-200 rounded mb-1"></div>
-                        <div className="h-3 w-1/4 bg-gray-200 rounded"></div>
-                      </div>
-                      <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Loan Programs Skeleton */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                
-                <div className="divide-y divide-gray-100">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="py-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="h-2.5 w-2.5 bg-gray-200 rounded-full mr-2"></div>
-                          <div className="h-4 w-32 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="h-3 w-20 bg-gray-200 rounded"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <LenderStatsSkeleton />
       </CompanyLayout>
     );
   }
@@ -597,7 +113,7 @@ const LenderStats = () => {
           
           <div className="flex space-x-3">
             <button
-              onClick={() => fetchAll(router.query.lenderId, true)}
+              onClick={() => fetchAll(lenderId, true)}
               className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
               Refresh Data
             </button>
@@ -755,19 +271,7 @@ const LenderStats = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
                 <button 
-                  onClick={async () => {
-                    try {
-                      setActivitiesLoading(true);
-                      toast.loading('Refreshing activities...');
-                      await fetchAll(router.query.lenderId, true);
-                      toast.success('Activities refreshed');
-                    } catch (error) {
-                      console.error('Error refreshing activities:', error);
-                      toast.error('Failed to refresh activities');
-                    } finally {
-                      setActivitiesLoading(false);
-                    }
-                  }}
+                  onClick={() => refreshActivities(lenderId)}
                   className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
                   disabled={activitiesLoading}
                 >
