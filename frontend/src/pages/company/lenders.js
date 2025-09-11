@@ -58,8 +58,99 @@ const CompanyLenders = () => {
   if (loading && lenders.length === 0) {
     return (
       <CompanyLayout title="Company Lenders">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-5 w-48 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Search and Filters Skeleton */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-10 w-80 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lenders Table Skeleton */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            {/* Table Header Skeleton */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="grid grid-cols-6 gap-4">
+                <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+
+            {/* Table Rows Skeleton */}
+            <div className="divide-y divide-gray-200">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="px-6 py-4">
+                  <div className="grid grid-cols-6 gap-4 items-center">
+                    {/* Avatar and Name */}
+                    <div className="flex items-center space-x-3">
+                      <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div>
+                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Email */}
+                    <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                    
+                    {/* Borrowers */}
+                    <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
+                    
+                    {/* Loans */}
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    
+                    {/* Amount */}
+                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2">
+                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pagination Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
         </div>
       </CompanyLayout>
     );

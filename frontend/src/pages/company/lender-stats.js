@@ -244,6 +244,10 @@ const LenderStats = () => {
     approvedLoans: 0,
     pendingApplications: 0,
     totalAmount: 0,
+    approvalRate: 0,
+    avgProcessingTime: 0,
+    processingTimeTrend: 0,
+    approvalRateTrend: 0,
     percentChanges: {
       loans: 0,
       applications: 0,
@@ -313,12 +317,20 @@ const LenderStats = () => {
         statusColor: `bg-${a.statusColor}-500`
       }));
 
+      console.log("Metrics", dashboardData.stats);
+
       // Extract stats from dashboard data
       const stats = {
         totalLoans: dashboardData.stats?.totalLoans || 0,
         approvedLoans: dashboardData.stats?.approvedLoans || 0,
         pendingApplications: dashboardData.stats?.pendingApplications || 0,
         totalAmount: dashboardData.stats?.totalAmount || 0,
+        metrics: {
+          approvalRate: dashboardData.stats?.metrics?.approvalRate || 0,
+          avgProcessingTime: dashboardData.stats?.metrics?.avgProcessingTime || 0,
+          processingTimeTrend: dashboardData.stats?.metrics?.processingTimeTrend || 0,
+          approvalRateTrend: dashboardData.stats?.metrics?.approvalRateTrend || 0,
+        },
         percentChanges: {
           loans: 0,
           applications: 0,
@@ -377,8 +389,8 @@ const LenderStats = () => {
         <div className="py-6">
           {/* Header Skeleton */}
           <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="flex items-start justify-center space-x-4 flex-col">
+              <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-4 ml-5"></div>
               <div>
                 <div className="h-8 w-96 bg-gray-200 rounded animate-pulse"></div>
               </div>
@@ -570,7 +582,7 @@ const LenderStats = () => {
     <CompanyLayout title="Lender Stats">
       <div className="py-6">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-start justify-center space-x-4 flex-col">
             <button
               onClick={handleBack}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -580,7 +592,6 @@ const LenderStats = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Lender performance overview and statistics</h1>
-
             </div>
           </div>
           
