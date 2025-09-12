@@ -77,7 +77,9 @@ const LenderLoans = () => {
   const [isNewLoanModalOpen, setIsNewLoanModalOpen] = useState(false);
 
   useEffect(() => {
-    if (user.role !== 'lender') {
+    if (user.role === "company"){
+      router.push('/company/dashboard')
+    }else if (user.role !== 'lender') {
       router.push('/login');
       return;
     }

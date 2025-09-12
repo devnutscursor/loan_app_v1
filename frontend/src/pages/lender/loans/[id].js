@@ -3031,8 +3031,9 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
               <>
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
+
                     <Link
-                      href={backUrl || "/lender/loans"}
+                      href={user.role === "lender" ? "/lender/loans" : "/company/lenders"}
                       className="group flex items-center px-2 py-1 rounded hover:bg-gray-100 transition"
                     >
                       <svg

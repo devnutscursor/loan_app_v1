@@ -34,13 +34,13 @@ router.get('/:id/with-details', authorize('lender', 'company'), loanController.g
 // Update loan details
 router.put('/:id', authorize('lender','company'), loanController.updateLoan);
 
-// Update loan status and processing state - lender/admin only
+// Update loan status and processing state - lender/company only
 router.patch('/:id/status', loanController.updateLoanStatus);
 
-// Send pre-approval letter - lender/admin only
+// Send pre-approval letter - lender/company only
 router.post('/:loanId/send-pre-approval', authorize('lender', 'company'), loanController.sendPreApprovalLetter);
 
-// Manage loan milestones - lender/admin only
+// Manage loan milestones - lender/company only
 router.patch('/:id/milestone', authorize('lender', 'company'), loanController.updateMilestone);
 
 // Condition routes
