@@ -11,13 +11,15 @@ const logger = require('../utils/logger');
  */
 exports.createLoanProgram = async (req, res, next) => {
   try {
-    // Only lenders and admins can create loan programs
-    if (!['lender', 'admin'].includes(req.user.role)) {
-      return next(new ApiError('Only lenders and admins can create loan programs', 403));
+    // Only lenders, companies, and admins can create loan programs
+    if (!['lender', 'company', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('Only lenders, companies, and admins can create loan programs', 403));
     }
 
     // If user is a lender, get their lender profile ID
     let lenderId = null;
+    let companyId = null;
+    
     if (req.user.role === 'lender') {
       const Lender = mongoose.model('Lender');
       const lenderProfile = await Lender.findOne({ user: req.user._id });
@@ -27,16 +29,30 @@ exports.createLoanProgram = async (req, res, next) => {
       }
       
       lenderId = lenderProfile._id;
+    } else if (req.user.role === 'company') {
+      // If company user, create program for their company
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      companyId = company._id;
     } else if (req.body.lender) {
       // If admin is creating a program for a specific lender
       lenderId = req.body.lender;
+    } else if (req.body.company) {
+      // If admin is creating a program for a specific company
+      companyId = req.body.company;
     } else {
-      return next(new ApiError('Lender ID is required', 400));
+      return next(new ApiError('Lender ID or Company ID is required', 400));
     }
 
     const programData = {
       ...req.body,
       lender: lenderId,
+      company: companyId,
       createdBy: req.user._id
     };
 
@@ -74,9 +90,22 @@ exports.getAllLoanPrograms = async (req, res, next) => {
       }
       
       filter.lender = lenderProfile._id;
+    } else if (req.user.role === 'company') {
+      // If company user, show only their company's programs
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      filter.company = company._id;
     } else if (req.query.lender) {
       // If admin is filtering by lender
       filter.lender = req.query.lender;
+    } else if (req.query.company) {
+      // If admin is filtering by company
+      filter.company = req.query.company;
     }
     
     const loanPrograms = await LoanProgram.find(filter);
@@ -126,9 +155,9 @@ exports.getLoanProgram = async (req, res, next) => {
  */
 exports.updateLoanProgram = async (req, res, next) => {
   try {
-    // Only lenders and admins can update loan programs
-    if (!['lender', 'admin'].includes(req.user.role)) {
-      return next(new ApiError('Only lenders and admins can update loan programs', 403));
+    // Only lenders, companies, and admins can update loan programs
+    if (!['lender', 'company', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('Only lenders, companies, and admins can update loan programs', 403));
     }
     
     const { id } = req.params;
@@ -149,8 +178,20 @@ exports.updateLoanProgram = async (req, res, next) => {
         return next(new ApiError('Lender profile not found', 404));
       }
       
-      if (loanProgram.lender.toString() !== lenderProfile._id.toString()) {
+      if (loanProgram.lender && loanProgram.lender.toString() !== lenderProfile._id.toString()) {
         return next(new ApiError('You can only update your own loan programs', 403));
+      }
+    } else if (req.user.role === 'company') {
+      // If company user, ensure the program belongs to their company
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      if (loanProgram.company && loanProgram.company.toString() !== company._id.toString()) {
+        return next(new ApiError('You can only update programs for your company', 403));
       }
     }
     
@@ -180,9 +221,9 @@ exports.updateLoanProgram = async (req, res, next) => {
  */
 exports.deleteLoanProgram = async (req, res, next) => {
   try {
-    // Only lenders and admins can delete loan programs
-    if (!['lender', 'admin'].includes(req.user.role)) {
-      return next(new ApiError('Only lenders and admins can delete loan programs', 403));
+    // Only lenders, companies, and admins can delete loan programs
+    if (!['lender', 'company', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('Only lenders, companies, and admins can delete loan programs', 403));
     }
     
     const { id } = req.params;
@@ -203,8 +244,20 @@ exports.deleteLoanProgram = async (req, res, next) => {
         return next(new ApiError('Lender profile not found', 404));
       }
       
-      if (loanProgram.lender.toString() !== lenderProfile._id.toString()) {
+      if (loanProgram.lender && loanProgram.lender.toString() !== lenderProfile._id.toString()) {
         return next(new ApiError('You can only delete your own loan programs', 403));
+      }
+    } else if (req.user.role === 'company') {
+      // If company user, ensure the program belongs to their company
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      if (loanProgram.company && loanProgram.company.toString() !== company._id.toString()) {
+        return next(new ApiError('You can only delete programs for your company', 403));
       }
     }
     

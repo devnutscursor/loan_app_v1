@@ -22,7 +22,7 @@ const loanRateService = {
   // Get all loan rates
   getAllRates: async (filters = {}) => {
     try {
-      // This will automatically apply lender filtering on the backend based on the user's role
+      // This will automatically apply company/lender filtering on the backend based on the user's role
       return await api.get('/loan-rates', { params: filters });
     } catch (error) {
       throw handleApiError(error);

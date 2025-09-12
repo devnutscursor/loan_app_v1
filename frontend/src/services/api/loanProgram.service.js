@@ -23,7 +23,7 @@ const loanProgramService = {
   getAllPrograms: async (filters = {}) => {
     try {
       console.log('LoanProgramService: Calling API with filters:', filters);
-      // This will automatically apply lender filtering on the backend based on the user's role
+      // This will automatically apply company/lender filtering on the backend based on the user's role
       const response = await api.get('/loan-programs', { params: filters });
       console.log('LoanProgramService: Received response:', response);
       return response;
@@ -45,7 +45,7 @@ const loanProgramService = {
   // Create a new loan program
   createProgram: async (data) => {
     try {
-      // The backend will automatically associate with the current lender
+      // The backend will automatically associate with the current company or lender based on user role
       return await api.post('/loan-programs', data);
     } catch (error) {
       throw handleApiError(error);

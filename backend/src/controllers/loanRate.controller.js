@@ -4,14 +4,72 @@ const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 
 /**
+ * Copy company loan rates to a new lender
+ * @param {ObjectId} userId - The user ID creating the lender (updatedBy)
+ * @param {ObjectId} lenderId - The newly created lender's ID
+ * @param {ObjectId} companyId - The company ID to copy rates from
+ */
+exports.copyCompanyLoanRatesToLender = async (userId, lenderId, companyId) => {
+  try {
+    if (!userId || !lenderId || !companyId) {
+      throw new Error('userId, lenderId, and companyId are required to copy company loan rates');
+    }
+
+    // Get all company loan rates
+    const companyRates = await LoanRate.find({ company: companyId });
+    
+    if (companyRates.length === 0) {
+      logger.warn(`No company rates found for company ${companyId}, creating default rates for lender ${lenderId}`);
+      // Fallback to creating default rates
+      await exports.createDefaultLoanRates(userId, lenderId);
+      return;
+    }
+    
+    // Copy each rate to the lender
+    const operations = companyRates.map(rate => ({
+      updateOne: {
+        filter: {
+          programType: rate.programType,
+          lender: lenderId
+        },
+        update: {
+          $set: {
+            rate: rate.rate,
+            updatedBy: userId,
+            updatedAt: new Date()
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    const result = await LoanRate.bulkWrite(operations);
+    logger.info(`Copied ${companyRates.length} loan rates from company ${companyId} to lender ${lenderId} (upserted: ${result.upsertedCount}, modified: ${result.modifiedCount})`);
+    return true;
+  } catch (error) {
+    logger.error(`Error copying company loan rates to lender: ${error.message}`);
+    
+    // Fallback to creating default rates
+    try {
+      await exports.createDefaultLoanRates(userId, lenderId);
+      return true;
+    } catch (fallbackError) {
+      logger.error(`Fallback also failed: ${fallbackError.message}`);
+      throw error; // Propagate the original error
+    }
+  }
+}
+
+
+/**
  * Create default loan rates for a new lender (utility, not an Express handler)
  * @param {ObjectId} userId - The user ID creating the lender (updatedBy)
  * @param {ObjectId} lenderId - The newly created lender's ID
  */
-exports.createDefaultLoanRates = async (userId, lenderId) => {
+exports.createDefaultLoanRates = async (userId, lenderId = null, companyId = null) => {
   try {
-    if (!userId || !lenderId) {
-      throw new Error('userId and lenderId are required to create default loan rates');
+    if (!userId || (!lenderId && !companyId)) {
+      throw new Error('userId and either lenderId or companyId are required to create default loan rates');
     }
 
     // Current market interest rates (July 2025) - based on Freddie Mac PMMS and industry standards
@@ -28,7 +86,8 @@ exports.createDefaultLoanRates = async (userId, lenderId) => {
       updateOne: {
         filter: {
           programType: r.programType,
-          lender: lenderId
+          ...(lenderId ? { lender: lenderId } : {}),
+          ...(companyId ? { company: companyId } : {})
         },
         update: {
           $set: {
@@ -42,10 +101,10 @@ exports.createDefaultLoanRates = async (userId, lenderId) => {
     }));
 
     const result = await LoanRate.bulkWrite(operations);
-    logger.info(`Created/updated default loan rates for lender ID: ${lenderId} (upserted: ${result.upsertedCount}, modified: ${result.modifiedCount})`);
+    logger.info(`Created/updated default loan rates for ${companyId ? 'company' : 'lender'} ID: ${companyId || lenderId} (upserted: ${result.upsertedCount}, modified: ${result.modifiedCount})`);
     return true;
   } catch (error) {
-    logger.error(`Error creating default loan rates for lender ${lenderId}: ${error.message}`);
+    logger.error(`Error creating default loan rates for ${companyId ? 'company' : 'lender'} ${companyId || lenderId}: ${error.message}`);
     
     // Try individual operations as fallback
     try {
@@ -60,7 +119,11 @@ exports.createDefaultLoanRates = async (userId, lenderId) => {
       
       for (const r of defaultRates) {
         await LoanRate.updateOne(
-          { programType: r.programType, lender: lenderId },
+          { 
+            programType: r.programType, 
+            ...(lenderId ? { lender: lenderId } : {}),
+            ...(companyId ? { company: companyId } : {})
+          },
           { 
             $set: { 
               rate: r.rate, 
@@ -73,10 +136,10 @@ exports.createDefaultLoanRates = async (userId, lenderId) => {
         successCount++;
       }
       
-      logger.info(`Fallback: Created/updated ${successCount} default loan rates for lender ID: ${lenderId}`);
+      logger.info(`Fallback: Created/updated ${successCount} default loan rates for ${companyId ? 'company' : 'lender'} ID: ${companyId || lenderId}`);
       return true;
     } catch (fallbackError) {
-      logger.error(`Fallback also failed for lender ${lenderId}: ${fallbackError.message}`);
+      logger.error(`Fallback also failed for ${companyId ? 'company' : 'lender'} ${companyId || lenderId}: ${fallbackError.message}`);
       throw error; // Propagate the original error
     }
   }
@@ -108,9 +171,23 @@ exports.getAllLoanRates = async (req, res, next) => {
       
       filter.lender = lenderProfile._id;
       console.log(`[DEBUG] Loan Rates API - Filter:`, filter);
+    } else if (req.user.role === 'company') {
+      // If company user, show only their company's rates
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      filter.company = company._id;
+      console.log(`[DEBUG] Loan Rates API - Company filter:`, filter);
     } else if (req.query.lender) {
       // If admin is filtering by lender
       filter.lender = req.query.lender;
+    } else if (req.query.company) {
+      // If admin is filtering by company
+      filter.company = req.query.company;
     }
     
     const loanRates = await LoanRate.find(filter).sort({ programType: 1 });
@@ -135,13 +212,15 @@ exports.getAllLoanRates = async (req, res, next) => {
  */
 exports.updateLoanRates = async (req, res, next) => {
   try {
-    // Only lenders and admins can update loan rates
-    if (!['lender', 'admin'].includes(req.user.role)) {
-      return next(new ApiError('Only lenders and admins can update loan rates', 403));
+    // Only lenders, companies, and admins can update loan rates
+    if (!['lender', 'company', 'admin'].includes(req.user.role)) {
+      return next(new ApiError('Only lenders, companies, and admins can update loan rates', 403));
     }
     
-    // Get lender ID based on user role
+    // Get lender ID or company ID based on user role
     let lenderId = null;
+    let companyId = null;
+    
     if (req.user.role === 'lender') {
       const Lender = mongoose.model('Lender');
       const lenderProfile = await Lender.findOne({ user: req.user._id });
@@ -151,11 +230,24 @@ exports.updateLoanRates = async (req, res, next) => {
       }
       
       lenderId = lenderProfile._id;
+    } else if (req.user.role === 'company') {
+      // If company user, update rates for their company
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      companyId = company._id;
     } else if (req.body.lender) {
       // If admin is creating rates for a specific lender
       lenderId = req.body.lender;
+    } else if (req.body.company) {
+      // If admin is creating rates for a specific company
+      companyId = req.body.company;
     } else {
-      return next(new ApiError('Lender ID is required', 400));
+      return next(new ApiError('Lender ID or Company ID is required', 400));
     }
     
     const { rates } = req.body;
@@ -175,8 +267,12 @@ exports.updateLoanRates = async (req, res, next) => {
         return next(new ApiError(`Invalid rate value for ${programType}`, 400));
       }
       
-      // Find and update or create new rate for this lender and program type
-      const existingRate = await LoanRate.findOne({ programType, lender: lenderId });
+      // Find and update or create new rate for this lender/company and program type
+      const existingRate = await LoanRate.findOne({ 
+        programType, 
+        lender: lenderId,
+        company: companyId
+      });
       
       if (existingRate) {
         existingRate.rate = rate;
@@ -190,6 +286,7 @@ exports.updateLoanRates = async (req, res, next) => {
           programType,
           rate,
           lender: lenderId,
+          company: companyId,
           updatedBy: req.user._id
         });
         
@@ -218,10 +315,14 @@ exports.getLoanRateByType = async (req, res, next) => {
   try {
     const { type } = req.params;
     
-    // Get lender ID from query or from user role
+    // Get lender ID or company ID from query or from user role
     let lenderId = null;
+    let companyId = null;
+    
     if (req.query.lender) {
       lenderId = req.query.lender;
+    } else if (req.query.company) {
+      companyId = req.query.company;
     } else if (req.user.role === 'lender') {
       const Lender = mongoose.model('Lender');
       const lenderProfile = await Lender.findOne({ user: req.user._id });
@@ -231,11 +332,24 @@ exports.getLoanRateByType = async (req, res, next) => {
       }
       
       lenderId = lenderProfile._id;
+    } else if (req.user.role === 'company') {
+      const Company = mongoose.model('Company');
+      const company = await Company.findById(req.user.company);
+      
+      if (!company) {
+        return next(new ApiError('Company not found', 404));
+      }
+      
+      companyId = company._id;
     } else {
-      return next(new ApiError('Lender ID is required as a query parameter', 400));
+      return next(new ApiError('Lender ID or Company ID is required as a query parameter', 400));
     }
     
-    const loanRate = await LoanRate.findOne({ programType: type, lender: lenderId });
+    const loanRate = await LoanRate.findOne({ 
+      programType: type, 
+      lender: lenderId,
+      company: companyId
+    });
     
     if (!loanRate) {
       return next(new ApiError(`Loan rate for program type ${type} not found`, 404));

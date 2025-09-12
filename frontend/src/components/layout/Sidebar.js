@@ -45,7 +45,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
     if (user.role === 'company') {
       return [
         { name: 'Dashboard', href: '/company/dashboard', icon: 'home' },
-        { name: 'Lenders', href: '/company/lenders', icon: 'users' }
+        { name: 'Lenders', href: '/company/lenders', icon: 'users' },
+        { name: 'Loan Programs', href: '/company/programs', icon: 'template' },
       ];
     }
 

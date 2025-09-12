@@ -37,6 +37,19 @@ exports.createCompany = async (req, res, next) => {
     
     logger.info(`Company created: ${name} by user ${req.user._id}`);
     
+    // Create default loan programs and rates for the company
+    try {
+      const { createDefaultLoanPrograms } = require('./auth.controller');
+      const { createDefaultLoanRates } = require('./loanRate.controller');
+      
+      await createDefaultLoanPrograms(req.user._id, null, company._id);
+      await createDefaultLoanRates(req.user._id, null, company._id);
+      logger.info(`Default loan programs and rates created for company ${company._id}`);
+    } catch (setupError) {
+      logger.error(`Error creating default programs/rates for company ${company._id}:`, setupError);
+      // Don't fail the company creation if this fails, just log it
+    }
+    
     // If user is a lender, associate them with the new company
     if (req.user.role === 'lender') {
       const lender = await Lender.findOne({ user: req.user._id });
@@ -766,16 +779,17 @@ exports.createCompanyLender = async (req, res, next) => {
       isActive: true
     });
     
-    // Create default loan programs and rates for the new lender
+    // Create loan programs and rates for the new lender
     try {
-      const { createDefaultLoanPrograms } = require('./auth.controller');
-      const { createDefaultLoanRates } = require('./loanRate.controller');
+      const { copyCompanyLoanProgramsToLender } = require('./auth.controller');
+      const { copyCompanyLoanRatesToLender } = require('./loanRate.controller');
       
-      await createDefaultLoanPrograms(user._id, lender._id);
-      await createDefaultLoanRates(user._id, lender._id);
-      logger.info(`Default loan programs and rates created for lender ${lender._id}`);
+      // Copy company programs and rates to the lender
+      await copyCompanyLoanProgramsToLender(user._id, lender._id, company._id);
+      await copyCompanyLoanRatesToLender(user._id, lender._id, company._id);
+      logger.info(`Company loan programs and rates copied to lender ${lender._id}`);
     } catch (setupError) {
-      logger.error(`Error creating default programs/rates for lender ${lender._id}:`, setupError);
+      logger.error(`Error copying company programs/rates to lender ${lender._id}:`, setupError);
       // Don't fail the user creation if this fails, just log it
     }
     

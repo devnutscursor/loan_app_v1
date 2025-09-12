@@ -17,7 +17,7 @@ const config = require('../config');
  * @param {string} lenderId - The lender profile ID
  * @returns {Promise<void>}
  */
-exports.createDefaultLoanPrograms = async (userId, lenderId) => {
+exports.createDefaultLoanPrograms = async (userId, lenderId = null, companyId = null) => {
   const LoanProgram = mongoose.model('LoanProgram');
   
   try {
@@ -68,6 +68,7 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         frequency: 'once'
       },
       lender: lenderId,
+      company: companyId,
       createdBy: userId
     });
     
@@ -112,6 +113,7 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         frequency: 'once'
       },
       lender: lenderId,
+      company: companyId,
       createdBy: userId
     });
     
@@ -156,6 +158,7 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         frequency: 'once'
       },
       lender: lenderId,
+      company: companyId,
       createdBy: userId
     });
     
@@ -200,6 +203,7 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         frequency: 'once'
       },
       lender: lenderId,
+      company: companyId,
       createdBy: userId
     });
     
@@ -244,16 +248,65 @@ exports.createDefaultLoanPrograms = async (userId, lenderId) => {
         frequency: 'once'
       },
       lender: lenderId,
+      company: companyId,
       createdBy: userId
     });
     
-    logger.info(`Created default loan programs for lender ID: ${lenderId}`);
+    logger.info(`Created default loan programs for ${companyId ? 'company' : 'lender'} ID: ${companyId || lenderId}`);
   } catch (error) {
     logger.error(`Error creating default loan programs: ${error.message}`);
     // We don't want to fail the user registration if loan program creation fails
     // This is a background task that can be retried later
   }
 };
+
+
+/**
+ * Copy company loan programs to a new lender
+ * @param {ObjectId} userId - The user ID creating the lender (createdBy)
+ * @param {ObjectId} lenderId - The newly created lender's ID
+ * @param {ObjectId} companyId - The company ID to copy programs from
+ */
+exports.copyCompanyLoanProgramsToLender = async (userId, lenderId, companyId) => {
+  const LoanProgram = mongoose.model('LoanProgram');
+  
+  try {
+    // Get all company loan programs
+    const companyPrograms = await LoanProgram.find({ company: companyId });
+    
+    if (companyPrograms.length === 0) {
+      logger.warn(`No company programs found for company ${companyId}, creating default programs for lender ${lenderId}`);
+      // Fallback to creating default programs
+      await exports.createDefaultLoanPrograms(userId, lenderId);
+      return;
+    }
+    
+    // Copy each program to the lender
+    for (const program of companyPrograms) {
+      const programData = program.toObject();
+      delete programData._id;
+      delete programData.createdAt;
+      delete programData.updatedAt;
+      
+      await LoanProgram.create({
+        ...programData,
+        lender: lenderId,
+        company: null, // Remove company reference for lender-specific programs
+        createdBy: userId
+      });
+    }
+    
+    logger.info(`Copied ${companyPrograms.length} loan programs from company ${companyId} to lender ${lenderId}`);
+  } catch (error) {
+    logger.error(`Error copying company loan programs to lender: ${error.message}`);
+    // Fallback to creating default programs
+    try {
+      await exports.createDefaultLoanPrograms(userId, lenderId);
+    } catch (fallbackError) {
+      logger.error(`Fallback also failed: ${fallbackError.message}`);
+    }
+  }
+}
 
 /**
  * Helper function to automatically save loan rates for lenders upon login
@@ -525,149 +578,23 @@ exports.register = async (req, res, next) => {
         nmls: nmls || ''
       });
 
-      // Create default loan programs for new lender
+      // Create loan programs and rates for new lender
       if (lender) {
-        // Temporarily create programs directly to avoid hoisting issue
         try {
-          const LoanProgram = mongoose.model('LoanProgram');
-          
-          // Create Conventional Loan Program
-          await LoanProgram.create({
-            programName: 'Conventional',
-            displayName: 'Conventional Mortgage',
-            programType: 'conventional',
-            isAvailableToBorrower: true,
-            loanHelpText: 'Conventional loans are mortgage loans that are not insured or guaranteed by the federal government, often requiring a minimum 3% down payment.',
-            rateAdjustment: 0,
-            loanTerm: 30,
-            restrictions: {
-              dtiRestriction: { max: 45 },
-              downPaymentRestriction: { min: 3, max: null },
-              loanAmountRestriction: { min: null, max: 726200 }
-            },
-            privateMortgageInsurance: [
-              { minLTV: 80.01, maxLTV: 85, rate: 0.3 },
-              { minLTV: 85.01, maxLTV: 90, rate: 0.5 },
-              { minLTV: 90.01, maxLTV: 95, rate: 0.7 },
-              { minLTV: 95.01, maxLTV: 97, rate: 0.85 }
-            ],
-            upfrontMortgageInsurance: 0,
-            mortgageInsurance: 0,
-            fundingFee: 0,
-            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
-            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
-            otherFees: { type: 'flat', value: 500, frequency: 'once' },
-            lender: lender._id,
-            createdBy: user._id
-          });
-
-          // Create FHA Loan Program
-          await LoanProgram.create({
-            programName: 'FHA',
-            displayName: 'FHA Mortgage',
-            programType: 'fha',
-            isAvailableToBorrower: true,
-            loanHelpText: 'FHA loans are government-backed mortgages insured by the Federal Housing Administration, designed for borrowers with lower credit scores and smaller down payments.',
-            rateAdjustment: 0,
-            loanTerm: 30,
-            restrictions: {
-              dtiRestriction: { max: 43 },
-              downPaymentRestriction: { min: 3.5, max: null },
-              loanAmountRestriction: { min: null, max: 726200 }
-            },
-            upfrontMortgageInsurance: 1.75,
-            mortgageInsurance: 0.55,
-            fundingFee: 0,
-            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
-            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
-            otherFees: { type: 'flat', value: 500, frequency: 'once' },
-            lender: lender._id,
-            createdBy: user._id
-          });
-
-          // Create VA Loan Program
-          await LoanProgram.create({
-            programName: 'VA',
-            displayName: 'VA Home Loan',
-            programType: 'va',
-            isAvailableToBorrower: true,
-            loanHelpText: 'VA loans are mortgage loans guaranteed by the U.S. Department of Veterans Affairs for eligible veterans, service members, and surviving spouses.',
-            rateAdjustment: 0,
-            loanTerm: 30,
-            restrictions: {
-              dtiRestriction: { max: 41 },
-              downPaymentRestriction: { min: 0, max: null },
-              loanAmountRestriction: { min: null, max: null }
-            },
-            upfrontMortgageInsurance: 0,
-            mortgageInsurance: 0,
-            fundingFee: 2.15,
-            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
-            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
-            otherFees: { type: 'flat', value: 500, frequency: 'once' },
-            lender: lender._id,
-            createdBy: user._id
-          });
-
-          // Create USDA Loan Program
-          await LoanProgram.create({
-            programName: 'USDA',
-            displayName: 'USDA Rural Development',
-            programType: 'usda',
-            isAvailableToBorrower: true,
-            loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
-            rateAdjustment: 0,
-            loanTerm: 30,
-            restrictions: {
-              dtiRestriction: { max: 41 },
-              downPaymentRestriction: { min: 0, max: null },
-              loanAmountRestriction: { min: null, max: null }
-            },
-            upfrontMortgageInsurance: 0,
-            mortgageInsurance: 0.4,
-            fundingFee: 1.0,
-            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
-            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
-            otherFees: { type: 'flat', value: 500, frequency: 'once' },
-            lender: lender._id,
-            createdBy: user._id
-          });
-
-          // Create Jumbo Loan Program
-          await LoanProgram.create({
-            programName: 'Jumbo',
-            displayName: 'Jumbo Mortgage',
-            programType: 'jumbo',
-            isAvailableToBorrower: true,
-            loanHelpText: 'A Jumbo Mortgage is for higher balance loans between $726,001 and $2,000,000.',
-            rateAdjustment: 0.25,
-            loanTerm: 30,
-            restrictions: {
-              dtiRestriction: { max: 40 },
-              downPaymentRestriction: { min: 10.0, max: null },
-              loanAmountRestriction: { min: 726000, max: 2000000 }
-            },
-            upfrontMortgageInsurance: 0,
-            mortgageInsurance: 0,
-            fundingFee: 0,
-            originationFees: { type: 'percentage', value: 1, frequency: 'once' },
-            closingCosts: { type: 'percentage', value: 2, frequency: 'once' },
-            otherFees: { type: 'flat', value: 1000, frequency: 'once' },
-            lender: lender._id,
-            createdBy: user._id
-          });
-
-          logger.info(`Created default loan programs for new lender: ${lender._id}`);
+          // Check if lender belongs to a company
+          if (lender.company) {
+            // Copy company programs and rates to the lender
+            const { copyCompanyLoanProgramsToLender } = require('./auth.controller');
+            const { copyCompanyLoanRatesToLender } = require('./loanRate.controller');
+            
+            await copyCompanyLoanProgramsToLender(user._id, lender._id, lender.company);
+            await copyCompanyLoanRatesToLender(user._id, lender._id, lender.company);
+            logger.info(`Company loan programs and rates copied to lender ${lender._id}`);
+          } else {
+            return ApiError("Lender does not belong to a company", 400)
+          }
         } catch (error) {
-          logger.error(`Error creating default loan programs: ${error.message}`);
-        }
-
-        // Create default loan rates
-        try {
-          await createDefaultLoanRates(user._id, lender._id);
-          logger.info(`Created default loan rates for new lender: ${lender._id}`);
-        } catch (error) {
-          logger.error(`Error creating default loan rates: ${error.message}`);
+          logger.error(`Error creating loan programs/rates for lender ${lender._id}:`, error);
         }
       }
     }

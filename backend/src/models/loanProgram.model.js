@@ -184,7 +184,13 @@ const loanProgramSchema = new mongoose.Schema({
   lender: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lender',
-    required: true,
+    required: false,
+    index: true
+  },
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: false,
     index: true
   },
   
