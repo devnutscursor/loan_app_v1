@@ -2052,7 +2052,6 @@ const debug = (message, data) => {
 };
 
 const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
-  console.log('backUrl', backUrl);
   const router = useRouter();
   const { user } = useAuth();
   const { id } = router.query;

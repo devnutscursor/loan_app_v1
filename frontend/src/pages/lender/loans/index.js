@@ -77,6 +77,10 @@ const LenderLoans = () => {
   const [isNewLoanModalOpen, setIsNewLoanModalOpen] = useState(false);
 
   useEffect(() => {
+    if (user.role !== 'lender') {
+      router.push('/login');
+      return;
+    }
     const fetchLoans = async () => {
       try {
         setLoading(true);
@@ -235,7 +239,7 @@ const LenderLoans = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['lender', 'company']}>
+    <ProtectedRoute allowedRoles={['lender']}>
       <MainLayout>
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8 flex justify-between items-center">
