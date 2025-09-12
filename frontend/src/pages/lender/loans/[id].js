@@ -4,7 +4,8 @@ import { toast } from "react-hot-toast";
 import Link from "next/link";
 import MainLayout from "../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../components/auth/ProtectedRoute";
-import { lenderService } from "../../../services/api";
+import { lenderService, companyService } from "../../../services/api";
+import { useAuth } from "../../../contexts/AuthContext";
 import loanService from "../../../services/loan.service";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
 import { MessageCircle, StickyNote, Download, Settings } from "lucide-react";
@@ -2050,8 +2051,10 @@ const debug = (message, data) => {
   console.log(`[LoanDetails] ${message}`, data);
 };
 
-const LoanDetails = () => {
+const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
+  console.log('backUrl', backUrl);
   const router = useRouter();
+  const { user } = useAuth();
   const { id } = router.query;
   const [loan, setLoan] = useState(null);
   const [documents, setDocuments] = useState([]);
@@ -2296,6 +2299,8 @@ const LoanDetails = () => {
       // Try the optimized endpoint first, fallback to original if it fails
       let response;
       try {
+        // Use lender service for both lender and company users
+        // The backend will handle authorization based on user role
         response = await lenderService.getLoanWithDetails(id);
         console.log("Response from getLoanWithDetails:", response);
       } catch (error) {
@@ -2843,7 +2848,7 @@ const LoanDetails = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["lender"]}>
+    <ProtectedRoute allowedRoles={["lender", "company"]}>
       <MainLayout>
         <div className="">
           <div className="max-w-7xl mx-auto">
@@ -3028,7 +3033,7 @@ const LoanDetails = () => {
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
                     <Link
-                      href="/lender/loans"
+                      href={backUrl || "/lender/loans"}
                       className="group flex items-center px-2 py-1 rounded hover:bg-gray-100 transition"
                     >
                       <svg
@@ -3881,7 +3886,7 @@ const LoanDetails = () => {
                 </p>
                 <div className="mt-6">
                   <Link
-                    href="/lender/loans"
+                    href={backUrl || "/lender/loans"}
                     className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                   >
                     Return to Loans

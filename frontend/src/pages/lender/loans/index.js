@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
-import { lenderService } from '../../../services/api';
+import { lenderService, companyService } from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import XMLLoanUpload from '../../../components/lender/loans/XMLLoanUpload_new';
 import NewLoanModal from '../../../components/lender/loans/NewLoanModal';
@@ -63,6 +64,7 @@ const formatDate = (dateString) =>
 
 const LenderLoans = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const { borrowerId } = router.query;
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,8 @@ const LenderLoans = () => {
       try {
         setLoading(true);
         let response;
+        
+          
         if (borrowerId) {
           response = await lenderService.getBorrowerLoans(borrowerId);
           const data = response.data || [];
@@ -88,6 +92,7 @@ const LenderLoans = () => {
           const data = response.data.data.loans || [];
           setLoans(data);
         }
+        
         console.log("response", response.data);
 
       } catch (e) {
@@ -99,10 +104,10 @@ const LenderLoans = () => {
       }
     };
 
-    if (router.isReady) {
+    if (router.isReady && user) {
       fetchLoans();
     }
-  }, [borrowerId, router.isReady]);
+  }, [borrowerId, router.isReady, user]);
 
   // Check for newLoan query parameter to automatically open the new loan modal
   useEffect(() => {
@@ -230,7 +235,7 @@ const LenderLoans = () => {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['lender']}>
+    <ProtectedRoute allowedRoles={['lender', 'company']}>
       <MainLayout>
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8 flex justify-between items-center">
@@ -244,15 +249,17 @@ const LenderLoans = () => {
                 ? "Manage this borrower's loan applications"
                 : 'List of active loan applications from all your borrowers'}
             </p>            </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setIsNewLoanModalOpen(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Loan
-                </button>
-              </div>
+              {user?.role === 'lender' && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsNewLoanModalOpen(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Loan
+                  </button>
+                </div>
+              )}
             
           </div>
 

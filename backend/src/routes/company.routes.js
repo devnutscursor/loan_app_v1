@@ -40,6 +40,9 @@ router.get('/:companyId/lenders/:lenderId', companyController.getLender);
 // Get lender programs for company access
 router.get('/:companyId/lenders/:lenderId/programs', companyController.getLenderPrograms);
 
+// Get lender borrower loans for company access
+router.get('/:companyId/lenders/:lenderId/borrowers/:borrowerId/loans', companyController.getLenderBorrowerLoans);
+
 // Get a specific company (moved after more specific routes)
 router.get('/:id', companyController.getCompany);
 

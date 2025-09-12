@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
+import CompanyLayout from '../../../../../components/layout/CompanyLayout';
+import { companyService } from '../../../../../services/api';
+import { useAuth } from '../../../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import CompanyLayout from '../../components/layout/CompanyLayout';
-import { companyService } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
 import {
-  ArrowLeft,
-  Users,
-  User,
-  Mail,
-  Phone,
-  Calendar,
   FileText,
+  Calendar,
+  DollarSign,
   Search,
-  Filter,
-  X,
   ChevronDown,
-  ExternalLink
+  X,
+  ExternalLink,
+  ArrowLeft
 } from 'lucide-react';
 
 // Skeleton Loader Component
@@ -54,88 +51,72 @@ const SkeletonLoader = () => (
   </div>
 );
 
-// Main component for the lender borrowers page
-const LenderBorrowers = () => {
-  const { user } = useAuth();
+const formatDate = (dateString) =>
+  new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+const CompanyBorrowerLoans = () => {
   const router = useRouter();
+  const { user } = useAuth();
+  const { borrowerId, lenderId } = router.query;
+  const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lenderData, setLenderData] = useState(null);
-  const [borrowers, setBorrowers] = useState([]);
-  const [borrowerLoans, setBorrowerLoans] = useState({});
-
-  // Search and filter states
+  const [borrowerInfo, setBorrowerInfo] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
 
-  const fetchBorrowers = useCallback(async () => {
-    const { lenderId } = router.query;
-    if (!lenderId || !user) return;
-
-    try {
-      setLoading(true);
-      
-      // Fetch lender data and borrowers
-      const [lenderResponse, borrowersResponse] = await Promise.all([
-        companyService.getLender(user.company, lenderId),
-        companyService.getLenderBorrowers(user.company, lenderId)
-      ]);
-
-      setLenderData(lenderResponse.data.data);
-      const borrowersData = borrowersResponse.data.data || [];
-      setBorrowers(borrowersData);
-
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching borrowers:', err);
-      setError('Failed to load borrowers. Please try again later.');
-      toast.error('Failed to load borrowers');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, router.query]);
-
-  // Add this effect to fetch loans for each borrower (same as lender page)
   useEffect(() => {
-    const fetchBorrowerLoans = async () => {
-      const loansMap = {};
-      for (const borrower of borrowers) {
-        try {
-          const response = await companyService.getLenderBorrowerLoans(user.company, router.query.lenderId, borrower._id);
-          loansMap[borrower._id] = response.data?.length || 0;
-        } catch (error) {
-          console.error(`Error fetching loans for borrower ${borrower._id}:`, error);
-          loansMap[borrower._id] = 0;
+    const fetchLoans = async () => {
+      try {
+        setLoading(true);
+        
+        if (!borrowerId || !lenderId || !user) {
+          setError('Missing required parameters');
+          return;
         }
+
+        // Fetch borrower loans using company service
+        const response = await companyService.getLenderBorrowerLoans(user.company, lenderId, borrowerId);
+        console.log("ALL the loans", response.data);
+        const data = response.data.data.loans || [];
+        setLoans(data);
+
+        // Fetch borrower info for header
+        try {
+          const borrowerResponse = await companyService.getLenderBorrowers(user.company, lenderId);
+          const borrowers = borrowerResponse.data.data || [];
+          const borrower = borrowers.find(b => b._id === borrowerId);
+          if (borrower) {
+            setBorrowerInfo(borrower);
+          }
+        } catch (err) {
+          console.warn('Could not fetch borrower info:', err);
+        }
+
+        console.log("response", response.data);
+
+      } catch (e) {
+        console.error('Error fetching borrower loans:', e);
+        toast.error('Failed to load loans');
+        setError('Failed to load loans');
+      } finally {
+        setLoading(false);
       }
-      setBorrowerLoans(loansMap);
     };
 
-    if (borrowers.length > 0) {
-      fetchBorrowerLoans();
+    if (router.isReady && user) {
+      fetchLoans();
     }
-  }, [borrowers, user.company, router.query.lenderId]);
-
-  useEffect(() => {
-    if (!user || user.role !== 'company') {
-      router.push('/login');
-      return;
-    }
-
-    if (router.query.lenderId) {
-      fetchBorrowers();
-    }
-  }, [user, router, fetchBorrowers]);
+  }, [borrowerId, lenderId, router.isReady, user]);
 
   const handleBack = () => {
-    router.push('/company/lenders');
-  };
-
-  const handleViewLoans = (borrowerId) => {
-    // Navigate to company-specific borrower loans page
-    router.push(`/company/lender-borrowers/${borrowerId}/loans?lenderId=${router.query.lenderId}`);
+    router.push(`/company/lender-borrowers?lenderId=${lenderId}`);
   };
 
   const handleSearchChange = (e) => {
@@ -159,73 +140,6 @@ const LenderBorrowers = () => {
     }
   };
 
-  // Format date helper
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
-  };
-
-  // Filter borrowers based on search term and active filter
-  const filteredBorrowers = useMemo(() => {
-    if (!borrowers.length) return [];
-
-    let results = [...borrowers];
-
-    // Apply search
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase().trim();
-      results = results.filter(borrower =>
-        borrower.user?.firstName?.toLowerCase().includes(search) ||
-        borrower.user?.lastName?.toLowerCase().includes(search) ||
-        borrower.user?.email?.toLowerCase().includes(search) ||
-        borrower.user?.phone?.includes(search)
-      );
-    }
-
-    // Apply filters
-    if (activeFilter === 'recent') {
-      // Filter borrowers created in the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      results = results.filter(borrower => new Date(borrower.createdAt) >= thirtyDaysAgo);
-    } else if (activeFilter === 'hasLoans') {
-      // Filter borrowers who have at least one loan
-      results = results.filter(borrower => (borrowerLoans[borrower._id] || 0) > 0);
-    }
-
-    // Apply sorting
-    results.sort((a, b) => {
-      let compareA, compareB;
-
-      switch (sortBy) {
-        case 'name':
-          compareA = `${a.user?.firstName || ''} ${a.user?.lastName || ''}`.toLowerCase();
-          compareB = `${b.user?.firstName || ''} ${b.user?.lastName || ''}`.toLowerCase();
-          break;
-        case 'email':
-          compareA = (a.user?.email || '').toLowerCase();
-          compareB = (b.user?.email || '').toLowerCase();
-          break;
-        case 'date':
-          compareA = new Date(a.createdAt || 0).getTime();
-          compareB = new Date(b.createdAt || 0).getTime();
-          break;
-        case 'loans':
-          compareA = borrowerLoans[a._id] || 0;
-          compareB = borrowerLoans[b._id] || 0;
-          break;
-        default:
-          return 0;
-      }
-
-      const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
-      return sortDirection === 'asc' ? compareResult : -compareResult;
-    });
-
-    return results;
-  }, [borrowers, searchTerm, activeFilter, sortBy, sortDirection, borrowerLoans]);
-
   const getSortIcon = (column) => {
     if (sortBy !== column) return null;
 
@@ -236,12 +150,95 @@ const LenderBorrowers = () => {
     );
   };
 
+  // Filter and sort loans
+  const filteredLoans = useMemo(() => {
+    if (!loans.length) return [];
+
+    let results = [...loans];
+
+    // Apply search
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase().trim();
+      results = results.filter(loan =>
+        loan.loanDetails?.loanNumber?.toLowerCase().includes(search) ||
+        loan.status?.toLowerCase().includes(search) ||
+        loan.loanDetails?.loanAmount?.toString().includes(search)
+      );
+    }
+
+    // Apply filters
+    if (activeFilter === 'pending') {
+      results = results.filter(loan => 
+        ['Application Submitted', 'In Review', 'Pending Documents'].includes(loan.status)
+      );
+    } else if (activeFilter === 'approved') {
+      results = results.filter(loan => 
+        ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'].includes(loan.status)
+      );
+    } else if (activeFilter === 'rejected') {
+      results = results.filter(loan => 
+        ['Rejected', 'Withdrawn'].includes(loan.status)
+      );
+    }
+
+    // Apply sorting
+    results.sort((a, b) => {
+      let compareA, compareB;
+
+      switch (sortBy) {
+        case 'date':
+          compareA = new Date(a.createdAt || 0).getTime();
+          compareB = new Date(b.createdAt || 0).getTime();
+          break;
+        case 'amount':
+          compareA = a.loanDetails?.loanAmount || 0;
+          compareB = b.loanDetails?.loanAmount || 0;
+          break;
+        case 'status':
+          compareA = (a.status || '').toLowerCase();
+          compareB = (b.status || '').toLowerCase();
+          break;
+        case 'number':
+          compareA = (a.loanDetails?.loanNumber || '').toLowerCase();
+          compareB = (b.loanDetails?.loanNumber || '').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      const compareResult = compareA > compareB ? 1 : compareA < compareB ? -1 : 0;
+      return sortDirection === 'asc' ? compareResult : -compareResult;
+    });
+
+    return results;
+  }, [loans, searchTerm, activeFilter, sortBy, sortDirection]);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Application Submitted':
+      case 'In Review':
+      case 'Pending Documents':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Conditional Approval':
+      case 'Clear to Close':
+        return 'bg-green-100 text-green-800';
+      case 'Closed':
+      case 'Funded':
+        return 'bg-blue-100 text-blue-800';
+      case 'Rejected':
+      case 'Withdrawn':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (!user || user.role !== 'company') {
     return null;
   }
 
   return (
-    <CompanyLayout title="Lender Borrowers">
+    <CompanyLayout title="Borrower Loans">
       <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -250,27 +247,30 @@ const LenderBorrowers = () => {
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>Back to Lenders</span>
+              <span>Back to Borrowers</span>
             </button>
           </div>
         </div>
 
-        {/* Lender Info Header */}
-        {lenderData && (
+        {/* Borrower Info Header */}
+        {borrowerInfo && (
           <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="h-6 w-6 text-blue-600" />
+                <span className="text-lg font-medium text-blue-600">
+                  {borrowerInfo.user?.firstName?.charAt(0)}{borrowerInfo.user?.lastName?.charAt(0)}
+                </span>
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {lenderData.name}'s Borrowers
+                  {borrowerInfo.user?.firstName} {borrowerInfo.user?.lastName}'s Loans
                 </h1>
-                <p className="text-gray-600">{lenderData.email}</p>
+                <p className="text-gray-600">{borrowerInfo.user?.email}</p>
               </div>
             </div>
           </div>
         )}
+
 
         {loading ? (
           <SkeletonLoader />
@@ -297,7 +297,7 @@ const LenderBorrowers = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search by name, email or phone..."
+                  placeholder="Search by loan number, status or amount..."
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   value={searchTerm}
                   onChange={handleSearchChange}
@@ -319,46 +319,56 @@ const LenderBorrowers = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleFilterChange('recent')}
+                    onClick={() => handleFilterChange('pending')}
                     className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 text-sm font-medium 
-                    ${activeFilter === 'recent'
+                    ${activeFilter === 'pending'
                         ? 'bg-blue-50 text-blue-700 border-blue-300'
                         : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                   >
-                    Recent
+                    Pending
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleFilterChange('hasLoans')}
-                    className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium 
-                    ${activeFilter === 'hasLoans'
+                    onClick={() => handleFilterChange('approved')}
+                    className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 text-sm font-medium 
+                    ${activeFilter === 'approved'
                         ? 'bg-blue-50 text-blue-700 border-blue-300'
                         : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                   >
-                    With Loans
+                    Approved
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterChange('rejected')}
+                    className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium 
+                    ${activeFilter === 'rejected'
+                        ? 'bg-blue-50 text-blue-700 border-blue-300'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    Rejected
                   </button>
                 </div>
               </div>
             </div>
 
-            {borrowers.length === 0 ? (
+            {loans.length === 0 ? (
               <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600">
-                  <Users className="h-8 w-8" />
+                  <FileText className="h-8 w-8" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">No borrowers yet</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No loans yet</h3>
                 <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                  This lender doesn't have any borrowers associated with them yet.
+                  This borrower doesn't have any loan applications yet.
                 </p>
               </div>
-            ) : filteredBorrowers.length === 0 ? (
+            ) : filteredLoans.length === 0 ? (
               <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-600">
                   <Search className="h-8 w-8" />
                 </div>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No results found</h3>
                 <p className="mt-2 text-sm text-gray-500">
-                  No borrowers match your search criteria. Try adjusting your search or filters.
+                  No loans match your search criteria. Try adjusting your search or filters.
                 </p>
                 <div className="mt-6">
                   <button
@@ -379,28 +389,28 @@ const LenderBorrowers = () => {
                 {/* Table Header */}
                 <div className="bg-gray-50 border-b border-gray-200">
                   <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('name')}>
+                    <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('number')}>
                       <div className="flex items-center">
-                        <span>Borrower Name</span>
-                        {getSortIcon('name')}
+                        <span>Loan Number</span>
+                        {getSortIcon('number')}
                       </div>
                     </div>
-                    <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('email')}>
+                    <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('status')}>
                       <div className="flex items-center">
-                        <span>Contact Info</span>
-                        {getSortIcon('email')}
+                        <span>Status</span>
+                        {getSortIcon('status')}
+                      </div>
+                    </div>
+                    <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('amount')}>
+                      <div className="flex items-center">
+                        <span>Loan Amount</span>
+                        {getSortIcon('amount')}
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('date')}>
                       <div className="flex items-center">
-                        <span>Joined Date</span>
+                        <span>Created Date</span>
                         {getSortIcon('date')}
-                      </div>
-                    </div>
-                    <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSortChange('loans')}>
-                      <div className="flex items-center">
-                        <span>Loans</span>
-                        {getSortIcon('loans')}
                       </div>
                     </div>
                     <div className="col-span-2 text-right">Actions</div>
@@ -409,59 +419,46 @@ const LenderBorrowers = () => {
 
                 {/* Table Content */}
                 <div className="divide-y divide-gray-200">
-                  {filteredBorrowers.map((borrower) => (
+                  {filteredLoans.map((loan) => (
                     <div
-                      key={borrower._id}
+                      key={loan._id}
                       className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-colors duration-150"
                     >
                       <div className="col-span-3 flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                          <span className="text-lg font-medium">
-                            {borrower.user?.firstName?.charAt(0)}{borrower.user?.lastName?.charAt(0)}
-                          </span>
+                          <FileText className="h-5 w-5" />
                         </div>
                         <div className="ml-4">
                           <div className="font-medium text-gray-900">
-                            {borrower.user?.firstName} {borrower.user?.lastName}
+                            {loan.loanNumber || 'N/A'}
                           </div>
                         </div>
                       </div>
 
-                      <div className="col-span-3">
-                        <div className="flex items-center text-sm text-gray-500 mb-1">
-                          <Mail className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          <span>{borrower.user?.email || 'N/A'}</span>
-                        </div>
+                      <div className="col-span-2 flex items-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(loan.status)}`}>
+                          {loan.status || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div className="col-span-3 flex items-center">
                         <div className="flex items-center text-sm text-gray-500">
-                          <Phone className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          <span>{borrower.user?.phone || 'N/A'}</span>
+                          <DollarSign className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400 items-center justify-center" />
+                          <span>{loan.loanDetails?.loanAmount?.toLocaleString() || '0'}</span>
                         </div>
                       </div>
 
                       <div className="col-span-2 flex items-center">
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          <span>{formatDate(borrower.createdAt)}</span>
+                          <span>{formatDate(loan.createdAt)}</span>
                         </div>
                       </div>
-
-                      <div className="col-span-2 flex items-center">
-                        <div className="flex items-center">
-                          <FileText className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-500">
-                            {borrowerLoans[borrower._id] || 0} loans
-                          </span>
-                        </div>
-                      </div>
-
                       <div className="col-span-2 flex justify-end items-center space-x-3">
-                        <button
-                          onClick={() => handleViewLoans(borrower._id)}
-                          className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
-                        >
+                        <Link href={`/company/loan-details/${loan._id}?borrowerId=${borrowerId}&lenderId=${lenderId}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
                           <ExternalLink className="h-4 w-4 mr-1" />
-                          <span>View Loans</span>
-                        </button>
+                          <span>View Details</span>
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -475,4 +472,5 @@ const LenderBorrowers = () => {
   );
 };
 
-export default LenderBorrowers;
+export default CompanyBorrowerLoans;
+

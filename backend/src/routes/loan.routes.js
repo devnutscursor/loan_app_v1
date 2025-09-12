@@ -21,26 +21,27 @@ router.get('/', loanController.getAllLoans);
 
 router.get(
     '/borrower/:borrowerId',
+    authorize('lender', 'company'),
     loanController.getBorrowerLoans
   );
 
 // Get a specific loan by ID
-router.get('/:id', loanController.getLoan);
+router.get('/:id', authorize('lender', 'company'), loanController.getLoan);
 
 // Get a loan with all details (documents, milestones) in a single request
-router.get('/:id/with-details', loanController.getLoanWithDetails);
+router.get('/:id/with-details', authorize('lender', 'company'), loanController.getLoanWithDetails);
 
 // Update loan details
-router.put('/:id', loanController.updateLoan);
+router.put('/:id', authorize('lender','company'), loanController.updateLoan);
 
 // Update loan status and processing state - lender/admin only
 router.patch('/:id/status', loanController.updateLoanStatus);
 
 // Send pre-approval letter - lender/admin only
-router.post('/:loanId/send-pre-approval', authorize('lender', 'admin'), loanController.sendPreApprovalLetter);
+router.post('/:loanId/send-pre-approval', authorize('lender', 'company'), loanController.sendPreApprovalLetter);
 
 // Manage loan milestones - lender/admin only
-router.patch('/:id/milestone', loanController.updateMilestone);
+router.patch('/:id/milestone', authorize('lender', 'company'), loanController.updateMilestone);
 
 // Condition routes
 router.post('/:id/conditions', loanController.addCondition);

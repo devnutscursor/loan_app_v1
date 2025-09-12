@@ -1190,7 +1190,7 @@ exports.getLenderBorrowers = async (req, res, next) => {
     
     // Get borrowers for this lender
     const borrowers = await Borrower.find({ lender: lenderId })
-      .populate('user', 'firstName lastName email phone')
+      .populate('user', 'firstName lastName email phone createdAt')
       .select('_id user')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -1458,6 +1458,92 @@ exports.getLenderPrograms = async (req, res, next) => {
     });
   } catch (error) {
     logger.error(`Error getting lender programs: ${error.message}`);
+    next(error);
+  }
+};
+
+/**
+ * Get lender borrower loans for company access
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getLenderBorrowerLoans = async (req, res, next) => {
+  try {
+    const { companyId, lenderId, borrowerId } = req.params;
+    const { limit = 10, page = 1, sortBy = 'createdAt', order = 'desc' } = req.query;
+    
+    console.log("companyId", companyId);
+    console.log("lenderId", lenderId);
+    console.log("borrowerId", borrowerId);
+    console.log("req.user", req.user);
+
+    // For company users, ensure they can only access their own company
+    if (req.user.role === 'company' && companyId !== req.user.company.toString()) {
+      return next(new ApiError('You can only access your own company lenders', 403));
+    }
+    
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+    
+    // Verify lender exists and belongs to company
+    const lender = await Lender.findOne({ _id: lenderId, company: companyId });
+    if (!lender) {
+      return next(new ApiError('Lender not found or not associated with this company', 404));
+    }
+    
+    // Verify borrower exists and belongs to lender
+    const borrower = await Borrower.findOne({ _id: borrowerId, lender: lenderId });
+    if (!borrower) {
+      return next(new ApiError('Borrower not found or not associated with this lender', 404));
+    }
+    
+    const limitNum = parseInt(limit, 10);
+    const pageNum = parseInt(page, 10);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Build query for loans
+    const query = {
+      borrower: borrowerId,
+      lender: lenderId
+    };
+    
+    // Get loans with full details
+    const Loan = require('../models/loan.model');
+    const loans = await Loan.find(query)
+      .populate('borrower', 'firstName lastName email phone')
+      .populate('lender', 'firstName lastName email')
+      .populate('assignedLoanOfficer', 'firstName lastName')
+      .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    // Get total count for pagination
+    const totalLoans = await Loan.countDocuments(query);
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        loans,
+        borrower: {
+          _id: borrower._id,
+          user: borrower.user,
+          lender: borrower.lender
+        },
+        pagination: {
+          total: totalLoans,
+          page: pageNum,
+          limit: limitNum,
+          pages: Math.ceil(totalLoans / limitNum)
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Error getting lender borrower loans: ${error.message}`);
     next(error);
   }
 };

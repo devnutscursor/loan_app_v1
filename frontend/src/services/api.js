@@ -289,6 +289,14 @@ export const companyService = {
   getLender: (companyId, lenderId) => api.get(`/companies/${companyId}/lenders/${lenderId}`),
   getLenderPrograms: (companyId, lenderId, params) => api.get(`/companies/${companyId}/lenders/${lenderId}/programs`, { params }),
   
+  // Lender Borrower Loans for Company Access
+  getLenderBorrowerLoans: (companyId, lenderId, borrowerId, params) => api.get(`/companies/${companyId}/lenders/${lenderId}/borrowers/${borrowerId}/loans`, { params }),
+  
+  // Loan Details for Company Access
+  getLoan: (loanId) => api.get(`/loans/${loanId}`),
+  getLoanWithDetails: (loanId) => api.get(`/loans/${loanId}/with-details`),
+  updateLoan: (loanId, loanData) => api.put(`/loans/${loanId}`, loanData),
+  
   // Company Profile
   getProfile: (companyId) => api.get(`/companies/${companyId}`),
   updateProfile: (companyId, companyData) => api.patch(`/companies/${companyId}`, companyData),

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Loan = require("../models/loan.model");
 const Borrower = require("../models/borrower.model");
 const Lender = require("../models/lender.model");
+const Company = require("../models/company.model");
 const User = require("../models/user.model");
 const ApiError = require("../utils/apiError");
 const logger = require("../utils/logger");
@@ -684,7 +685,7 @@ exports.createLoan = async (req, res, next) => {
 exports.getBorrowerLoans = async (req, res, next) => {
   try {
     // Only the lender who owns the loan or admin can access
-    if (req.user.role !== 'admin' && req.user.role !== 'lender') {
+    if (req.user.role !== 'admin' && req.user.role !== 'lender' && req.user.role !== 'company') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this resource'
@@ -698,7 +699,7 @@ exports.getBorrowerLoans = async (req, res, next) => {
 
     const query = {
       borrower: borrowerId,
-      ...(req.user.role === 'lender')
+      ...(req.user.role === 'lender' || req.user.role === 'company')
     };
 
     const loans = await Loan.find(query)
@@ -885,7 +886,7 @@ exports.getLoan = async (req, res, next) => {
       const lender = await Lender.findOne({ user: req.user._id }).lean();
 
       if (!lender) {
-        return next(new ApiError("Lender profile not found", 404));
+        return next(new ApiError("Lender or company profile not found", 404));
       }
 
       // Check if this lender is associated with this loan
@@ -896,7 +897,20 @@ exports.getLoan = async (req, res, next) => {
           new ApiError("You are not authorized to view this loan", 403)
         );
       }
+    } else if (req.user.role === "company") {
+      // Get the company profile
+      const company = await Company.findOne({ _id: req.user.company.toString() }).lean();
+      if (!company) {
+        return next(new ApiError("Company profile not found", 404));
+      }
+      const lender = await Lender.findOne({ _id: loan.lender, company: company._id });
+      if (!lender) {
+        return next(
+          new ApiError("You are not authorized to view this loan", 403)
+        );
+      }
     }
+
 
     // After permission check, get the fully populated loan with optimized queries
     const populatedLoan = await Loan.findById(id)
@@ -1044,7 +1058,7 @@ exports.updateLoan = async (req, res, next) => {
     }
 
     // Lenders and admins can update more fields
-    if (req.user.role === "lender" || req.user.role === "admin") {
+    if (req.user.role === "lender" || req.user.role === "admin" || req.user.role === "company") {
       // const allowedFields = [
       //   'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
       //   'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
@@ -1233,7 +1247,7 @@ exports.updateLoanByNumber = async (req, res, next) => {
     }
 
     // Lenders and admins can update more fields
-    if (req.user.role === "lender" || req.user.role === "admin") {
+    if (req.user.role === "lender" || req.user.role === "admin" || req.user.role === "company") {
       // const allowedFields = [
       //   'property', 'loanDetails', 'status', 'processingStatus', 'marketingStatus',
       //   'approvalType', 'approvalExpirationDate', 'closeOfEscrowDate',
@@ -1294,7 +1308,7 @@ exports.updateLoanStatus = async (req, res, next) => {
       req.body;
 
     // Only lenders and admins can update loan status
-    if (req.user.role !== "lender" && req.user.role !== "admin") {
+    if (req.user.role !== "lender" && req.user.role !== "admin" && req.user.role !== "company") {
       return next(
         new ApiError("You are not authorized to update loan status", 403)
       );
@@ -1391,7 +1405,7 @@ exports.updateMilestone = async (req, res, next) => {
     const { milestoneId, title, description, isCompleted, order } = req.body;
 
     // Only lenders and admins can update milestones
-    if (req.user.role !== "lender" && req.user.role !== "admin") {
+    if (req.user.role !== "lender" && req.user.role !== "admin" && req.user.role !== "company") {
       return next(
         new ApiError("You are not authorized to update milestones", 403)
       );
@@ -1485,7 +1499,7 @@ exports.addCondition = async (req, res, next) => {
       req.body;
 
     // Only lenders and admins can add conditions
-    if (req.user.role !== "lender" && req.user.role !== "admin") {
+    if (req.user.role !== "lender" && req.user.role !== "admin" && req.user.role !== "company") {
       return next(
         new ApiError("You are not authorized to add conditions", 403)
       );
@@ -1540,7 +1554,7 @@ exports.updateCondition = async (req, res, next) => {
       req.body;
 
     // Only lenders and admins can update conditions
-    if (req.user.role !== "lender" && req.user.role !== "admin") {
+    if (req.user.role !== "lender" && req.user.role !== "admin" && req.user.role !== "company") {
       return next(
         new ApiError("You are not authorized to update conditions", 403)
       );
