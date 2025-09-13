@@ -5,9 +5,11 @@ import { ChevronDown, HelpCircle } from 'lucide-react';
  * Loan Restrictions Section Component
  * Manages DTI, down payment, and loan amount restrictions
  */
-const LoanRestrictionsSection = ({ formData, onChange, isLoading }) => {
+const LoanRestrictionsSection = ({ formData, onChange, isLoading, readOnly = false }) => {
   // Handle changes to nested restriction fields
   const handleRestrictionsChange = (field, subfield, value) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     onChange('restrictions', {
       ...formData.restrictions,
       [field]: {
@@ -19,6 +21,8 @@ const LoanRestrictionsSection = ({ formData, onChange, isLoading }) => {
 
   // Handle simple numeric value changes
   const handleNumberChange = (e) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     const { name, value } = e.target;
     if (value === '') {
       onChange(name, '');
@@ -59,10 +63,11 @@ const LoanRestrictionsSection = ({ formData, onChange, isLoading }) => {
             <input
               type="number"
               id="dtiMax"
-              className="focus:ring-primary focus:border-primary block w-full py-2 pl-9 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+              className={`focus:ring-primary focus:border-primary block w-full py-2 pl-9 sm:text-sm border-gray-300 rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} h-10`}
               value={formData.restrictions.dtiRestriction.max || ''}
               onChange={(e) => handleRestrictionsChange('dtiRestriction', 'max', e.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || readOnly}
+              readOnly={readOnly}
               step="0.1"
               min="0"
               max="100"

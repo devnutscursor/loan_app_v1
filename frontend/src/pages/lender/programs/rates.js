@@ -215,11 +215,12 @@ export default function ManageRates() {
               </div>
             </div>
 
-            {/* Save button aligned to the right */}
+            {/* Save button hidden for lenders - rates are read-only */}
             <button
               className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200`}
               onClick={handleSaveRates}
               disabled={saving || loading}
+              style={{ display: 'none' }} // Hide save button for lenders
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving..." : "Save All Rates"}
@@ -287,21 +288,11 @@ export default function ManageRates() {
                           <div className="absolute top-0 left-0 h-full w-1.5 bg-blue-500"></div>
 
                           <div className="flex items-center">
-                            {/* Decrement button */}
+                            {/* Decrement button - disabled for lenders */}
                             <button
                               type="button"
-                              disabled={saving || rate.rate <= 0}
-                              onClick={() =>
-                                handleRateChange(
-                                  rate.programType,
-                                  Math.max(0, (rate.rate - 0.125).toFixed(3))
-                                )
-                              }
-                              className={`h-12 px-3 flex items-center justify-center focus:outline-none ${
-                                saving || rate.rate <= 0
-                                  ? "text-gray-300 cursor-not-allowed"
-                                  : "text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                              }`}
+                              disabled={true} // Always disabled for lenders
+                              className="h-12 px-3 flex items-center justify-center focus:outline-none text-gray-300 cursor-not-allowed"
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -317,43 +308,25 @@ export default function ManageRates() {
                               </svg>
                             </button>
 
-                            {/* Input field */}
+                            {/* Input field - read-only for lenders */}
                             <input
                               type="number"
                               id={`rate-${rate.programType}`}
-                              className={`block w-full py-3 text-center text-xl font-medium border-0 focus:ring-0 focus:outline-none ${
-                                saving
-                                  ? "bg-gray-50 text-gray-400 cursor-not-allowed"
-                                  : "text-gray-900"
-                              }`}
+                              className="block w-full py-3 text-center text-xl font-medium border-0 focus:ring-0 focus:outline-none bg-gray-50 text-gray-900 cursor-default"
                               value={rate.rate}
-                              onChange={(e) =>
-                                handleRateChange(
-                                  rate.programType,
-                                  e.target.value
-                                )
-                              }
-                              disabled={saving}
+                              onChange={() => {}} // No-op for lenders
+                              disabled={true}
+                              readOnly={true}
                               step="0.125"
                               min="0"
                               max="20"
                             />
 
-                            {/* Increment button */}
+                            {/* Increment button - disabled for lenders */}
                             <button
                               type="button"
-                              disabled={saving || rate.rate >= 20}
-                              onClick={() =>
-                                handleRateChange(
-                                  rate.programType,
-                                  Math.min(20, (rate.rate + 0.125).toFixed(3))
-                                )
-                              }
-                              className={`h-12 px-3 flex items-center justify-center focus:outline-none ${
-                                saving || rate.rate >= 20
-                                  ? "text-gray-300 cursor-not-allowed"
-                                  : "text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                              }`}
+                              disabled={true} // Always disabled for lenders
+                              className="h-12 px-3 flex items-center justify-center focus:outline-none text-gray-300 cursor-not-allowed"
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -386,7 +359,7 @@ export default function ManageRates() {
 
                         {/* Helper text for rate ranges */}
                         <p className="mt-2 text-xs text-gray-500">
-                          Rate adjusts in 0.125% increments (1/8%). Range: 0-20%
+                          Current interest rate (read-only)
                         </p>
                       </div>
                     </div>

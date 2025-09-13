@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import MainLayout from '@/components/layout/MainLayout';
 import { LoanProgramService } from '@/services';
-import { Plus, Edit, Trash2, ArrowLeft, Search, X, DollarSign, XCircle } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Search, X, DollarSign, XCircle } from 'lucide-react';
 // ... existing imports ...
 
 export default function LoanPrograms() {
@@ -81,34 +81,8 @@ export default function LoanPrograms() {
     router.push('/lender/programs/create');
   };
 
-  const handleEditProgram = (id) => {
+  const handleViewProgram = (id) => {
     router.push(`/lender/programs/${id}`);
-  };
-
-  const handleDeleteClick = (program) => {
-    setProgramToDelete(program);
-    setDeleteDialog(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!programToDelete) return;
-
-    try {
-      const response = await LoanProgramService.deleteProgram(programToDelete._id);
-
-      if (response.status === 'success' || response.status === 204) {
-        setSuccessMessage('Loan program deleted successfully');
-        setSuccess(true);
-        fetchLoanPrograms();
-      } else {
-        setError('Failed to delete loan program');
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to delete loan program');
-    } finally {
-      setDeleteDialog(false);
-      setProgramToDelete(null);
-    }
   };
 
   const handleCloseSnackbar = () => {
@@ -135,14 +109,7 @@ export default function LoanPrograms() {
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <DollarSign className="h-4 w-4 mr-2" />
-              Manage Rates
-            </button>
-            <button
-              onClick={handleCreateProgram}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Program
+              View Rates
             </button>
           </div>
         </div>
@@ -271,18 +238,11 @@ export default function LoanPrograms() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              onClick={() => handleEditProgram(program._id)}
+                              onClick={() => handleViewProgram(program._id)}
                               className="text-blue-600 hover:text-blue-900"
-                              title="Edit program"
+                              title="View program details"
                             >
-                              <Edit className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(program)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete program"
-                            >
-                              <Trash2 className="h-5 w-5" />
+                              <Eye className="h-5 w-5" />
                             </button>
                           </div>
                         </td>
@@ -296,48 +256,7 @@ export default function LoanPrograms() {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      {deleteDialog && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setDeleteDialog(false)}></div>
-
-            {/* Modal panel */}
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">Confirm Delete</h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to delete the "{programToDelete?.programName}" program?
-                        This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={handleDeleteConfirm}
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => setDeleteDialog(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete dialog removed - lenders can only view programs */}
 
       {/* Success/Error notification */}
       {(success || !!error) && (

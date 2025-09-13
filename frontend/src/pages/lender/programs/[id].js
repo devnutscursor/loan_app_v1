@@ -632,6 +632,7 @@ export default function EditLoanProgram() {
               className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200`}
               onClick={handleSubmit}
               disabled={saving || loading}
+              style={{ display: 'none' }} // Hide save button for lenders
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving..." : "Save Program"}
@@ -644,6 +645,7 @@ export default function EditLoanProgram() {
               formData={formData}
               onChange={handleFieldChange}
               isLoading={saving}
+              readOnly={true}
             />
 
             {/* Loan Restrictions Section */}
@@ -651,6 +653,7 @@ export default function EditLoanProgram() {
               formData={formData}
               onChange={handleNestedChange}
               isLoading={saving}
+              readOnly={true}
             />
 
             {/* Mortgage Insurance Section */}
@@ -658,6 +661,7 @@ export default function EditLoanProgram() {
               formData={formData}
               onChange={handleFieldChange}
               isLoading={saving}
+              readOnly={true}
             />
 
             {/* Finance Fees Section - with the new toggle UI */}
@@ -665,6 +669,7 @@ export default function EditLoanProgram() {
               formData={formData}
               onChange={handleNestedChange}
               isLoading={saving}
+              readOnly={true}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-6">

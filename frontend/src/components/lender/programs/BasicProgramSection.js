@@ -23,8 +23,10 @@ const LOAN_TERMS = [
  * Basic Program Information Section
  * Handles the main program details like name, type, and availability
  */
-const BasicProgramSection = ({ formData, onChange, isLoading }) => {
+const BasicProgramSection = ({ formData, onChange, isLoading, readOnly = false }) => {
   const handleChange = (e) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     const { name, value, type, checked } = e.target;
     
     if (type === 'checkbox') {
@@ -36,10 +38,13 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
   
   // For toggle button click
   const handleToggleClick = (name) => {
+    if (readOnly) return; // Prevent changes in read-only mode
     onChange(name, !formData[name]);
   };
 
   const handleNumberChange = (e) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     const { name, value } = e.target;
     if (value === '') {
       onChange(name, '');
@@ -62,10 +67,11 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
             type="text"
             id="programName"
             name="programName"
-            className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
+            className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
             value={formData.programName}
             onChange={handleChange}
-            disabled={isLoading}
+            disabled={isLoading || readOnly}
+            readOnly={readOnly}
             required
             style={{ height: '38px' }}
           />
@@ -81,10 +87,11 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
             type="text"
             id="displayName"
             name="displayName"
-            className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
+            className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
             value={formData.displayName}
             onChange={handleChange}
-            disabled={isLoading}
+            disabled={isLoading || readOnly}
+            readOnly={readOnly}
             required
             style={{ height: '38px' }}
           />
@@ -99,10 +106,10 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
           <select
             id="programType"
             name="programType"
-            className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
+            className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
             value={formData.programType}
             onChange={handleChange}
-            disabled={isLoading}
+            disabled={isLoading || readOnly}
             required
             style={{ height: '38px' }}
           >
@@ -122,10 +129,10 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
           <select
             id="loanTerm"
             name="loanTerm"
-            className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
+            className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-3`}
             value={formData.loanTerm}
             onChange={handleNumberChange}
-            disabled={isLoading}
+            disabled={isLoading || readOnly}
             style={{ height: '38px' }}
           >
             {LOAN_TERMS.map((option) => (
@@ -149,10 +156,11 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
               type="number"
               name="rateAdjustment"
               id="rateAdjustment"
-              className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-9`}
+              className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 h-10 pl-9`}
               value={formData.rateAdjustment}
               onChange={handleNumberChange}
-              disabled={isLoading}
+              disabled={isLoading || readOnly}
+              readOnly={readOnly}
               step="0.125"
               style={{ height: '38px' }}
             />
@@ -167,8 +175,8 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
           <button 
             type="button" 
             onClick={() => handleToggleClick('isAvailableToBorrower')} 
-            disabled={isLoading}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent ${formData.isAvailableToBorrower ? 'bg-blue-500' : 'bg-gray-200'} transition-colors duration-200 ease-in-out focus:outline-none`}
+            disabled={isLoading || readOnly}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 ${readOnly ? 'cursor-default' : 'cursor-pointer'} rounded-full border-2 border-transparent ${formData.isAvailableToBorrower ? 'bg-blue-500' : 'bg-gray-200'} transition-colors duration-200 ease-in-out focus:outline-none`}
           >
             <span className="sr-only">Toggle Available to Borrowers</span>
             <span
@@ -192,10 +200,11 @@ const BasicProgramSection = ({ formData, onChange, isLoading }) => {
           id="loanHelpText"
           name="loanHelpText"
           rows={3}
-          className={`block w-full rounded-md bg-gray-50 ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 p-3`}
+          className={`block w-full rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} ${isLoading ? 'cursor-not-allowed' : 'focus:ring-blue-500 focus:border-blue-500'} sm:text-sm border-gray-300 p-3`}
           value={formData.loanHelpText}
           onChange={handleChange}
-          disabled={isLoading}
+          disabled={isLoading || readOnly}
+          readOnly={readOnly}
           placeholder="Enter a description for this loan program"
         />
         <p className="mt-1 text-xs text-gray-500">Description shown to borrowers when selecting this program</p>

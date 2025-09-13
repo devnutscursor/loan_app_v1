@@ -5,9 +5,11 @@ import { ChevronDown } from 'lucide-react';
  * Finance Fees Section Component
  * Handles the UI for program fees with toggles for amount/percentage and frequency
  */
-const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
+const FinanceFeesSection = ({ formData, onChange, isLoading, readOnly = false }) => {
   // Helper to handle fee value changes
   const handleFeeChange = (feeType, field, value) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     // Create a copy of the fee object to modify
     const updatedFee = { ...formData[feeType], [field]: value };
     
@@ -17,6 +19,8 @@ const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
 
   // Toggle between amount ($) and percentage (%)
   const toggleInputMode = (feeType) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     const fee = formData[feeType];
     const isCurrentlyPercent = fee.isPercent;
     
@@ -26,6 +30,8 @@ const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
 
   // Toggle between frequency options (once/mo/yr)
   const toggleFrequency = (feeType, newFrequency) => {
+    if (readOnly) return; // Prevent changes in read-only mode
+    
     handleFeeChange(feeType, 'frequency', newFrequency);
   };
 
@@ -44,16 +50,16 @@ const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
             <button 
               type="button"
               onClick={() => toggleInputMode(feeType)}
-              disabled={isLoading}
-              className={`px-3 py-2 ${!fee.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-l-md hover:bg-blue-400 transition text-sm font-medium`}
+              disabled={isLoading || readOnly}
+              className={`px-3 py-2 ${!fee.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} ${readOnly ? 'cursor-default' : 'hover:bg-blue-400'} transition text-sm font-medium rounded-l-md`}
             >
               $
             </button>
             <button 
               type="button"
               onClick={() => toggleInputMode(feeType)}
-              disabled={isLoading}
-              className={`px-3 py-2 ${fee.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-r-md hover:bg-blue-400 transition text-sm font-medium`}
+              disabled={isLoading || readOnly}
+              className={`px-3 py-2 ${fee.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} ${readOnly ? 'cursor-default' : 'hover:bg-blue-400'} transition text-sm font-medium rounded-r-md`}
             >
               %
             </button>
@@ -64,13 +70,14 @@ const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
             <div className="relative">
               <input
                 type="number"
-                className="focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10"
+                className={`focus:ring-primary focus:border-primary block w-full py-2 px-3 sm:text-sm border-gray-300 rounded-md ${readOnly ? 'bg-gray-100 cursor-default' : 'bg-gray-50'} h-10`}
                 value={fee.isPercent ? fee.percentage : fee.amount}
                 onChange={(e) => {
                   const value = e.target.value === '' ? 0 : Number(e.target.value);
                   handleFeeChange(feeType, fee.isPercent ? 'percentage' : 'amount', value);
                 }}
-                disabled={isLoading}
+                disabled={isLoading || readOnly}
+                readOnly={readOnly}
                 step={fee.isPercent ? 0.01 : 1}
                 min="0"
                 style={{ height: '38px' }} /* Match button height */
@@ -83,24 +90,24 @@ const FinanceFeesSection = ({ formData, onChange, isLoading }) => {
             <button
               type="button"
               onClick={() => toggleFrequency(feeType, 'once')}
-              disabled={isLoading}
-              className={`px-3 py-2 ${fee.frequency === 'once' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-l-md hover:bg-blue-400 transition text-sm font-medium`}
+              disabled={isLoading || readOnly}
+              className={`px-3 py-2 ${fee.frequency === 'once' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} ${readOnly ? 'cursor-default' : 'hover:bg-blue-400'} transition text-sm font-medium rounded-l-md`}
             >
               /once
             </button>
             <button
               type="button"
               onClick={() => toggleFrequency(feeType, 'mo')}
-              disabled={isLoading}
-              className={`px-3 py-2 ${fee.frequency === 'mo' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} hover:bg-blue-400 transition text-sm font-medium`}
+              disabled={isLoading || readOnly}
+              className={`px-3 py-2 ${fee.frequency === 'mo' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} ${readOnly ? 'cursor-default' : 'hover:bg-blue-400'} transition text-sm font-medium`}
             >
               /mo
             </button>
             <button
               type="button"
               onClick={() => toggleFrequency(feeType, 'yr')}
-              disabled={isLoading}
-              className={`px-3 py-2 ${fee.frequency === 'yr' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-r-md hover:bg-blue-400 transition text-sm font-medium`}
+              disabled={isLoading || readOnly}
+              className={`px-3 py-2 ${fee.frequency === 'yr' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} ${readOnly ? 'cursor-default' : 'hover:bg-blue-400'} transition text-sm font-medium rounded-r-md`}
             >
               /yr
             </button>
