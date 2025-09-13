@@ -4,6 +4,115 @@ const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 
 /**
+ * Helper function to propagate company loan program creation to all lenders
+ * @param {ObjectId} companyId - The company ID
+ * @param {Object} programData - The program data to propagate
+ * @param {ObjectId} userId - The user ID making the change
+ */
+const propagateProgramCreationToLenders = async (companyId, programData, userId) => {
+  try {
+    const Lender = mongoose.model('Lender');
+    const companyLenders = await Lender.find({ company: companyId });
+    
+    if (companyLenders.length === 0) {
+      logger.info(`No lenders found for company ${companyId} to propagate program creation`);
+      return;
+    }
+    
+    const lenderPrograms = companyLenders.map(lender => ({
+      ...programData,
+      lender: lender._id,
+      company: null, // Remove company reference for lender programs
+      createdBy: userId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+    
+    await LoanProgram.insertMany(lenderPrograms);
+    logger.info(`Propagated program creation to ${companyLenders.length} lenders for company ${companyId}`);
+  } catch (error) {
+    logger.error(`Error propagating program creation to lenders: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Helper function to propagate company loan program updates to all lenders
+ * @param {ObjectId} companyId - The company ID
+ * @param {Object} programData - The updated program data
+ * @param {ObjectId} userId - The user ID making the change
+ * @param {String} originalProgramName - The original program name for matching
+ */
+const propagateProgramUpdateToLenders = async (companyId, programData, userId, originalProgramName) => {
+  try {
+    const Lender = mongoose.model('Lender');
+    const companyLenders = await Lender.find({ company: companyId });
+    
+    if (companyLenders.length === 0) {
+      logger.info(`No lenders found for company ${companyId} to propagate program update`);
+      return;
+    }
+    
+    const lenderIds = companyLenders.map(lender => lender._id);
+    
+    // Update all lender programs that match the ORIGINAL program name
+    const updateData = {
+      ...programData,
+      company: null, // Remove company reference for lender programs
+      updatedBy: userId,
+      updatedAt: new Date()
+    };
+    
+    // Remove fields that shouldn't be copied
+    delete updateData.lender;
+    delete updateData.createdBy;
+    delete updateData.createdAt;
+    
+    logger.info(`Updating lender programs with original name: ${originalProgramName}`);
+    logger.info(`Update data:`, updateData);
+    
+    const result = await LoanProgram.updateMany(
+      { lender: { $in: lenderIds }, programName: originalProgramName },
+      { $set: updateData }
+    );
+    
+    logger.info(`Propagated program update to ${result.modifiedCount} lender programs for company ${companyId}`);
+  } catch (error) {
+    logger.error(`Error propagating program update to lenders: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Helper function to propagate company loan program deletion to all lenders
+ * @param {ObjectId} companyId - The company ID
+ * @param {String} programName - The program name to delete
+ */
+const propagateProgramDeletionToLenders = async (companyId, programName) => {
+  try {
+    const Lender = mongoose.model('Lender');
+    const companyLenders = await Lender.find({ company: companyId });
+    
+    if (companyLenders.length === 0) {
+      logger.info(`No lenders found for company ${companyId} to propagate program deletion`);
+      return;
+    }
+    
+    const lenderIds = companyLenders.map(lender => lender._id);
+    
+    const result = await LoanProgram.deleteMany({
+      lender: { $in: lenderIds },
+      programName: programName
+    });
+    
+    logger.info(`Propagated program deletion to ${result.deletedCount} lender programs for company ${companyId}`);
+  } catch (error) {
+    logger.error(`Error propagating program deletion to lenders: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
  * Create a new loan program
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -58,6 +167,16 @@ exports.createLoanProgram = async (req, res, next) => {
 
     const loanProgram = await LoanProgram.create(programData);
     
+    // If this is a company program, propagate to all lenders
+    if (companyId) {
+      try {
+        await propagateProgramCreationToLenders(companyId, programData, req.user._id);
+      } catch (propagationError) {
+        logger.error(`Failed to propagate program creation to lenders: ${propagationError.message}`);
+        // Don't fail the main operation, just log the error
+      }
+    }
+    
     logger.info(`Loan program created: ${loanProgram.programName} by ${req.user._id}`);
     
     res.status(201).json({
@@ -65,6 +184,13 @@ exports.createLoanProgram = async (req, res, next) => {
       data: loanProgram
     });
   } catch (error) {
+    // Handle duplicate program name error
+    if (error.code === 11000) {
+      const indexName = error.keyPattern ? Object.keys(error.keyPattern).join('_') : '';
+      if (indexName.includes('programName')) {
+        return next(new ApiError('A program with this name already exists for your company. Please choose a different name.', 400));
+      }
+    }
     next(error);
   }
 };
@@ -195,12 +321,33 @@ exports.updateLoanProgram = async (req, res, next) => {
       }
     }
     
+    // Get the original program data before updating (for propagation matching)
+    const originalProgram = await LoanProgram.findById(id);
+    if (!originalProgram) {
+      return next(new ApiError('Loan program not found', 404));
+    }
+    
     // Update the loan program
     const updatedLoanProgram = await LoanProgram.findByIdAndUpdate(
       id,
       { ...req.body, updatedAt: Date.now() },
       { new: true, runValidators: true }
     );
+    
+    // If this is a company program update, propagate to all lenders
+    if (req.user.role === 'company' && updatedLoanProgram.company) {
+      try {
+        await propagateProgramUpdateToLenders(
+          updatedLoanProgram.company, 
+          req.body, 
+          req.user._id,
+          originalProgram.programName // Use original program name for matching
+        );
+      } catch (propagationError) {
+        logger.error(`Failed to propagate program update to lenders: ${propagationError.message}`);
+        // Don't fail the main operation, just log the error
+      }
+    }
     
     logger.info(`Loan program updated: ${updatedLoanProgram.programName} by ${req.user._id}`);
     
@@ -263,6 +410,16 @@ exports.deleteLoanProgram = async (req, res, next) => {
     
     // Delete the loan program
     await LoanProgram.findByIdAndDelete(id);
+    
+    // If this is a company program deletion, propagate to all lenders
+    if (req.user.role === 'company' && loanProgram.company) {
+      try {
+        await propagateProgramDeletionToLenders(loanProgram.company, loanProgram.programName);
+      } catch (propagationError) {
+        logger.error(`Failed to propagate program deletion to lenders: ${propagationError.message}`);
+        // Don't fail the main operation, just log the error
+      }
+    }
     
     logger.info(`Loan program deleted: ${loanProgram.programName} by ${req.user._id}`);
     

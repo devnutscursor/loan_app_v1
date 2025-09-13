@@ -25,6 +25,9 @@ export default function CompanyEditLoanProgram() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const [validationErrors, setValidationErrors] = useState({});
+  const [existingPrograms, setExistingPrograms] = useState([]);
+
   const [formData, setFormData] = useState({
     programName: '',
     displayName: '',
@@ -97,6 +100,42 @@ export default function CompanyEditLoanProgram() {
     allowSubjectPropertyAddress: true,
     lockLoanData: false,
   });
+
+  // Load existing programs for validation
+  useEffect(() => {
+    const loadExistingPrograms = async () => {
+      try {
+        const response = await LoanProgramService.getAllPrograms();
+        console.log('API Response structure:', response);
+        console.log('Response.data:', response?.data);
+        console.log('Response.data.data:', response?.data?.data);
+        
+        // Extract the data array from the response
+        const programs = response?.data?.data || [];
+        console.log('Extracted programs:', programs);
+        setExistingPrograms(programs);
+        
+        // If we're in edit mode and have form data, validate the current program name
+        if (!isNewProgram && formData.programName) {
+          setTimeout(() => {
+            validateProgramNameRealTime(formData.programName);
+          }, 50);
+        }
+      } catch (error) {
+        console.warn('Could not load existing programs for validation:', error);
+        setExistingPrograms([]); // Set empty array as fallback
+      }
+    };
+
+    loadExistingPrograms();
+  }, []);
+
+  // Validate program name when both existing programs and form data are available
+  useEffect(() => {
+    if (Array.isArray(existingPrograms) && existingPrograms.length > 0 && formData.programName) {
+      validateProgramNameRealTime(formData.programName);
+    }
+  }, [existingPrograms, formData.programName, isNewProgram, id]);
 
   // Fetch program data when component mounts (for edit mode)
   useEffect(() => {
@@ -187,6 +226,12 @@ export default function CompanyEditLoanProgram() {
           allowSubjectPropertyAddress: programData.allowSubjectPropertyAddress ?? true,
           lockLoanData: programData.lockLoanData || false,
         });
+        
+        // Validate the loaded program name after form data is set
+        // This ensures validation works when editing existing programs
+        setTimeout(() => {
+          validateProgramNameRealTime(programData.programName || '');
+        }, 100); // Small delay to ensure existingPrograms is loaded
       }
     } catch (err) {
       console.error('Error fetching program:', err);
@@ -196,10 +241,37 @@ export default function CompanyEditLoanProgram() {
     }
   };
 
+  // Validate program name for duplicates
+  const validateProgramName = async (programName) => {
+    if (!programName || !programName.trim()) {
+      throw new Error('Program name is required');
+    }
+
+    // Ensure existingPrograms is an array
+    if (!Array.isArray(existingPrograms)) {
+      console.warn('existingPrograms is not an array for validation:', existingPrograms);
+      return; // Skip validation if data is not available
+    }
+
+    // Check if program name already exists (case-insensitive)
+    // Exclude current program if editing
+    const duplicateExists = existingPrograms.some(program => 
+      program.programName.toLowerCase() === programName.toLowerCase() && 
+      (!isNewProgram ? program._id !== id : true)
+    );
+    
+    if (duplicateExists) {
+      throw new Error('Already have a program with this name.');
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       setError(null);
+
+      // Validate program name before saving
+      await validateProgramName(formData.programName);
 
       // Transform form data to backend format
       const backendFormData = {
@@ -250,11 +322,62 @@ export default function CompanyEditLoanProgram() {
     }
   };
 
+  // Real-time validation for program name
+  const validateProgramNameRealTime = (programName) => {
+    if (!programName || !programName.trim()) {
+      setValidationErrors(prev => ({ ...prev, programName: '' }));
+      return;
+    }
+
+    // Ensure existingPrograms is an array
+    if (!Array.isArray(existingPrograms)) {
+      console.warn('existingPrograms is not an array:', existingPrograms);
+      return;
+    }
+
+    console.log('Validating program name:', programName);
+    console.log('Existing programs:', existingPrograms.map(p => ({ id: p._id, name: p.programName })));
+    console.log('Is new program:', isNewProgram);
+    console.log('Current program ID:', id);
+
+    // Check for duplicates (case-insensitive)
+    // Exclude current program if editing
+    const duplicateExists = existingPrograms.some(program => {
+      const isDuplicate = program.programName.toLowerCase() === programName.toLowerCase();
+      const isCurrentProgram = !isNewProgram && program._id === id;
+      const shouldExclude = !isNewProgram ? program._id !== id : true;
+      
+      console.log(`Program: ${program.programName}, isDuplicate: ${isDuplicate}, isCurrentProgram: ${isCurrentProgram}, shouldExclude: ${shouldExclude}`);
+      
+      return isDuplicate && shouldExclude;
+    });
+
+    console.log('Duplicate exists:', duplicateExists);
+
+    if (duplicateExists) {
+      setValidationErrors(prev => ({ 
+        ...prev, 
+        programName: 'Already have a program with this name.' 
+      }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, programName: '' }));
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Real-time validation for program name
+    if (field === 'programName') {
+      // Debounce validation to avoid excessive checks
+      clearTimeout(window.programNameValidationTimeout);
+      window.programNameValidationTimeout = setTimeout(() => {
+        validateProgramNameRealTime(value);
+      }, 500);
+    }
   };
 
   const handleNestedInputChange = (parentField, childField, value) => {
@@ -361,7 +484,7 @@ export default function CompanyEditLoanProgram() {
               
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || validationErrors.programName}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 <Save className="h-4 w-4 mr-2" />
@@ -406,6 +529,17 @@ export default function CompanyEditLoanProgram() {
 
           {/* Form Sections */}
           <div className="space-y-6">
+            {/* Validation Error for Program Name */}
+            {validationErrors.programName && (
+              <div className="mb-4">
+                <p className="text-sm text-red-600 flex items-center">
+                  <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {validationErrors.programName}
+                </p>
+              </div>
+            )}
             <BasicProgramSection
               formData={formData}
               onChange={handleInputChange}

@@ -210,4 +210,25 @@ const loanProgramSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Compound unique indexes to ensure unique program names per company/lender
+// This prevents a company from having multiple programs with the same name
+loanProgramSchema.index(
+  { company: 1, programName: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { company: { $exists: true, $ne: null } },
+    name: 'unique_company_program_name'
+  }
+);
+
+// This prevents a lender from having multiple programs with the same name
+loanProgramSchema.index(
+  { lender: 1, programName: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { lender: { $exists: true, $ne: null } },
+    name: 'unique_lender_program_name'
+  }
+);
+
 module.exports = mongoose.model('LoanProgram', loanProgramSchema);

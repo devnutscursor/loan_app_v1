@@ -4,6 +4,50 @@ const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 
 /**
+ * Helper function to propagate company loan rate updates to all lenders
+ * @param {ObjectId} companyId - The company ID
+ * @param {Array} ratesData - The updated rates data
+ * @param {ObjectId} userId - The user ID making the change
+ */
+const propagateRateUpdateToLenders = async (companyId, ratesData, userId) => {
+  try {
+    const Lender = mongoose.model('Lender');
+    const companyLenders = await Lender.find({ company: companyId });
+    
+    if (companyLenders.length === 0) {
+      logger.info(`No lenders found for company ${companyId} to propagate rate updates`);
+      return;
+    }
+    
+    const lenderIds = companyLenders.map(lender => lender._id);
+    
+    // Update rates for all lenders
+    for (const rateData of ratesData) {
+      const { programType, rate } = rateData;
+      
+      const result = await LoanRate.updateMany(
+        { 
+          lender: { $in: lenderIds },
+          programType: programType
+        },
+        { 
+          $set: {
+            rate: rate,
+            updatedBy: userId,
+            updatedAt: new Date()
+          }
+        }
+      );
+      
+      logger.info(`Propagated rate update for ${programType} to ${result.modifiedCount} lender rates for company ${companyId}`);
+    }
+  } catch (error) {
+    logger.error(`Error propagating rate updates to lenders: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
  * Copy company loan rates to a new lender
  * @param {ObjectId} userId - The user ID creating the lender (updatedBy)
  * @param {ObjectId} lenderId - The newly created lender's ID
@@ -291,6 +335,16 @@ exports.updateLoanRates = async (req, res, next) => {
         });
         
         updatedRates.push(newRate);
+      }
+    }
+    
+    // If this is a company rate update, propagate to all lenders
+    if (req.user.role === 'company' && companyId) {
+      try {
+        await propagateRateUpdateToLenders(companyId, rates, req.user._id);
+      } catch (propagationError) {
+        logger.error(`Failed to propagate rate updates to lenders: ${propagationError.message}`);
+        // Don't fail the main operation, just log the error
       }
     }
     
