@@ -21,25 +21,37 @@ const propagateRateUpdateToLenders = async (companyId, ratesData, userId) => {
     
     const lenderIds = companyLenders.map(lender => lender._id);
     
-    // Update rates for all lenders
+    // Use bulkWrite with upsert to handle both existing and missing rate records
+    const operations = [];
+    
     for (const rateData of ratesData) {
+      console.log(`Propagating rate update for ${rateData.programType} to ${rateData.rate}`);
       const { programType, rate } = rateData;
       
-      const result = await LoanRate.updateMany(
-        { 
-          lender: { $in: lenderIds },
-          programType: programType
-        },
-        { 
-          $set: {
-            rate: rate,
-            updatedBy: userId,
-            updatedAt: new Date()
+      // Create operations for each lender
+      for (const lenderId of lenderIds) {
+        operations.push({
+          updateOne: {
+            filter: {
+              lender: lenderId,
+              programType: programType
+            },
+            update: {
+              $set: {
+                rate: rate,
+                updatedBy: userId,
+                updatedAt: new Date()
+              }
+            },
+            upsert: true // This ensures we create the record if it doesn't exist
           }
-        }
-      );
-      
-      logger.info(`Propagated rate update for ${programType} to ${result.modifiedCount} lender rates for company ${companyId}`);
+        });
+      }
+    }
+    
+    if (operations.length > 0) {
+      const result = await LoanRate.bulkWrite(operations);
+      logger.info(`Propagated rate updates to lenders for company ${companyId}: upserted=${result.upsertedCount}, modified=${result.modifiedCount}`);
     }
   } catch (error) {
     logger.error(`Error propagating rate updates to lenders: ${error.message}`);

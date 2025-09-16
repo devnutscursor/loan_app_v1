@@ -624,7 +624,7 @@ export default function EditLoanProgram() {
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-none">
                   {isNewProgram
                     ? "Create New Loan Program"
-                    : "Edit Loan Program"}
+                    : "Loan Program"}
                 </h1>
               </div>
             </div>

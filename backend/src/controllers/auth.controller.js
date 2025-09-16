@@ -327,77 +327,89 @@ const autoSaveLenderRates = async (userId) => {
     
     logger.info(`Found lender profile: ${lender._id} for user ${userId}`);
     
-    // Instead of trying to update existing rates, we'll directly create default rates
-    // Current market rates (July 2025) - based on Freddie Mac PMMS and industry standards
-    const defaultRates = [
-      { programType: 'conventional', rate: 6.75 }, // 30-year fixed conventional (Freddie Mac July 17, 2025)
-      { programType: 'fha', rate: 6.50 },          // FHA typically 0.25% lower than conventional
-      { programType: 'va', rate: 6.25 },           // VA typically 0.5% lower than conventional
-      { programType: 'usda', rate: 6.25 },         // USDA similar to VA rates
-      { programType: 'jumbo', rate: 7.00 }         // Jumbo typically 0.25% higher than conventional
-    ];
-    
-    // Instead of using the controller, directly work with the model
-    const LoanRate = mongoose.model('LoanRate');
-    
-    // Use bulkWrite for better performance and atomic operations
-    const operations = [];
-    
-    for (const rateData of defaultRates) {
-      operations.push({
-        updateOne: {
-          filter: { 
-            lender: lender._id,
-            programType: rateData.programType 
-          },
-          update: { 
-            $set: { 
-              rate: rateData.rate,
-              updatedBy: userId,
-              updatedAt: new Date()
-            }
-          },
-          upsert: true // This is key - it will insert if doesn't exist or update if it does
-        }
-      });
-    }
-    
-    logger.info(`Preparing to upsert ${operations.length} loan rates for lender ${lender._id}`);
-    
-    // Execute all operations in one go
-    if (operations.length > 0) {
-      try {
-        const result = await LoanRate.bulkWrite(operations);
-        logger.info(`Auto-saved loan rates for lender ${lender._id}: upserted=${result.upsertedCount}, modified=${result.modifiedCount}`);
-        return true;
-      } catch (bulkError) {
-        logger.error(`Error in bulkWrite operation: ${bulkError.message}`);
-        
-        // Try individual inserts as fallback
-        logger.info(`Falling back to individual rate inserts for lender ${lender._id}`);
-        let successCount = 0;
-        
-        for (const rateData of defaultRates) {
-          try {
-            await LoanRate.updateOne(
-              { lender: lender._id, programType: rateData.programType },
-              { 
-                $set: { 
-                  rate: rateData.rate, 
-                  updatedBy: userId,
-                  updatedAt: new Date()
-                }
-              },
-              { upsert: true }
-            );
-            successCount++;
-          } catch (singleError) {
-            logger.error(`Error saving individual rate (${rateData.programType}): ${singleError.message}`);
+    // Check if lender belongs to a company
+    if (lender.company) {
+      logger.info(`Lender ${lender._id} belongs to company ${lender.company}, copying company rates`);
+      
+      // Copy company rates instead of using default rates
+      const { copyCompanyLoanRatesToLender } = require('./loanRate.controller');
+      await copyCompanyLoanRatesToLender(userId, lender._id, lender.company);
+      logger.info(`Company loan rates copied to lender ${lender._id}`);
+      return true;
+    } else {
+      logger.warn(`Lender ${lender._id} does not belong to a company, creating default rates`);
+      
+      // Fallback to default rates only if lender doesn't belong to a company
+      const defaultRates = [
+        { programType: 'conventional', rate: 6.75 }, // Current market rates (July 2025)
+        { programType: 'fha', rate: 6.50 },
+        { programType: 'va', rate: 6.25 },
+        { programType: 'usda', rate: 6.25 },
+        { programType: 'jumbo', rate: 7.00 }
+      ];
+      
+      // Instead of using the controller, directly work with the model
+      const LoanRate = mongoose.model('LoanRate');
+      
+      // Use bulkWrite for better performance and atomic operations
+      const operations = [];
+      
+      for (const rateData of defaultRates) {
+        operations.push({
+          updateOne: {
+            filter: { 
+              lender: lender._id,
+              programType: rateData.programType 
+            },
+            update: { 
+              $set: { 
+                rate: rateData.rate,
+                updatedBy: userId,
+                updatedAt: new Date()
+              }
+            },
+            upsert: true // This is key - it will insert if doesn't exist or update if it does
           }
+        });
+      }
+      
+      logger.info(`Preparing to upsert ${operations.length} default loan rates for lender ${lender._id}`);
+      
+      // Execute all operations in one go
+      if (operations.length > 0) {
+        try {
+          const result = await LoanRate.bulkWrite(operations);
+          logger.info(`Auto-saved default loan rates for lender ${lender._id}: upserted=${result.upsertedCount}, modified=${result.modifiedCount}`);
+          return true;
+        } catch (bulkError) {
+          logger.error(`Error in bulkWrite operation: ${bulkError.message}`);
+          
+          // Try individual inserts as fallback
+          logger.info(`Falling back to individual rate inserts for lender ${lender._id}`);
+          let successCount = 0;
+          
+          for (const rateData of defaultRates) {
+            try {
+              await LoanRate.updateOne(
+                { lender: lender._id, programType: rateData.programType },
+                { 
+                  $set: { 
+                    rate: rateData.rate, 
+                    updatedBy: userId,
+                    updatedAt: new Date()
+                  }
+                },
+                { upsert: true }
+              );
+              successCount++;
+            } catch (singleError) {
+              logger.error(`Error saving individual rate (${rateData.programType}): ${singleError.message}`);
+            }
+          }
+          
+          logger.info(`Fallback completed: Successfully saved ${successCount}/${defaultRates.length} rates`);
+          return successCount > 0;
         }
-        
-        logger.info(`Fallback completed: Successfully saved ${successCount}/${defaultRates.length} rates`);
-        return successCount > 0;
       }
     }
     
@@ -591,7 +603,11 @@ exports.register = async (req, res, next) => {
             await copyCompanyLoanRatesToLender(user._id, lender._id, lender.company);
             logger.info(`Company loan programs and rates copied to lender ${lender._id}`);
           } else {
-            return ApiError("Lender does not belong to a company", 400)
+            // For self-registered lenders without a company, create default rates
+            logger.info(`Self-registered lender ${lender._id} without company, creating default rates`);
+            const { createDefaultLoanRates } = require('./loanRate.controller');
+            await createDefaultLoanRates(user._id, lender._id);
+            logger.info(`Default loan rates created for self-registered lender ${lender._id}`);
           }
         } catch (error) {
           logger.error(`Error creating loan programs/rates for lender ${lender._id}:`, error);
