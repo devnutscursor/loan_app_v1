@@ -3085,22 +3085,27 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button
-                        title="Add Note"
-                        onClick={handleNoteButtonClick}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <StickyNote className="h-5 w-5" />
-                      </button>
-                      <button
-                        title="Send Message"
-                        onClick={() => {
-                          router.push("/lender/messages");
-                        }}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <MessageCircle className="h-5 w-5" />
-                      </button>
+                      {user.role === "lender" && (
+                        <>
+                          <button
+                            title="Add Note"
+                            onClick={handleNoteButtonClick}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <StickyNote className="h-5 w-5" />
+                          </button>
+                          <button
+                            title="Send Message"
+                            onClick={() => {
+                              router.push("/lender/messages");
+                            }}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+                      
                       <button
                         title="Download 3.4 File"
                         onClick={handleDownloadMismoXml}
