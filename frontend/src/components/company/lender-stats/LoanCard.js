@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 
 // Recent loan card component (reused from lender dashboard)
-const LoanCard = ({ loan, onView }) => {
+const LoanCard = ({ loan, borrowerId, lenderId, onView }) => {
   const formatCurrency = (amount) => {
     if (!amount) return "$0";
     return new Intl.NumberFormat('en-US', {
@@ -77,7 +77,7 @@ const LoanCard = ({ loan, onView }) => {
         </div>
         
         <button
-          onClick={() => onView(loan._id)}
+          onClick={() => onView(loan._id, borrowerId)}
           className="w-full mt-2 flex items-center justify-center py-1.5 px-3 text-xs font-medium rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
         >
           View Details

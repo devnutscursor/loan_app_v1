@@ -61,12 +61,9 @@ const LenderStats = () => {
     router.push('/company/lenders');
   };
 
-  const handleViewLoan = (loanId) => {
-    // For company users, we can't navigate to lender-specific pages
-    toast('Loan details view not available for company users', {
-      icon: 'ℹ️',
-      duration: 3000,
-    });
+  const handleViewLoan = (loanId, borrowerId) => {
+    // Navigate to the same loan details page as the company/lender-borrowers page
+    router.push(`/company/loan-details/${loanId}?borrowerId=${borrowerId}&lenderId=${lenderId}`);
   };
 
 
