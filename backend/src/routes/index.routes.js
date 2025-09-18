@@ -16,6 +16,7 @@ const notificationRoutes = require('./notification.routes');
 const noteRoutes = require('./note.routes');
 const adminRoutes = require('./admin.routes');
 const companyRoutes = require('./company.routes');
+const creditReportRoutes = require('./creditReport.routes');
 
 // Debug route to check uploads directory
 router.get('/debug/uploads', (req, res) => {
@@ -86,5 +87,6 @@ router.use('/notifications', notificationRoutes);
 router.use('/notes', noteRoutes);
 router.use('/admin', adminRoutes);
 router.use('/companies', companyRoutes);
+router.use('/credit-report', creditReportRoutes);
 
 module.exports = router; 

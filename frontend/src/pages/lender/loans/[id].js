@@ -8,12 +8,11 @@ import { lenderService, companyService } from "../../../services/api";
 import { useAuth } from "../../../contexts/AuthContext";
 import loanService from "../../../services/loan.service";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
-import { MessageCircle, StickyNote, Download, Settings } from "lucide-react";
+import { MessageCircle, StickyNote, Download, Settings, FileText, CreditCard } from "lucide-react";
 import {  StandardFonts } from 'pdf-lib';
 import {
   BarChart2,
   User,
-  FileText,
   Home,
   Wallet,
   ClipboardList, // or ClipboardCheck if you prefer
@@ -3094,15 +3093,25 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           >
                             <StickyNote className="h-5 w-5" />
                           </button>
-                          <button
-                            title="Send Message"
-                            onClick={() => {
-                              router.push("/lender/messages");
-                            }}
-                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                          >
-                            <MessageCircle className="h-5 w-5" />
-                          </button>
+                      <button
+                        title="Send Message"
+                        onClick={() => {
+                          router.push("/lender/messages");
+                        }}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                      </button>
+                      
+                      <button
+                        title="Credit Report"
+                        onClick={() => {
+                          router.push(`/lender/loans/${id}/credit-report`);
+                        }}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                      >
+                        <CreditCard className="h-5 w-5" />
+                      </button>
                         </>
                       )}
                       
