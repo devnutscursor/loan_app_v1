@@ -86,7 +86,7 @@ const CreditReportPage = () => {
         expiresAt: responseData.expiresAt,
         isExpired: responseData.isExpired,
         providers: responseData.providers,
-        latestScore: responseData.latestScore
+        avgCreditScore: responseData.avgCreditScore
       });
       
       setCreditReport({
@@ -126,7 +126,7 @@ const CreditReportPage = () => {
         expiresAt: responseData.expiresAt,
         isExpired: responseData.isExpired,
         providers: responseData.providers,
-        latestScore: responseData.latestScore
+        avgCreditScore: responseData.avgCreditScore
       });
       
       setCreditReport({
@@ -274,8 +274,8 @@ const CreditReportPage = () => {
                         <p className="font-medium">{reportStatus.expiresAt ? new Date(reportStatus.expiresAt).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div>
-                        <p className="text-sm text-gray-500">Latest Score</p>
-                        <p className="font-medium">{reportStatus.latestScore || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">Average Score</p>
+                        <p className="font-medium">{reportStatus.avgCreditScore || 'N/A'}</p>
                         </div>
                     </div>
                     

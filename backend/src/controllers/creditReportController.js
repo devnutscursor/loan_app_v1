@@ -38,7 +38,7 @@ const createCreditReport = catchAsync(async (req, res) => {
                 expiresAt: creditReport.metadata.expiresAt,
                 isExpired: creditReport.isExpired,
                 providers: creditReport.providers,
-                latestScore: creditReport.latestScore,
+                avgCreditScore: creditReport.avgCreditScore,
                 
                 // Full report data
                 id: creditReport._id,
@@ -151,7 +151,7 @@ const refreshCreditReport = catchAsync(async (req, res) => {
                 expiresAt: creditReport.metadata.expiresAt,
                 isExpired: creditReport.isExpired,
                 providers: creditReport.providers,
-                latestScore: creditReport.latestScore,
+                avgCreditScore: creditReport.avgCreditScore,
                 
                 // Full report data
                 id: creditReport._id,
@@ -283,7 +283,7 @@ const getCreditReportStatus = catchAsync(async (req, res) => {
                 expiresAt: creditReport.metadata.expiresAt,
                 isExpired: creditReport.isExpired,
                 providers: creditReport.providers,
-                latestScore: creditReport.latestScore
+                avgCreditScore: creditReport.avgCreditScore
             }
         });
     } catch (error) {
@@ -299,7 +299,7 @@ const getCreditReportStatus = catchAsync(async (req, res) => {
                     expiresAt: null,
                     isExpired: null,
                     providers: null,
-                    latestScore: null
+                    avgCreditScore: null
                 }
             });
         }

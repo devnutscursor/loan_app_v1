@@ -219,12 +219,19 @@ creditReportSchema.virtual('isExpired').get(function() {
   return this.metadata.expiresAt && this.metadata.expiresAt < new Date();
 });
 
-// Virtual for getting the most recent credit score
-creditReportSchema.virtual('latestScore').get(function() {
+// Virtual for getting the average credit score
+creditReportSchema.virtual('avgCreditScore').get(function() {
   if (this.creditScores.length === 0) return null;
   
-  // Return the highest score among all bureaus
-  return Math.max(...this.creditScores.map(score => score.score));
+  // Calculate the average score among all bureaus
+  const validScores = this.creditScores
+    .map(score => score.score)
+    .filter(score => !isNaN(score) && score >= 300 && score <= 850);
+  
+  if (validScores.length === 0) return null;
+  
+  const sum = validScores.reduce((acc, score) => acc + score, 0);
+  return Math.round(sum / validScores.length);
 });
 
 // Method to update access tracking
