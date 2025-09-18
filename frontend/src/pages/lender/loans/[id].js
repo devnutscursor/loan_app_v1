@@ -2848,8 +2848,8 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   return (
     <ProtectedRoute allowedRoles={["lender", "company"]}>
       <MainLayout>
-        <div className="">
-          <div className="max-w-7xl mx-auto">
+        <div className="overflow-x-auto">
+          <div className="max-w-7xl mx-auto min-w-[720px]">
             {loading ? (
               <div className="animate-pulse">
                 {/* Header skeleton */}
@@ -3057,7 +3057,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                     </h1>
                   </div>
 
-                  <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-blue-800 rounded-md p-2">
                         <svg
@@ -3093,16 +3093,18 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           >
                             <StickyNote className="h-5 w-5" />
                           </button>
-                      <button
-                        title="Send Message"
-                        onClick={() => {
-                          router.push("/lender/messages");
-                        }}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <MessageCircle className="h-5 w-5" />
-                      </button>
-                      
+                          <button
+                            title="Send Message"
+                            onClick={() => {
+                              router.push("/lender/messages");
+                            }}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+
                       <button
                         title="Credit Report"
                         onClick={() => {
@@ -3112,8 +3114,6 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       >
                         <CreditCard className="h-5 w-5" />
                       </button>
-                        </>
-                      )}
                       
                       <button
                         title="Download 3.4 File"

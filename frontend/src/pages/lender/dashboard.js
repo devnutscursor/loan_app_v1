@@ -55,9 +55,9 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass }) => (
           <Icon className="h-6 w-6 text-white" />
         </div>
         <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-white text-opacity-80 truncate">{title}</dt>
-            <dd className="flex items-baseline">
+          <dl className='text-end'>
+            <dt className="text-sm font-medium text-white text-opacity-80 truncate text-end xl:text-start">{title}</dt>
+            <dd className="flex items-baseline xl:justify-start justify-end min-w-28 xl:min-w-0">
               <div className="text-2xl font-semibold text-white">{value}</div>
               {trend && (
                 <div className={`ml-2 flex items-baseline text-xs font-medium ${
@@ -569,7 +569,7 @@ const LenderDashboard = () => {
             </p>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 justify-around">
             <button
               onClick={() => setShowLoanModal(true)}
               className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
@@ -833,10 +833,10 @@ const LenderDashboard = () => {
                       <h3 className="text-lg font-medium text-gray-900">Lending Performance Metrics</h3>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div className="grid sm:grid-cols-2 grid-cols-1 text-center sm:text-start gap-8">
                         <div>
                           <h4 className="text-base font-medium text-gray-700 mb-3">Approval Rate</h4>
-                          <div className="flex items-end space-x-2">
+                          <div className="flex items-end justify-center sm:justify-start space-x-2">
                             <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.approvalRate || 0}%</div>
                             <div className={`pb-1 text-sm ${stats?.metrics?.approvalRateTrend >= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
                               {stats?.metrics?.approvalRateTrend >= 0 ? '+' : ''}{stats?.metrics?.approvalRateTrend || 0}%
@@ -849,7 +849,7 @@ const LenderDashboard = () => {
                         
                         <div>
                           <h4 className="text-base font-medium text-gray-700 mb-3">Avg. Processing Time</h4>
-                          <div className="flex items-end space-x-2">
+                          <div className="flex items-end justify-center sm:justify-start space-x-2">
                             <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.avgProcessingTime || 0}</div>
                             <div className="pb-1 text-lg font-medium text-gray-700">days</div>
                             <div className={`pb-1 text-sm ${stats?.metrics?.processingTimeTrend <= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>

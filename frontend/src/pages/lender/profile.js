@@ -146,7 +146,7 @@ const ProfilePage = () => {
                       />
                     </div>
                     
-                    <div className="pt-8 mt-8 border-t border-gray-100 flex justify-end">
+                    <div className="pt-8 mt-8 border-t border-gray-100 flex justify-center">
                       <button
                         type="submit"
                         disabled={saving}

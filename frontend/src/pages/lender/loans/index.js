@@ -244,7 +244,7 @@ const LenderLoans = () => {
     <ProtectedRoute allowedRoles={['lender']}>
       <MainLayout>
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="mb-8 flex justify-between items-center">
+          <div className="mb-8 flex justify-between items-start sm:items-center flex-col sm:flex-row">
             
             <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -256,7 +256,7 @@ const LenderLoans = () => {
                 : 'List of active loan applications from all your borrowers'}
             </p>            </div>
               {user?.role === 'lender' && (
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 sm:mt-0 mt-3">
                   <button
                     onClick={() => setIsNewLoanModalOpen(true)}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -384,10 +384,10 @@ const LenderLoans = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+                <div className="bg-gray-50 shadow overflow-hidden rounded-lg border border-gray-200 overflow-x-auto">
                   {/* Table Header */}
-                  <div className="bg-gray-50 border-b border-gray-200">
-                    <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="bg-gray-50 border-b border-gray-200 min-w-[910px]">
+                    <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[910px]">
                       <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('borrower')}>
                         <div className="flex items-center">
                           <span>Borrower</span>
@@ -421,7 +421,7 @@ const LenderLoans = () => {
                     {filteredLoans.map((loan) => (
                       <div
                         key={loan._id}
-                        className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-colors duration-150 items-center"
+                        className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-colors duration-150 items-center min-w-[910px]"
                       >
                         <div className="col-span-3 flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">

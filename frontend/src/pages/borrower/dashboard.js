@@ -46,9 +46,9 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass }) => (
           <Icon className="h-6 w-6 text-white" />
         </div>
         <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-white text-opacity-80 truncate">{title}</dt>
-            <dd className="flex items-baseline">
+          <dl className='text-end'>
+            <dt className="text-sm font-medium text-white text-opacity-80 truncate text-end xl:text-start">{title}</dt>
+            <dd className="flex items-baseline xl:justify-start justify-end min-w-28 xl:min-w-0">
               <div className="text-2xl font-semibold text-white">{value}</div>
               {trend && (
                 <div className={`ml-2 flex items-baseline text-xs font-medium ${
@@ -1860,29 +1860,29 @@ useEffect(() => {
       {userId && <ActivityManager key={userId} userId={userId} updateActivities={setActivities} />}
       
       <div className="py-6">
-        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-6">
-          <div>
+        <div className="flex flex-col space-y-4 md:space-y-0 lg:flex-row lg:items-center md:justify-between mb-6">
+          <div className='lg:mb-0 mb-3'>
             <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">
               Welcome back! Here's an overview of your loans and applications
             </p>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex">
             <button
               onClick={() => fetchDashboardData(true)}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mr-3"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
+              <span className='text-sm md:text-base'>Refresh</span>
             </button>
             <Link href="/borrower/apply"
-              className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+              className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all mr-3 md:text-base">
               Apply for a Loan
             </Link>
             <Link href="/borrower/documents" 
-              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 md:text-base">
               My Documents
             </Link>
           </div>

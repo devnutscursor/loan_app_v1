@@ -331,7 +331,7 @@ const LenderBorrowers = () => {
   return (
     <MainLayout>
       <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-8 flex justify-between items-start sm:items-center flex-col sm:flex-row">
 
           <div>
           <h1 className="text-3xl font-bold text-gray-900">My Borrowers</h1>
@@ -339,12 +339,12 @@ const LenderBorrowers = () => {
           </div>
           
           <button
-                  onClick={() => handleShowReferralLink()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add New
-                </button>
+            onClick={() => handleShowReferralLink()}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mt-3 sm:mt-0 "
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add New
+          </button>
         </div>
 
         {loading ? (
@@ -461,9 +461,9 @@ const LenderBorrowers = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+              <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200 overflow-x-auto">
                 {/* Table Header */}
-                <div className="bg-gray-50 border-b border-gray-200">
+                <div className="bg-gray-50 border-b border-gray-200 min-w-[850px]">
                   <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('name')}>
                       <div className="flex items-center">
@@ -494,7 +494,7 @@ const LenderBorrowers = () => {
                 </div>
 
                 {/* Table Content */}
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 min-w-[850px]">
                   {filteredBorrowers.map((borrower) => (
                     <div
                       key={borrower._id}

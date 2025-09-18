@@ -216,17 +216,17 @@ if (loading && milestones.length === 0) {
       </div>
 
       {/* Milestones List */}
-      <div className="space-y-4">
+      <div className="space-y-4 overflow-x-auto">
         {milestones.map((milestone, index) => (
           <div
             key={milestone._id}
-            className={`border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 ${milestone.status === 'completed' 
+            className={`min-w-[530px] border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 ${milestone.status === 'completed' 
               ? 'border-l-4 border-l-green-500' 
               : milestone.status === 'in_progress' 
                 ? 'border-l-4 border-l-blue-500 bg-blue-100' 
                 : 'border-l-4 border-l-gray-300'}`}
           >
-            <div className="flex items-center justify-between py-2 px-3">
+            <div className="flex items-center justify-between py-2 px-3 ">
               <div className="flex items-center flex-1">
                 <div className="mr-2">
                   <MilestoneStatusIcon status={milestone.status} />

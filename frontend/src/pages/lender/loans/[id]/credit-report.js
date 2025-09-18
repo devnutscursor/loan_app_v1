@@ -338,27 +338,27 @@ const CreditReportPage = () => {
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Actions</h2>
                     
                     {reportStatus?.hasActiveReport ? (
-                    <div className="flex gap-4">
-                    <button
-                    onClick={handleRefreshReport}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh Report
-                    </button>
-                    
-                    {reportStatus.status === 'Completed' && (
-                        <button
-                        onClick={handleViewReport}
-                        disabled={fileLoading}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                        <Eye className={`h-4 w-4 ${fileLoading ? 'animate-pulse' : ''}`} />
-                        {fileLoading ? 'Loading...' : 'View Report'}
-                    </button>
-                    )}
-                </div>
+                    <div className="flex gap-4 flex-col sm:flex-row">
+                      <button
+                      onClick={handleRefreshReport}
+                      disabled={loading}
+                      className="inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      Refresh Report
+                      </button>
+                      
+                      {reportStatus.status === 'Completed' && (
+                          <button
+                          onClick={handleViewReport}
+                          disabled={fileLoading}
+                          className="inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                          <Eye className={`h-4 w-4 ${fileLoading ? 'animate-pulse' : ''}`} />
+                          {fileLoading ? 'Loading...' : 'View Report'}
+                      </button>
+                      )}
+                  </div>
                 ) : (
                     <button
                     onClick={() => setShowProviderForm(true)}
