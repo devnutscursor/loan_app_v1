@@ -5,7 +5,7 @@ import Link from "next/link";
 import MainLayout from "../../../../components/layout/MainLayout";
 import ProtectedRoute from "../../../../components/auth/ProtectedRoute";
 import { useAuth } from "../../../../contexts/AuthContext";
-import { FileText, RefreshCw, Download, ArrowLeft, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import { FileText, RefreshCw, Eye, ArrowLeft, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
 import customAxios from '../../../../utils/axios';
 
 const CreditReportPage = () => {
@@ -17,6 +17,7 @@ const CreditReportPage = () => {
   const [creditReport, setCreditReport] = useState(null);
   const [reportStatus, setReportStatus] = useState(null);
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState({
     equifax: true,
     experian: true,
@@ -149,8 +150,9 @@ const CreditReportPage = () => {
     }
   };
 
-  const handleDownloadReport = async () => {
+  const handleViewReport = async () => {
     try {
+      setFileLoading(true);
       const response = await customAxios.get(`/api/v1/credit-report/${loanId}/file`);
       const { fileUrl } = response.data.data;
       
@@ -160,6 +162,8 @@ const CreditReportPage = () => {
     } catch (error) {
       console.error('Error downloading credit report:', error);
       toast.error('Failed to download credit report');
+    } finally {
+      setFileLoading(false);
     }
   };
 
@@ -199,6 +203,16 @@ const CreditReportPage = () => {
 
     <ProtectedRoute>
         <MainLayout>
+        {/* File Loading Overlay */}
+        {fileLoading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                <div className="bg-white rounded-lg shadow-lg p-6 flex items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-700 font-medium">Loading report...</span>
+                </div>
+            </div>
+        )}
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-8">
@@ -336,11 +350,12 @@ const CreditReportPage = () => {
                     
                     {reportStatus.status === 'Completed' && (
                         <button
-                        onClick={handleDownloadReport}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                        onClick={handleViewReport}
+                        disabled={fileLoading}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                        <Download className="h-4 w-4" />
-                        Download Report
+                        <Eye className={`h-4 w-4 ${fileLoading ? 'animate-pulse' : ''}`} />
+                        {fileLoading ? 'Loading...' : 'View Report'}
                     </button>
                     )}
                 </div>
@@ -393,7 +408,8 @@ const CreditReportPage = () => {
                     
                     <button
                     onClick={() => setShowProviderForm(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                    disabled={loading}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                     Cancel
                     </button>

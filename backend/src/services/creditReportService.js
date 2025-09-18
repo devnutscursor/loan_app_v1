@@ -286,6 +286,152 @@ class CreditReportService {
     }
 
     /**
+     * Create XML request for credit report refresh
+     */
+    createRefreshXml(vendorOrderId, borrowerData, providers) {
+        const {
+            firstName,
+            middleName,
+            lastName,
+            suffix,
+            ssn,
+            address
+        } = borrowerData;
+
+        const {
+            equifax = true,
+            experian = true,
+            transunion = true
+        } = providers;
+
+        let xml = `<?xml version="1.0" encoding="utf-8"?>
+<MESSAGE xmlns="${MISMO_NS}" xmlns:p2="${XLINK_NS}" xmlns:p3="${MCL_NS}" MessageType="Request">
+    <ABOUT_VERSIONS>
+        <ABOUT_VERSION>
+            <DataVersionIdentifier>201703</DataVersionIdentifier>
+        </ABOUT_VERSION>
+    </ABOUT_VERSIONS>
+    <DEAL_SETS>
+        <DEAL_SET>
+            <DEALS>
+                <DEAL>
+                    <PARTIES>
+                        <PARTY p2:label="Party1">
+                            <INDIVIDUAL>
+                                <NAME>
+                                    <FirstName>${this.escapeXml(firstName)}</FirstName>
+                                    <LastName>${this.escapeXml(lastName)}</LastName>`;
+
+        if (middleName) {
+            xml += `
+                                    <MiddleName>${this.escapeXml(middleName)}</MiddleName>`;
+        }
+
+        if (suffix) {
+            xml += `
+                                    <SuffixName>${this.escapeXml(suffix)}</SuffixName>`;
+        }
+
+        xml += `
+                                </NAME>
+                            </INDIVIDUAL>
+                            <ROLES>
+                                <ROLE>
+                                    <BORROWER>
+                                        <RESIDENCES>
+                                            <RESIDENCE>
+                                                <ADDRESS>
+                                                    <AddressLineText>${this.escapeXml(address.street)}</AddressLineText>
+                                                    <CityName>${this.escapeXml(address.city)}</CityName>
+                                                    <CountryCode>US</CountryCode>
+                                                    <PostalCode>${this.escapeXml(address.zipCode)}</PostalCode>
+                                                    <StateCode>${this.escapeXml(address.state)}</StateCode>
+                                                </ADDRESS>
+                                                <RESIDENCE_DETAIL>
+                                                    <BorrowerResidencyType>Current</BorrowerResidencyType>
+                                                </RESIDENCE_DETAIL>
+                                            </RESIDENCE>
+                                        </RESIDENCES>
+                                    </BORROWER>
+                                    <ROLE_DETAIL>
+                                        <PartyRoleType>Borrower</PartyRoleType>
+                                    </ROLE_DETAIL>
+                                </ROLE>
+                            </ROLES>
+                            <TAXPAYER_IDENTIFIERS>
+                                <TAXPAYER_IDENTIFIER>
+                                    <TaxpayerIdentifierType>SocialSecurityNumber</TaxpayerIdentifierType>
+                                    <TaxpayerIdentifierValue>${this.escapeXml(ssn)}</TaxpayerIdentifierValue>
+                                </TAXPAYER_IDENTIFIER>
+                            </TAXPAYER_IDENTIFIERS>
+                        </PARTY>
+                    </PARTIES>
+                    <RELATIONSHIPS>
+                        <RELATIONSHIP p2:arcrole="urn:fdc:Meridianlink.com:2017:mortgage/PARTY_IsVerifiedBy_SERVICE" p2:from="Party1" p2:to="Service1"/>
+                    </RELATIONSHIPS>
+                    <SERVICES>
+                        <SERVICE p2:label="Service1">
+                            <CREDIT>
+                                <CREDIT_REQUEST>
+                                    <CREDIT_REQUEST_DATAS>
+                                        <CREDIT_REQUEST_DATA>
+                                            <CREDIT_REPOSITORY_INCLUDED>
+                                                <CreditRepositoryIncludedEquifaxIndicator>${equifax.toString().toLowerCase()}</CreditRepositoryIncludedEquifaxIndicator>
+                                                <CreditRepositoryIncludedExperianIndicator>${experian.toString().toLowerCase()}</CreditRepositoryIncludedExperianIndicator>
+                                                <CreditRepositoryIncludedTransUnionIndicator>${transunion.toString().toLowerCase()}</CreditRepositoryIncludedTransUnionIndicator>
+                                                <EXTENSION>
+                                                    <OTHER>
+                                                        <p3:RequestEquifaxScore>${equifax.toString().toLowerCase()}</p3:RequestEquifaxScore>
+                                                        <p3:RequestExperianFraud>${experian.toString().toLowerCase()}</p3:RequestExperianFraud>
+                                                        <p3:RequestExperianScore>${experian.toString().toLowerCase()}</p3:RequestExperianScore>
+                                                        <p3:RequestTransUnionFraud>${transunion.toString().toLowerCase()}</p3:RequestTransUnionFraud>
+                                                        <p3:RequestTransUnionScore>${transunion.toString().toLowerCase()}</p3:RequestTransUnionScore>
+                                                    </OTHER>
+                                                </EXTENSION>
+                                            </CREDIT_REPOSITORY_INCLUDED>
+                                            <CREDIT_REQUEST_DATA_DETAIL>
+                                                <CreditReportRequestActionType>Other</CreditReportRequestActionType>
+                                                <CreditReportRequestActionTypeOtherDescription>Refresh</CreditReportRequestActionTypeOtherDescription>
+                                            </CREDIT_REQUEST_DATA_DETAIL>
+                                        </CREDIT_REQUEST_DATA>
+                                    </CREDIT_REQUEST_DATAS>
+                                </CREDIT_REQUEST>
+                            </CREDIT>
+                            <SERVICE_PRODUCT>
+                                <SERVICE_PRODUCT_REQUEST>
+                                    <SERVICE_PRODUCT_DETAIL>
+                                        <ServiceProductDescription>CreditOrder</ServiceProductDescription>
+                                        <EXTENSION>
+                                            <OTHER>
+                                                <p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+                                                    <p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+                                                        <p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+                                                            <p3:PreferredResponseFormatType>Html</p3:PreferredResponseFormatType>
+                                                        </p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+                                                    </p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+                                                </p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+                                            </OTHER>
+                                        </EXTENSION>
+                                    </SERVICE_PRODUCT_DETAIL>
+                                </SERVICE_PRODUCT_REQUEST>
+                            </SERVICE_PRODUCT>
+                            <SERVICE_PRODUCT_FULFILLMENT>
+                                <SERVICE_PRODUCT_FULFILLMENT_DETAIL>
+                                    <VendorOrderIdentifier>${vendorOrderId}</VendorOrderIdentifier>
+                                </SERVICE_PRODUCT_FULFILLMENT_DETAIL>
+                            </SERVICE_PRODUCT_FULFILLMENT>
+                        </SERVICE>
+                    </SERVICES>
+                </DEAL>
+            </DEALS>
+        </DEAL_SET>
+    </DEAL_SETS>
+</MESSAGE>`;
+
+        return xml;
+    }
+
+    /**
      * Create query XML for existing order
      */
     createQueryXml(vendorOrderId, borrowerData = null) {
@@ -619,6 +765,50 @@ class CreditReportService {
         }
     
         return serviceData;
+    }
+
+    /**
+     * Submit a credit report refresh order
+     */
+    async submitRefreshOrder(vendorOrderId, borrowerData, providers) {
+        try {
+            const xmlRequest = this.createRefreshXml(vendorOrderId, borrowerData, providers);
+            
+            logger.info(`Submitting CreditOrder refresh for ${vendorOrderId}...`);
+            if (this.config.logRequests) {
+                logger.info('Refresh Request XML:', xmlRequest);
+            }
+
+            const response = await this.session.post('', xmlRequest);
+            
+            if (this.config.logResponses) {
+                logger.info('Response status:', response.status);
+                logger.info('Response headers:', response.headers);
+                logger.info('Response body:', response.data);
+            }
+
+            // Check for authentication errors
+            if (response.status === 401) {
+                throw new AuthenticationError("Authentication failed - check username/password");
+            }
+
+            // Check for other HTTP errors
+            if (response.status >= 400) {
+                throw new NetworkError(`HTTP ${response.status}: ${response.data}`);
+            }
+
+            // Parse response to get new VendorOrderIdentifier (if any)
+            const newVendorOrderId = this.extractVendorOrderId(response.data);
+            
+            logger.info(`Refresh order submitted successfully. New VendorOrderIdentifier: ${newVendorOrderId}`);
+            return newVendorOrderId;
+
+        } catch (error) {
+            if (error instanceof AuthenticationError || error instanceof NetworkError) {
+                throw error;
+            }
+            throw new SmartAPIError(`Refresh order submission failed: ${error.message}`);
+        }
     }
 
     /**
@@ -986,20 +1176,99 @@ class CreditReportService {
                 throw new ApiError('No existing credit report found to refresh', 404);
             }
 
-            // Deactivate the old report
-            existingReport.isActive = false;
+            // Check if we have a vendorOrderId
+            if (!existingReport.smartApiData?.vendorOrderId) {
+                throw new ApiError('Cannot refresh report without vendor order ID', 400);
+            }
+
+            // Update status to Processing
+            existingReport.status = 'Processing';
             await existingReport.save();
 
-            // Create a new report with the same settings
-            const newReport = await this.createCreditReport(
-                loanId, 
-                lenderId, 
-                userId, 
-                existingReport.providers
-            );
+            try {
+                // Submit refresh order using existing vendorOrderId
+                logger.info(`Refreshing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                
+                const newVendorOrderId = await this.submitRefreshOrder(
+                    existingReport.smartApiData.vendorOrderId,
+                    existingReport.borrowerData,
+                    existingReport.providers
+                );
 
-            logger.info(`Credit report refreshed for loan ${loanId}`);
-            return newReport;
+                // Poll for completion
+                const result = await this.pollOrder(newVendorOrderId, existingReport.borrowerData);
+
+                // Update SmartAPI data with new order ID and completion info
+                existingReport.smartApiData.vendorOrderId = newVendorOrderId;
+                existingReport.smartApiData.completionTimestamp = new Date();
+                existingReport.smartApiData.rawResponse = result.rawXml;
+
+                // Update credit scores with fresh data
+                if (result.serviceData.creditScores && result.serviceData.creditScores.length > 0) {
+                    existingReport.creditScores = result.serviceData.creditScores.map(score => ({
+                        bureau: score.bureau.includes('Equifax') ? 'Equifax' : 
+                               score.bureau.includes('Experian') ? 'Experian' : 
+                               score.bureau.includes('TransUnion') ? 'TransUnion' : 'Unknown',
+                        score: parseInt(score.score),
+                        model: score.model,
+                        dateGenerated: new Date()
+                    }));
+                }
+
+                // Handle documents - update with new HTML report
+                if (result.documents && result.documents.length > 0) {
+                    const document = result.documents[0];
+                    let htmlContent = null;
+
+                    if (document.data) {
+                        // Embedded HTML content
+                        htmlContent = document.data;
+                    } else if (document.url) {
+                        // External URL - create redirect HTML
+                        htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=${document.url}">
+    <title>SmartAPI Credit Report</title>
+</head>
+<body>
+    <p>Credit report available at <a href="${document.url}">${document.url}</a>.</p>
+</body>
+</html>`;
+                    }
+
+                    if (htmlContent) {
+                        // Upload new report to S3, replacing the old one
+                        const s3Info = await this.uploadReportToS3(htmlContent, loanId, newVendorOrderId);
+                        existingReport.reportFile = s3Info;
+                    }
+                }
+
+                // Clear previous errors and add new ones if any
+                existingReport.errors = [];
+                if (result.errors && result.errors.length > 0) {
+                    existingReport.errors = result.errors.map(error => ({
+                        code: error.code,
+                        message: error.message
+                    }));
+                }
+
+                // Update status based on result
+                existingReport.status = result.status === 'COMPLETED' ? 'Completed' : 'Failed';
+                
+                // Update timestamps
+                existingReport.updatedAt = new Date();
+                
+                await existingReport.save();
+
+                logger.info(`Credit report refreshed successfully for loan ${loanId}`);
+                return existingReport;
+
+            } catch (error) {
+                logger.error(`Credit report refresh failed for loan ${loanId}:`, error);
+                throw error;
+            }
 
         } catch (error) {
             logger.error('Error refreshing credit report:', error);
