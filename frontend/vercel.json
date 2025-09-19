@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://loan-app-tnuk.onrender.com"
+    "NEXT_PUBLIC_API_URL": "https://loan-app-backend-1qkk.onrender.com"
   },
   "regions": ["dxb1"],
   "headers": [
@@ -16,7 +16,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://loan-app-tnuk.onrender.com"
+          "value": "https://loan-app-backend-1qkk.onrender.com"
         },
         {
           "key": "Access-Control-Allow-Methods",
