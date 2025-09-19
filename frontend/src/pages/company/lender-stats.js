@@ -125,14 +125,14 @@ const LenderStats = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900">{lenderHeader.name}</h2>
-              <div className="flex items-center space-x-4 mt-2">
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center mt-2">
                 <div className="flex items-center space-x-2 text-gray-600">
                   {console.log("lenderHeader", lenderHeader)}
                   <Mail className="h-4 w-4" />
                   <span>{lenderHeader.email}</span>
                 </div>
                 {lenderHeader.phone && (
-                  <div className="flex items-center space-x-2 text-gray-600">
+                  <div className="flex items-center text-gray-600">
                     <Phone className="h-4 w-4" />
                     <span>{lenderHeader.phone}</span>
                   </div>
@@ -209,26 +209,26 @@ const LenderStats = () => {
                 <div className="bg-gray-50 rounded-lg p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div>
-                      <h4 className="text-base font-medium text-gray-700 mb-3">Approval Rate</h4>
-                      <div className="flex items-end space-x-2">
+                      <h4 className="text-base font-medium text-gray-700 mb-3 text-center lg:text-start">Approval Rate</h4>
+                      <div className="flex items-end space-x-2 justify-center lg:justify-start">
                         <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.approvalRate || 0}%</div>
                         <div className={`pb-1 text-sm ${stats?.metrics?.approvalRateTrend >= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
                           {stats?.metrics?.approvalRateTrend >= 0 ? '+' : ''}{stats?.metrics?.approvalRateTrend || 0}%
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mt-2">Based on last 30 days</p>
+                      <p className="text-sm text-gray-600 mt-2 text-center lg:text-start">Based on last 30 days</p>
                     </div>
                     
                     <div>
-                      <h4 className="text-base font-medium text-gray-700 mb-3">Avg. Processing Time</h4>
-                      <div className="flex items-end space-x-2">
+                      <h4 className="text-base font-medium text-gray-700 mb-3 text-center lg:text-start">Avg. Processing Time</h4>
+                      <div className="flex items-end space-x-2 justify-center lg:justify-start">
                         <div className="text-4xl font-bold text-gray-900">{stats?.metrics?.avgProcessingTime || 0}</div>
                         <div className="pb-1 text-lg font-medium text-gray-700">days</div>
                         <div className={`pb-1 text-sm ${stats?.metrics?.processingTimeTrend <= 0 ? 'text-green-600' : 'text-red-600'} font-medium`}>
                           {stats?.metrics?.processingTimeTrend <= 0 ? '+' : ''}{Math.abs(stats?.metrics?.processingTimeTrend || 0)}%
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mt-2">From application to approval</p>
+                      <p className="text-sm text-gray-600 mt-2 text-center lg:text-start">From application to approval</p>
                     </div>
                   </div>
                 </div>

@@ -14,9 +14,9 @@ const StatCard = ({ title, value, icon, change, changeType }) => {
             {icon}
           </div>
           <div className="ml-5 w-0 flex-1">
-            <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-              <dd>
+          <dl className='text-end'>
+            <dt className="font-medium text-gray-500 text-opacity-80 truncate text-end xl:text-start">{title}</dt>
+            <dd className="flex items-baseline xl:justify-start justify-end min-w-28 xl:min-w-0">
                 <div className="text-lg font-medium text-gray-900">{value}</div>
               </dd>
             </dl>
@@ -83,31 +83,31 @@ const LoanStatistics = ({ loanStats }) => {
       <div className="px-4 py-5 sm:p-6">
         <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Total Applications</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{loanStats.totalApplications}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Total Applications</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{loanStats.totalApplications}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Approved</p>
-            <p className="mt-1 text-2xl font-semibold text-green-600">{loanStats.approved}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Approved</p>
+            <p className="mt-1 text-2xl font-semibold text-green-600 text-center sm:text-start">{loanStats.approved}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Pending</p>
-            <p className="mt-1 text-2xl font-semibold text-yellow-600">{loanStats.pending}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Pending</p>
+            <p className="mt-1 text-2xl font-semibold text-yellow-600 text-center sm:text-start">{loanStats.pending}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Rejected</p>
-            <p className="mt-1 text-2xl font-semibold text-red-600">{loanStats.rejected}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Rejected</p>
+            <p className="mt-1 text-2xl font-semibold text-red-600 text-center sm:text-start">{loanStats.rejected}</p>
           </div>
         </div>
         
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Total Loan Volume</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{formatCurrency(loanStats.totalVolume)}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Total Loan Volume</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{formatCurrency(loanStats.totalVolume)}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500">Average Loan Amount</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{formatCurrency(loanStats.averageAmount)}</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Average Loan Amount</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{formatCurrency(loanStats.averageAmount)}</p>
           </div>
         </div>
       </div>
@@ -199,7 +199,7 @@ const AdminDashboard = () => {
     <ProtectedRoute roles={['admin']}>
       <MainLayout title="Admin Dashboard">
         <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
             <h1 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
             
             {/* Summary Cards */}

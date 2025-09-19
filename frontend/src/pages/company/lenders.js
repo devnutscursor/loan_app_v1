@@ -60,80 +60,78 @@ const CompanyLenders = () => {
       <CompanyLayout title="Company Lenders">
         <div className="space-y-6">
           {/* Header Skeleton */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2"></div>
               <div className="h-5 w-48 bg-gray-200 rounded animate-pulse"></div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-              </div>
               <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
             </div>
           </div>
 
           {/* Search and Filters Skeleton */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="h-10 w-80 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search Skeleton */}
+              <div className="flex-1">
+                <div className="h-10 w-full bg-gray-200 rounded-lg animate-pulse"></div>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+              {/* Sort Options Skeleton */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="h-10 w-20 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse"></div>
               </div>
             </div>
           </div>
 
           {/* Lenders Table Skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
             {/* Table Header Skeleton */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="grid grid-cols-6 gap-4">
-                <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+            <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
+              <div className="grid grid-cols-12 px-6 py-3">
+                <div className="col-span-3 h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="col-span-3 h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="col-span-2 h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+                <div className="col-span-2 h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="col-span-2 h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
               </div>
             </div>
 
             {/* Table Rows Skeleton */}
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-200 min-w-[940px]">
               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="px-6 py-4">
-                  <div className="grid grid-cols-6 gap-4 items-center">
-                    {/* Avatar and Name */}
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
-                      <div>
-                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
-                        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
-                      </div>
+                <div key={i} className="grid grid-cols-12 px-6 py-4">
+                  {/* Avatar and Name */}
+                  <div className="col-span-3 flex items-center">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="ml-4">
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
                     </div>
-                    
-                    {/* Email */}
-                    <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
-                    
-                    {/* Borrowers */}
+                  </div>
+                  
+                  {/* Contact Info */}
+                  <div className="col-span-3">
+                    <div className="h-4 w-40 bg-gray-200 rounded animate-pulse mb-1"></div>
+                    <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  
+                  {/* Borrowers */}
+                  <div className="col-span-2">
                     <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
-                    
-                    {/* Loans */}
-                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    
-                    {/* Amount */}
+                  </div>
+                  
+                  {/* Loan Volume */}
+                  <div className="col-span-2">
                     <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-                    
-                    {/* Actions */}
-                    <div className="flex items-center space-x-2">
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="col-span-2 flex justify-end items-center space-x-3">
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   </div>
                 </div>
               ))}
@@ -141,15 +139,16 @@ const CompanyLenders = () => {
           </div>
 
           {/* Pagination Skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+          <div className="flex items-center justify-center space-x-2">
+            <div className="h-10 w-20 bg-gray-200 rounded-lg animate-pulse"></div>
+            <div className="flex space-x-1">
+              <div className="h-10 w-10 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="h-10 w-10 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="h-10 w-10 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="h-10 w-10 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="h-10 w-10 bg-gray-200 rounded-lg animate-pulse"></div>
             </div>
+            <div className="h-10 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
           </div>
         </div>
       </CompanyLayout>
@@ -160,18 +159,14 @@ const CompanyLenders = () => {
     <CompanyLayout title="Company Lenders">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Company Lenders</h1>
             <p className="text-gray-600 mt-1">
               Manage and view all lenders in your company ({totalLenders} total)
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Building2 className="h-4 w-4" />
-              <span>{user?.company?.name || 'Company'}</span>
-            </div>
+          <div className="flex items-center space-x-4 ">
             <button
               onClick={() => setShowNewLenderModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"

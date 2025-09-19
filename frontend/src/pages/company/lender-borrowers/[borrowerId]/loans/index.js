@@ -239,7 +239,7 @@ const CompanyBorrowerLoans = () => {
 
   return (
     <CompanyLayout title="Borrower Loans">
-      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <button
@@ -385,9 +385,9 @@ const CompanyBorrowerLoans = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+              <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
                 {/* Table Header */}
-                <div className="bg-gray-50 border-b border-gray-200">
+                <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
                   <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('number')}>
                       <div className="flex items-center">
@@ -418,7 +418,7 @@ const CompanyBorrowerLoans = () => {
                 </div>
 
                 {/* Table Content */}
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 min-w-[940px]">
                   {filteredLoans.map((loan) => (
                     <div
                       key={loan._id}

@@ -9,9 +9,9 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass }) => (
           <Icon className="h-6 w-6 text-white" />
         </div>
         <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-white text-opacity-80 truncate">{title}</dt>
-            <dd className="flex items-baseline">
+          <dl className='text-end'>
+            <dt className="text-sm font-medium text-white text-opacity-80 truncate text-end xl:text-start">{title}</dt>
+            <dd className="flex items-baseline xl:justify-start justify-end min-w-28 xl:min-w-0">
               <div className="text-2xl font-semibold text-white">{value}</div>
               {trend && (
                 <div className={`ml-2 flex items-baseline text-xs font-medium ${

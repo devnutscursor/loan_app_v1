@@ -229,7 +229,7 @@ const Register = () => {
 
   return (
     <MainLayout>
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-2 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
@@ -243,7 +243,7 @@ const Register = () => {
             </p>
           </div>
           
-          <div className="bg-white py-8 px-6 shadow rounded-xl sm:px-10">
+          <div className="bg-white py-8 px-3 shadow rounded-xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* Role selector - always visible at the top */}
               <RoleSelector formData={formData} handleChange={handleChange} />

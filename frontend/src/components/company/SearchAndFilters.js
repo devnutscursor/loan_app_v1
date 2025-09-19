@@ -26,7 +26,7 @@ const SearchAndFilters = ({
         </div>
 
         {/* Sort Options */}
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => onSort('name')}
             className="flex items-center space-x-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

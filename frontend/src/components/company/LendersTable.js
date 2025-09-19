@@ -31,9 +31,9 @@ const LendersTable = ({
   }
 
   return (
-    <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+    <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
       {/* Table Header */}
-      <div className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
         <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           <div className="col-span-3 flex items-center cursor-pointer" onClick={() => onSort('name')}>
             <div className="flex items-center">
@@ -64,7 +64,7 @@ const LendersTable = ({
       </div>
 
       {/* Table Content */}
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-gray-200 min-w-[940px]">
         {lenders.map((lender) => (
           <div
             key={lender?.user?._id}

@@ -242,7 +242,7 @@ const LenderBorrowers = () => {
 
   return (
     <CompanyLayout title="Lender Borrowers">
-      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <button
@@ -375,9 +375,9 @@ const LenderBorrowers = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+              <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
                 {/* Table Header */}
-                <div className="bg-gray-50 border-b border-gray-200">
+                <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
                   <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('name')}>
                       <div className="flex items-center">
@@ -408,7 +408,7 @@ const LenderBorrowers = () => {
                 </div>
 
                 {/* Table Content */}
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 min-w-[940px]">
                   {filteredBorrowers.map((borrower) => (
                     <div
                       key={borrower._id}
@@ -441,7 +441,7 @@ const LenderBorrowers = () => {
                       <div className="col-span-2 flex items-center">
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          <span>{formatDate(borrower.createdAt)}</span>
+                          <span>{formatDate(borrower.user?.createdAt)}</span>
                         </div>
                       </div>
 
@@ -449,7 +449,7 @@ const LenderBorrowers = () => {
                         <div className="flex items-center">
                           <FileText className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                           <span className="text-sm text-gray-500">
-                            {borrowerLoans[borrower._id] || 0} loans
+                            {borrower.loanCount || 0} loans
                           </span>
                         </div>
                       </div>

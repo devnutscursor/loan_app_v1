@@ -232,7 +232,7 @@ const AdminUsersPage = () => {
   return (
     <ProtectedRoute roles={['admin']}>
       <MainLayout>
-        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
@@ -259,9 +259,9 @@ const AdminUsersPage = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between gap-4 items-end">
+              <div className="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center sm:items-end">
                 {/* Search Bar */}
-                <div className="relative flex-grow max-w-md">
+                <div className="relative flex-grow max-w-md w-full">
                   <label htmlFor="search-input" className="block text-sm font-medium text-gray-700">
                     Search
                   </label>
@@ -295,6 +295,7 @@ const AdminUsersPage = () => {
                       <option value="all">All Roles</option>
                       <option value="lender">Lender</option>
                       <option value="borrower">Borrower</option>
+                      <option value="company">Company</option>
                     </select>
                   </div>
                   
@@ -350,9 +351,9 @@ const AdminUsersPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+                <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200 ">
                   {/* Table Header */}
-                  <div className="bg-gray-50 border-b border-gray-200">
+                  <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
                     <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('name')}>
                         <div className="flex items-center">
@@ -383,7 +384,7 @@ const AdminUsersPage = () => {
                   </div>
 
                   {/* Table Content */}
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-gray-200 min-w-[940px]">
                     {filteredUsers.map((user) => (
                       <div
                         key={user._id}
@@ -399,7 +400,7 @@ const AdminUsersPage = () => {
                             <div className="font-medium text-gray-900">
                               {user.firstName} {user.lastName}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 max-w-[160px] truncate">
                               {user.email}
                             </div>
                           </div>

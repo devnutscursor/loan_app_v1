@@ -26,22 +26,22 @@ router.get(
   );
 
 // Get a specific loan by ID
-router.get('/:id', authorize('lender', 'company'), loanController.getLoan);
+router.get('/:id', authorize('lender', 'company', 'admin'), loanController.getLoan);
 
 // Get a loan with all details (documents, milestones) in a single request
-router.get('/:id/with-details', authorize('lender', 'company'), loanController.getLoanWithDetails);
+router.get('/:id/with-details', authorize('lender', 'company', 'admin'), loanController.getLoanWithDetails);
 
 // Update loan details
-router.put('/:id', authorize('lender','company'), loanController.updateLoan);
+router.put('/:id', authorize('lender','company', 'admin'), loanController.updateLoan);
 
 // Update loan status and processing state - lender/company only
 router.patch('/:id/status', loanController.updateLoanStatus);
 
 // Send pre-approval letter - lender/company only
-router.post('/:loanId/send-pre-approval', authorize('lender', 'company'), loanController.sendPreApprovalLetter);
+router.post('/:loanId/send-pre-approval', authorize('lender', 'company', 'admin'), loanController.sendPreApprovalLetter);
 
 // Manage loan milestones - lender/company only
-router.patch('/:id/milestone', authorize('lender', 'company'), loanController.updateMilestone);
+router.patch('/:id/milestone', authorize('lender', 'company', 'admin'), loanController.updateMilestone);
 
 // Condition routes
 router.post('/:id/conditions', loanController.addCondition);
@@ -58,10 +58,10 @@ router.get('/:id/metrics', loanController.calculateLoanMetrics);
 router.put('/:id/parameters', loanController.updateLoanParameters);
 
 // Toggle editing permission - lender/company only
-router.patch('/:id/toggle-editing', authorize('lender', 'company'), loanController.toggleEditingPermission);
+router.patch('/:id/toggle-editing', authorize('lender', 'company', 'admin'), loanController.toggleEditingPermission);
 
 // Update loan status - lender/company only
-router.patch('/:id/update-status', authorize('lender', 'company'), loanController.updateLoanStatus);
+router.patch('/:id/update-status', authorize('lender', 'company', 'admin' ), loanController.updateLoanStatus);
 
 // Loan drafts routes
 router.post('/draft', loanController.saveDraft);

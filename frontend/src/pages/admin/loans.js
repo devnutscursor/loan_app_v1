@@ -69,7 +69,7 @@ const AdminLoansPage = () => {
   const [selectedBorrower, setSelectedBorrower] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [borrowerIdMapping, setBorrowerIdMapping] = useState({}); // Maps user ID to borrower ID
+  // Removed borrowerIdMapping since we're filtering by name now
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,34 +118,11 @@ const AdminLoansPage = () => {
     setActiveFilter(filter);
   };
 
-  // Function to get borrower ID for a given user ID
-  const getBorrowerIdForUser = async (userId) => {
-    // Check if we already have the mapping
-    if (borrowerIdMapping[userId]) {
-      return borrowerIdMapping[userId];
-    }
+  // Removed getBorrowerIdForUser function since we're filtering by name now
 
-    try {
-      const response = await adminService.getBorrowerByUserId(userId);
-      const borrowerId = response.data.data.borrowerId;
-      
-      // Store the mapping for future use
-      setBorrowerIdMapping(prev => ({
-        ...prev,
-        [userId]: borrowerId
-      }));
-      
-      return borrowerId;
-    } catch (error) {
-      console.error('Error getting borrower ID for user:', error);
-      toast.error('Failed to get borrower information');
-      return null;
-    }
-  };
-
-  const handleBorrowerChange = async (e) => {
-    const selectedUserId = e.target.value;
-    setSelectedBorrower(selectedUserId);
+  const handleBorrowerChange = (e) => {
+    const selectedBorrowerName = e.target.value;
+    setSelectedBorrower(selectedBorrowerName);
   };
 
   const toggleSortDirection = () => {
@@ -185,17 +162,12 @@ const AdminLoansPage = () => {
       setFilterLoading(true);
       let results = [...loans];
 
-      // Apply borrower filter
+      // Apply borrower filter by name instead of ID
       if (selectedBorrower !== 'all') {
-        const borrowerId = await getBorrowerIdForUser(selectedBorrower);
-        if (borrowerId) {
-          results = results.filter(loan => 
-            loan.borrower && loan.borrower._id === borrowerId
-          );
-        } else {
-          // If we can't get borrower ID, show no results
-          results = [];
-        }
+        results = results.filter(loan => {
+          const borrowerName = `${loan.borrowerDetails?.firstName || ''} ${loan.borrowerDetails?.lastName || ''}`.trim();
+          return borrowerName.toLowerCase() === selectedBorrower.toLowerCase();
+        });
       }
 
           // Apply search
@@ -258,12 +230,12 @@ const AdminLoansPage = () => {
     };
 
     applyFilters();
-  }, [loans, searchTerm, activeFilter, selectedBorrower, sortBy, sortDirection, borrowerIdMapping]);
+  }, [loans, searchTerm, activeFilter, selectedBorrower, sortBy, sortDirection]);
 
   return (
     <ProtectedRoute roles={['admin']}>
       <MainLayout>
-        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Active Loans</h1>
@@ -290,9 +262,9 @@ const AdminLoansPage = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between gap-4 items-end">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 items-center sm:items-end">
                 {/* Search Bar */}
-                <div className="relative flex-grow max-w-md">
+                <div className="relative flex-grow max-w-md w-full">
                   <label htmlFor="search-input" className="block text-sm font-medium text-gray-700">
                     Search
                   </label>
@@ -326,7 +298,7 @@ const AdminLoansPage = () => {
                     >
                       <option value="all">All Borrowers</option>
                       {borrowers.map((borrower) => (
-                        <option key={borrower._id} value={borrower._id}>
+                        <option key={borrower._id} value={`${borrower.firstName} ${borrower.lastName}`}>
                           {borrower.firstName} {borrower.lastName}
                         </option>
                       ))}
@@ -387,9 +359,9 @@ const AdminLoansPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white shadow overflow-hidden rounded-lg border border-gray-200">
+                <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
                   {/* Table Header */}
-                  <div className="bg-gray-50 border-b border-gray-200">
+                  <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
                     <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="col-span-3 flex items-center cursor-pointer" onClick={() => handleSortChange('borrower')}>
                         <div className="flex items-center">
@@ -420,7 +392,7 @@ const AdminLoansPage = () => {
                   </div>
 
                   {/* Table Content */}
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-gray-200 min-w-[940px]">
                     {filteredLoans.map((loan) => (
                       <div
                         key={loan._id}
@@ -436,7 +408,7 @@ const AdminLoansPage = () => {
                             <div className="font-medium text-gray-900">
                               {loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 max-w-[160px] truncate">
                               {loan.borrowerDetails?.email}
                             </div>
                           </div>

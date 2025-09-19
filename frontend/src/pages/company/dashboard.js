@@ -98,7 +98,7 @@ const TopLenderCard = ({ lender, rank, onClick, sortBy }) => (
         </div>
         <div>
           <h4 className="font-semibold text-gray-900">{lender.lender.user.name}</h4>
-          <p className="text-sm text-gray-600">{lender.lender.user.email}</p>
+          <p className="text-sm text-gray-600 max-w-[150px] truncate">{lender.lender.user.email}</p>
         </div>
       </div>
       <div className="text-right">
@@ -297,10 +297,15 @@ const CompanyDashboard = () => {
         {/* Top Lenders Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Award className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-gray-900">Top Lenders</h2>
+            <div className="flex items-center justify-between flex-col sm:flex-row gap-3">
+              <div className="flex flex-col items-center sm:items-start space-x-2">
+                <div className="flex items-center space-x-2">
+                  <Award className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-gray-900">Top Lenders</h2>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Ranked by {sortBy === 'borrowerCount' ? 'number of borrowers' : 'total loan amount'}
+                </p>
               </div>
               <div className="flex items-center space-x-4">
                 {/* Sort Toggle */}
@@ -324,9 +329,6 @@ const CompanyDashboard = () => {
                 </button>
               </div>
             </div>
-            <p className="text-sm text-gray-600 mt-1">
-              Ranked by {sortBy === 'borrowerCount' ? 'number of borrowers' : 'total loan amount'}
-            </p>
           </div>
           
           <div className="p-6">

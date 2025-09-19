@@ -2848,8 +2848,8 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   return (
     <ProtectedRoute allowedRoles={["lender", "company"]}>
       <MainLayout>
-        <div className="overflow-x-auto">
-          <div className="max-w-7xl mx-auto min-w-[720px]">
+        <div className="overflow-hidden">
+          <div className="max-w-7xl mx-auto">
             {loading ? (
               <div className="animate-pulse">
                 {/* Header skeleton */}
@@ -3028,7 +3028,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
               </div>
             ) : loan ? (
               <>
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-7xl mx-auto overflow-hidden">
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
 
                     <Link
@@ -3056,10 +3056,10 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       Loan Application Details
                     </h1>
                   </div>
-
-                  <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-row sm:items-center sm:justify-between gap-2">
+                </div>
+                <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row justify-between items-center gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-blue-800 rounded-md p-2">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-md p-2">
                         <svg
                           className="h-6 w-6 text-white"
                           fill="none"
@@ -3075,96 +3075,102 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                         </svg>
                       </div>
                       <div className="ml-2 min-w-0">
-                        <h2 className="text-lg font-semibold truncate text-gray-900">
+                        <h2 className="text-lg sm:text-xs lg:text-lg font-semibold truncate text-gray-900">
                           Loan {loan?.loanNumber || ""}
                         </h2>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-gray-500 truncate ">
                           {loan?.loanDetails?.loanType || "Loan"}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {user.role === "lender" && (
-                        <>
+                    <div>
+                      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          {user.role === "lender" && (
+                            <>
+                              <button
+                                title="Add Note"
+                                onClick={handleNoteButtonClick}
+                                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                              >
+                                <StickyNote className="h-5 w-5" />
+                              </button>
+                              <button
+                                title="Send Message"
+                                onClick={() => {
+                                  router.push("/lender/messages");
+                                }}
+                                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                              >
+                                <MessageCircle className="h-5 w-5" />
+                              </button>
+                            </>
+                          )}
+
                           <button
-                            title="Add Note"
-                            onClick={handleNoteButtonClick}
-                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                          >
-                            <StickyNote className="h-5 w-5" />
-                          </button>
-                          <button
-                            title="Send Message"
+                            title="Credit Report"
                             onClick={() => {
-                              router.push("/lender/messages");
+                              router.push(`/lender/loans/${id}/credit-report`);
                             }}
                             className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                           >
-                            <MessageCircle className="h-5 w-5" />
+                            <CreditCard className="h-5 w-5" />
                           </button>
-                        </>
-                      )}
+                          
+                          <button
+                            title="Download 3.4 File"
+                            onClick={handleDownloadMismoXml}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <Download className="h-5 w-5" />
+                          </button>
 
-                      <button
-                        title="Credit Report"
-                        onClick={() => {
-                          router.push(`/lender/loans/${id}/credit-report`);
-                        }}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <CreditCard className="h-5 w-5" />
-                      </button>
-                      
-                      <button
-                        title="Download 3.4 File"
-                        onClick={handleDownloadMismoXml}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <Download className="h-5 w-5" />
-                      </button>
+                          <button
+                            title="Download URLA"
+                            onClick={handleDownloadURLA}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <FileText className="h-5 w-5" />
+                          </button>
+                          
+                          <button
+                            title="Application Settings"
+                            onClick={handleSettingsButtonClick}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                          >
+                            <Settings className="h-5 w-5" />
+                          </button>
+                          
+                        </div>
+                        <div className="w-full lg:w-auto flex items-center col-span-1 sm:col-span-2 lg:col-span-1">
+                          <button
+                            onClick={handleSendPreApprovalLetter}
+                            className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 min-w-[300px] sm:min-w-0 text-center text-xs lg:text-sm"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M9 12l2 2 4-4"
+                              ></path>
+                            </svg>
 
-                      <button
-                        title="Download URLA"
-                        onClick={handleDownloadURLA}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <FileText className="h-5 w-5" />
-                      </button>
-                      
-                      <button
-                        title="Application Settings"
-                        onClick={handleSettingsButtonClick}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                      >
-                        <Settings className="h-5 w-5" />
-                      </button>
-
-                      <button
-                        onClick={handleSendPreApprovalLetter}
-                        className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 12l2 2 4-4"
-                          ></path>
-                        </svg>
-                        Send Pre-Approval Letter
-                      </button>
+                            Send Pre-Approval Letter
+                          </button>
+                        </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex">
+                <div className="flex overflow-x-auto">
                   {/* Vertical Tabs Navigation */}
                   {/* Vertical Tabs Navigation */}
-                  <div className="w-60 flex-shrink-0 mr-6">
+                  <div className="w-60 flex-shrink-0 mr-6 min-w-[240px]">
                     <div className="rounded-xl bg-white p-3 shadow-lg border border-gray-100 sticky top-4">
                       <nav
                         className="flex flex-col space-y-2"
@@ -3298,7 +3304,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-6 overflow-hidden">
+                  <div className="flex-1 space-y-6 overflow-hidden min-w-[750px]">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
