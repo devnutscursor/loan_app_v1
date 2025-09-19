@@ -42,12 +42,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "blob:", "localhost:*"],
-      connectSrc: ["'self'", "localhost:*"],
+      imgSrc: ["'self'", "data:", "blob:", "localhost:*", "https:"],
+      connectSrc: ["'self'", "localhost:*", "https:", "wss:"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       fontSrc: ["'self'", "data:"],
-      frameAncestors: ["'self'", "localhost:*", "http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean)
+      frameAncestors: ["'self'", "localhost:*", process.env.FRONTEND_URL].filter(Boolean)
     }
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -56,13 +56,39 @@ app.use(helmet({
 
 // Enable CORS
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'https://loan-app-frontend-chi-woad.vercel.app/'
-    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? [
+          process.env.FRONTEND_URL,
+          'https://loan-app-frontend-chi-woad.vercel.app', // Without trailing slash
+          'https://loan-app-frontend-chi-woad.vercel.app/', // With trailing slash
+          'https://loan-app-system.vercel.app',
+          'https://loan-app-backend-1qkk.onrender.com'
+        ].filter(Boolean)
+      : [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          process.env.FRONTEND_URL
+        ].filter(Boolean);
+    
+    // Normalize origin by removing trailing slash for comparison
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const normalizedAllowed = allowedOrigins.map(url => url.replace(/\/$/, ''));
+    
+    if (normalizedAllowed.includes(normalizedOrigin) || normalizedAllowed.includes('*')) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  exposedHeaders: ['Content-Disposition'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Disposition']
 }));
 
 // Development logging with Morgan
@@ -200,38 +226,6 @@ app.get('/api/image-proxy/:filename', (req, res) => {
       path: filePath
     });
   }
-});
-
-// Add global CORS middleware for Render and Vercel deployment
-app.use((req, res, next) => {
-  const allowedOrigins = process.env.NODE_ENV === 'production'
-    ?  'https://loan-app-frontend-chi-woad.vercel.app/'
-    : ['http://localhost:3000', process.env.FRONTEND_URL, '*'].filter(Boolean);
-    
-  const origin = req.headers.origin;
-  
-  // Only set CORS headers if this is a browser request with an origin
-  if (origin) {
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      const defaultOrigin = 'https://loan-app-frontend-chi-woad.vercel.app/';
-      if (defaultOrigin) {
-        res.setHeader('Access-Control-Allow-Origin', defaultOrigin);
-      }
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
 });
 
 // API routes

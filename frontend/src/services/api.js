@@ -11,7 +11,15 @@ const getApiUrl = () => {
   }
   
   // Development or explicit setting
-  return `${process.env.NEXT_PUBLIC_API_URL || `https://loan-app-backend-1qkk.onrender.com/api/v1`}`;
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    // Ensure no double slashes and proper /api/v1 ending
+    const cleanUrl = envUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    return `${cleanUrl}/api/v1`;
+  }
+  
+  // Fallback for development
+  return 'http://localhost:5000/api/v1';
 };
 
 const API_URL = getApiUrl();
