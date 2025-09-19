@@ -13,7 +13,7 @@ if (!loanId || !token) {
   process.exit(1);
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://loan-app-backend-1qkk.onrender.com/';
 
 async function checkMilestoneResponse() {
   try {
