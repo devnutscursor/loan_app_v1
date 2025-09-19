@@ -41,7 +41,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? [process.env.FRONTEND_URL, 'https://loan-app-system.vercel.app', 'https://loan-app-frontend-isczie1gt-muhammad-rabi-uddins-projects.vercel.app']
+      ? 'https://loan-app-frontend-chi-woad.vercel.app/'
       : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
     methods: ['GET', 'POST', "DELETE", "PUT", "PATCH"],
     allowedHeaders: ['Content-Type', 'Authorization'],
