@@ -11,7 +11,7 @@ const getApiUrl = () => {
   }
   
   // Development or explicit setting
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/v1`;
+  return `${process.env.NEXT_PUBLIC_API_URL || `https://loan-app-backend-1qkk.onrender.com/api/v1`}`;
 };
 
 const API_URL = getApiUrl();

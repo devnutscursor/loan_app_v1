@@ -57,7 +57,7 @@ app.use(helmet({
 // Enable CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app']
+    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app', 'https://loan-app-frontend-chi-woad.vercel.app/']
     : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
   credentials: true,
   exposedHeaders: ['Content-Disposition'],
@@ -205,7 +205,7 @@ app.get('/api/image-proxy/:filename', (req, res) => {
 // Add global CORS middleware for Render and Vercel deployment
 app.use((req, res, next) => {
   const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app'].filter(Boolean)
+    ? [process.env.FRONTEND_URL, 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app', 'https://loan-app-system.vercel.app', 'https://loan-app-frontend-chi-woad.vercel.app/'].filter(Boolean)
     : ['http://localhost:3000', process.env.FRONTEND_URL, '*'].filter(Boolean);
     
   const origin = req.headers.origin;
@@ -215,7 +215,7 @@ app.use((req, res, next) => {
     if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     } else {
-      const defaultOrigin = process.env.FRONTEND_URL || 'https://loanapp-8s0y5vrn2-asadalibhattis-projects.vercel.app';
+      const defaultOrigin = process.env.FRONTEND_URL || 'https://loan-app-frontend-chi-woad.vercel.app/';
       if (defaultOrigin) {
         res.setHeader('Access-Control-Allow-Origin', defaultOrigin);
       }
