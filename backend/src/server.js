@@ -43,7 +43,7 @@ const io = socketIo(server, {
     origin: process.env.NODE_ENV === 'production'
       ? [process.env.FRONTEND_URL, 'https://loan-app-system.vercel.app']
       : ['http://localhost:3000', process.env.FRONTEND_URL, '*'],
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', "DELETE", "PUT", "PATCH"],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
   }
