@@ -31,7 +31,7 @@ import {
   FileCheck,
   FilePlus,
   FileX,
-  FilePen,
+  FileEdit,
   MessageSquare
 } from 'lucide-react';
 
@@ -450,7 +450,7 @@ const LenderDashboard = () => {
               'FileCheck': FileCheck,
               'FilePlus': FilePlus,
               'FileX': FileX,
-              'FilePen': FilePen,
+              'FilePen': FileEdit,
               'MessageSquare': MessageSquare
             };
             
@@ -927,7 +927,7 @@ const LenderDashboard = () => {
                               'FileCheck': FileCheck,
                               'FilePlus': FilePlus,
                               'FileX': FileX,
-                              'FilePen': FilePen,
+                              'FilePen': FileEdit,
                               'MessageSquare': MessageSquare
                             };
                             

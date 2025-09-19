@@ -19,6 +19,13 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+import dynamic from 'next/dynamic';
+
+// Add this at the top after imports
+const CompanyLenderBorrowers = dynamic(() => import('./lender-borrowers'), {
+  ssr: false
+});
+
 // Skeleton Loader Component
 const SkeletonLoader = () => (
   <div className="space-y-6">
@@ -475,4 +482,4 @@ const LenderBorrowers = () => {
   );
 };
 
-export default LenderBorrowers;
+export default CompanyLenderBorrowers;
