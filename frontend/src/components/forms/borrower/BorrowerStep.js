@@ -343,7 +343,7 @@ const BorrowerStep = ({
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="flex items-center space-x-2 border-b border-gray-200 pb-3">
+      <div className="flex items-center justify-center sm:justify-start flex-wrap gap-3 space-x-2 border-b border-gray-200 pb-3">
         <button
           type="button"
           className={getTabClass("personalDetails")}

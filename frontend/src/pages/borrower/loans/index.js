@@ -361,7 +361,7 @@ const Loans = () => {
                         {/* <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 mr-2">
                           Pending: {statusGroups.pending.length}
                         </span> */}
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 mr-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 mr-2 ">
                           Processing: {statusGroups.processing.length}
                         </span>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 mr-2">

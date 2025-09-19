@@ -147,7 +147,7 @@ const Milestones = () => {
             </p>
           </div>
           
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
+          <div className="max-w-7xl mx-0 md:mx-auto px-0 sm:px-6 md:px-8 mt-6">
             {isLoading ? (
               <LoadingSkeleton />
             ) : loans.length === 0 ? (

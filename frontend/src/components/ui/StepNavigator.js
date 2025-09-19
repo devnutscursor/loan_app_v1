@@ -64,7 +64,7 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
 
   return (
     <div className="py-4" style={{ padding: theme.stepNavigator.padding }}>
-      <div className="flex justify-between items-center">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const status = getStepStatus(stepNumber);
@@ -126,7 +126,9 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
             height: '2px',
             marginLeft: '0.5rem',
             marginRight: '0.5rem',
-            backgroundColor: stepNumber < currentStep ? theme.colors.primary : theme.colors.gray300
+            backgroundColor: stepNumber < currentStep ? theme.colors.primary : theme.colors.gray300,
+            maxWidth: '21px',
+            minWidth: '21px',
           };
           
           return (
@@ -135,6 +137,7 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
               <div className="flex flex-col items-center">
                 {/* Circle */}
                 <button
+                  className=""
                   onClick={() => handleStepClick(stepNumber)}
                   disabled={stepNumber > currentStep + 1}
                   style={circleStyles}
@@ -157,10 +160,6 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
                 </div>
               </div>
               
-              {/* Connector line between steps (except after last step) */}
-              {stepNumber < steps.length && (
-                <div style={connectorStyles} />
-              )}
             </React.Fragment>
           );
         })}

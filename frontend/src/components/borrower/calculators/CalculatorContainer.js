@@ -35,7 +35,7 @@ const CalculatorContainer = () => {
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Calculator navigation tabs */}
-      <div className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-gray-50 border-b border-gray-200 overflow-x-auto">
         <nav className="flex -mb-px px-4 sm:px-6">
           {calculators.map(calculator => (
             <button

@@ -285,7 +285,7 @@ const Documents = () => {
     <ProtectedRoute allowedRoles={["borrower"]}>
       <MainLayout>
         <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 md:px-8">
             <h1 className="text-2xl font-semibold text-gray-900">
               Document Management
             </h1>
@@ -294,7 +294,7 @@ const Documents = () => {
             </p>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6">
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 md:px-8 mt-6">
             {/* Enhanced Loan Selector */}
             <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
               <div className="border-b border-gray-200 px-6 py-4">

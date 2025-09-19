@@ -148,7 +148,7 @@ const Profile = () => {
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout title="Profile">
-      <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto py-8 px-0 sm:px-6 lg:px-8">
       <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
              {/* Profile Header */}
              <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
@@ -157,7 +157,7 @@ const Profile = () => {
                 Manage your personal information and account settings
               </p>
             </div>
-            <div className="px-8 py-10">
+            <div className="px-4 md:px-8 py-10">
               <div className="flex flex-col md:flex-row gap-12">
                 {/* Profile Picture */}
                 <div className="md:w-1/3 flex flex-col items-center">
@@ -221,7 +221,7 @@ const Profile = () => {
                       />
                     </div>
                     
-                    <div className="pt-8 mt-8 border-t border-gray-100 flex justify-end">
+                    <div className="pt-8 mt-8 border-t border-gray-100 flex justify-center">
                       <button
                         type="submit"
                         disabled={saving}

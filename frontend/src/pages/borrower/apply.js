@@ -1504,11 +1504,11 @@ const LoanApplication = () => {
       <MainLayout title="Apply for Loan">
         <div className="py-6">
           <div className="mx-auto sm:px-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-semibold text-gray-900">Apply for a Loan</h1>
+            <div className="flex justify-between items-center flex-col lg:flex-row">
+              <h1 className="text-2xl font-semibold text-gray-900 lg:mb-0 mb-3">Apply for a Loan</h1>
               
               {/* Development Tools - Enhanced to match lender page */}
-              <div className="flex items-center space-x-2">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {process.env.NODE_ENV === 'development' && (
                   <>
                     <button

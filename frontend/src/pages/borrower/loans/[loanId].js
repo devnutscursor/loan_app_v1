@@ -288,8 +288,8 @@ const LoanDetails = () => {
         title={loan ? `Loan ${loan.loanNumber || ""}` : "Loan Details"}
         noSidebarMargin={true}
       >
-        <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-6 overflow-x-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-[970px]">
             <div className="mb-6">
               <div className="flex items-center justify-between">
                 <div>
