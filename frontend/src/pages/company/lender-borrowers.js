@@ -69,7 +69,7 @@ const LenderBorrowers = () => {
   const [error, setError] = useState(null);
   const [lenderData, setLenderData] = useState(null);
   const [borrowers, setBorrowers] = useState([]);
-  const [borrowerLoans, setBorrowerLoans] = useState({});
+  // const [borrowerLoans, setBorrowerLoans] = useState({});
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,25 +105,27 @@ const LenderBorrowers = () => {
   }, [user, router.query]);
 
   // Add this effect to fetch loans for each borrower (same as lender page)
-  useEffect(() => {
-    const fetchBorrowerLoans = async () => {
-      const loansMap = {};
-      for (const borrower of borrowers) {
-        try {
-          const response = await companyService.getLenderBorrowerLoans(user.company, router.query.lenderId, borrower._id);
-          loansMap[borrower._id] = response.data?.length || 0;
-        } catch (error) {
-          console.error(`Error fetching loans for borrower ${borrower._id}:`, error);
-          loansMap[borrower._id] = 0;
-        }
-      }
-      setBorrowerLoans(loansMap);
-    };
-
-    if (borrowers.length > 0) {
-      fetchBorrowerLoans();
-    }
-  }, [borrowers, user.company, router.query.lenderId]);
+  // COMMENTED OUT: This was causing memory issues on Vercel due to sequential API calls
+  // The backend already provides loanCount for each borrower, so this is unnecessary
+  // useEffect(() => {
+  //   const fetchBorrowerLoans = async () => {
+  //     const loansMap = {};
+  //     for (const borrower of borrowers) {
+  //       try {
+  //         const response = await companyService.getLenderBorrowerLoans(user.company, router.query.lenderId, borrower._id);
+  //         loansMap[borrower._id] = response.data?.length || 0;
+  //       } catch (error) {
+  //         console.error(`Error fetching loans for borrower ${borrower._id}:`, error);
+  //         loansMap[borrower._id] = 0;
+  //       }
+  //     }
+  //     setBorrowerLoans(loansMap);
+  //   };
+  //
+  //   if (borrowers.length > 0) {
+  //     fetchBorrowerLoans();
+  //   }
+  // }, [borrowers, user.company, router.query.lenderId]);
 
   useEffect(() => {
     if (!user || user.role !== 'company') {
@@ -198,7 +200,7 @@ const LenderBorrowers = () => {
       results = results.filter(borrower => new Date(borrower.createdAt) >= thirtyDaysAgo);
     } else if (activeFilter === 'hasLoans') {
       // Filter borrowers who have at least one loan
-      results = results.filter(borrower => (borrowerLoans[borrower._id] || 0) > 0);
+      results = results.filter(borrower => (borrower.loanCount || 0) > 0);
     }
 
     // Apply sorting
@@ -219,8 +221,8 @@ const LenderBorrowers = () => {
           compareB = new Date(b.createdAt || 0).getTime();
           break;
         case 'loans':
-          compareA = borrowerLoans[a._id] || 0;
-          compareB = borrowerLoans[b._id] || 0;
+          compareA = a.loanCount || 0;
+          compareB = b.loanCount || 0;
           break;
         default:
           return 0;
@@ -231,7 +233,7 @@ const LenderBorrowers = () => {
     });
 
     return results;
-  }, [borrowers, searchTerm, activeFilter, sortBy, sortDirection, borrowerLoans]);
+  }, [borrowers, searchTerm, activeFilter, sortBy, sortDirection]);
 
   const getSortIcon = (column) => {
     if (sortBy !== column) return null;
