@@ -301,6 +301,10 @@ export const validateStep = (step, formData, tabName = null) => {
     if (fieldPath === 'militaryService.hasServed' && value !== undefined) {
       continue;
     }
+
+    if (fieldPath === 'propertiesOwned.ownsProperty' && value !== undefined) {
+      continue;
+    }
     
     // Skip validation for declarations fields if they have been selected (either true or false)
     if ((fieldPath === 'declarations.occupyAsPrimary' || fieldPath === 'declarations.firstTimeBuyer') && value !== undefined) {
