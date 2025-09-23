@@ -1,6 +1,7 @@
 const express = require('express');
 const companyController = require('../controllers/company.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { uploadWithErrorHandling } = require('../middleware/upload.middleware');
 
 const router = express.Router();
 
@@ -51,6 +52,14 @@ router.patch('/:id', companyController.updateCompany);
 
 // Update company branding - available to lenders who belong to the company and admins
 router.patch('/:id/branding', companyController.updateBranding);
+
+// Company logo management (company user or admin)
+router.patch(
+  '/:id/logo',
+  (req, res, next) => uploadWithErrorHandling.single('logo', `companies/${req.params.id}/logos`)(req, res, next),
+  companyController.uploadCompanyLogo
+);
+router.delete('/:id/logo', companyController.deleteCompanyLogo);
 
 // Admin-only routes
 // Update company subscription

@@ -5,6 +5,7 @@ const Loan = require('../models/loan.model');
 const User = require('../models/user.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
+const { getSignedUrl, getPublicUrl, USE_S3 } = require('../services/s3.service');
 
 /**
  * Create a new company
@@ -143,9 +144,17 @@ exports.getCompany = async (req, res, next) => {
       return next(new ApiError('Company not found', 404));
     }
     
+    let logoUrl = null;
+    if (company.logo) {
+      logoUrl = USE_S3 ? getPublicUrl(company.logo) : company.logo;
+    }
+
     res.status(200).json({
       status: 'success',
-      data: company
+      data: {
+        ...company.toObject(),
+        logoUrl
+      }
     });
   } catch (error) {
     next(error);
@@ -198,6 +207,83 @@ exports.updateCompany = async (req, res, next) => {
       status: 'success',
       message: 'Company updated successfully',
       data: updatedCompany
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload or replace company logo (company user or admin)
+exports.uploadCompanyLogo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.role !== 'admin') {
+      if (req.user.role !== 'company' || req.user.company?.toString() !== id) {
+        return next(new ApiError('You are not authorized to update this company', 403));
+      }
+    }
+
+    const company = await Company.findById(id);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+
+    if (!req.file || !(req.file.key || req.file.path)) {
+      return next(new ApiError('Logo file is required', 400));
+    }
+
+    // Store only S3 key (or local path when not using S3)
+    company.logo = req.file.key || req.file.path;
+    await company.save();
+
+    const logoUrl = USE_S3 ? getPublicUrl(company.logo) : (req.file.url || req.file.path);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Company logo updated',
+      data: {
+        logoKey: company.logo,
+        logoUrl
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete company logo (company user or admin)
+exports.deleteCompanyLogo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.role !== 'admin') {
+      if (req.user.role !== 'company' || req.user.company?.toString() !== id) {
+        return next(new ApiError('You are not authorized to update this company', 403));
+      }
+    }
+
+    const company = await Company.findById(id);
+    if (!company) {
+      return next(new ApiError('Company not found', 404));
+    }
+
+    const key = company.logo;
+    company.logo = undefined;
+    await company.save();
+
+    if (USE_S3 && key) {
+      try {
+        const { deleteFromS3 } = require('../services/s3.service');
+        await deleteFromS3(key);
+      } catch (e) {
+        logger.warn(`Failed to delete logo from S3: ${e.message}`);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Company logo deleted'
     });
   } catch (error) {
     next(error);

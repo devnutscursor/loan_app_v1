@@ -63,6 +63,18 @@ const companySchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  legalEntityType: {
+    type: String,
+    trim: true
+  },
+  legalEntityOrganizedUnder: {
+    type: String,
+    trim: true
+  },
+  posLoanAppAssignee: {
+    type: String,
+    trim: true
+  },
   primaryContact: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

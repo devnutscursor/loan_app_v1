@@ -390,13 +390,13 @@ exports.createAdminUser = async (req, res, next) => {
 
 /**
  * Create a new Company with primary contact (admin only)
- * Body: { companyName, password, phone, email, maxLenders, primaryContact: { firstName, lastName, email, phone, password } }
+ * Body: { companyName, phone, email, maxLenders, nmls?, website?, address?: { addressLine1, addressLine2, city, state, zipCode, country? }, legalEntityType?, legalEntityOrganizedUnder?, posLoanAppAssignee?, primaryContact: { firstName, lastName, email, phone, password } }
  */
 exports.createCompanyWithPrimaryContact = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { companyName, phone, email, maxLenders, primaryContact } = req.body;
+    const { companyName, phone, email, maxLenders, nmls, website, address, legalEntityType, legalEntityOrganizedUnder, posLoanAppAssignee, primaryContact } = req.body;
     console.log('Creating company with primary contact:', companyName);
 
     if (!companyName || !phone || !email || typeof maxLenders !== 'number' || !primaryContact) {
@@ -425,6 +425,19 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
         phone,
         email: email.toLowerCase(),
         maxLenders,
+        nmls,
+        website,
+        address: {
+          addressLine1: address?.addressLine1,
+          addressLine2: address?.addressLine2,
+          city: address?.city,
+          state: address?.state,
+          zipCode: address?.zipCode,
+          country: address?.country || 'United States'
+        },
+        legalEntityType,
+        legalEntityOrganizedUnder,
+        posLoanAppAssignee,
         isActive: true
       }
     ], { session });

@@ -308,6 +308,14 @@ export const companyService = {
   // Company Profile
   getProfile: (companyId) => api.get(`/companies/${companyId}`),
   updateProfile: (companyId, companyData) => api.patch(`/companies/${companyId}`, companyData),
+  uploadLogo: (companyId, file) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.patch(`/companies/${companyId}/logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  deleteLogo: (companyId) => api.delete(`/companies/${companyId}/logo`),
 };
 
 // Admin Services

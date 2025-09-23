@@ -12,7 +12,10 @@ import {
   Save,
   Edit,
   X,
-  Check
+  Check,
+  Globe,
+  FileEdit,
+  Trash2
 } from 'lucide-react';
 
 const CompanyProfile = () => {
@@ -25,8 +28,20 @@ const CompanyProfile = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    nmls: '',
+    website: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    legalEntityType: '',
+    legalEntityOrganizedUnder: '',
+    posLoanAppAssignee: ''
   });
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoDeleting, setLogoDeleting] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'company') {
@@ -47,13 +62,61 @@ const CompanyProfile = () => {
       setFormData({
         name: companyData.name || '',
         email: companyData.email || '',
-        phone: companyData.phone || ''
+        phone: companyData.phone || '',
+        nmls: companyData.nmls || '',
+        website: companyData.website || '',
+        addressLine1: companyData.address?.addressLine1 || '',
+        addressLine2: companyData.address?.addressLine2 || '',
+        city: companyData.address?.city || '',
+        state: companyData.address?.state || '',
+        zipCode: companyData.address?.zipCode || '',
+        legalEntityType: companyData.legalEntityType || '',
+        legalEntityOrganizedUnder: companyData.legalEntityOrganizedUnder || '',
+        posLoanAppAssignee: companyData.posLoanAppAssignee || ''
       });
     } catch (error) {
       console.error('Error fetching company profile:', error);
       toast.error('Failed to load company profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if (file) {
+      setLogoUploading(true);
+      try {
+        const res = await companyService.uploadLogo(user.company, file);
+        const {logoUrl, logoKey} = res.data?.data || {};
+
+        const freshUrl = logoUrl ? `${logoUrl}?t=${Date.now()}` : undefined;
+        setCompany(prev => ({ ...prev, logo: logoKey, logoUrl: freshUrl }));
+        toast.success('Company logo uploaded successfully');
+      } catch (error) {
+        console.error('Error uploading company logo:', error);
+        toast.error('Failed to upload company logo');
+      } finally {
+        setLogoUploading(false);
+        e.target.value = '';
+      }
+      setLogoUploading(false);
+    }
+  };
+
+  const handleLogoDelete = async (e) => {
+    setLogoDeleting(true);
+    try {
+      await companyService.deleteLogo(user.company);
+      setCompany(prev => ({ ...prev, logo: null, logoUrl: null }));
+      toast.success('Company logo deleted successfully');
+    } catch (error) {
+      console.error('Error deleting company logo:', error);
+      toast.error('Failed to delete company logo');
+    } finally {
+      setLogoDeleting(false);
+      e.target.value = '';
     }
   };
 
@@ -68,9 +131,14 @@ const CompanyProfile = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await companyService.updateProfile(user.company, formData);
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      };
+      await companyService.updateProfile(user.company, payload);
       
-      setCompany(prev => ({ ...prev, ...formData }));
+      setCompany(prev => ({ ...prev, ...payload }));
       setEditing(false);
       toast.success('Company profile updated successfully');
     } catch (error) {
@@ -85,7 +153,17 @@ const CompanyProfile = () => {
     setFormData({
       name: company.name || '',
       email: company.email || '',
-      phone: company.phone || ''
+      phone: company.phone || '',
+      nmls: company.nmls || '',
+      website: company.website || '',
+      addressLine1: company.address?.addressLine1 || '',
+      addressLine2: company.address?.addressLine2 || '',
+      city: company.address?.city || '',
+      state: company.address?.state || '',
+      zipCode: company.address?.zipCode || '',
+      legalEntityType: company.legalEntityType || '',
+      legalEntityOrganizedUnder: company.legalEntityOrganizedUnder || '',
+      posLoanAppAssignee: company.posLoanAppAssignee || ''
     });
     setEditing(false);
   };
@@ -144,6 +222,33 @@ const CompanyProfile = () => {
           </div>
         </div>
 
+        {/* Branding / Logo */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Branding</h2>
+          <div className="flex items-center gap-6">
+            <div className="w-28 h-28 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+              {company?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={company.logoUrl} alt="Company Logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-gray-400 text-sm">No Logo</span>
+              )}
+            </div>
+            <div className={`flex items-center gap-3 ${logoUploading ? 'cursor-not-allowed' : ''}`}>
+              <label className={`inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary-dark transition-colors disabled:opacity-50`} disabled={logoUploading}>
+                <FileEdit className="h-4 w-4 mr-2" />
+                <span>{logoUploading ? 'Uploading...' : (company?.logoUrl ? 'Change Logo' : 'Upload Logo')}</span>
+                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" disabled={logoUploading || logoDeleting} />
+              </label>
+              {company?.logoUrl && (
+                <button onClick={handleLogoDelete} disabled={logoDeleting} className="inline-flex items-center px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <span>{logoDeleting ? 'Deleting...' : 'Delete'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
         {/* Company Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Company Information</h2>
@@ -229,7 +334,91 @@ const CompanyProfile = () => {
 
           </div>
 
+          {/* Additional fields row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            {/* Website */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+              {editing ? (
+                <input type="url" name="website" value={formData.website} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="https://example.com" />
+              ) : (
+                <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                  <Globe className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-900">{company?.website || 'Not set'}</span>
+                </div>
+              )}
+            </div>
+
+            {/* NMLS */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">NMLS #</label>
+              {editing ? (
+                <input type="text" name="nmls" value={formData.nmls} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="123456" />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.nmls || 'Not set'}</div>
+              )}
+            </div>
+
+            {/* Legal Entity Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Legal Entity Type</label>
+              {editing ? (
+                <input type="text" name="legalEntityType" value={formData.legalEntityType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="LLC, Inc.." />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.legalEntityType || 'Not set'}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Additional row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            {/* Legal Organized Under */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Organized Under The Laws Of</label>
+              {editing ? (
+                <input type="text" name="legalEntityOrganizedUnder" value={formData.legalEntityOrganizedUnder} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Delaware, California..." />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.legalEntityOrganizedUnder || 'Not set'}</div>
+              )}
+            </div>
+
+            {/* POS Assignee */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">POS Loan App Assignee</label>
+              {editing ? (
+                <input type="text" name="posLoanAppAssignee" value={formData.posLoanAppAssignee} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Name or email" />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.posLoanAppAssignee || 'Not set'}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+              {editing ? (
+                <div className="space-y-3">
+                  <input type="text" name="addressLine1" value={formData.addressLine1} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Street Address" />
+                  <input type="text" name="addressLine2" value={formData.addressLine2} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Apt/Unit" />
+                  <div className="grid grid-cols-3 gap-3">
+                    <input type="text" name="city" value={formData.city} onChange={handleInputChange} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="City" />
+                    <input type="text" name="state" value={formData.state} onChange={handleInputChange} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="State" />
+                    <input type="text" name="zipCode" value={formData.zipCode} onChange={handleInputChange} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="ZIP" />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                  <div>{company?.address?.addressLine1 || '—'}</div>
+                  <div>{company?.address?.addressLine2 || ''}</div>
+                  <div>{[company?.address?.city, company?.address?.state, company?.address?.zipCode].filter(Boolean).join(', ') || ''}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+        
+
 
         {/* Company Stats */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -292,6 +481,6 @@ const CompanyProfile = () => {
       </div>
     </CompanyLayout>
   );
-};
+}
 
 export default CompanyProfile;
