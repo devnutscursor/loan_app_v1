@@ -480,6 +480,45 @@ const debtSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  // Additional fields from credit report XML
+  accountOpenDate: {
+    type: Date
+  },
+  accountClosedDate: {
+    type: Date
+  },
+  liabilityType: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    trim: true
+  },
+  highBalance: {
+    type: Number,
+    min: 0
+  },
+  pastDueAmount: {
+    type: Number,
+    min: 0
+  },
+  creditLimit: {
+    type: Number,
+    min: 0
+  },
+  currentRating: {
+    type: String,
+    trim: true
+  },
+  highestAdverseRating: {
+    type: String,
+    trim: true
+  },
+  comments: {
+    type: String,
+    trim: true
+  }
 });
 
 const propertyOwnedSchema = new mongoose.Schema({

@@ -4,6 +4,7 @@ const Loan = require('../models/loan.model');
 const { uploadToS3, getSignedUrl } = require('./s3.service');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
+const CreditDataExtractor = require('./creditDataExtractor');
 
 // MISMO namespace constants
 const MISMO_NS = "http://www.mismo.org/residential/2009/schemas";
@@ -58,7 +59,7 @@ class CreditReportService {
             password: process.env.SMARTAPI_PASSWORD,
             baseUrl: process.env.SMARTAPI_BASE_URL,
             mclInterface: process.env.SMARTAPI_MCL_INTERFACE ,
-            timeout: parseInt(process.env.SMARTAPI_TIMEOUT),
+            timeout: 60000,
             logRequests: process.env.SMARTAPI_LOG_REQUESTS,
             logResponses: process.env.SMARTAPI_LOG_RESPONSES
         };
@@ -870,11 +871,6 @@ class CreditReportService {
 
             const response = await this.session.post('', xmlRequest);
 
-            console.log('=== SMARTAPI XML RESPONSE ===');
-            console.log('Response Status:', response.status);
-            console.log('Raw XML Response:', response.data);
-            console.log('=== END XML RESPONSE ===');
-            
             if (this.config.logResponses) {
                 logger.info('Response status:', response.status);
                 logger.info('Response body:', response.data);
@@ -1012,6 +1008,149 @@ class CreditReportService {
     }
 
     /**
+     * Extract and update loan with credit data
+     */
+    async updateLoanWithCreditData(loanId, xmlContent) {
+      try {
+        const extractor = new CreditDataExtractor();
+        
+        // Extract debts and assets from XML
+        const extractedDebts = extractor.extractDebtsFromXML(xmlContent);
+        const extractedAssets = extractor.extractAssetsFromXML(xmlContent);
+        const extractedEmployment = extractor.extractEmploymentFromXML(xmlContent);
+        
+        // Update the loan
+        const loan = await Loan.findById(loanId);
+        if (!loan) {
+          throw new ApiError('Loan not found', 404);
+        }
+        
+        // Merge extracted debts with existing debts (avoid duplicates)
+        const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+        const newDebts = extractedDebts.filter(debt => 
+          !existingDebtCreditors.includes(debt.creditor?.toLowerCase())
+        );
+        
+        if (newDebts.length > 0) {
+          loan.debts = [...loan.debts, ...newDebts];
+          logger.info(`Added ${newDebts.length} new debts to loan ${loanId}`);
+        }
+        
+        // Merge extracted assets with existing assets
+        if (extractedAssets.checkingAndSavings.length > 0) {
+          loan.assets.checkingAndSavings = [
+            ...loan.assets.checkingAndSavings,
+            ...extractedAssets.checkingAndSavings
+          ];
+          logger.info(`Added ${extractedAssets.checkingAndSavings.length} new assets to loan ${loanId}`);
+        }
+        
+        // Update employment if found
+        if (extractedEmployment.length > 0) {
+          // You might want to update borrower employment history here
+          logger.info(`Found ${extractedEmployment.length} employment records for loan ${loanId}`);
+        }
+        
+        await loan.save();
+        
+        return {
+          debtsAdded: newDebts.length,
+          assetsAdded: extractedAssets.checkingAndSavings.length,
+          employmentFound: extractedEmployment.length
+        };
+        
+      } catch (error) {
+        logger.error('Error updating loan with credit data:', error);
+        throw error;
+      }
+    }
+
+    /**
+     * Extract and update loan with credit data (refresh mode - no duplicates)
+     */
+    async updateLoanWithCreditDataRefresh(loanId, xmlContent) {
+      try {
+        const extractor = new CreditDataExtractor();
+        
+        // Extract debts and assets from XML
+        const extractedDebts = extractor.extractDebtsFromXML(xmlContent);
+        const extractedAssets = extractor.extractAssetsFromXML(xmlContent);
+        const extractedEmployment = extractor.extractEmploymentFromXML(xmlContent);
+        
+        // Update the loan
+        const loan = await Loan.findById(loanId);
+        if (!loan) {
+          throw new ApiError('Loan not found', 404);
+        }
+        
+        // For refresh, we want to update existing data rather than just add new
+        let debtsUpdated = 0;
+        let assetsUpdated = 0;
+        
+        // Update debts - match by creditor name and update existing or add new
+        const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+        
+        extractedDebts.forEach(extractedDebt => {
+          const creditorLower = extractedDebt.creditor?.toLowerCase();
+          const existingDebtIndex = existingDebtCreditors.indexOf(creditorLower);
+          
+          if (existingDebtIndex !== -1) {
+            // Update existing debt with all fields
+            const existingDebt = loan.debts[existingDebtIndex];
+            existingDebt.monthlyPayment = extractedDebt.monthlyPayment;
+            existingDebt.balance = extractedDebt.balance;
+            existingDebt.accountOpenDate = extractedDebt.accountOpenDate;
+            existingDebt.accountClosedDate = extractedDebt.accountClosedDate;
+            existingDebt.liabilityType = extractedDebt.liabilityType;
+            existingDebt.status = extractedDebt.status;
+            existingDebt.highBalance = extractedDebt.highBalance;
+            existingDebt.pastDueAmount = extractedDebt.pastDueAmount;
+            existingDebt.creditLimit = extractedDebt.creditLimit;
+            existingDebt.currentRating = extractedDebt.currentRating;
+            existingDebt.highestAdverseRating = extractedDebt.highestAdverseRating;
+            existingDebt.comments = extractedDebt.comments;
+            debtsUpdated++;
+          } else {
+            // Add new debt
+            loan.debts.push(extractedDebt);
+            debtsUpdated++;
+          }
+        });
+        
+        // Update assets - for refresh, we'll replace the credit report assets
+        // Remove existing credit report assets and add fresh ones
+        loan.assets.checkingAndSavings = loan.assets.checkingAndSavings.filter(
+          asset => asset.accountNumber !== 'Credit Report Assets'
+        );
+        
+        if (extractedAssets.checkingAndSavings.length > 0) {
+          loan.assets.checkingAndSavings = [
+            ...loan.assets.checkingAndSavings,
+            ...extractedAssets.checkingAndSavings
+          ];
+          assetsUpdated = extractedAssets.checkingAndSavings.length;
+        }
+        
+        // Update employment if found
+        if (extractedEmployment.length > 0) {
+          logger.info(`Found ${extractedEmployment.length} employment records for loan ${loanId} refresh`);
+        }
+        
+        await loan.save();
+        
+        return {
+          debtsUpdated: debtsUpdated,
+          assetsUpdated: assetsUpdated,
+          employmentFound: extractedEmployment.length
+        };
+        
+      } catch (error) {
+        logger.error('Error updating loan with credit data during refresh:', error);
+        throw error;
+      }
+    }
+
+    /**
      * Create a new credit report
      */
     async createCreditReport(loanId, lenderId, userId, providers = {}) {
@@ -1065,7 +1204,6 @@ class CreditReportService {
                 // Extract credit scores
                 if (result.serviceData.creditScores && result.serviceData.creditScores.length > 0) {
                     creditReport.creditScores = result.serviceData.creditScores.map(score => (
-                        console.log("SCORE: ",score),
                         {
                         bureau: score.bureau.includes('Equifax') ? 'Equifax' : 
                                score.bureau.includes('Experian') ? 'Experian' : 
@@ -1107,6 +1245,14 @@ class CreditReportService {
                         // Upload to S3
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, result.vendorOrderId);
                         creditReport.reportFile = s3Info;
+                        
+                        // Extract and update loan with credit data
+                        try {
+                            const extractionResult = await this.updateLoanWithCreditData(loanId, result.rawXml);
+                            logger.info(`Credit data extraction completed for loan ${loanId}:`, extractionResult);
+                        } catch (extractionError) {
+                            logger.warn('Failed to extract credit data, but report was created:', extractionError);
+                        }
                     }
                 }
 
@@ -1242,6 +1388,14 @@ class CreditReportService {
                         // Upload new report to S3, replacing the old one
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, newVendorOrderId);
                         existingReport.reportFile = s3Info;
+                        
+                        // Extract and update loan with fresh credit data (refresh mode)
+                        try {
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            logger.info(`Credit data extraction completed for loan ${loanId} refresh:`, extractionResult);
+                        } catch (extractionError) {
+                            logger.warn('Failed to extract credit data during refresh, but report was updated:', extractionError);
+                        }
                     }
                 }
 
