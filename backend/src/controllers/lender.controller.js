@@ -107,9 +107,14 @@ exports.getLenderProfile = async (req, res, next) => {
       return next(new ApiError('Lender profile not found', 404));
     }
     
+    // Include social links helper for convenience
+    const socialLinks = lender.marketingProfile?.socialMediaLinks || {};
     res.status(200).json({
       status: 'success',
-      data: lender
+      data: {
+        ...lender.toObject(),
+        socialLinks
+      }
     });
   } catch (error) {
     next(error);
@@ -131,9 +136,35 @@ exports.updateLenderProfile = async (req, res, next) => {
       return next(new ApiError('Lender profile not found', 404));
     }
     
-    // Prevent updating certain fields directly
-    const { user, company, ...updateData } = req.body;
-    
+    // Prevent updating certain fields directly; accept new fields
+    const { user, company, ...body } = req.body;
+
+    const updateData = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.clientFacingTitle !== undefined) updateData.clientFacingTitle = body.clientFacingTitle;
+    if (body.nmls !== undefined) updateData.nmls = body.nmls;
+    if (body.officePhone !== undefined) updateData.officePhone = body.officePhone;
+    if (body.officePhoneExt !== undefined) updateData.officePhoneExt = body.officePhoneExt;
+    if (body.mobilePhone !== undefined) updateData.mobilePhone = body.mobilePhone;
+    if (body.biography !== undefined) updateData.biography = body.biography;
+    if (body.specialties !== undefined) updateData.specialties = body.specialties;
+
+    // Social media links - accept either nested socialMediaLinks or flat fields
+    const social = body.socialMediaLinks || body.socialLinks || {};
+    const twitter = body.twitter || social.twitter;
+    const facebook = body.facebook || social.facebook;
+    const linkedin = body.linkedin || social.linkedin;
+    const instagram = body.instagram || social.instagram;
+    const hasAnySocial = [twitter, facebook, linkedin, instagram].some(v => v !== undefined);
+    if (hasAnySocial) {
+      if (!updateData.marketingProfile) updateData.marketingProfile = {};
+      if (!updateData.marketingProfile.socialMediaLinks) updateData.marketingProfile.socialMediaLinks = {};
+      if (twitter !== undefined) updateData.marketingProfile.socialMediaLinks.twitter = twitter;
+      if (facebook !== undefined) updateData.marketingProfile.socialMediaLinks.facebook = facebook;
+      if (linkedin !== undefined) updateData.marketingProfile.socialMediaLinks.linkedin = linkedin;
+      if (instagram !== undefined) updateData.marketingProfile.socialMediaLinks.instagram = instagram;
+    }
+
     // Update lender profile
     const updatedLender = await Lender.findByIdAndUpdate(
       lender._id,

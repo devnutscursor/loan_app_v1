@@ -20,10 +20,28 @@ exports.getCurrentUser = async (req, res, next) => {
       return next(new ApiError('User not found', 404));
     }
     
+    // Compute a public URL for profile image when using S3
+    let profileImageUrl = undefined;
+    if (user.profileImage) {
+      try {
+        const { USE_S3, getPublicUrl } = require('../services/s3.service');
+        if (USE_S3) {
+          profileImageUrl = getPublicUrl(user.profileImage);
+        } else {
+          profileImageUrl = user.profileImage; // local path or absolute URL
+        }
+      } catch (e) {
+        profileImageUrl = user.profileImage;
+      }
+    }
+
     res.status(200).json({
       status: 'success',
       data: {
-        user
+        user: {
+          ...user.toObject(),
+          profileImageUrl
+        }
       }
     });
   } catch (error) {
@@ -37,7 +55,7 @@ exports.getCurrentUser = async (req, res, next) => {
  */
 exports.updateCurrentUser = async (req, res, next) => {
   try {
-    const allowedFields = ['firstName', 'lastName', 'phone'];
+    const allowedFields = ['firstName', 'middleName', 'lastName', 'phone'];
     const updates = {};
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
@@ -63,6 +81,74 @@ exports.updateCurrentUser = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       data: { user }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Upload or replace current user's profile image (S3/local supported)
+ */
+exports.uploadProfilePicture = async (req, res, next) => {
+  try {
+    if (!req.file || !(req.file.key || req.file.path || req.file.url)) {
+      return next(new ApiError('Profile image file is required', 400));
+    }
+
+    // Save only the S3 key or local path in DB
+    const imageKeyOrPath = req.file.key || req.file.path || req.file.url;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { profileImage: imageKeyOrPath },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    // Build display URL
+    let profileImageUrl = imageKeyOrPath;
+    try {
+      const { USE_S3, getPublicUrl } = require('../services/s3.service');
+      if (USE_S3 && user.profileImage) {
+        profileImageUrl = getPublicUrl(user.profileImage);
+      }
+    } catch (e) {}
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile image uploaded',
+      data: { user, profileImage: imageKeyOrPath, profileImageUrl }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete current user's profile image
+ */
+exports.deleteProfilePicture = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return next(new ApiError('User not found', 404));
+
+    const oldKey = user.profileImage;
+    user.profileImage = undefined;
+    await user.save();
+
+    // Best-effort deletion from S3
+    if (process.env.USE_S3 === 'true' && oldKey) {
+      try {
+        const { deleteFromS3 } = require('../services/s3.service');
+        await deleteFromS3(oldKey);
+      } catch (e) {
+        logger.warn(`Failed to delete profile image from S3: ${e.message}`);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile image deleted'
     });
   } catch (error) {
     next(error);

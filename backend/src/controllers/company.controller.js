@@ -812,7 +812,7 @@ exports.getCompanyStats = async (req, res, next) => {
 exports.createCompanyLender = async (req, res, next) => {
   try {
     const { id: companyId } = req.params;
-    const { firstName, lastName, email, password, phone } = req.body;
+    const { firstName, middleName, lastName, email, password, phone, nmls, officePhone, officePhoneExt, mobilePhone, clientFacingTitle } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
@@ -846,10 +846,12 @@ exports.createCompanyLender = async (req, res, next) => {
     // Create new lender user with email verified (since company created it)
     const user = await User.create({
       firstName,
+      middleName,
       lastName,
       email,
       password,
-      phone,
+      phone: mobilePhone || phone,
+      nmls,
       role: 'lender',
       isEmailVerified: true, // Skip email verification for company-created users
       isActive: true
@@ -860,9 +862,14 @@ exports.createCompanyLender = async (req, res, next) => {
       user: user._id,
       name: `${firstName} ${lastName}`,
       email: email,
-      phone: phone,
+      phone: mobilePhone || phone,
       company: company._id,
-      isActive: true
+      isActive: true,
+      nmls,
+      clientFacingTitle,
+      officePhone,
+      officePhoneExt,
+      mobilePhone: mobilePhone || phone
     });
     
     // Create loan programs and rates for the new lender

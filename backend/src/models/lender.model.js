@@ -10,9 +10,14 @@ const lenderSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  nmls: {
+  clientFacingTitle: {
     type: String,
     trim: true
+  },
+  nmls: {
+    type: String,
+    trim: true,
+    required: true
   },
   licenseNumber: {
     type: String,
@@ -23,6 +28,18 @@ const lenderSchema = new mongoose.Schema({
     trim: true
   },
   biography: {
+    type: String,
+    trim: true
+  },
+  officePhone: {
+    type: String,
+    trim: true
+  },
+  officePhoneExt: {
+    type: String,
+    trim: true
+  },
+  mobilePhone: {
     type: String,
     trim: true
   },

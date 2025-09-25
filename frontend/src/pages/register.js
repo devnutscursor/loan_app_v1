@@ -13,11 +13,17 @@ const Register = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     phone: '',
+    nmls: '',
+    officePhone: '',
+    officePhoneExt: '',
+    mobilePhone: '',
+    clientFacingTitle: '',
     role: 'lender',
     termsAccepted: false,
     // Lender-specific fields
@@ -161,10 +167,16 @@ const Register = () => {
           // Admin creating a lender - only send lender-specific data
           const lenderData = {
             firstName: formData.firstName,
+            middleName: formData.middleName || undefined,
             lastName: formData.lastName,
             email: formData.email,
             password: formData.password,
             phone: formData.phone,
+            mobilePhone: formData.mobilePhone || formData.phone || undefined,
+            officePhone: formData.officePhone || undefined,
+            officePhoneExt: formData.officePhoneExt || undefined,
+            clientFacingTitle: formData.clientFacingTitle || undefined,
+            nmls: formData.nmls || undefined,
             companyId: formData.companyId // This will need to be added to the form
           };
           

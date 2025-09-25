@@ -6,9 +6,15 @@ import { companyService } from '../../services/api';
 const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
   const [formData, setFormData] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
     email: '',
     phone: '',
+    nmls: '',
+    officePhone: '',
+    officePhoneExt: '',
+    mobilePhone: '',
+    clientFacingTitle: '',
     password: '',
     confirmPassword: ''
   });
@@ -72,10 +78,16 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
     try {
       const lenderData = {
         firstName: formData.firstName,
+        middleName: formData.middleName || undefined,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
+        nmls: formData.nmls || undefined,
+        officePhone: formData.officePhone || undefined,
+        officePhoneExt: formData.officePhoneExt || undefined,
+        mobilePhone: formData.mobilePhone || formData.phone || undefined,
+        clientFacingTitle: formData.clientFacingTitle || undefined,
       };
       
       const response = await companyService.createLender(user.company, lenderData);
@@ -85,9 +97,15 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
       // Reset form
       setFormData({
         firstName: '',
+        middleName: '',
         lastName: '',
         email: '',
         phone: '',
+        nmls: '',
+        officePhone: '',
+        officePhoneExt: '',
+        mobilePhone: '',
+        clientFacingTitle: '',
         password: '',
         confirmPassword: ''
       });
@@ -116,7 +134,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
+      <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Add New Lender</h3>
           <button
@@ -128,7 +146,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                 First Name
@@ -149,7 +167,22 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
               )}
             </div>
-            
+            <div>
+              <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
+                Middle Name
+              </label>
+              <input
+                id="middleName"
+                name="middleName"
+                type="text"
+                value={formData.middleName}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.middleName ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="A."
+              />
+            </div>
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
                 Last Name
@@ -211,6 +244,93 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
             )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="officePhone" className="block text-sm font-medium text-gray-700">
+                Office Phone
+              </label>
+              <input
+                id="officePhone"
+                name="officePhone"
+                type="tel"
+                value={formData.officePhone}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.officePhone ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="(123) 456-7890"
+              />
+            </div>
+            <div>
+              <label htmlFor="officePhoneExt" className="block text-sm font-medium text-gray-700">
+                Ext
+              </label>
+              <input
+                id="officePhoneExt"
+                name="officePhoneExt"
+                type="text"
+                value={formData.officePhoneExt}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.officePhoneExt ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="123"
+              />
+            </div>
+            <div>
+              <label htmlFor="mobilePhone" className="block text-sm font-medium text-gray-700">
+                Mobile Phone
+              </label>
+              <input
+                id="mobilePhone"
+                name="mobilePhone"
+                type="tel"
+                value={formData.mobilePhone}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.mobilePhone ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="(123) 456-7890"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="nmls" className="block text-sm font-medium text-gray-700">
+                NMLS ID #
+              </label>
+              <input
+                id="nmls"
+                name="nmls"
+                type="text"
+                value={formData.nmls}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.nmls ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="123456"
+                required={true}
+              />
+            </div>
+            <div>
+              <label htmlFor="clientFacingTitle" className="block text-sm font-medium text-gray-700">
+                Client-Facing Title
+              </label>
+              <input
+                id="clientFacingTitle"
+                name="clientFacingTitle"
+                type="text"
+                value={formData.clientFacingTitle}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.clientFacingTitle ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
+                placeholder="Senior Loan Officer"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

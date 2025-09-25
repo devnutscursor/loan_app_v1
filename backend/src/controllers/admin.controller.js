@@ -512,7 +512,7 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
  */
 exports.createLenderUser = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password, phone, companyId } = req.body;
+    const { firstName, middleName, lastName, email, password, phone, companyId, nmls, officePhone, officePhoneExt, mobilePhone, clientFacingTitle } = req.body;
     
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -523,10 +523,12 @@ exports.createLenderUser = async (req, res, next) => {
     // Create new lender user with email verified (since admin created it)
     const user = await User.create({
       firstName,
+      middleName,
       lastName,
       email,
       password,
-      phone,
+      phone: mobilePhone || phone,
+      nmls,
       role: 'lender',
       isEmailVerified: true, // Skip email verification for admin-created users
       isActive: true
@@ -555,9 +557,14 @@ exports.createLenderUser = async (req, res, next) => {
       user: user._id,
       name: `${firstName} ${lastName}`,
       email: email,
-      phone: phone,
+      phone: mobilePhone || phone,
       company: company._id,
-      isActive: true
+      isActive: true,
+      nmls,
+      clientFacingTitle,
+      officePhone,
+      officePhoneExt,
+      mobilePhone: mobilePhone || phone
     });
     
     // Create loan programs and rates for the new lender

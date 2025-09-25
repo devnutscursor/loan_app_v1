@@ -17,7 +17,7 @@ router.post('/', lenderController.createLender);
 router.get('/profile', lenderController.getLenderProfile);
 
 // Update current lender profile
-router.patch('/profile', lenderController.updateLenderProfile);
+router.put('/profile', lenderController.updateLenderProfile);
 
 // Get lender dashboard statistics
 router.get('/dashboard', lenderController.getLenderDashboard);

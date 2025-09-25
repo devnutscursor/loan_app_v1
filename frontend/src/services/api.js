@@ -169,16 +169,16 @@ export const lenderService = {
     }
   },
   // Profile
-  getProfile: () => api.get('/lender/profile'),
-  updateProfile: (profileData) => api.patch('/lender/profile', profileData),
+  getProfile: () => api.get('/lenders/profile'),
+  updateProfile: (profileData) => api.put('/lenders/profile', profileData),
 
   // Company
-  getCompany: () => api.get('/lender/company'),
-  updateCompany: (companyData) => api.patch('/lender/company', companyData),
+  getCompany: () => api.get('/lenders/company'),
+  updateCompany: (companyData) => api.patch('/lenders/company', companyData),
 
   // Borrowers
-  getBorrowers: (params) => api.get('/lender/borrowers', { params }),
-  getBorrower: (id) => api.get(`/lender/borrowers/${id}`),
+  getBorrowers: (params) => api.get('/lenders/borrowers', { params }),
+  getBorrower: (id) => api.get(`/lenders/borrowers/${id}`),
   // Get loan documents
   getLoanDocuments: (loanId) => api.get(`/documents/loan/${loanId}`),
 
