@@ -4,6 +4,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import MainLayout from '../../components/layout/MainLayout';
+import { companyService } from '../../services/api';
 
 const BorrowerRegister = () => {
   const router = useRouter();
@@ -23,32 +24,25 @@ const BorrowerRegister = () => {
   const [lenderDetails, setLenderDetails] = useState(null);
   const [lenderNotFound, setLenderNotFound] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [companyDetails, setCompanyDetails] = useState(null);
 
   // Fetch lender details when lenderId is available
   useEffect(() => {
-    if (lenderId) {
+    if (router.isReady && lenderId) {
       const fetchLenderDetails = async () => {
         try {
-          // Check if we have cached lender details
-          const cachedLender = sessionStorage.getItem(`lender_${lenderId}`);
-          if (cachedLender) {
-            setLenderDetails(JSON.parse(cachedLender));
-            setLenderNotFound(false);
-            return;
-          }
-
           const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/lenders/public/${lenderId}`, {
             timeout: 5000 // 5 second timeout
           });
           
           const lenderData = response.data.data;
+          console.log('lenderData', lenderData);
+          setCompanyDetails(lenderData.company);
           setLenderDetails(lenderData);
           setLenderNotFound(false);
-          
-          // Cache the lender details
-          sessionStorage.setItem(`lender_${lenderId}`, JSON.stringify(lenderData));
+
         } catch (error) {
-          console.error('Error fetching lender details:', error);
+          console.error('Error fetching lender and company details:', error);
           setLenderNotFound(true);
           toast.error('Invalid lender referral link');
         }
@@ -56,7 +50,7 @@ const BorrowerRegister = () => {
 
       fetchLenderDetails();
     }
-  }, [lenderId]);
+  }, [router.isReady]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -223,15 +217,65 @@ const BorrowerRegister = () => {
   // Main form
   return (
     <MainLayout>
-      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-2xl">
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gradient-to-b from-blue-50 to-white py-12 px-0 sm:px-6 lg:px-8">
+        <div className="w-full max-w-4xl">
+          {/* Lender & Company Details (from referral) */}
+          {lenderDetails && companyDetails && (
+            <div className="mb-10">
+              <div className="text-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-800">You are registering with</h3>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 sm:p-8 ring-1 ring-blue-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Company Card */}
+                  <div className="flex items-center gap-5">
+                    <div className="w-20 h-20 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {companyDetails.logoUrl ? (
+                      <img src={companyDetails.logoUrl} alt="Company Logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="text-gray-400 text-xs">No Logo</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                      <div className="text-gray-900 font-bold text-lg">{companyDetails.name}</div>
+                      <div className="text-sm text-gray-600">NMLS: {companyDetails.nmls || '—'}</div>
+                      <div className="text-sm text-gray-600">Phone: {companyDetails.phone || '—'}</div>
+                      {companyDetails.address && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {[companyDetails.address.addressLine1, companyDetails.address.city, companyDetails.address.state, companyDetails.address.zipCode].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Lender Card */}
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {lenderDetails.user?.profileImageUrl ? (
+                        <img src={lenderDetails.user.profileImageUrl} alt="Lender" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-gray-400 text-sm">{lenderDetails.user?.firstName?.[0] || 'U'}</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-gray-900 font-bold text-lg">{lenderDetails.user?.firstName} {lenderDetails.user?.lastName}</div>
+                      <div className="text-sm text-gray-600">{lenderDetails.clientFacingTitle || lenderDetails.title || 'Lender'}</div>
+                      <div className="text-sm text-gray-600">NMLS: {lenderDetails.nmls || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
               Create Your Borrower Account
             </h2>
             {lenderDetails && (
               <p className="mt-2 text-sm text-gray-600">
-                Registering with {lenderDetails.companyName || 'your lender'}
+                Registering with {companyDetails?.name || lenderDetails.companyName || 'your lender'}
               </p>
             )}
           </div>

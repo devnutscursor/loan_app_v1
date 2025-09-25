@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 const { createDefaultLoanPrograms } = require('./auth.controller');
 const { createDefaultLoanRates } = require('./loanRate.controller');
+const { USE_S3, getPublicUrl } = require('../services/s3.service');
 
 /**
  * Get public lender profile by ID (no authentication required)
@@ -20,23 +21,63 @@ exports.getPublicLenderProfile = async (req, res, next) => {
     const lenderId = req.params.id;
     
     // Find lender profile and only return necessary public information
-    const lender = await Lender.findById(lenderId);
+    const lender = await Lender.findById(lenderId).populate('user', 'firstName lastName profileImage').populate('company', 'name logo nmls address phone email');
     
     if (!lender) {
       return next(new ApiError('Lender profile not found', 404));
     }
     
-    // Get user info for the lender
-    const user = await User.findById(lender.user, 'firstName lastName profilePicture');
+    // Get user info for the lender (populated above)
+    const user = lender.user;
+    
+    // Build profile image public URL if using S3
+    let profileImageUrl = undefined;
+    if (user && user.profileImage) {
+      try {
+        if (USE_S3) {
+          profileImageUrl = getPublicUrl(user.profileImage);
+        } else {
+          profileImageUrl = user.profileImage;
+        }
+      } catch (e) {
+        profileImageUrl = user.profileImage;
+      }
+    }
+
+    let logoUrl = null;
+    if (lender.company.logo) {
+      try {
+        logoUrl = USE_S3 ? getPublicUrl(lender.company.logo) : lender.company.logo;
+      } catch (error) {
+        logoUrl = lender.company.logo;
+      }
+    }
     
     // Return limited public profile information
     const publicProfile = {
       _id: lender._id,
       title: lender.title,
+      clientFacingTitle: lender.clientFacingTitle,
+      nmls: lender.nmls,
       biography: lender.biography,
       specialties: lender.specialties,
       yearsOfExperience: lender.yearsOfExperience,
-      user: user
+      company: lender.company ? {
+        _id: lender.company._id,
+        name: lender.company.name,
+        logoUrl: logoUrl,
+        nmls: lender.company.nmls,
+        address: lender.company.address,
+        phone: lender.company.phone,
+        email: lender.company.email,
+      } : undefined,
+      user: user ? {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImage: user.profileImage,
+        profileImageUrl
+      } : null
     };
     
     res.status(200).json({
