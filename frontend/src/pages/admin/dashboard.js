@@ -52,12 +52,12 @@ const UserStatistics = ({ users }) => {
             <p className="mt-1 text-3xl font-semibold text-gray-900">{users.borrowers}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-medium text-gray-500">Lenders</p>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.lenders}</p>
+            <p className="text-sm font-medium text-gray-500">Companies</p>
+            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.companies}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-medium text-gray-500">Admins</p>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.admins}</p>
+            <p className="text-sm font-medium text-gray-500">Lenders</p>
+            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.lenders}</p>
           </div>
         </div>
       </div>
@@ -127,7 +127,8 @@ const AdminDashboard = () => {
     users: {
       borrowers: 0,
       lenders: 0,
-      admins: 0
+      admins: 0,
+      companies: 0
     },
     loanStats: {
       totalApplications: 0,

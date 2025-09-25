@@ -120,7 +120,8 @@ exports.getDashboardStats = async (req, res, next) => {
         users: {
           borrowers: borrowerCount,
           lenders: lenderCount,
-          admins: adminCount
+          admins: adminCount,
+          companies: companyCount
         },
         loanStats: {
           totalApplications: totalLoans,
