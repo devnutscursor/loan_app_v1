@@ -17,6 +17,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Apply for Loan', href: '/borrower/apply', icon: 'plus-circle' },
         { name: 'Milestones', href: '/borrower/milestones', icon: 'flag' },
         { name: 'Messages', href: '/borrower/messages', icon: 'chat' },
+        { name: "My Loan Officer", href: '/borrower/loan-officer', icon: 'user' },
         { name: 'Calculators', href: '/borrower/calculators', icon: 'calculator' },
         { name: 'Documents', href: '/borrower/documents', icon: 'document-duplicate' },
         { name: 'Profile', href: '/borrower/profile', icon: 'user' },

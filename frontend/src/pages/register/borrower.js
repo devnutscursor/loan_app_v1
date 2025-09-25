@@ -229,7 +229,7 @@ const BorrowerRegister = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Company Card */}
                   <div className="flex items-center gap-5">
-                    <div className="w-20 h-20 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <div className="w-20 h-20 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {companyDetails.logoUrl ? (
                       <img src={companyDetails.logoUrl} alt="Company Logo" className="w-full h-full object-contain" />

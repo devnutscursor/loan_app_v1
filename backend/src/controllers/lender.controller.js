@@ -21,7 +21,7 @@ exports.getPublicLenderProfile = async (req, res, next) => {
     const lenderId = req.params.id;
     
     // Find lender profile and only return necessary public information
-    const lender = await Lender.findById(lenderId).populate('user', 'firstName lastName profileImage').populate('company', 'name logo nmls address phone email');
+    const lender = await Lender.findById(lenderId).populate('user', 'firstName lastName profileImage email phone').populate('company', 'name logo nmls address phone email');
     
     if (!lender) {
       return next(new ApiError('Lender profile not found', 404));
@@ -59,6 +59,8 @@ exports.getPublicLenderProfile = async (req, res, next) => {
       title: lender.title,
       clientFacingTitle: lender.clientFacingTitle,
       nmls: lender.nmls,
+      email: user.email,
+      phone: user.phone,
       biography: lender.biography,
       specialties: lender.specialties,
       yearsOfExperience: lender.yearsOfExperience,
