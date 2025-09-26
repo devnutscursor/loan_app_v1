@@ -46,7 +46,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
     if (user.role === 'company') {
       return [
         { name: 'Dashboard', href: '/company/dashboard', icon: 'home' },
-        { name: 'Lenders', href: '/company/lenders', icon: 'users' },
+        { name: 'Loan Officers', href: '/company/lenders', icon: 'users' },
         { name: 'Loan Programs', href: '/company/programs', icon: 'template' },
       ];
     }
@@ -253,7 +253,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
               {user.firstName} {user.lastName}
             </h4>
             <p className={`text-sm tracking-wider text-white-500 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
-              {user.role}
+              {user.role === 'lender'? "Loan Officer" : user.role}
             </p>
           </div>
         )}

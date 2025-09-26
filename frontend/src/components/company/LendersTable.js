@@ -36,7 +36,7 @@ const LendersTable = ({
         <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           <div className="col-span-3 flex items-center cursor-pointer" onClick={() => onSort('name')}>
             <div className="flex items-center">
-              <span>Lender Name</span>
+              <span>Loan Officer Name</span>
             </div>
           </div>
           <div className="col-span-3 flex items-center cursor-pointer" onClick={() => onSort('email')}>
@@ -60,7 +60,6 @@ const LendersTable = ({
 
       {/* Table Content */}
       <div className="divide-y divide-gray-200 min-w-[1000px]">
-        {console.log("lenders", lenders)}
         {lenders.map((lender) => (
           <div
             key={lender?.user?.id}

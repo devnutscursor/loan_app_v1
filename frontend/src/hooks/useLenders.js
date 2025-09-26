@@ -32,10 +32,11 @@ export const useLenders = (user) => {
 
       const response = await companyService.getLenders(user.company);
       const data = response.data.data;
+      console.log("data",data);
       setLenders(data.lenders || []);
       setFilteredLenders(data.lenders || []);
       setTotalPages(data.totalPages || 1);
-      setTotalLenders(data.totalLenders || 0);
+      setTotalLenders(data.lenders.length || 0);
 
     } catch (error) {
       console.error('Error fetching lenders:', error);

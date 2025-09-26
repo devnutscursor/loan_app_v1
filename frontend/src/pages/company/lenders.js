@@ -69,7 +69,7 @@ const CompanyLenders = () => {
 
   if (loading && lenders.length === 0) {
     return (
-      <CompanyLayout title="Company Lenders">
+      <CompanyLayout title="Company Loan Officers">
         <div className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
           {/* Header Skeleton */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -168,14 +168,14 @@ const CompanyLenders = () => {
   }
 
   return (
-    <CompanyLayout title="Company Lenders">
+    <CompanyLayout title="Company Loan Officers">
       <div className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Company Lenders</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Company Loan Officers</h1>
             <p className="text-gray-600 mt-1">
-              Manage and view all lenders in your company ({totalLenders} total)
+              Manage and view all loan officers in your company ({totalLenders} total)
             </p>
           </div>
           <div className="flex items-center space-x-4 ">
@@ -184,7 +184,7 @@ const CompanyLenders = () => {
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <Plus className="h-4 w-4 mr-2" />
-              New Lender
+              New Loan Officer
             </button>
           </div>
         </div>

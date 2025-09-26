@@ -268,7 +268,7 @@ const CompanyDashboard = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Total Lenders"
+            title="Total Loan Officers"
             value={stats?.totalLenders || 0}
             icon={Users}
             bgClass="bg-gradient-to-br from-blue-600 to-blue-800"
@@ -293,14 +293,14 @@ const CompanyDashboard = () => {
           />
         </div>
 
-        {/* Top Lenders Section */}
+        {/* Top Loan Officers Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between flex-col sm:flex-row gap-3">
               <div className="flex flex-col items-center sm:items-start space-x-2">
                 <div className="flex items-center space-x-2">
                   <Award className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-gray-900">Top Lenders</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Top Loan Officers</h2>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
                   Ranked by {sortBy === 'borrowerCount' ? 'number of borrowers' : 'total loan amount'}
@@ -346,8 +346,8 @@ const CompanyDashboard = () => {
             ) : (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No lenders found</p>
-                <p className="text-sm text-gray-500 mt-1">Lenders will appear here once they're added to your company</p>
+                <p className="text-gray-600">No loan officers found</p>
+                <p className="text-sm text-gray-500 mt-1">Loan Officers will appear here once they're added to your company</p>
               </div>
             )}
           </div>
@@ -363,8 +363,8 @@ const CompanyDashboard = () => {
             >
               <BarChart3 className="h-6 w-6 text-primary" />
               <div className="text-left">
-                <p className="font-medium text-gray-900">View All Lenders</p>
-                <p className="text-sm text-gray-600">Browse all company lenders</p>
+                <p className="font-medium text-gray-900">View All Loan Officers</p>
+                <p className="text-sm text-gray-600">Browse all company loan officers</p>
               </div>
             </button>
             
