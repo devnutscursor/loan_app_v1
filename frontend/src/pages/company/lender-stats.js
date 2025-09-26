@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { toast } from 'react-hot-toast';
 import CompanyLayout from '../../components/layout/CompanyLayout';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLenderStats } from '../../hooks/useLenderStats';
+import { useLenderStats } from '../../hooks/lender/useLenderStats';
 import { LenderStatsSkeleton } from '../../components/company/lender-stats/LenderStatsSkeleton';
 import StatCard from '../../components/company/lender-stats/StatCard';
 import LoanCard from '../../components/company/lender-stats/LoanCard';
@@ -13,7 +12,6 @@ import { formatCurrency } from '../../utils/lenderStatsUtils';
 import { 
   ArrowLeft,
   Users, 
-  DollarSign, 
   FileText, 
   User,
   Mail,

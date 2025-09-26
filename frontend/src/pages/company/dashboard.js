@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { toast } from 'react-hot-toast';
+import React from 'react';
 import CompanyLayout from '../../components/layout/CompanyLayout';
-import { companyService } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { useCompanyDashboard } from '../../hooks/company/useCompanyDashboard';
 import { 
   BarChart3, 
   Users, 
@@ -18,170 +15,23 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 
-// Component for stat cards
-const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass, textClass = "text-white" }) => (
-  <div className={`${bgClass} rounded-xl p-6 shadow-lg`}>
-    <div className="flex items-center justify-between">
-      <div>
-        <p className={`text-sm font-medium ${textClass} opacity-90`}>{title}</p>
-        <p className={`text-2xl font-bold ${textClass} mt-1`}>{value}</p>
-        {trend && (
-          <div className="flex items-center mt-2">
-            {trend === 'up' ? (
-              <ArrowUpRight className="h-4 w-4 text-green-300 mr-1" />
-            ) : (
-              <ArrowDownRight className="h-4 w-4 text-red-300 mr-1" />
-            )}
-            <span className={`text-sm ${trend === 'up' ? 'text-green-300' : 'text-red-300'}`}>
-              {trendValue}
-            </span>
-          </div>
-        )}
-      </div>
-      <Icon className={`h-8 w-8 ${textClass} opacity-80`} />
-    </div>
-  </div>
-);
-
-// Modular skeleton components
-const StatCardSkeleton = ({ bgClass }) => (
-  <div className={`${bgClass} rounded-xl p-6 shadow-lg animate-pulse`}>
-    <div className="flex items-center justify-between">
-      <div className="flex-1">
-        <div className="h-4 w-24 bg-white bg-opacity-30 rounded mb-2"></div>
-        <div className="h-8 w-16 bg-white bg-opacity-30 rounded mb-2"></div>
-        <div className="h-3 w-12 bg-white bg-opacity-30 rounded"></div>
-      </div>
-      <div className="h-8 w-8 bg-white bg-opacity-30 rounded"></div>
-    </div>
-  </div>
-);
-
-const TopLenderCardSkeleton = () => (
-  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 animate-pulse">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-        <div>
-          <div className="h-4 w-32 bg-gray-200 rounded mb-1"></div>
-          <div className="h-3 w-40 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-      <div className="text-right">
-        <div className="h-4 w-20 bg-gray-200 rounded mb-1"></div>
-        <div className="h-3 w-16 bg-gray-200 rounded"></div>
-      </div>
-    </div>
-  </div>
-);
-
-const QuickActionSkeleton = () => (
-  <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-100 animate-pulse">
-    <div className="h-6 w-6 bg-gray-200 rounded"></div>
-    <div className="text-left flex-1">
-      <div className="h-4 w-32 bg-gray-200 rounded mb-1"></div>
-      <div className="h-3 w-40 bg-gray-200 rounded"></div>
-    </div>
-  </div>
-);
-
-// Component for top lender card
-const TopLenderCard = ({ lender, rank, onClick, sortBy }) => (
-  <div 
-    className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
-    onClick={onClick}
-  >
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-bold">
-          {rank}
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-900">{lender.lender.user.name}</h4>
-          <p className="text-sm text-gray-600 max-w-[150px] truncate">{lender.lender.user.email}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        {sortBy === 'borrowerCount' ? (
-          <>
-            <p className="text-sm font-bold text-primary">{lender.metrics.borrowerCount} borrowers</p>
-            <p className="text-xs text-gray-600">${lender.metrics.totalLoanAmount?.toLocaleString() || '0'}</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-bold text-primary">${lender.metrics.totalLoanAmount?.toLocaleString() || '0'}</p>
-            <p className="text-xs text-gray-600">{lender.metrics.borrowerCount} borrowers</p>
-          </>
-        )}
-      </div>
-    </div>
-  </div>
-);
+import { StatCard } from '../../components/company/dashboard/StatCards';
+import TopLenderCard, { TopLenderCardSkeleton } from '../../components/company/dashboard/TopLenderCard';
+import QuickActionSkeleton from '../../components/company/dashboard/QuickActionSkeleton';
 
 const CompanyDashboard = () => {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [topLenders, setTopLenders] = useState([]);
-  const [sortBy, setSortBy] = useState('borrowerCount'); // 'borrowerCount' or 'totalLoanAmount'
 
-  useEffect(() => {
-    if (!user || user.role !== 'company') {
-      router.push('/login');
-      return;
-    }
-
-    fetchDashboardData();
-  }, [user, router]);
-
-  // Refetch top lenders when sort changes
-  useEffect(() => {
-    if (user && user.role === 'company' && stats) {
-      fetchTopLenders();
-    }
-  }, [sortBy]);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch company stats
-      const statsResponse = await companyService.getStats(user.company);
-      setStats(statsResponse.data.data.summary);
-
-      // Fetch top lenders with current sort
-      await fetchTopLenders();
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTopLenders = async () => {
-    try {
-      const topLendersResponse = await companyService.getTopLenders(user.company);
-      setTopLenders(topLendersResponse.data.data.topLenders || []);
-    } catch (error) {
-      console.error('Error fetching top lenders:', error);
-      toast.error('Failed to load top lenders');
-    }
-  };
-
-  const handleLenderClick = (lenderId) => {
-    router.push(`/company/lender-stats?lenderId=${lenderId}`);
-  };
-
-  const handleViewAllLenders = () => {
-    router.push('/company/lenders');
-  };
-
-  const handleSortToggle = () => {
-    setSortBy(prev => prev === 'borrowerCount' ? 'totalLoanAmount' : 'borrowerCount');
-  };
+  const {
+    user,
+    loading,
+    stats,
+    topLenders,
+    sortBy,
+    handleLenderClick,
+    handleViewAllLenders,
+    handleSortToggle,
+    router,
+  } = useCompanyDashboard();
 
   if (loading) {
     return (

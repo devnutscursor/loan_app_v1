@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { companyService } from '../services/api';
-import { mapActivityIcons, transformActivities, transformStats, transformBorrowerLoans } from '../utils/lenderStatsUtils';
+import { companyService } from '../../services/api';
+import { mapActivityIcons, transformActivities, transformStats, transformBorrowerLoans } from '../../utils/lenderStatsUtils';
 
 // Custom hook for fetching lender stats data
 export const useLenderStats = (user, lenderId) => {

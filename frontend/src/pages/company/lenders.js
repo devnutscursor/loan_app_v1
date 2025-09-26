@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
-import { Building2, Plus, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import CompanyLayout from '../../components/layout/CompanyLayout';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLenders } from '../../hooks/useLenders';
-import { getSortIcon, handleSort, handleSearch, handlePageChange } from '../../utils/lendersUtils';
+import { useLenders } from '../../hooks/lender/useLenders';
 import NewLenderModal from '../../components/company/NewLenderModal';
 import LendersTable from '../../components/company/LendersTable';
 import SearchAndFilters from '../../components/company/SearchAndFilters';
@@ -12,7 +10,6 @@ import Pagination from '../../components/company/Pagination';
 
 const CompanyLenders = () => {
   const { user } = useAuth();
-  const router = useRouter();
   const [showNewLenderModal, setShowNewLenderModal] = useState(false);
 
   const {
@@ -20,52 +17,23 @@ const CompanyLenders = () => {
     lenders,
     searchTerm,
     setSearchTerm,
-    sortBy,
-    setSortBy,
-    sortOrder,
-    setSortOrder,
-    currentPage,
-    setCurrentPage,
-    totalPages,
     totalLenders,
+    currentPage,
+    totalPages,
     handleNewLenderSuccess,
     filteredLenders,
-    setFilteredLenders
+    sortBy,
+    sortOrder,
+    setFilteredLenders,
+    handleViewStats,
+    handleViewBorrowers,
+    handleSortClick,
+    handleSortByChange,
+    handleSortOrderChange,
+    handleSearchChange,   
+    handlePageChangeClick
   } = useLenders(user);
 
-  const handleViewStats = (lenderId) => {
-    router.push(`/company/lender-stats?lenderId=${lenderId}`);
-  };
-
-  const handleViewBorrowers = (lenderId) => {
-    router.push(`/company/lender-borrowers?lenderId=${lenderId}`);
-  };
-
-  const handleSortClick = (field) => {
-    handleSort(field, sortBy, sortOrder, setSortBy, setSortOrder, setCurrentPage);
-  };
-
-  const handleSortByChange = (e) => {
-    setSortBy(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleSortOrderChange = (e) => {
-    setSortOrder(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleSearchChange = (e) => {
-    handleSearch(e, setSearchTerm, setCurrentPage, setFilteredLenders, lenders);
-  };
-
-  const handlePageChangeClick = (page) => {
-    handlePageChange(page, setCurrentPage);
-  };
-
-  const getSortIconForField = (field) => {
-    return getSortIcon(field, sortBy, sortOrder);
-  };
 
   if (loading && lenders.length === 0) {
     return (
@@ -197,20 +165,15 @@ const CompanyLenders = () => {
           sortOrder={sortOrder}
           onSortByChange={handleSortByChange}
           onSortOrderChange={handleSortOrderChange}
-          onSort={handleSortClick}
-          getSortIcon={getSortIconForField}
         />
 
         {/* Lenders Table */}
         {filteredLenders.length > 0 ? (
           <LendersTable
             lenders={filteredLenders}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSortClick}
             onViewStats={handleViewStats}
             onViewBorrowers={handleViewBorrowers}
-            getSortIcon={getSortIconForField}
+            onSort={handleSortClick}
           />
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">

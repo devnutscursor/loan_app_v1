@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { toast } from 'react-hot-toast';
-import { companyService } from '../services/api';
+import { companyService } from '../../services/api';
+import { handleSort, handleSearch, handlePageChange } from '../../utils/lendersUtils';
 
 export const useLenders = (user) => {
   const router = useRouter();
@@ -92,6 +93,36 @@ export const useLenders = (user) => {
     }
   }, [sortBy, sortOrder]);
 
+  const handleViewStats = (lenderId) => {
+    router.push(`/company/lender-stats?lenderId=${lenderId}`);
+  };
+
+  const handleViewBorrowers = (lenderId) => {
+    router.push(`/company/lender-borrowers?lenderId=${lenderId}`);
+  };
+
+  const handleSortClick = (field) => {
+    handleSort(field, sortBy, sortOrder, setSortBy, setSortOrder, setCurrentPage);
+  };
+
+  const handleSortByChange = (e) => {
+    setSortBy(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSortOrderChange = (e) => {
+    setSortOrder(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e) => {
+    handleSearch(e, setSearchTerm, setCurrentPage, setFilteredLenders, lenders);
+  };
+
+  const handlePageChangeClick = (page) => {
+    handlePageChange(page, setCurrentPage);
+  };
+
   return {
     loading,
     lenders,
@@ -107,6 +138,13 @@ export const useLenders = (user) => {
     totalLenders,
     handleNewLenderSuccess,
     filteredLenders,
-    setFilteredLenders
+    setFilteredLenders,
+    handleViewStats,
+    handleViewBorrowers,
+    handleSortClick,
+    handleSortByChange,
+    handleSortOrderChange,
+    handleSearchChange,
+    handlePageChangeClick
   };
 };

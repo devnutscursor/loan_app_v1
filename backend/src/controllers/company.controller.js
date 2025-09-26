@@ -170,7 +170,17 @@ exports.getCompany = async (req, res, next) => {
 exports.updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, phone } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      nmls,
+      website,
+      legalEntityType,
+      legalEntityOrganizedUnder,
+      posLoanAppAssignee,
+      address
+    } = req.body;
 
     
     // Find company
@@ -193,6 +203,12 @@ exports.updateCompany = async (req, res, next) => {
       name: name || company.name,
       email: email || company.email,
       phone: phone || company.phone,
+      nmls: nmls || company.nmls,
+      website: website || company.website,
+      legalEntityType: legalEntityType || company.legalEntityType,
+      legalEntityOrganizedUnder: legalEntityOrganizedUnder || company.legalEntityOrganizedUnder,
+      posLoanAppAssignee: posLoanAppAssignee || company.posLoanAppAssignee,
+      address: address || company.address,
     };
     
     const updatedCompany = await Company.findByIdAndUpdate(
@@ -1618,12 +1634,10 @@ exports.getLenderBorrowerLoans = async (req, res, next) => {
       lender: lenderId
     };
     
-    // Get loans with full details
+    // Get loans with only necessary fields for this view
     const Loan = require('../models/loan.model');
     const loans = await Loan.find(query)
-      .populate('borrower', 'firstName lastName email phone')
-      .populate('lender', 'firstName lastName email')
-      .populate('assignedLoanOfficer', 'firstName lastName')
+      .select('loanNumber status loanDetails.loanAmount createdAt')
       .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
       .skip(skip)
       .limit(limitNum)
@@ -1636,11 +1650,6 @@ exports.getLenderBorrowerLoans = async (req, res, next) => {
       status: 'success',
       data: {
         loans,
-        borrower: {
-          _id: borrower._id,
-          user: borrower.user,
-          lender: borrower.lender
-        },
         pagination: {
           total: totalLoans,
           page: pageNum,

@@ -10,12 +10,9 @@ import {
 
 const LendersTable = ({ 
   lenders, 
-  sortBy, 
-  sortOrder, 
   onSort, 
   onViewStats, 
   onViewBorrowers,
-  getSortIcon 
 }) => {
   if (lenders.length === 0) {
     return (
@@ -86,7 +83,7 @@ const LendersTable = ({
             </div>
 
             <div className="col-span-3">
-              <div className="flex items-center text-sm text-gray-500 mb-1 max-w-[160px] truncate">
+              <div className="flex items-center text-sm text-gray-500 mb-1 max-w-[160px] truncate" title={`${lender?.user?.email}`}>
                 <Mail className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400 " />
                 <span>{lender?.user?.email || 'N/A'}</span>
               </div>

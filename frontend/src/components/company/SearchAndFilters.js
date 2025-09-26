@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const SearchAndFilters = ({ 
   searchTerm, 
@@ -8,8 +8,6 @@ const SearchAndFilters = ({
   sortOrder,
   onSortByChange,
   onSortOrderChange,
-  onSort, 
-  getSortIcon
 }) => {
   return (
     <div className="flex flex-col sm:flex-row justify-between gap-4">
