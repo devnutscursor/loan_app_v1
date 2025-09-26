@@ -5,8 +5,7 @@ import {
   User,
   DollarSign,
   Phone,
-  Mail,
-  ChevronDown
+  Mail
 } from 'lucide-react';
 
 const LendersTable = ({ 
@@ -33,30 +32,26 @@ const LendersTable = ({
   return (
     <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
       {/* Table Header */}
-      <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
+      <div className="bg-gray-50 border-b border-gray-200 min-w-[1000px]">
         <div className="grid grid-cols-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           <div className="col-span-3 flex items-center cursor-pointer" onClick={() => onSort('name')}>
             <div className="flex items-center">
               <span>Lender Name</span>
-              {getSortIcon('name')}
             </div>
           </div>
           <div className="col-span-3 flex items-center cursor-pointer" onClick={() => onSort('email')}>
             <div className="flex items-center">
               <span>Contact Info</span>
-              {getSortIcon('email')}
             </div>
           </div>
           <div className="col-span-2 flex items-center cursor-pointer" onClick={() => onSort('borrowerCount')}>
             <div className="flex items-center">
               <span>Borrowers</span>
-              {getSortIcon('borrowerCount')}
             </div>
           </div>
           <div className="col-span-2 flex items-center cursor-pointer" onClick={() => onSort('totalLoanAmount')}>
             <div className="flex items-center">
               <span>Loan Volume</span>
-              {getSortIcon('totalLoanAmount')}
             </div>
           </div>
           <div className="col-span-2 flex items-center justify-center">Actions</div>
@@ -64,10 +59,11 @@ const LendersTable = ({
       </div>
 
       {/* Table Content */}
-      <div className="divide-y divide-gray-200 min-w-[940px]">
+      <div className="divide-y divide-gray-200 min-w-[1000px]">
+        {console.log("lenders", lenders)}
         {lenders.map((lender) => (
           <div
-            key={lender?.user?._id}
+            key={lender?.user?.id}
             className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-colors duration-150"
           >
             <div className="col-span-3 flex items-center">
@@ -91,8 +87,8 @@ const LendersTable = ({
             </div>
 
             <div className="col-span-3">
-              <div className="flex items-center text-sm text-gray-500 mb-1">
-                <Mail className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+              <div className="flex items-center text-sm text-gray-500 mb-1 max-w-[160px] truncate">
+                <Mail className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400 " />
                 <span>{lender?.user?.email || 'N/A'}</span>
               </div>
               <div className="flex items-center text-sm text-gray-500">

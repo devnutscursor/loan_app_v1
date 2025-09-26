@@ -5,49 +5,49 @@ const SearchAndFilters = ({
   searchTerm, 
   onSearchChange, 
   sortBy, 
+  sortOrder,
+  onSortByChange,
+  onSortOrderChange,
   onSort, 
-  getSortIcon 
+  getSortIcon
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Search */}
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search lenders by name or email..."
-              value={searchTerm}
-              onChange={onSearchChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-          </div>
+    <div className="flex flex-col sm:flex-row justify-between gap-4">
+      {/* Search Bar */}
+      <div className="relative flex-grow max-w-md">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400" />
         </div>
+        <input
+          type="text"
+          placeholder="Search lenders by name or email..."
+          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          value={searchTerm}
+          onChange={onSearchChange}
+        />
+      </div>
 
-        {/* Sort Options */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => onSort('name')}
-            className="flex items-center space-x-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      {/* Sort Dropdowns */}
+      <div className="flex gap-2">
+        <div className="inline-flex rounded-md shadow-sm">
+          <select
+            value={sortBy}
+            onChange={onSortByChange}
+            className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <span className="text-sm">Name</span>
-            {getSortIcon('name')}
-          </button>
-          <button
-            onClick={() => onSort('borrowerCount')}
-            className="flex items-center space-x-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            <option value="borrowerCount">Borrowers</option>
+            <option value="totalLoanAmount">Loan Volume</option>
+            <option value="name">Name</option>
+            <option value="email">Email</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={onSortOrderChange}
+            className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-l-0 border-gray-300 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <span className="text-sm">Borrowers</span>
-            {getSortIcon('borrowerCount')}
-          </button>
-          <button
-            onClick={() => onSort('totalLoanAmount')}
-            className="flex items-center space-x-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-sm">Loan Volume</span>
-            {getSortIcon('totalLoanAmount')}
-          </button>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
         </div>
       </div>
     </div>

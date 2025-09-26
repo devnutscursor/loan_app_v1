@@ -58,7 +58,7 @@ const StatCardSkeleton = ({ bgClass }) => (
 );
 
 const TopLenderCardSkeleton = () => (
-  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 animate-pulse">
+  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 animate-pulse">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
         <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
@@ -76,7 +76,7 @@ const TopLenderCardSkeleton = () => (
 );
 
 const QuickActionSkeleton = () => (
-  <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 animate-pulse">
+  <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-100 animate-pulse">
     <div className="h-6 w-6 bg-gray-200 rounded"></div>
     <div className="text-left flex-1">
       <div className="h-4 w-32 bg-gray-200 rounded mb-1"></div>
@@ -88,12 +88,12 @@ const QuickActionSkeleton = () => (
 // Component for top lender card
 const TopLenderCard = ({ lender, rank, onClick, sortBy }) => (
   <div 
-    className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+    className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
     onClick={onClick}
   >
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
-        <div className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-sm font-bold">
+        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-bold">
           {rank}
         </div>
         <div>
@@ -200,15 +200,14 @@ const CompanyDashboard = () => {
           </div>
 
           {/* Stats Grid Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCardSkeleton bgClass="bg-gradient-to-r from-blue-500 to-blue-600" />
-            <StatCardSkeleton bgClass="bg-gradient-to-r from-green-500 to-green-600" />
-            <StatCardSkeleton bgClass="bg-gradient-to-r from-purple-500 to-purple-600" />
-            <StatCardSkeleton bgClass="bg-gradient-to-r from-orange-500 to-orange-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-36 bg-gradient-to-br from-gray-200 to-gray-100 rounded-xl animate-pulse"></div>
+            ))}
           </div>
 
           {/* Top Lenders Section Skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -236,7 +235,7 @@ const CompanyDashboard = () => {
           </div>
 
           {/* Quick Actions Skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <QuickActionSkeleton />
@@ -257,7 +256,7 @@ const CompanyDashboard = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Company Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mt-4">Company Dashboard</h1>
             <p className="text-gray-600 mt-1">Welcome back, {user?.firstName} {user?.lastName}</p>
           </div>
           <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -272,30 +271,30 @@ const CompanyDashboard = () => {
             title="Total Lenders"
             value={stats?.totalLenders || 0}
             icon={Users}
-            bgClass="bg-gradient-to-r from-blue-500 to-blue-600"
+            bgClass="bg-gradient-to-br from-blue-600 to-blue-800"
           />
           <StatCard
             title="Total Borrowers"
             value={stats?.totalBorrowers || 0}
             icon={UserCheck}
-            bgClass="bg-gradient-to-r from-green-500 to-green-600"
+            bgClass="bg-gradient-to-br from-green-600 to-green-800"
           />
           <StatCard
             title="Active Loans"
             value={stats?.totalLoans || 0}
             icon={FileText}
-            bgClass="bg-gradient-to-r from-purple-500 to-purple-600"
+            bgClass="bg-gradient-to-br from-yellow-500 to-yellow-700"
           />
           <StatCard
             title="Total Loan Volume"
             value={`$${stats?.totalLoanVolume?.toLocaleString() || '0'}`}
             icon={DollarSign}
-            bgClass="bg-gradient-to-r from-orange-500 to-orange-600"
+            bgClass="bg-gradient-to-br from-indigo-600 to-indigo-800"
           />
         </div>
 
         {/* Top Lenders Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between flex-col sm:flex-row gap-3">
               <div className="flex flex-col items-center sm:items-start space-x-2">
@@ -355,12 +354,12 @@ const CompanyDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => router.push('/company/lenders')}
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-100 hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <BarChart3 className="h-6 w-6 text-primary" />
               <div className="text-left">
@@ -371,7 +370,7 @@ const CompanyDashboard = () => {
             
             <button
               onClick={() => router.push('/company/profile')}
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-100 hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <Building2 className="h-6 w-6 text-primary" />
               <div className="text-left">

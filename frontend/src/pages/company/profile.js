@@ -180,9 +180,9 @@ const CompanyProfile = () => {
 
   return (
     <CompanyLayout title="Company Profile">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-[1215px] mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start sm:items-center flex-col sm:flex-row gap-4 justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Company Profile</h1>
             <p className="text-gray-600 mt-1">Manage your company information and settings</p>
@@ -213,7 +213,7 @@ const CompanyProfile = () => {
             ) : (
               <button
                 onClick={() => setEditing(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg transition-colors"
               >
                 <Edit className="h-4 w-4" />
                 <span>Edit Profile</span>
@@ -224,9 +224,9 @@ const CompanyProfile = () => {
 
         {/* Branding / Logo */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Branding</h2>
-          <div className="flex items-center gap-6">
-            <div className="w-28 h-28 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6 text-center">Logo</h2>
+          <div className="flex items-center gap-8 flex-col">
+            <div className="w-40 h-40 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
               {company?.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={company.logoUrl} alt="Company Logo" className="w-full h-full object-contain" />
@@ -235,7 +235,7 @@ const CompanyProfile = () => {
               )}
             </div>
             <div className={`flex items-center gap-3 ${logoUploading ? 'cursor-not-allowed' : ''}`}>
-              <label className={`inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary-dark transition-colors disabled:opacity-50`} disabled={logoUploading}>
+              <label className={`inline-flex items-center px-4 py-2 bg-primary text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg cursor-pointer transition-colors disabled:opacity-50`} disabled={logoUploading}>
                 <FileEdit className="h-4 w-4 mr-2" />
                 <span>{logoUploading ? 'Uploading...' : (company?.logoUrl ? 'Change Logo' : 'Upload Logo')}</span>
                 <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" disabled={logoUploading || logoDeleting} />
@@ -335,7 +335,7 @@ const CompanyProfile = () => {
           </div>
 
           {/* Additional fields row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             {/* Website */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
@@ -368,11 +368,8 @@ const CompanyProfile = () => {
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.legalEntityType || 'Not set'}</div>
               )}
             </div>
-          </div>
+            {/* Legal Entity Organized Under */}
 
-          {/* Additional row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            {/* Legal Organized Under */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Organized Under The Laws Of</label>
               {editing ? (
@@ -382,7 +379,7 @@ const CompanyProfile = () => {
               )}
             </div>
 
-            {/* POS Assignee */}
+            {/* Legal Organized Under */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">POS Loan App Assignee</label>
               {editing ? (
@@ -391,10 +388,7 @@ const CompanyProfile = () => {
                 <div className="p-3 bg-gray-50 rounded-lg text-gray-900">{company?.posLoanAppAssignee || 'Not set'}</div>
               )}
             </div>
-          </div>
 
-          {/* Address */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
               {editing ? (
@@ -408,13 +402,18 @@ const CompanyProfile = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                <div className="flex gap-2 p-3 bg-gray-50 rounded-lg text-gray-900 truncate overflow-hidden text-ellipsis">
                   <div>{company?.address?.addressLine1 || '—'}</div>
                   <div>{company?.address?.addressLine2 || ''}</div>
                   <div>{[company?.address?.city, company?.address?.state, company?.address?.zipCode].filter(Boolean).join(', ') || ''}</div>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Address */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            
           </div>
         </div>
         

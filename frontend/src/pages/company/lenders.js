@@ -28,7 +28,9 @@ const CompanyLenders = () => {
     setCurrentPage,
     totalPages,
     totalLenders,
-    handleNewLenderSuccess
+    handleNewLenderSuccess,
+    filteredLenders,
+    setFilteredLenders
   } = useLenders(user);
 
   const handleViewStats = (lenderId) => {
@@ -43,8 +45,18 @@ const CompanyLenders = () => {
     handleSort(field, sortBy, sortOrder, setSortBy, setSortOrder, setCurrentPage);
   };
 
+  const handleSortByChange = (e) => {
+    setSortBy(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSortOrderChange = (e) => {
+    setSortOrder(e.target.value);
+    setCurrentPage(1);
+  };
+
   const handleSearchChange = (e) => {
-    handleSearch(e, setSearchTerm, setCurrentPage);
+    handleSearch(e, setSearchTerm, setCurrentPage, setFilteredLenders, lenders);
   };
 
   const handlePageChangeClick = (page) => {
@@ -58,7 +70,7 @@ const CompanyLenders = () => {
   if (loading && lenders.length === 0) {
     return (
       <CompanyLayout title="Company Lenders">
-        <div className="space-y-6">
+        <div className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
           {/* Header Skeleton */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
@@ -71,7 +83,7 @@ const CompanyLenders = () => {
           </div>
 
           {/* Search and Filters Skeleton */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search Skeleton */}
               <div className="flex-1">
@@ -87,9 +99,9 @@ const CompanyLenders = () => {
           </div>
 
           {/* Lenders Table Skeleton */}
-          <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-200">
+          <div className="bg-white shadow overflow-x-auto rounded-lg border border-gray-100">
             {/* Table Header Skeleton */}
-            <div className="bg-gray-50 border-b border-gray-200 min-w-[940px]">
+            <div className="bg-gray-50 border-b border-gray-100 min-w-[940px]">
               <div className="grid grid-cols-12 px-6 py-3">
                 <div className="col-span-3 h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
                 <div className="col-span-3 h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
@@ -157,11 +169,11 @@ const CompanyLenders = () => {
 
   return (
     <CompanyLayout title="Company Lenders">
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Company Lenders</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Company Lenders</h1>
             <p className="text-gray-600 mt-1">
               Manage and view all lenders in your company ({totalLenders} total)
             </p>
@@ -169,7 +181,7 @@ const CompanyLenders = () => {
           <div className="flex items-center space-x-4 ">
             <button
               onClick={() => setShowNewLenderModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <Plus className="h-4 w-4 mr-2" />
               New Lender
@@ -182,14 +194,17 @@ const CompanyLenders = () => {
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortByChange={handleSortByChange}
+          onSortOrderChange={handleSortOrderChange}
           onSort={handleSortClick}
           getSortIcon={getSortIconForField}
         />
 
         {/* Lenders Table */}
-        {lenders.length > 0 ? (
+        {filteredLenders.length > 0 ? (
           <LendersTable
-            lenders={lenders}
+            lenders={filteredLenders}
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSortClick}
@@ -198,7 +213,7 @@ const CompanyLenders = () => {
             getSortIcon={getSortIconForField}
           />
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
             <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No lenders found</h3>
             <p className="text-gray-600 mb-4">
@@ -206,7 +221,10 @@ const CompanyLenders = () => {
             </p>
             {searchTerm ? (
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilteredLenders(lenders);
+                }}
                 className="text-primary hover:text-primary-dark font-medium"
               >
                 Clear search

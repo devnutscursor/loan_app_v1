@@ -49,10 +49,36 @@ export const handleSort = (field, currentSortBy, currentSortOrder, setSortBy, se
  * @param {Event} e - Input change event
  * @param {Function} setSearchTerm - Function to set search term
  * @param {Function} setCurrentPage - Function to reset to page 1
+ * @param {Function} setFilteredLenders - Function to set filtered lenders
+ * @param {Array} lenders - Array of lenders
+ * @returns {void}
  */
-export const handleSearch = (e, setSearchTerm, setCurrentPage) => {
-  setSearchTerm(e.target.value);
+export const handleSearch = (e, setSearchTerm, setCurrentPage, setFilteredLenders, lenders) => {
+  const searchTerm = e.target.value;
+  setSearchTerm(searchTerm);
   setCurrentPage(1);
+
+  if (searchTerm.trim() === '') {
+    setFilteredLenders(lenders);
+    return;
+  }
+
+  const filteredLenders = lenders.filter(lender => {
+
+    const user = lender?.user;
+
+    if (!user) return false;
+
+    const searchLower = searchTerm.toLowerCase();
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
+
+    return (
+    fullName.includes(searchLower) 
+    || ((user.email || '').toLowerCase().includes(searchLower))
+    || ((user.phone || '').toLowerCase().includes(searchLower))
+    );
+  });
+  setFilteredLenders(filteredLenders);
 };
 
 /**
