@@ -394,10 +394,9 @@ exports.createAdminUser = async (req, res, next) => {
  * Body: { companyName, phone, email, maxLenders, nmls?, website?, address?: { addressLine1, addressLine2, city, state, zipCode, country? }, legalEntityType?, legalEntityOrganizedUnder?, posLoanAppAssignee?, primaryContact: { firstName, lastName, email, phone, password } }
  */
 exports.createCompanyWithPrimaryContact = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const { companyName, phone, email, maxLenders, nmls, website, address, legalEntityType, legalEntityOrganizedUnder, posLoanAppAssignee, primaryContact } = req.body;
+    console.log('req.body', req.body);
     console.log('Creating company with primary contact:', companyName);
 
     if (!companyName || !phone || !email || typeof maxLenders !== 'number' || !primaryContact) {
@@ -409,62 +408,55 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
     }
 
     // Uniqueness checks
-    const existingCompany = await Company.findOne({ name: companyName }).session(session);
+    const existingCompany = await Company.findOne({ name: companyName });
     if (existingCompany) {
       return next(new ApiError('A company with this name already exists', 400));
     }
-    const existingPCUser = await User.findOne({ email: primaryContactEmail.toLowerCase() }).session(session);
+    const existingPCUser = await User.findOne({ email: primaryContactEmail.toLowerCase() });
     if (existingPCUser) {
       return next(new ApiError('Primary contact email already in use', 400));
     }
 
     // Create company
-    const [company] = await Company.create([
-      {
-        name: companyName,
-        password,
-        phone,
-        email: email.toLowerCase(),
-        maxLenders,
-        nmls,
-        website,
-        address: {
-          addressLine1: address?.addressLine1,
-          addressLine2: address?.addressLine2,
-          city: address?.city,
-          state: address?.state,
-          zipCode: address?.zipCode,
-          country: address?.country || 'United States'
-        },
-        legalEntityType,
-        legalEntityOrganizedUnder,
-        posLoanAppAssignee,
-        isActive: true
-      }
-    ], { session });
+    const company = await Company.create({
+      name: companyName,
+      password,
+      phone,
+      email: email.toLowerCase(),
+      maxLenders,
+      nmls,
+      website,
+      address: {
+        addressLine1: address?.addressLine1,
+        addressLine2: address?.addressLine2,
+        city: address?.city,
+        state: address?.state,
+        zipCode: address?.zipCode,
+        country: address?.country || 'United States'
+      },
+      legalEntityType,
+      legalEntityOrganizedUnder,
+      posLoanAppAssignee,
+      isActive: true
+    });
 
     // Create primary contact user (role company)
-    const [user] = await User.create([
-      {
-        firstName,
-        lastName,
-        email: primaryContactEmail.toLowerCase(),
-        phone: primaryContactPhone,
-        password: password,
-        role: 'company',
-        company: company._id,
-        isEmailVerified: true
-      }
-    ], { session });
+    const user = await User.create({
+      firstName,
+      lastName,
+      email: primaryContactEmail.toLowerCase(),
+      phone: primaryContactPhone,
+      password: password,
+      role: 'company',
+      company: company._id,
+      isEmailVerified: true
+    });
 
     // Link in company
     company.primaryContact = user._id;
     company.users = company.users || [];
     company.users.push(user._id);
-    await company.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
+    await company.save();
 
     // Create default loan programs and rates for the company
     try {
@@ -499,8 +491,6 @@ exports.createCompanyWithPrimaryContact = async (req, res, next) => {
       }
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };

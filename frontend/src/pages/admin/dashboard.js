@@ -1,186 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
+import React from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
-import { adminService } from '../../services/api';
+import { StatCard } from '../../components/admin/dashboard/StatCard';
+import LoanStatistics from '@/components/admin/dashboard/LoanStatistics';
+import UserStatistics from '@/components/admin/dashboard/UserStatistics';
+import useAdminDashboard from '@/hooks/admin/useAdminDashboard';
 
-// Components
-const StatCard = ({ title, value, icon, change, changeType }) => {
-  return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
-      <div className="p-5">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            {icon}
-          </div>
-          <div className="ml-5 w-0 flex-1">
-          <dl className='text-end'>
-            <dt className="font-medium text-gray-500 text-opacity-80 truncate text-end xl:text-start">{title}</dt>
-            <dd className="flex items-baseline xl:justify-start justify-end min-w-28 xl:min-w-0">
-                <div className="text-lg font-medium text-gray-900">{value}</div>
-              </dd>
-            </dl>
-          </div>
-        </div>
-      </div>
-      {change && (
-        <div className="bg-gray-50 px-5 py-3">
-          <div className="text-sm">
-            <span className={`font-medium ${changeType === 'increase' ? 'text-green-600' : 'text-red-600'}`}>
-              {changeType === 'increase' ? '↑' : '↓'} {change}
-            </span>{' '}
-            <span className="text-gray-500">from previous period</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-
-
-const UserStatistics = ({ users }) => {
-  return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">User Statistics</h3>
-      </div>
-      <div className="px-4 py-5 sm:p-6">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-medium text-gray-500">Borrowers</p>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.borrowers}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-medium text-gray-500">Companies</p>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.companies}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-sm font-medium text-gray-500">Lenders</p>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{users.lenders}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const LoanStatistics = ({ loanStats }) => {
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
-  return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">Loan Statistics</h3>
-      </div>
-      <div className="px-4 py-5 sm:p-6">
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Total Applications</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{loanStats.totalApplications}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Approved</p>
-            <p className="mt-1 text-2xl font-semibold text-green-600 text-center sm:text-start">{loanStats.approved}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Pending</p>
-            <p className="mt-1 text-2xl font-semibold text-yellow-600 text-center sm:text-start">{loanStats.pending}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Rejected</p>
-            <p className="mt-1 text-2xl font-semibold text-red-600 text-center sm:text-start">{loanStats.rejected}</p>
-          </div>
-        </div>
-        
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Total Loan Volume</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{formatCurrency(loanStats.totalVolume)}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Average Loan Amount</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900 text-center sm:text-start">{formatCurrency(loanStats.averageAmount)}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const AdminDashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState({
-    summary: {
-      totalLoans: 0,
-      totalUsers: 0,
-      totalVolume: 0,
-      activeLoans: 0
-    },
-    users: {
-      borrowers: 0,
-      lenders: 0,
-      admins: 0,
-      companies: 0
-    },
-    loanStats: {
-      totalApplications: 0,
-      approved: 0,
-      pending: 0,
-      rejected: 0,
-      totalVolume: 0,
-      averageAmount: 0
-    }
-  });
-  
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Check if logout is in progress to prevent unnecessary API calls
-        const isLogoutInProgress = localStorage.getItem('logoutInProgress');
-        if (isLogoutInProgress) {
-          return;
-        }
-        
-        setLoading(true);
-        const response = await adminService.getDashboard();
-        setDashboardData(response.data.data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // Only show error toast if not during logout
-        const isLogoutInProgress = localStorage.getItem('logoutInProgress');
-        if (!isLogoutInProgress) {
-          toast.error('Failed to load dashboard data');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchDashboardData();
-    
-    // Refresh data every 5 minutes
-    const intervalId = setInterval(fetchDashboardData, 5 * 60 * 1000);
-    
-    return () => clearInterval(intervalId);
-  }, []);
-  
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
+  const { 
+    dashboardData, 
+    loading, 
+    formatCurrency 
+  } = useAdminDashboard();
+
   if (loading) {
     return (
       <ProtectedRoute roles={['admin']}>
