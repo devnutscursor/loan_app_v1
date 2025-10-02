@@ -8,6 +8,7 @@ export const useCompanyProfile = () => {
   const { user } = useAuth();
   const router = useRouter();
 
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);

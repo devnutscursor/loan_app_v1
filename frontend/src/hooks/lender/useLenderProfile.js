@@ -3,8 +3,10 @@ import { toast } from 'react-hot-toast';
 import { UserService } from '../../services';
 import { lenderService } from '../../services/api';
 import api from '../../services/api';
+import {useAuth} from '../../contexts/AuthContext';
 
 export const useLenderProfile = () => {
+  const { user } = useAuth();
   const [form, setForm] = useState({ 
     firstName: '', 
     middleName: '',
@@ -168,6 +170,7 @@ export const useLenderProfile = () => {
   };
 
   return {
+    user,
     form,
     loading,
     saving,

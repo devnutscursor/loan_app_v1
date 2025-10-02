@@ -17,6 +17,7 @@ const noteRoutes = require('./note.routes');
 const adminRoutes = require('./admin.routes');
 const companyRoutes = require('./company.routes');
 const creditReportRoutes = require('./creditReport.routes');
+const creditVendorCredentialRoutes = require('./creditVendorCredential.routes');
 
 // Debug route to check uploads directory
 router.get('/debug/uploads', (req, res) => {
@@ -88,5 +89,6 @@ router.use('/notes', noteRoutes);
 router.use('/admin', adminRoutes);
 router.use('/companies', companyRoutes);
 router.use('/credit-report', creditReportRoutes);
+router.use('/credit-vendor-credentials', creditVendorCredentialRoutes);
 
 module.exports = router; 
