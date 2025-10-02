@@ -64,8 +64,8 @@ app.use(cors({
     const allowedOrigins = process.env.NODE_ENV === 'production'
       ? [
           process.env.FRONTEND_URL,
-          'https://loan-app-frontend-seven.vercel.app', // Without trailing slash
-          'https://loan-app-frontend-seven.vercel.app/', // With trailing slash
+          'https://loan-app-frontend-henna.vercel.app', // Without trailing slash
+          'https://loan-app-frontend-henna.vercel.app/', // With trailing slash
           'https://loan-app-system.vercel.app',
           'https://loan-app-backend-1qkk.onrender.com'
         ].filter(Boolean)
