@@ -49,8 +49,8 @@ exports.createCredential = async (req, res, next) => {
       if (err.keyPattern.username) {
         return res.status(400).json({ error: "Username already exists globally" });
       }
-      if (err.keyPattern.userId && err.keyPattern.vendorKey) {
-        return res.status(400).json({ error: "User already has credentials for this vendor" });
+      if (err.keyPattern?.ownerId && err.keyPattern?.vendorKey && err.keyPattern?.ownerType) {
+        return res.status(400).json({ message: "This owner already has credentials for this vendor" });
       }
     }
     return next(err);
@@ -92,8 +92,8 @@ exports.updateCredential = async (req, res, next) => {
       if (err.keyPattern.username) {
         return res.status(400).json({ error: "Username already exists globally" });
       }
-      if (err.keyPattern.userId && err.keyPattern.vendorKey) {
-        return res.status(400).json({ error: "User already has credentials for this vendor" });
+      if (err.keyPattern?.ownerId && err.keyPattern?.vendorKey && err.keyPattern?.ownerType) {
+        return res.status(400).json({ message: "This owner already has credentials for this vendor" });
       }
     }
     return next(err);

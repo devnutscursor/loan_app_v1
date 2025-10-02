@@ -66,5 +66,11 @@ creditVendorCredentialSchema.methods.getDecryptedPassword = function() {
 
 creditVendorCredentialSchema.index({ username: 1 }, { unique: true });
 creditVendorCredentialSchema.index({ username: 1, vendorKey: 1 }, { unique: true });
+creditVendorCredentialSchema.index({ ownerType: 1, ownerId: 1, vendorKey: 1 }, { unique: true });
+
+// Ensure normalization helper
+function normalizeVendorKey(key) {
+  return String(key || '').toLowerCase().trim();
+}
 
 module.exports = mongoose.model('CreditVendorCredential', creditVendorCredentialSchema);
