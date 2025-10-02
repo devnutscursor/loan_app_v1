@@ -7,9 +7,23 @@ const ProviderSelectionForm = ({
   loading,
   onProviderChange,
   onCreateReport,
-  onCancel
+  onCancel,
+  userRole,
+  personalCredentials = [],
+  organizationCredentials = [],
+  selectedCredentialId,
+  onChangeCredential,
+  onOpenAddAccount,
+  onOpenEditAccount,
+  importMethod,
+  setImportMethod
 }) => {
   if (!showForm) return null;
+
+  const isOrgSelected = 
+   userRole === 'lender' &&
+   !!selectedCredentialId &&
+   organizationCredentials.some(c => c._id === selectedCredentialId);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -31,8 +45,79 @@ const ProviderSelectionForm = ({
           </label>
         ))}
       </div>
+      {/* Credit Account Selection */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-gray-900">Credit Account</h3>
+          <button
+            type="button"
+            onClick={onOpenAddAccount}
+            className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg"
+          >
+            + Add New Account
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedCredentialId || ''}
+            onChange={(e) => onChangeCredential?.(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            required
+          >
+            <option value="">Select an account</option>
+            {userRole === 'lender' && personalCredentials.length > 0 && (
+              <optgroup label="Individual">
+                {personalCredentials.map(c => (
+                  <option key={`p-${c._id}`} value={c._id} className='tooltip' data-tooltip={c.vendorName}>{c.vendorName} — {c.username}</option>
+                ))}
+              </optgroup>
+            )}
+            {userRole === 'lender' && organizationCredentials.length > 0 && (
+              <optgroup label="Organization">
+                {organizationCredentials.map(c => (
+                  <option key={`o-${c._id}`} value={c._id} className='tooltip' data-tooltip={c.vendorName}>{c.vendorName} — {c.username}</option>
+                ))}
+              </optgroup>
+            )}
+            {userRole === 'company' && personalCredentials.length > 0 && (
+              personalCredentials.map(c => (
+                <option key={`c-${c._id}`} value={c._id} className='tooltip' data-tooltip={c.vendorName}>{c.vendorName} — {c.username}</option>
+              ))
+            )}
+          </select>
+
+          <button
+            type="button"
+            onClick={onOpenEditAccount}
+            disabled={!selectedCredentialId || isOrgSelected}
+            className={`px-3 py-2 rounded border ${
+              !selectedCredentialId || isOrgSelected
+                ? 'text-gray-400 border-gray-200 cursor-not-allowed'
+                : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'
+            }`}
+             >
+             Edit
+           </button>
+        </div>
+      </div>
+
+      {/* Liabilities Import Method */}
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Liabilities Import Method</h3>
+        <select
+          value={importMethod}
+          onChange={(e) => setImportMethod?.(e.target.value)}
+          className="w-full border rounded px-3 py-2"
+          required
+        >
+          <option value="merge" className='tooltip' data-tooltip='Merge Current Liabilities with Credit Report Liabilities'>Merge Current Liabilities with Credit Report Liabilities</option>
+          <option value="dont_merge" className='tooltip' data-tooltip='Don’t Merge Credit Report Liabilities'>Don’t Merge Credit Report Liabilities</option>
+          <option value="override" className='tooltip' data-tooltip='Override Current Liabilities with Credit Report Liabilities'>Override Current Liabilities with Credit Report Liabilities</option>
+        </select>
+      </div>
       
-      <div className="flex gap-4">
+      <div className="flex gap-4 mt-4">
         <button
           onClick={onCreateReport}
           disabled={loading || !Object.values(selectedProviders).some(Boolean)}

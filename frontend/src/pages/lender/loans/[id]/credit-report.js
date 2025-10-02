@@ -9,6 +9,8 @@ import ProviderSelectionForm from "../../../../components/lender/credit-report/P
 import CreditScoresDisplay from "../../../../components/lender/credit-report/CreditScoresDisplay";
 import ReportDetails from "../../../../components/lender/credit-report/ReportDetails";
 import useCreditReport from "../../../../hooks/lender/useCreditReport";
+import AddCredentialModal from "@/components/lender/credentials/AddCredentialModal";
+import EditCredentialModal from "@/components/lender/credentials/EditCredentialModal";
 
 const CreditReportPage = () => {
   const {
@@ -18,11 +20,18 @@ const CreditReportPage = () => {
     creditReport,
     reportStatus,
     selectedProviders,
+    personalCredentials,
+    organizationCredentials,
+    selectedCredentialId,
+    importMethod,
     
     // Loading states
     loading,
     fileLoading,
     showProviderForm,
+    addOpen,
+    editOpen,
+    selectedCredential,
     
     // Event handlers
     handleCreateReport,
@@ -31,15 +40,22 @@ const CreditReportPage = () => {
     handleProviderChange,
     handleCreateReportClick,
     handleCancelProviderForm,
-    handleBack
+    handleBack,
+    setImportMethod,
+    handleChangeCredential,
+    handleOpenAddAccount,
+    handleCloseAddAccount,
+    handleOpenEditAccount,
+    handleCloseEditAccount,
+    credsHook
   } = useCreditReport();
 
-  if (!user || user.role !== 'lender') {
+  if (!user || user.role !== 'lender' && user.role !== 'company') {
     return null;
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["lender", "company"]}>
       <MainLayout>
         <FileLoadingOverlay isLoading={fileLoading} />
         
@@ -71,6 +87,15 @@ const CreditReportPage = () => {
               onProviderChange={handleProviderChange}
               onCreateReport={handleCreateReport}
               onCancel={handleCancelProviderForm}
+              userRole={user?.role}
+              personalCredentials={personalCredentials}
+              organizationCredentials={organizationCredentials}
+              selectedCredentialId={selectedCredentialId}
+              onChangeCredential={handleChangeCredential}
+              onOpenAddAccount={handleOpenAddAccount}
+              onOpenEditAccount={handleOpenEditAccount}
+              importMethod={importMethod}
+              setImportMethod={setImportMethod}
             />
 
             <CreditScoresDisplay
@@ -84,6 +109,21 @@ const CreditReportPage = () => {
             />
           </div>
         </div>
+      {/* Modals reused from credentials UI */}
+      <AddCredentialModal
+        isOpen={addOpen}
+        onClose={handleCloseAddAccount}
+        onSubmit={credsHook.create}
+        vendors={credsHook.vendors}
+      />
+      <EditCredentialModal
+        isOpen={editOpen}
+        onClose={handleCloseEditAccount}
+        onSubmit={credsHook.update}
+        onDelete={credsHook.remove}
+        vendors={credsHook.vendors}
+        credential={selectedCredential}
+      />
       </MainLayout>
     </ProtectedRoute>
   );

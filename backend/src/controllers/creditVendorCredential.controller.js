@@ -1,5 +1,6 @@
 const CreditVendorCredential = require('../models/creditVendorCredentials.model');
 const User = require('../models/user.model');
+const Lender = require('../models/lender.model');
 
 // Ensure we never send encrypted secrets back
 const publicSelect = '';
@@ -158,29 +159,28 @@ exports.getLenderEffectiveCredentials = async (req, res, next) => {
   try {
     const { lenderUserId } = req.params;
     const { scope } = req.query;
+    console.log("SCOPE: ", scope);
 
     // Auth: lender can fetch own or admin/company can fetch within org
     const requester = req.user;
-    const isSelf = String(requester._id) === String(lenderUserId);
 
-    const lenderUser = await User.findById(lenderUserId);
-    if (!lenderUser) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const sameCompany = requester.company && lenderUser.company && String(requester.company) === String(lenderUser.company);
-    if (!isSelf && !sameCompany) {
-      return res.status(403).json({ success: false, message: 'Not authorized to view these credentials' });
-    }
+    const lender = await Lender.findOne({user: lenderUserId});
+    if (!lender) return res.status(404).json({ success: false, message: 'Lender not found' });
+    
+    
 
     const userCreds = await CreditVendorCredential
       .find({ ownerType: 'User', ownerId: lenderUserId })
       .select(publicSelect)
       .sort({ createdAt: -1 });
 
-    if (scope === 'both' && lenderUser.company) {
+    if (scope === 'both' && lender.company) {
       const companyCreds = await CreditVendorCredential
-        .find({ ownerType: 'Company', ownerId: lenderUser.company })
+        .find({ ownerType: 'Company', ownerId: lender.company })
         .select(publicSelect)
         .sort({ createdAt: -1 });
+
+      console.log("COMPANY CREDENTIALS: ", companyCreds);
 
       return res.json({ success: true, data: { user: userCreds, company: companyCreds } });
     }

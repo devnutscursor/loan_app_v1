@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import customAxios from '../../utils/axios';
+import CredentialService from '../../services/api/creditVendorCredential.service';
+import { useLenderCredentials } from './useLenderCredentials';
 
 const useCreditReport = () => {
   const router = useRouter();
@@ -21,6 +23,21 @@ const useCreditReport = () => {
     transunion: true
   });
 
+  // Credential selection & liabilities import
+  const [selectedCredentialId, setSelectedCredentialId] = useState('');
+  const [importMethod, setImportMethod] = useState('merge'); // merge | dont_merge | override
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedCredential, setSelectedCredential] = useState(null);
+
+  // Load lender credentials (personal + organization)
+  const userId = user?._id;
+  const companyId = user?.company;
+  const lenderCreds = useLenderCredentials({ userId, companyId });
+  const personalCredentials = useMemo(() => lenderCreds.credentials || [], [lenderCreds.credentials]);
+  // Organization credentials fetched on-demand when needed via scope=both; we can lazy load below
+  const [organizationCredentials, setOrganizationCredentials] = useState([]);
+
   // Check if user is lender
   useEffect(() => {
     if (user && user.role !== 'lender') {
@@ -35,6 +52,28 @@ const useCreditReport = () => {
       fetchCreditReportStatus();
     }
   }, [loanId, user]);
+
+  // Load organization credentials when provider form is shown (for lender)
+  useEffect(() => {
+    const loadOrg = async () => {
+      if (!userId) return;
+      const res = await CredentialService.listForLender(userId, { scope: 'both' });
+      if (res.success) {
+        const data = res.data;
+        console.log("ORGANIZATION CREDENTIALS: ", res);
+        // When scope=both, backend returns { user: [...], company: [...] }
+        if (data && Array.isArray(data.user) && Array.isArray(data.company)) {
+          setOrganizationCredentials(data.company);
+        } else if (Array.isArray(res.data)) {
+          // Fallback if API returns only user creds
+          setOrganizationCredentials([]);
+        }
+      }
+    };
+    if (showProviderForm && user?.role === 'lender') {
+      loadOrg();
+    }
+  }, [showProviderForm, userId, user]);
 
   const fetchCreditReportStatus = async () => {
     try {
@@ -70,7 +109,9 @@ const useCreditReport = () => {
     setLoading(true);
     try {
       const response = await customAxios.post(`/api/v1/credit-report/${loanId}`, {
-        providers: selectedProviders
+        providers: selectedProviders,
+        credentialId: selectedCredentialId || undefined,
+        liabilitiesImportMethod: importMethod || undefined
       });
       
       // Extract both status and report data from the response
@@ -171,6 +212,20 @@ const useCreditReport = () => {
     }));
   };
 
+  const handleChangeCredential = (id) => {
+    setSelectedCredentialId(id);
+    const inPersonal = personalCredentials.find(c => c._id === id);
+    const inOrg = organizationCredentials.find(c => c._id === id);
+    setSelectedCredential(inPersonal || inOrg || null);
+  };
+
+  const handleOpenAddAccount = () => setAddOpen(true);
+  const handleCloseAddAccount = () => setAddOpen(false);
+  const handleOpenEditAccount = () => {
+    if (selectedCredentialId) setEditOpen(true);
+  };
+  const handleCloseEditAccount = () => setEditOpen(false);
+
   const handleCreateReportClick = () => {
     setShowProviderForm(true);
   };
@@ -190,11 +245,18 @@ const useCreditReport = () => {
     creditReport,
     reportStatus,
     selectedProviders,
+    personalCredentials,
+    organizationCredentials,
+    selectedCredentialId,
+    importMethod,
     
     // Loading states
     loading,
     fileLoading,
     showProviderForm,
+    addOpen,
+    editOpen,
+    selectedCredential,
     
     // Event handlers
     handleCreateReport,
@@ -203,7 +265,15 @@ const useCreditReport = () => {
     handleProviderChange,
     handleCreateReportClick,
     handleCancelProviderForm,
-    handleBack
+    handleBack,
+    setImportMethod,
+    handleChangeCredential,
+    handleOpenAddAccount,
+    handleCloseAddAccount,
+    handleOpenEditAccount,
+    handleCloseEditAccount,
+    // Surface CRUD for modals
+    credsHook: lenderCreds
   };
 };
 
