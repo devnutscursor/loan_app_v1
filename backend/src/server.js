@@ -43,8 +43,8 @@ const io = socketIo(server, {
     origin: process.env.NODE_ENV === 'production'
       ? [
           process.env.FRONTEND_URL,
-          'https://loan-app-frontend-six.vercel.app',
-          'https://loan-app-frontend-six.vercel.app/',
+          'https://loan-app-frontend-seven.vercel.app',
+          'https://loan-app-frontend-seven.vercel.app/',
           'https://loan-app-system.vercel.app'
         ].filter(Boolean)
       : ['http://localhost:3000', process.env.FRONTEND_URL, '*'].filter(Boolean),
