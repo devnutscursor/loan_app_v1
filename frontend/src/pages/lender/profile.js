@@ -35,7 +35,7 @@ const ProfilePage = () => {
   const [selected, setSelected] = useState(null);
   const userId = user?._id;
   const companyId = user?.company;
-  const creds = useLenderCredentials({ userId, companyId });
+  const creds = useLenderCredentials({ userId, companyId, role: user?.role });
 
   if (loading) {
     return <LoadingSpinner />;
