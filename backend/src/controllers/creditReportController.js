@@ -9,44 +9,31 @@ const logger = require('../utils/logger');
 const creditReportService = new CreditReportService();
 
 /**
- * Helper function to verify user authorization for a loan
+ * Helper function to verify user authorization for a loan and borrower
  */
 const verifyLoanAuthorization = async (loanId, lenderId, user) => {
     try {
-        const loan = await Loan.findById(loanId);
+        const loan = await Loan.findById(loanId).populate('borrower lender');
         if (!loan) {
             throw new ApiError('Loan not found', 404);
         }
         
-        const lender = await Lender.findById(lenderId);
+        const lender = await Lender.findById(lenderId).populate('company');
         if (!lender) {
             throw new ApiError('Lender not found', 404);
         }
         
         // Verify the loan belongs to the specified lender
-        if (loan.lender.toString() !== lenderId) {
+        if (loan.lender._id.toString() !== lenderId) {
             throw new ApiError('Loan does not belong to the specified lender', 403);
-        }
-        
-        if (user.role === 'lender') {
-            if (lender._id.toString() !== lenderId) {
-                throw new ApiError('You are not authorized to access this loan', 403);
-            }
-        } else if (user.role === 'company') {
-            // For company users, verify the lender belongs to their company
-
-            const company = await Company.findById(lender.company);
-            if (!company) {
-                throw new ApiError('Company profile not found', 404);
-            }
-            
-        } else {
-            throw new ApiError('Unauthorized role', 403);
         }
         
         return loan;
     } catch (error) {
-        
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(`Authorization error: ${error.message}`, 403);
     }
 };
 

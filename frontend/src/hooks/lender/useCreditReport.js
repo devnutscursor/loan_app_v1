@@ -85,7 +85,7 @@ const useCreditReport = () => {
     // Fallback: fetch from API (this should rarely happen)
     try {
       const response = await customAxios.get(`/api/v1/loans/${loanId}`);
-      return response.data.data.lender;
+      return response.data.data.lender._id || response.data.data.lender;
     } catch (error) {
       console.error('Error fetching loan details:', error);
       throw new Error('Failed to fetch loan details');

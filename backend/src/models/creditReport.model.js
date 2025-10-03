@@ -1,16 +1,34 @@
 const mongoose = require('mongoose');
 
 const creditReportSchema = new mongoose.Schema({
+  // Primary reference - the borrower this report belongs to
+  borrower: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Borrower',
+    required: true
+  },
+  
+  // Keep loan reference for tracking which loan triggered the report creation
   loan: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Loan',
     required: true
   },
+  
+  // The lender who created this report
   lender: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lender',
     required: true
   },
+  
+  // The company that owns this report (for access control)
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
+  },
+  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -207,12 +225,15 @@ const creditReportSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for performance
-creditReportSchema.index({ loan: 1 });
+// Indexes for performance - updated for borrower-level queries
+creditReportSchema.index({ borrower: 1 });
+creditReportSchema.index({ company: 1 });
 creditReportSchema.index({ lender: 1 });
 creditReportSchema.index({ status: 1 });
 creditReportSchema.index({ createdAt: -1 });
 creditReportSchema.index({ 'metadata.expiresAt': 1 });
+// Compound index for company + borrower queries
+creditReportSchema.index({ company: 1, borrower: 1 });
 
 // Virtual for checking if report is expired
 creditReportSchema.virtual('isExpired').get(function() {
@@ -241,7 +262,27 @@ creditReportSchema.methods.trackAccess = function() {
   return this.save();
 };
 
-// Static method to find active reports for a loan
+// Static method to find active reports for a borrower within a company
+creditReportSchema.statics.findActiveByBorrower = function(borrowerId, companyId) {
+  return this.findOne({
+    borrower: borrowerId,
+    company: companyId,
+    isActive: true,
+    status: 'Completed',
+    'metadata.expiresAt': { $gt: new Date() }
+  }).sort({ createdAt: -1 });
+};
+
+// Static method to find all reports for a borrower within a company (including expired)
+creditReportSchema.statics.findAllByBorrower = function(borrowerId, companyId) {
+  return this.find({
+    borrower: borrowerId,
+    company: companyId,
+    isActive: true
+  }).sort({ createdAt: -1 });
+};
+
+// Static method to find active reports for a loan (for backward compatibility)
 creditReportSchema.statics.findActiveByLoan = function(loanId) {
   return this.findOne({
     loan: loanId,
@@ -251,7 +292,7 @@ creditReportSchema.statics.findActiveByLoan = function(loanId) {
   }).sort({ createdAt: -1 });
 };
 
-// Static method to find all reports for a loan (including expired)
+// Static method to find all reports for a loan (including expired) - for backward compatibility
 creditReportSchema.statics.findAllByLoan = function(loanId) {
   return this.find({
     loan: loanId,

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const CreditReport = require('../models/creditReport.model');
 const Loan = require('../models/loan.model');
+const Lender = require('../models/lender.model');
 const { uploadToS3, getSignedUrl } = require('./s3.service');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
@@ -1155,10 +1156,22 @@ class CreditReportService {
      */
     async createCreditReport(loanId, lenderId, userId, providers = {}) {
         try {
-            // Find the loan
-            const loan = await Loan.findById(loanId).populate('borrower');
+            // Find the loan and populate borrower and lender
+            const loan = await Loan.findById(loanId).populate('borrower lender');
             if (!loan) {
                 throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(lenderId).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Check if there's already an active credit report for this borrower in this company
+            const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
+            if (existingReport) {
+                throw new ApiError('An active credit report already exists for this borrower', 409);
             }
 
             // Extract borrower data (currently using test data)
@@ -1166,8 +1179,10 @@ class CreditReportService {
 
             // Create credit report record
             const creditReport = new CreditReport({
+                borrower: loan.borrower._id,
                 loan: loanId,
                 lender: lenderId,
+                company: lender.company._id,
                 createdBy: userId,
                 providers: {
                     equifax: providers.equifax !== false,
@@ -1296,9 +1311,22 @@ class CreditReportService {
      */
     async getCreditReport(loanId) {
         try {
-            const creditReport = await CreditReport.findActiveByLoan(loanId);
+            // Find the loan to get borrower and lender info
+            const loan = await Loan.findById(loanId).populate('borrower lender');
+            if (!loan) {
+                throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(loan.lender._id).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Find active credit report for this borrower in this company
+            const creditReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
             if (!creditReport) {
-                throw new ApiError('No active credit report found for this loan', 404);
+                throw new ApiError('No active credit report found for this borrower', 404);
             }
 
             // Track access
@@ -1316,8 +1344,20 @@ class CreditReportService {
      */
     async refreshCreditReport(loanId, lenderId, userId) {
         try {
-            // Get the existing report
-            const existingReport = await CreditReport.findActiveByLoan(loanId);
+            // Find the loan to get borrower and lender info
+            const loan = await Loan.findById(loanId).populate('borrower lender');
+            if (!loan) {
+                throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(lenderId).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Get the existing report for this borrower in this company
+            const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
             if (!existingReport) {
                 throw new ApiError('No existing credit report found to refresh', 404);
             }
@@ -1435,7 +1475,20 @@ class CreditReportService {
      */
     async getAllCreditReports(loanId) {
         try {
-            const reports = await CreditReport.findAllByLoan(loanId);
+            // Find the loan to get borrower and lender info
+            const loan = await Loan.findById(loanId).populate('borrower lender');
+            if (!loan) {
+                throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(loan.lender._id).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Find all credit reports for this borrower in this company
+            const reports = await CreditReport.findAllByBorrower(loan.borrower._id, lender.company._id);
             return reports;
         } catch (error) {
             logger.error('Error getting all credit reports:', error);
