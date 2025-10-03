@@ -24,21 +24,21 @@ const VENDORS = [
 ];
 
 
-export function useLenderCredentials({ userId, companyId }) {
+export function useLenderCredentials({ userId, companyId, role }) {
   const [credentials, setCredentials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || role !== 'lender') return;
     setLoading(true);
     setError(null);
     const res = await CredentialService.listForLender(userId);
     if (res.success) setCredentials(res.data || []);
     else setError(res.error?.message || 'Failed to load credentials');
     setLoading(false);
-  }, [userId]);
+  }, [userId, role]);
 
   useEffect(() => { load(); }, [load]);
 

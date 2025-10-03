@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import customAxios from '../../utils/axios';
 import CredentialService from '../../services/api/creditVendorCredential.service';
 import { useLenderCredentials } from './useLenderCredentials';
+import { useCompanyCredentials } from '../company/useCompanyCredentials';
 
 const useCreditReport = () => {
   const router = useRouter();
@@ -30,11 +31,26 @@ const useCreditReport = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState(null);
 
-  // Load lender credentials (personal + organization)
+  // Load credentials based on user role
   const userId = user?._id;
   const companyId = user?.company;
-  const lenderCreds = useLenderCredentials({ userId, companyId });
-  const personalCredentials = useMemo(() => lenderCreds.credentials || [], [lenderCreds.credentials]);
+
+  console.log("USER COMPANY: ", companyId);
+  
+  // Call both hooks unconditionally (Rules of Hooks)
+  const lenderCreds = useLenderCredentials({ userId, companyId, role: user?.role });
+  const companyCreds = useCompanyCredentials({ companyId });
+
+  // Get credentials based on user role
+  const credentialsHook = useMemo(() => {
+    if (user?.role === 'company') {
+      return companyCreds;
+    } else {
+      return lenderCreds;
+    }
+  }, [user?.role, companyCreds, lenderCreds]);
+  
+  const personalCredentials = useMemo(() => credentialsHook.credentials || [], [credentialsHook.credentials]);
   // Organization credentials fetched on-demand when needed via scope=both; we can lazy load below
   const [organizationCredentials, setOrganizationCredentials] = useState([]);
 
@@ -56,9 +72,25 @@ const useCreditReport = () => {
   // Load organization credentials when provider form is shown (for lender)
   useEffect(() => {
     const loadOrg = async () => {
+      let res = null;
       if (!userId) return;
-      const res = await CredentialService.listForLender(userId, { scope: 'both' });
-      if (res.success) {
+      if (user.role === 'company') {
+        res = await CredentialService.listForCompany(user.company);
+        if (res.success) {
+          const data = res.data;
+          console.log("ORGANIZATION CREDENTIALS: ", res);
+          setOrganizationCredentials(data.company);
+        }
+      }
+      else if (user.role === 'lender') {
+        res = await CredentialService.listForLender(userId, { scope: 'both' });
+        if (res.success) {
+          const data = res.data;
+          console.log("ORGANIZATION CREDENTIALS: ", res);
+          setOrganizationCredentials(data.company);
+        }
+      }
+      if (res && res.success) {
         const data = res.data;
         console.log("ORGANIZATION CREDENTIALS: ", res);
         // When scope=both, backend returns { user: [...], company: [...] }
@@ -295,7 +327,7 @@ const useCreditReport = () => {
     handleOpenEditAccount,
     handleCloseEditAccount,
     // Surface CRUD for modals
-    credsHook: lenderCreds
+    credsHook: credentialsHook
   };
 };
 

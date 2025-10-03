@@ -11,7 +11,7 @@ const creditReportService = new CreditReportService();
 /**
  * Helper function to verify user authorization for a loan and borrower
  */
-const verifyLoanAuthorization = async (loanId, lenderId, user) => {
+const verifyLoanAuthorization = async (loanId, lenderId) => {
     try {
         const loan = await Loan.findById(loanId).populate('borrower lender');
         if (!loan) {
@@ -47,7 +47,7 @@ const createCreditReport = catchAsync(async (req, res) => {
     const { _id: userId } = req.user;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Creating credit report for loan ${loanId} by user ${userId}`);
     
@@ -110,7 +110,7 @@ const getCreditReport = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Getting credit report for loan ${loanId}`);
     
@@ -164,7 +164,7 @@ const refreshCreditReport = catchAsync(async (req, res) => {
     const { _id: userId } = req.user;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Refreshing credit report for loan ${loanId} by user ${userId}`);
     
@@ -226,7 +226,7 @@ const getCreditReportHistory = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Getting credit report history for loan ${loanId}`);
     
@@ -266,7 +266,7 @@ const getCreditReportFile = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Getting credit report file for loan ${loanId}`);
     
@@ -310,7 +310,7 @@ const getCreditReportStatus = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
     
     // Verify authorization
-    await verifyLoanAuthorization(loanId, lenderId, req.user);
+    await verifyLoanAuthorization(loanId, lenderId);
     
     logger.info(`Checking credit report status for loan ${loanId}`);
     
