@@ -8,7 +8,7 @@ import { useLenderCredentials } from './useLenderCredentials';
 
 const useCreditReport = () => {
   const router = useRouter();
-  const { id: loanId } = router.query;
+  const { id: loanId, lenderId } = router.query;
   const { user } = useAuth();
   
   // State management
@@ -38,17 +38,17 @@ const useCreditReport = () => {
   // Organization credentials fetched on-demand when needed via scope=both; we can lazy load below
   const [organizationCredentials, setOrganizationCredentials] = useState([]);
 
-  // Check if user is lender
+  // Check if user is lender or company
   useEffect(() => {
-    if (user && user.role !== 'lender') {
-      toast.error('Access denied. Only lenders can view credit reports.');
+    if (user && user.role !== 'lender' && user.role !== 'company') {
+      toast.error('Access denied. Only lenders and companies can view credit reports.');
       router.push('/dashboard');
     }
   }, [user, router]);
 
   // Fetch credit report status on component mount
   useEffect(() => {
-    if (loanId && user?.role === 'lender') {
+    if (loanId && (user?.role === 'lender' || user?.role === 'company')) {
       fetchCreditReportStatus();
     }
   }, [loanId, user]);
@@ -70,15 +70,33 @@ const useCreditReport = () => {
         }
       }
     };
-    if (showProviderForm && user?.role === 'lender') {
+    if (showProviderForm && (user?.role === 'lender' || user?.role === 'company')) {
       loadOrg();
     }
   }, [showProviderForm, userId, user]);
 
+  // Helper function to get lenderId - use from router query or fallback to API
+  const getLenderId = async () => {
+    // If lenderId is passed via router query, use it
+    if (lenderId) {
+      return lenderId;
+    }
+    
+    // Fallback: fetch from API (this should rarely happen)
+    try {
+      const response = await customAxios.get(`/api/v1/loans/${loanId}`);
+      return response.data.data.lender;
+    } catch (error) {
+      console.error('Error fetching loan details:', error);
+      throw new Error('Failed to fetch loan details');
+    }
+  };
+
   const fetchCreditReportStatus = async () => {
     try {
       setLoading(true);
-      const response = await customAxios.get(`/api/v1/credit-report/${loanId}/status`);
+      const currentLenderId = await getLenderId();
+      const response = await customAxios.get(`/api/v1/credit-report/${loanId}/${currentLenderId}/status`);
       setReportStatus(response.data.data);
       console.log("REPORT STATUS: ", response.data.data);
       
@@ -97,7 +115,8 @@ const useCreditReport = () => {
 
   const fetchCreditReport = async () => {
     try {
-      const response = await customAxios.get(`/api/v1/credit-report/${loanId}`);
+      const currentLenderId = await getLenderId();
+      const response = await customAxios.get(`/api/v1/credit-report/${loanId}/${currentLenderId}`);
       setCreditReport(response.data.data);
     } catch (error) {
       console.error('Error fetching credit report:', error);
@@ -108,7 +127,8 @@ const useCreditReport = () => {
   const handleCreateReport = async () => {
     setLoading(true);
     try {
-      const response = await customAxios.post(`/api/v1/credit-report/${loanId}`, {
+      const currentLenderId = await getLenderId();
+      const response = await customAxios.post(`/api/v1/credit-report/${loanId}/${currentLenderId}`, {
         providers: selectedProviders,
         credentialId: selectedCredentialId || undefined,
         liabilitiesImportMethod: importMethod || undefined
@@ -152,7 +172,8 @@ const useCreditReport = () => {
   const handleRefreshReport = async () => {
     setLoading(true);
     try {
-      const response = await customAxios.put(`/api/v1/credit-report/${loanId}/refresh`);
+      const currentLenderId = await getLenderId();
+      const response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/refresh`);
       
       // Extract both status and report data from the response
       const responseData = response.data.data;
@@ -191,7 +212,8 @@ const useCreditReport = () => {
   const handleViewReport = async () => {
     try {
       setFileLoading(true);
-      const response = await customAxios.get(`/api/v1/credit-report/${loanId}/file`);
+      const currentLenderId = await getLenderId();
+      const response = await customAxios.get(`/api/v1/credit-report/${loanId}/${currentLenderId}/file`);
       const { fileUrl } = response.data.data;
       
       // Open the report in a new tab

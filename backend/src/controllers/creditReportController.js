@@ -1,21 +1,66 @@
 const { CreditReportService } = require('../services/creditReportService');
 const ApiError = require('../utils/apiError');
 const catchAsync = require('../utils/catchAsync');
+const Loan = require('../models/loan.model');
+const Company = require('../models/company.model');
+const Lender = require('../models/lender.model');
 const logger = require('../utils/logger');
 
 const creditReportService = new CreditReportService();
 
 /**
+ * Helper function to verify user authorization for a loan
+ */
+const verifyLoanAuthorization = async (loanId, lenderId, user) => {
+    try {
+        const loan = await Loan.findById(loanId);
+        if (!loan) {
+            throw new ApiError('Loan not found', 404);
+        }
+        
+        const lender = await Lender.findById(lenderId);
+        if (!lender) {
+            throw new ApiError('Lender not found', 404);
+        }
+        
+        // Verify the loan belongs to the specified lender
+        if (loan.lender.toString() !== lenderId) {
+            throw new ApiError('Loan does not belong to the specified lender', 403);
+        }
+        
+        if (user.role === 'lender') {
+            if (lender._id.toString() !== lenderId) {
+                throw new ApiError('You are not authorized to access this loan', 403);
+            }
+        } else if (user.role === 'company') {
+            // For company users, verify the lender belongs to their company
+
+            const company = await Company.findById(lender.company);
+            if (!company) {
+                throw new ApiError('Company profile not found', 404);
+            }
+            
+        } else {
+            throw new ApiError('Unauthorized role', 403);
+        }
+        
+        return loan;
+    } catch (error) {
+        
+    }
+};
+
+/**
  * Create a new credit report for a loan
- * POST /api/credit-report/:loanId
+ * POST /api/credit-report/:loanId/:lenderId
  */
 const createCreditReport = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
     const { providers } = req.body;
     const { _id: userId } = req.user;
     
-    // Get lender ID from user (assuming user has lender reference)
-    const lenderId = req.user.lender || req.user._id; // Adjust based on your user model structure
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Creating credit report for loan ${loanId} by user ${userId}`);
     
@@ -72,10 +117,13 @@ const createCreditReport = catchAsync(async (req, res) => {
 
 /**
  * Get existing credit report for a loan
- * GET /api/credit-report/:loanId
+ * GET /api/credit-report/:loanId/:lenderId
  */
 const getCreditReport = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Getting credit report for loan ${loanId}`);
     
@@ -122,14 +170,14 @@ const getCreditReport = catchAsync(async (req, res) => {
 
 /**
  * Refresh an existing credit report
- * PUT /api/credit-report/:loanId/refresh
+ * PUT /api/credit-report/:loanId/:lenderId/refresh
  */
 const refreshCreditReport = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
     const { _id: userId } = req.user;
     
-    // Get lender ID from user
-    const lenderId = req.user.lender || req.user._id;
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Refreshing credit report for loan ${loanId} by user ${userId}`);
     
@@ -185,10 +233,13 @@ const refreshCreditReport = catchAsync(async (req, res) => {
 
 /**
  * Get all credit reports for a loan (including expired)
- * GET /api/credit-report/:loanId/history
+ * GET /api/credit-report/:loanId/:lenderId/history
  */
 const getCreditReportHistory = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Getting credit report history for loan ${loanId}`);
     
@@ -222,10 +273,13 @@ const getCreditReportHistory = catchAsync(async (req, res) => {
 
 /**
  * Get signed URL for credit report file
- * GET /api/credit-report/:loanId/file
+ * GET /api/credit-report/:loanId/:lenderId/file
  */
 const getCreditReportFile = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Getting credit report file for loan ${loanId}`);
     
@@ -263,10 +317,13 @@ const getCreditReportFile = catchAsync(async (req, res) => {
 
 /**
  * Check if loan has an active credit report
- * GET /api/credit-report/:loanId/status
+ * GET /api/credit-report/:loanId/:lenderId/status
  */
 const getCreditReportStatus = catchAsync(async (req, res) => {
-    const { loanId } = req.params;
+    const { loanId, lenderId } = req.params;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId, req.user);
     
     logger.info(`Checking credit report status for loan ${loanId}`);
     

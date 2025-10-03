@@ -5,7 +5,10 @@ const nextConfig = {
     domains: ['localhost', 'placeholderimage.com'],
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://loan-app-backend-1qkk.onrender.com',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 
+      (process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:5000' 
+        : 'https://loan-app-backend-1qkk.onrender.com'),
   },
   webpack: (config) => {
     return config;

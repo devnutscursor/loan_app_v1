@@ -50,7 +50,7 @@ const CreditReportPage = () => {
     credsHook
   } = useCreditReport();
 
-  if (!user || user.role !== 'lender' && user.role !== 'company') {
+  if (!user || (user.role !== 'lender' && user.role !== 'company')) {
     return null;
   }
 

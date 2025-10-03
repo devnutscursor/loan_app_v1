@@ -3110,7 +3110,12 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           <button
                             title="Credit Report"
                             onClick={() => {
-                              router.push(`/lender/loans/${id}/credit-report`);
+                              router.push({
+                                pathname: `/lender/loans/${id}/credit-report`,
+                                query: {
+                                  lenderId: loan?.lender, // Pass the lenderId 
+                                }
+                              });
                             }}
                             className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                           >
