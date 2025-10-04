@@ -114,19 +114,25 @@ export const useDocuments = () => {
         const loanId = selectedLoanId || documentRequest.loanId;
         const conditionId = documentRequest._id;
 
+        console.log("Calling removeCondition with:", { loanId, conditionId });
+
         const removeResponse = await borrowerService.removeCondition(
           loanId,
           conditionId
         );
 
+        console.log("Remove condition response:", removeResponse);
+
         if (removeResponse.data && removeResponse.data.status === "success") {
-          console.log("Successfully removed condition from loan model");
+          console.log("✅ Successfully removed condition from loan model");
 
           // Also remove from the UI state immediately
           setDocumentRequests((prevRequests) => {
-            return prevRequests.filter(
+            const filtered = prevRequests.filter(
               (req) => req._id !== documentRequest._id
             );
+            console.log(`Removed condition from UI state. Remaining requests: ${filtered.length}`);
+            return filtered;
           });
 
           // Set the selected document request for the RequiredDocumentsList component
@@ -137,18 +143,21 @@ export const useDocuments = () => {
             status: "Pending Review",
             isCompleted: true,
           });
-        } else {
-          console.warn(
-            "Failed to remove condition from loan model:",
-            removeResponse
-          );
         }
       } catch (updateError) {
-        console.error("Error removing condition from loan model:", updateError);
+        console.error("❌ Error removing condition from loan model:", updateError);
+        toast.error("Document uploaded but failed to remove request. Please refresh the page.");
       }
 
-      // Refresh the documents list
+      // Refresh the documents list and document requests
       setRefreshTrigger((prev) => prev + 1);
+      
+      // Also refresh document requests after a short delay to ensure backend has processed
+      setTimeout(() => {
+        console.log("🔄 Refreshing document requests after upload...");
+        // This will trigger the useEffect that fetches document requests
+        setRefreshTrigger((prev) => prev + 1);
+      }, 2000);
     } else {
       toast.error(response.message || "Failed to upload document");
     }

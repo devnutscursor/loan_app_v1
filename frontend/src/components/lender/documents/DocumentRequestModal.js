@@ -6,7 +6,8 @@ const DocumentRequestModal = ({
   requestDetails, 
   setRequestDetails, 
   handleSubmitRequest,
-  isUpdate 
+  isUpdate,
+  processing = false
 }) => {
   if (!show) return null;
 
@@ -90,6 +91,7 @@ const DocumentRequestModal = ({
                     id="reason"
                     name="reason"
                     value={requestDetails.reason || ''}
+                    disabled={processing}
                     onChange={(e) => {
                       // When reason changes, update the message automatically based on reason
                       const newReason = e.target.value;
@@ -156,7 +158,9 @@ const DocumentRequestModal = ({
                         }
                       }
                     }}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${
+                      processing ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     required
                   >
                     <option value="">Select a reason</option>
@@ -179,7 +183,10 @@ const DocumentRequestModal = ({
                         rows="3"
                         value={requestDetails.customReason || ''}
                         onChange={(e) => setRequestDetails({...requestDetails, customReason: e.target.value})}
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"
+                        disabled={processing}
+                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md ${
+                          processing ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
                         placeholder="Please provide a detailed explanation"
                         required={requestDetails.reason === 'custom'}
                       ></textarea>
@@ -206,23 +213,47 @@ const DocumentRequestModal = ({
               <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                 <button
                   type="submit"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                  disabled={processing}
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm ${
+                    processing 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900'
+                  }`}
                   onClick={(e) => {
                     // Double-ensure we prevent default navigation
                     e.preventDefault(); 
-                    handleSubmitRequest(e);
+                    if (!processing) {
+                      handleSubmitRequest(e);
+                    }
                     return false;
                   }}
                 >
-                  {isUpdate ? 'Request Update' : 'Send Request'}
+                  {processing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {isUpdate ? 'Requesting Update...' : 'Sending Request...'}
+                    </>
+                  ) : (
+                    isUpdate ? 'Request Update' : 'Send Request'
+                  )}
                 </button>
                 <button
                   type="button"
+                  disabled={processing}
                   onClick={(e) => {
                     e.preventDefault();
-                    onClose();
+                    if (!processing) {
+                      onClose();
+                    }
                   }}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                  className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 bg-white text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm ${
+                    processing 
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
                   Cancel
                 </button>

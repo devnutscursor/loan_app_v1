@@ -1068,6 +1068,7 @@ const LenderDocumentRequirements = ({
         setRequestDetails={setRequestDetails}
         handleSubmitRequest={handleRequestDocument}
         isUpdate={requestDetails.isUpdate}
+        processing={!!processingDocId}
       />
 
       {/* Batch Document Request Modal */}

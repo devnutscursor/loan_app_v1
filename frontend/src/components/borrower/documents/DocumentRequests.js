@@ -9,7 +9,8 @@ const DocumentRequests = ({
   requests, 
   isLoadingRequests, 
   selectedLoanNumber,
-  onFileUpload 
+  onFileUpload,
+  isUploading = false
 }) => {
   if (requests.length === 0) {
     return null;
@@ -81,6 +82,7 @@ const DocumentRequests = ({
                 key={request._id}
                 request={request}
                 onUpload={onFileUpload}
+                isUploading={isUploading}
               />
             ))}
           </ul>

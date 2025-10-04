@@ -70,6 +70,7 @@ const Documents = () => {
                 isLoadingRequests={isLoadingRequests}
                 selectedLoanNumber={selectedLoan?.loanNumber}
                 onFileUpload={handleFileUpload}
+                isUploading={isUploading}
               />
             )}
 
