@@ -18,7 +18,7 @@ class DocumentService {
    * @param {File} file - The file object to upload
    * @returns {Promise<Object>} Response with upload status and document details
    */
-  async uploadDocument(documentData, loanId, file) {
+  async uploadDocument(documentData, loanId, file, borrowerId) {
     try {
       console.log('Document data:', documentData);
       
@@ -28,6 +28,7 @@ class DocumentService {
         category: documentData.category,
         documentType: documentData.type || documentData.documentType,
         description: documentData.description || '',
+        borrowerId: borrowerId,
       };
       
       // Add loan ID if provided

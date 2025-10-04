@@ -58,7 +58,7 @@ const LoansTable = ({ loans, borrowerId, lenderId, onSortChange, getSortIcon, ge
             </div>
           </div>
           <div className="col-span-2 flex justify-center items-center space-x-3">
-            <Link href={`/company/loan-details/${loan._id}?borrowerId=${borrowerId}&lenderId=${lenderId}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+            <Link href={`/lender/loans/${loan._id}?backUrl=/company/lender-borrowers/${borrowerId}/loans${lenderId ? `?lenderId=${lenderId}` : ''}&isCompanyView=true`} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
               <ExternalLink className="h-4 w-4 mr-1" />
               <span>View Details</span>
             </Link>

@@ -116,39 +116,7 @@ const LenderDocumentRequirements = ({
       verificationStatus: doc.verificationStatus
     })));
 
-    // Create a map to track only requestedUpdate flags from localStorage
-    // We'll no longer override backend status, only track update requests
-    const requestedUpdateMap = {};
-
-    // Check localStorage only for requestedUpdate flags, not status overrides
-    try {
-      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-      console.log("Loaded requestedUpdate flags from localStorage:", storedStates);
-
-      // For each stored state that matches this loan, only extract requestedUpdate info
-      Object.entries(storedStates).forEach(([key, state]) => {
-        if (key.startsWith(`${loanId}-`) && state.requestedUpdate) {
-          // Extract category and document type from key
-          const parts = key.split('-');
-          if (parts.length >= 3) {
-            const category = parts[1];
-            const documentType = parts[2];
-
-            // Only store the requestedUpdate flag and timestamp
-            requestedUpdateMap[`${category}-${documentType}`] = {
-              requestedUpdate: state.requestedUpdate,
-              timestamp: state.timestamp
-            };
-
-            console.log(`Found requestedUpdate flag for ${category}-${documentType}`);
-          }
-        }
-      });
-    } catch (err) {
-      console.error("Failed to load persisted document update flags:", err);
-    }
-
-    console.log("RequestedUpdate map:", requestedUpdateMap);
+    // Removed localStorage functionality - document status now comes from backend only
 
     if (!loanId || !docsList || !docsList.length) {
       console.log('No documents found, setting default requirements');
@@ -164,11 +132,8 @@ const LenderDocumentRequirements = ({
           req.title
         );
 
-        // Check if we have a requestedUpdate flag for this requirement
-        const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
-
-        // Determine if this document needs correction based on conditions or manual requests
-        const needsCorrection = hasCondition || (requestedUpdateInfo && requestedUpdateInfo.requestedUpdate);
+        // Determine if this document needs correction based on conditions only (backend data)
+        const needsCorrection = hasCondition;
 
         return {
           ...req,
@@ -205,44 +170,18 @@ const LenderDocumentRequirements = ({
           req.title
         );
 
-        // Check if we have a manual requestedUpdate flag for this document
-        const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
+        // Removed localStorage logic - document status now comes from backend only
 
-        // Check if document was uploaded after any manual update request
-        const wasUploadedAfterRequest = requestedUpdateInfo?.timestamp &&
-          assignedDoc.createdAt &&
-          new Date(assignedDoc.createdAt) > new Date(requestedUpdateInfo.timestamp);
-
-        // Clear requestedUpdate flag if document was uploaded after the request
-        if (wasUploadedAfterRequest) {
-          try {
-            const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-            const docKey = `${loanId}-${req.category}-${req.documentType}`;
-
-            if (storedStates[docKey]) {
-              console.log(`Clearing requestedUpdate flag for re-uploaded document: ${docKey}`);
-              delete storedStates[docKey];
-              localStorage.setItem('documentStates', JSON.stringify(storedStates));
-            }
-          } catch (err) {
-            console.error("Failed to clear persisted document update state:", err);
-          }
-        }
-
-        // Determine if document needs correction:
-        // - Has active condition AND document wasn't uploaded after condition was created
-        // - Has manual update request AND document wasn't uploaded after request
-        const needsCorrection = (hasCondition || (requestedUpdateInfo?.requestedUpdate && !wasUploadedAfterRequest));
+        // Determine if document needs correction based on backend data only
+        const needsCorrection = hasCondition;
 
         // Debug the document status determination
         console.log(`📋 Status determination for ${req.documentType}:`, {
           documentId: assignedDoc._id,
           backendStatus: assignedDoc.status,
           hasCondition,
-          hasManualRequest: requestedUpdateInfo?.requestedUpdate,
-          wasUploadedAfterRequest,
           needsCorrection,
-          finalStatus: assignedDoc.status || "Pending Review"
+          finalStatus: needsCorrection ? "Needs Correction" : (assignedDoc.status || "Pending Review")
         });
 
         return {
@@ -261,9 +200,6 @@ const LenderDocumentRequirements = ({
         };
       }
 
-      // For unassigned documents, check if there's a manual requestedUpdate flag
-      const requestedUpdateInfo = requestedUpdateMap[`${req.category}-${req.documentType}`];
-
       // Check if there's a pending document condition for this requirement
       const hasCondition = hasDocumentCondition(
         loanConditions,
@@ -272,8 +208,8 @@ const LenderDocumentRequirements = ({
         req.title
       );
 
-      // Determine if this document needs correction based on conditions or manual requests
-      const needsCorrection = hasCondition || (requestedUpdateInfo && requestedUpdateInfo.requestedUpdate);
+      // Determine if this document needs correction based on conditions only (backend data)
+      const needsCorrection = hasCondition;
 
       return {
         ...req,
@@ -370,28 +306,7 @@ const LenderDocumentRequirements = ({
 
       toast.success(`${selectedDocuments.length} document requests sent successfully! An email notification has been sent to the borrower.`);
       
-      console.log("Updating UI for batch requested documents...");
-      
-      // Get existing stored document states or initialize empty object for localStorage
-      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-      
-      // Update each document's status in the UI and localStorage
-      selectedDocuments.forEach(doc => {
-        // Update UI - Mark each document as needing correction (same as single document request)
-        markDocumentForUpdate(doc.category, doc.documentType);
-        
-        // Store each document's state in localStorage to persist between page reloads
-        const docKey = `${loanId}-${doc.category}-${doc.documentType}`;
-        storedStates[docKey] = {
-          status: "Needs Correction",
-          requestedUpdate: true,
-          timestamp: Date.now()
-        };
-        console.log(`Persisted batch document state: ${docKey} => Needs Correction`);
-      });
-      
-      // Save all updates back to localStorage
-      localStorage.setItem('documentStates', JSON.stringify(storedStates));
+      console.log("Batch document requests sent successfully");
       
       // Increment refresh counter to trigger a fresh fetch of loan conditions
       setRefreshCounter(prev => prev + 1);
@@ -428,28 +343,7 @@ const LenderDocumentRequirements = ({
     const reqsCopy = JSON.parse(JSON.stringify(requirements)); // Deep copy to avoid reference issues
     console.log("conditions are", loanConditions);
     
-    // First, check localStorage for any manually set requestedUpdate flags
-    const manuallyRequestedUpdates = {};
-    try {
-      const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-      Object.entries(storedStates).forEach(([key, state]) => {
-        if (key.startsWith(`${loanId}-`) && state.requestedUpdate) {
-          const parts = key.split('-');
-          if (parts.length >= 3) {
-            const category = parts[1];
-            const documentType = parts[2];
-            manuallyRequestedUpdates[`${category}-${documentType}`] = {
-              requestedUpdate: true,
-              timestamp: state.timestamp
-            };
-          }
-        }
-      });
-    } catch (err) {
-      console.error("Failed to load persisted document states:", err);
-    }
-    
-    console.log("Manually requested updates:", manuallyRequestedUpdates);
+    // Removed localStorage logic - document status now comes from backend only
     
     const updatedReqs = reqsCopy.map((req) => {
       // Check if this document has a condition
@@ -460,20 +354,10 @@ const LenderDocumentRequirements = ({
         req.title
       );
       
-      // Check if this document has a manually requested update
-      const manualUpdateInfo = manuallyRequestedUpdates[`${req.category}-${req.documentType}`];
-      const hasManualUpdate = manualUpdateInfo?.requestedUpdate || false;
+      // Document should be marked for update if it has a condition (backend determines this)
+      const shouldBeMarkedForUpdate = hasCondition;
 
-      // Check if document was uploaded after any manual update request
-      const wasUploadedAfterRequest = hasManualUpdate && req.matchedDocument && req.uploadDate &&
-        manualUpdateInfo?.timestamp &&
-        new Date(req.uploadDate) > new Date(manualUpdateInfo.timestamp);
-
-      // The document should be marked for update if it has a condition OR was manually requested
-      // BUT not if it was uploaded after the manual request
-      const shouldBeMarkedForUpdate = (hasCondition || hasManualUpdate) && !wasUploadedAfterRequest;
-
-      console.log(`Document ${req.title}: hasCondition=${hasCondition}, hasManualUpdate=${hasManualUpdate}, wasUploadedAfterRequest=${wasUploadedAfterRequest}, current requestedUpdate=${req.requestedUpdate}, current status=${req.status}, uploadDate=${req.uploadDate}`);
+      console.log(`Document ${req.title}: hasCondition=${hasCondition}, current requestedUpdate=${req.requestedUpdate}, current status=${req.status}`);
 
       // Only update if the requestedUpdate flag needs to change
       if (req.requestedUpdate !== shouldBeMarkedForUpdate) {
@@ -743,21 +627,7 @@ const LenderDocumentRequirements = ({
       console.log("Could not update document UI state immediately, will try to update after API call");
     }
     
-    // If this document had a requestedUpdate flag, clear it from localStorage
-    if (documentReq && documentReq.requestedUpdate) {
-      try {
-        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-        const docKey = `${loanId}-${documentReq.category}-${documentReq.documentType}`;
-        
-        if (storedStates[docKey]) {
-          console.log(`Clearing requestedUpdate flag for approved document: ${docKey}`);
-          delete storedStates[docKey];
-          localStorage.setItem('documentStates', JSON.stringify(storedStates));
-        }
-      } catch (err) {
-        console.error("Failed to clear persisted document update state:", err);
-      }
-    }
+    // Removed localStorage cleanup - document status now comes from backend only
 
     try {
       console.log("Calling API to approve document:", documentId);
@@ -868,22 +738,7 @@ const LenderDocumentRequirements = ({
         status: "Needs Correction",
       };
 
-      // Store this update in localStorage for persistence
-      try {
-        const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-        const docKey = `${loanId}-${category}-${documentType}`;
-        
-        storedStates[docKey] = {
-          status: "Needs Correction",
-          requestedUpdate: true,
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('documentStates', JSON.stringify(storedStates));
-        console.log(`Persisted document update state: ${docKey}`);
-      } catch (err) {
-        console.error("Failed to persist document update state:", err);
-      }
+      // Removed localStorage persistence - document status now comes from backend only
 
       // Update the state with the new requirements
       console.log("Marking document for update:", reqsCopy[requirementIndex]);
@@ -1065,29 +920,8 @@ const LenderDocumentRequirements = ({
         isSubmitted: true, // Ensure it's marked as submitted
         requestedUpdate: newStatus === "Needs Correction" // Update requestedUpdate flag based on new status
       };
-      
-      // If the status is changing from "Needs Correction" to something else,
-      // we should clean up the localStorage entry
-      if (prevStatus === "Needs Correction" && newStatus !== "Needs Correction") {
-        try {
-          // Get existing stored document states
-          const storedStates = JSON.parse(localStorage.getItem('documentStates') || '{}');
-          
-          // Look for any keys that might match this document
-          Object.keys(storedStates).forEach(key => {
-            // Check if the key contains this loan and the category/type of the document
-            if (key.startsWith(`${loanId}-${matchedReq.category}-${matchedReq.documentType}`)) {
-              console.log(`Removing persisted state for ${key}`);
-              delete storedStates[key];
-            }
-          });
-          
-          // Save the updated states back to localStorage
-          localStorage.setItem('documentStates', JSON.stringify(storedStates));
-        } catch (err) {
-          console.error("Failed to clean up persisted document state:", err);
-        }
-      }
+
+      // Removed localStorage cleanup - document status now comes from backend only
       
       console.log(`Updated document:`, reqsCopy[reqIndex]);
       

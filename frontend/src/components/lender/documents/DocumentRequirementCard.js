@@ -235,7 +235,7 @@ const DocumentRequirementCard = ({
                 )}
 
                 {/* Approve button */}
-                {req.status !== "Approved" && !req.requestedUpdate && (
+                {req.status !== "Approved" && !req.requestedUpdate && req.status !== "Needs Correction" && (
                   <button
                     onClick={() => onApprove(req.documentId)}
                     disabled={
@@ -287,7 +287,7 @@ const DocumentRequirementCard = ({
                 )}
 
                 {/* Reject button */}
-                {req.status !== "Rejected" && !req.requestedUpdate && (
+                {req.status !== "Rejected" && !req.requestedUpdate && req.status !== "Needs Correction" && (
                   <button
                     onClick={() =>
                       onReject(
@@ -343,7 +343,7 @@ const DocumentRequirementCard = ({
 
                 {/* Update button */}
                 {/* Update Button - Only show if not already requested */}
-                {req.requestedUpdate ? (
+                {req.status === "Needs Correction" ? (
                   <button
                     type="button"
                     disabled

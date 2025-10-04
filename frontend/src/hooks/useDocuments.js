@@ -30,6 +30,18 @@ export const useDocuments = () => {
       return;
     }
 
+    let borrowerId = null;
+    try {
+      const borrowerProfile = await borrowerService.getProfile();
+      console.log('Borrower profile:', borrowerProfile.data.data);
+      if (borrowerProfile.data && borrowerProfile.data.data._id) {
+        borrowerId = borrowerProfile.data.data._id;
+        console.log('Got borrowerId from profile:', borrowerId);
+      }
+    } catch (error) {
+      console.warn('Could not get borrower profile:', error);
+    }
+
     // Get correct category and documentType
     let category = documentRequest.category;
     console.log("Category:", category);
@@ -75,6 +87,7 @@ export const useDocuments = () => {
         documentRequest.description || "Document requested by lender",
       // Add status to ensure it shows as pending review
       status: "Pending Review",
+      borrowerId: borrowerId,
     };
 
     console.log("Using validated document data:", documentData);
@@ -84,7 +97,8 @@ export const useDocuments = () => {
     const response = await DocumentService.uploadDocument(
       documentData,
       documentRequest.loanId || selectedLoanId,
-      file
+      file,
+      borrowerId
     );
 
     if (response.success) {

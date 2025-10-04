@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/user.model');
 const { title } = require('process');
+const AuditLog = require('../models/auditLog.model');
 const emailService = require('../utils/email/emailService');
 const { deleteFromS3, getSignedUrl } = require('../services/s3.service');
 
@@ -75,7 +76,89 @@ exports.uploadDocument = async (req, res, next) => {
       documentData.borrower = borrowerId;
     }
 
-    // Create document
+    // Before creating a new document, check if there's an existing document that needs correction
+    if (loanId && borrowerId) {
+      console.log('🔍 Checking for existing document with:');
+      console.log('  loanId:', loanId);
+      console.log('  borrowerId:', borrowerId);
+      console.log('  documentType:', documentType);
+      console.log('  category:', category);
+      console.log('  status: Needs Correction');
+    
+      const existingDocument = await Document.findOne({
+        loan: loanId,
+        borrower: borrowerId,
+        documentType: documentType || 'Other',
+        category: category || 'Other',
+        status: 'Needs Correction'
+      });
+    
+      console.log('📄 Found existing document:', existingDocument ? existingDocument._id : 'None');
+    
+      if (existingDocument) {
+        console.log('✅ Updating existing document instead of creating new one');
+        // Update the existing document with new file information
+        existingDocument.name = name;
+        existingDocument.description = description || name;
+        existingDocument.fileUrl = fileUrl;
+        existingDocument.s3Key = s3Key;
+        existingDocument.originalFilename = originalFilename;
+        existingDocument.mimeType = mimeType;
+        existingDocument.size = size;
+        existingDocument.uploadedBy = req.user._id;
+        existingDocument.status = 'Pending Review'; // Reset status for new review
+        existingDocument.reviewNotes = null; // Clear previous review notes
+        existingDocument.reviewedBy = null; // Clear previous reviewer
+        existingDocument.reviewDate = null; // Clear previous review date
+        existingDocument.uploadedAt = new Date(); // Update upload timestamp
+
+        await existingDocument.save();
+        
+        // Log the update
+        logger.info(`Document updated: ${name} by ${req.user._id} (replaced existing document ${existingDocument._id})`);
+
+        // Create audit log entry
+        try {
+          await AuditLog.create({
+            eventType: 'document:updated',
+            description: `Document "${name}" updated (replaced existing document)`,
+            userId: req.user._id,
+            userRole: req.user.role,
+            level: 'info',
+            entityType: 'document',
+            entityId: existingDocument._id,
+            metadata: {
+              documentName: name,
+              documentType: documentType || 'Other',
+              category: category || 'Other',
+              loanId: loanId,
+              loanNumber: existingDocument.loan ? existingDocument.loan.loanNumber : null,
+              borrowerId: borrowerId,
+              action: 'document_replacement'
+            }
+          });
+        } catch (auditError) {
+          logger.error(`Failed to create audit log for document update: ${auditError}`);
+        }
+
+        // If this is associated with a loan, populate the loan info for response
+        if (loanId) {
+          await existingDocument.populate('loan', 'loanNumber');
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Document updated successfully',
+          data: existingDocument
+        });
+      }
+      else {
+        console.log('❌ No existing document found, will create new one');
+      }
+    }
+
+    // If no existing document needs correction, create a new one
+    console.log('CREATING A NEW DOCUMENT: ', documentData);
     const document = await Document.create(documentData);
     
     // If this is associated with a loan, populate the loan info for response
