@@ -5,7 +5,9 @@ const {
     refreshCreditReport,
     getCreditReportHistory,
     getCreditReportFile,
-    getCreditReportStatus
+    getCreditReportStatus,
+    reissueCreditReport,
+    upgradeCreditReport
 } = require('../controllers/creditReportController');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
@@ -38,6 +40,20 @@ router.get('/:loanId/:lenderId', getCreditReport);
  * @access  Private (Lender only)
  */
 router.put('/:loanId/:lenderId/refresh', refreshCreditReport);
+
+/**
+ * @route   PUT /api/credit-report/:loanId/:lenderId/reissue
+ * @desc    Reissue an existing credit report (retrieve using StatusQuery)
+ * @access  Private (Lender only)
+ */
+router.put('/:loanId/:lenderId/reissue', reissueCreditReport);
+
+/**
+ * @route   PUT /api/credit-report/:loanId/:lenderId/upgrade
+ * @desc    Upgrade an existing credit report order
+ * @access  Private (Lender only)
+ */
+router.put('/:loanId/:lenderId/upgrade', upgradeCreditReport);
 
 /**
  * @route   GET /api/credit-report/:loanId/:lenderId/history

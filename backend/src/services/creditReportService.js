@@ -288,6 +288,265 @@ class CreditReportService {
     }
 
     /**
+     * Create XML request for reissuing existing credit report (StatusQuery)
+     */
+    createReissueXml(vendorOrderId, borrowerData) {
+        const {
+            firstName,
+            middleName,
+            lastName,
+            suffix,
+            ssn
+        } = borrowerData;
+
+        let xml = `<?xml version="1.0" encoding="utf-8"?>
+<MESSAGE MessageType="Request" xmlns="${MISMO_NS}" xmlns:p2="${XLINK_NS}" xmlns:p3="${MCL_NS}">
+	<ABOUT_VERSIONS>
+		<ABOUT_VERSION>
+			<DataVersionIdentifier>201703</DataVersionIdentifier>
+		</ABOUT_VERSION>
+	</ABOUT_VERSIONS>
+	<DEAL_SETS>
+		<DEAL_SET>
+			<DEALS>
+				<DEAL>
+					<PARTIES>
+						<PARTY p2:label="Party1">
+							<INDIVIDUAL>
+								<NAME>
+									<FirstName>${this.escapeXml(firstName)}</FirstName>
+									<LastName>${this.escapeXml(lastName)}</LastName>`;
+
+        if (middleName) {
+            xml += `
+									<MiddleName>${this.escapeXml(middleName)}</MiddleName>`;
+        }
+
+        if (suffix) {
+            xml += `
+									<SuffixName>${this.escapeXml(suffix)}</SuffixName>`;
+        }
+
+        xml += `
+								</NAME>
+							</INDIVIDUAL>
+							<ROLES>
+								<ROLE>
+									<ROLE_DETAIL>
+										<PartyRoleType>Borrower</PartyRoleType>
+									</ROLE_DETAIL>
+								</ROLE>
+							</ROLES>
+							<TAXPAYER_IDENTIFIERS>
+								<TAXPAYER_IDENTIFIER>
+									<TaxpayerIdentifierType>SocialSecurityNumber</TaxpayerIdentifierType>
+									<TaxpayerIdentifierValue>${this.escapeXml(ssn)}</TaxpayerIdentifierValue>
+								</TAXPAYER_IDENTIFIER>
+							</TAXPAYER_IDENTIFIERS>
+						</PARTY>
+					</PARTIES>
+					<RELATIONSHIPS>
+						<!-- Link the Party (the borrower) to the Service (credit order) -->
+						<RELATIONSHIP p2:arcrole="urn:fdc:Meridianlink.com:2017:mortgage/PARTY_IsVerifiedBy_SERVICE" p2:from="Party1" p2:to="Service1" />
+					</RELATIONSHIPS>
+					<SERVICES>
+						<SERVICE p2:label="Service1">
+							<CREDIT>
+								<CREDIT_REQUEST>
+									<CREDIT_REQUEST_DATAS>
+										<CREDIT_REQUEST_DATA>
+											<CREDIT_REPOSITORY_INCLUDED>
+												<!-- These flags should be left as true to ensure all bureau data present on the file is returned. Can be toggled to filter bureau data -->
+												<CreditRepositoryIncludedEquifaxIndicator>true</CreditRepositoryIncludedEquifaxIndicator>
+												<CreditRepositoryIncludedExperianIndicator>true</CreditRepositoryIncludedExperianIndicator>
+												<CreditRepositoryIncludedTransUnionIndicator>true</CreditRepositoryIncludedTransUnionIndicator>
+											</CREDIT_REPOSITORY_INCLUDED>
+											<CREDIT_REQUEST_DATA_DETAIL>
+												<CreditReportRequestActionType>StatusQuery</CreditReportRequestActionType>
+											</CREDIT_REQUEST_DATA_DETAIL>
+										</CREDIT_REQUEST_DATA>
+									</CREDIT_REQUEST_DATAS>
+								</CREDIT_REQUEST>
+							</CREDIT>
+							<SERVICE_PRODUCT>
+								<SERVICE_PRODUCT_REQUEST>
+									<SERVICE_PRODUCT_DETAIL>
+										<ServiceProductDescription>CreditOrder</ServiceProductDescription>
+										<EXTENSION>
+											<OTHER>
+												<!-- Recommend requesting only the formats you need, to minimize processing time -->
+												<p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+													<p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+														<p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+															<p3:PreferredResponseFormatType>Html</p3:PreferredResponseFormatType>
+														</p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+													</p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+													<p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+														<p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+															<p3:PreferredResponseFormatType>Xml</p3:PreferredResponseFormatType>
+														</p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+													</p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+												</p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+											</OTHER>
+										</EXTENSION>
+									</SERVICE_PRODUCT_DETAIL>
+								</SERVICE_PRODUCT_REQUEST>
+							</SERVICE_PRODUCT>        
+							<SERVICE_PRODUCT_FULFILLMENT>
+								<SERVICE_PRODUCT_FULFILLMENT_DETAIL>                  
+									<VendorOrderIdentifier>${vendorOrderId}</VendorOrderIdentifier>
+								</SERVICE_PRODUCT_FULFILLMENT_DETAIL>
+							</SERVICE_PRODUCT_FULFILLMENT>							
+						</SERVICE>
+					</SERVICES>
+				</DEAL>
+			</DEALS>
+		</DEAL_SET>
+	</DEAL_SETS>
+</MESSAGE>`;
+
+        return xml;
+    }
+
+    /**
+     * Create XML request for upgrading credit report order
+     */
+    createUpgradeXml(vendorOrderId, borrowerData, providers) {
+        const {
+            firstName,
+            middleName,
+            lastName,
+            suffix,
+            ssn,
+            address
+        } = borrowerData;
+
+        const {
+            equifax = true,
+            experian = true,
+            transunion = true
+        } = providers;
+
+        let xml = `<?xml version="1.0" encoding="utf-8"?>
+<MESSAGE MessageType="Request" xmlns="${MISMO_NS}" xmlns:p2="${XLINK_NS}" xmlns:p3="${MCL_NS}">
+	<ABOUT_VERSIONS>
+		<ABOUT_VERSION>
+			<DataVersionIdentifier>201703</DataVersionIdentifier>
+		</ABOUT_VERSION>
+	</ABOUT_VERSIONS>
+	<DEAL_SETS>
+		<DEAL_SET>
+			<DEALS>
+				<DEAL>
+					<PARTIES>
+						<!-- SequenceNumber not required for individual credit order, but needed on joint credit orders. 1 = the borrower, 2 = the spouse -->
+						<PARTY SequenceNumber="1" p2:label="Party1">
+							<INDIVIDUAL>
+								<NAME>
+									<FirstName>${this.escapeXml(firstName)}</FirstName>
+									<LastName>${this.escapeXml(lastName)}</LastName>`;
+
+        if (middleName) {
+            xml += `
+									<MiddleName>${this.escapeXml(middleName)}</MiddleName>`;
+        }
+
+        if (suffix) {
+            xml += `
+									<SuffixName>${this.escapeXml(suffix)}</SuffixName>`;
+        }
+
+        xml += `
+								</NAME>
+							</INDIVIDUAL>
+							<ROLES>
+								<ROLE>
+									<ROLE_DETAIL>
+										<PartyRoleType>Borrower</PartyRoleType>
+									</ROLE_DETAIL>
+								</ROLE>
+							</ROLES>
+							<TAXPAYER_IDENTIFIERS>
+								<TAXPAYER_IDENTIFIER>
+									<TaxpayerIdentifierType>SocialSecurityNumber</TaxpayerIdentifierType>
+									<TaxpayerIdentifierValue>${this.escapeXml(ssn)}</TaxpayerIdentifierValue>
+								</TAXPAYER_IDENTIFIER>
+							</TAXPAYER_IDENTIFIERS>
+						</PARTY>
+					</PARTIES>
+					<RELATIONSHIPS>
+						<!-- Link borrower Party to the Service -->
+						<RELATIONSHIP p2:arcrole="urn:fdc:Meridianlink.com:2017:mortgage/PARTY_IsVerifiedBy_SERVICE" p2:from="Party1" p2:to="Service1" />
+					</RELATIONSHIPS>
+					<SERVICES>
+						<SERVICE p2:label="Service1">
+							<CREDIT>
+								<CREDIT_REQUEST>
+									<CREDIT_REQUEST_DATAS>
+										<CREDIT_REQUEST_DATA>
+											<CREDIT_REPOSITORY_INCLUDED>
+                                                <!-- Indicate credit, score, and fraud flags for the upgrade request -->
+												<CreditRepositoryIncludedEquifaxIndicator>${equifax.toString().toLowerCase()}</CreditRepositoryIncludedEquifaxIndicator>
+												<CreditRepositoryIncludedExperianIndicator>${experian.toString().toLowerCase()}</CreditRepositoryIncludedExperianIndicator>
+												<CreditRepositoryIncludedTransUnionIndicator>${transunion.toString().toLowerCase()}</CreditRepositoryIncludedTransUnionIndicator>
+												<EXTENSION>
+													<OTHER>
+														<p3:RequestEquifaxScore>${equifax.toString().toLowerCase()}</p3:RequestEquifaxScore>
+														<p3:RequestExperianFraud>${experian.toString().toLowerCase()}</p3:RequestExperianFraud>
+														<p3:RequestExperianScore>${experian.toString().toLowerCase()}</p3:RequestExperianScore>
+														<p3:RequestTransUnionFraud>${transunion.toString().toLowerCase()}</p3:RequestTransUnionFraud>
+														<p3:RequestTransUnionScore>${transunion.toString().toLowerCase()}</p3:RequestTransUnionScore>
+													</OTHER>
+												</EXTENSION>
+											</CREDIT_REPOSITORY_INCLUDED>
+											<CREDIT_REQUEST_DATA_DETAIL>
+												<CreditReportRequestActionType>Upgrade</CreditReportRequestActionType>
+											</CREDIT_REQUEST_DATA_DETAIL>
+										</CREDIT_REQUEST_DATA>
+									</CREDIT_REQUEST_DATAS>
+								</CREDIT_REQUEST>
+							</CREDIT>
+							<SERVICE_PRODUCT>
+								<SERVICE_PRODUCT_REQUEST>
+									<SERVICE_PRODUCT_DETAIL>
+										<ServiceProductDescription>CreditOrder</ServiceProductDescription>
+										<EXTENSION>
+											<OTHER>
+												<!-- Recommend requesting only the formats you need, to minimize processing time -->
+												<p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+													<p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+														<p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+															<p3:PreferredResponseFormatType>Html</p3:PreferredResponseFormatType>
+														</p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+													</p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+													<p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+														<p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+															<p3:PreferredResponseFormatType>Xml</p3:PreferredResponseFormatType>
+														</p3:SERVICE_PREFERRED_RESPONSE_FORMAT_DETAIL>
+													</p3:SERVICE_PREFERRED_RESPONSE_FORMAT>
+												</p3:SERVICE_PREFERRED_RESPONSE_FORMATS>
+											</OTHER>
+										</EXTENSION>
+									</SERVICE_PRODUCT_DETAIL>
+								</SERVICE_PRODUCT_REQUEST>
+							</SERVICE_PRODUCT>        
+							<SERVICE_PRODUCT_FULFILLMENT>
+								<SERVICE_PRODUCT_FULFILLMENT_DETAIL>                  
+									<VendorOrderIdentifier>${vendorOrderId}</VendorOrderIdentifier>
+								</SERVICE_PRODUCT_FULFILLMENT_DETAIL>
+							</SERVICE_PRODUCT_FULFILLMENT>							
+						</SERVICE>
+					</SERVICES>
+				</DEAL>
+			</DEALS>
+		</DEAL_SET>
+	</DEAL_SETS>
+</MESSAGE>`;
+
+        return xml;
+    }
+
+    /**
      * Create XML request for credit report refresh
      */
     createRefreshXml(vendorOrderId, borrowerData, providers) {
@@ -810,6 +1069,94 @@ class CreditReportService {
                 throw error;
             }
             throw new SmartAPIError(`Refresh order submission failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Submit a credit report reissue order (StatusQuery)
+     */
+    async submitReissueOrder(vendorOrderId, borrowerData) {
+        try {
+            const xmlRequest = this.createReissueXml(vendorOrderId, borrowerData);
+            
+            logger.info(`Submitting CreditOrder reissue for ${vendorOrderId}...`);
+            if (this.config.logRequests) {
+                logger.info('Reissue Request XML:', xmlRequest);
+            }
+
+            const response = await this.session.post('', xmlRequest);
+            
+            if (this.config.logResponses) {
+                logger.info('Response status:', response.status);
+                logger.info('Response headers:', response.headers);
+                logger.info('Response body:', response.data);
+            }
+
+            // Check for authentication errors
+            if (response.status === 401) {
+                throw new AuthenticationError("Authentication failed - check username/password");
+            }
+
+            // Check for other HTTP errors
+            if (response.status >= 400) {
+                throw new NetworkError(`HTTP ${response.status}: ${response.data}`);
+            }
+
+            // Parse response - reissue returns the same vendorOrderId
+            const responseData = this.parseResponse(response.data);
+            
+            logger.info(`Reissue order submitted successfully for VendorOrderIdentifier: ${vendorOrderId}`);
+            return responseData;
+
+        } catch (error) {
+            if (error instanceof AuthenticationError || error instanceof NetworkError) {
+                throw error;
+            }
+            throw new SmartAPIError(`Reissue order submission failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Submit a credit report upgrade order
+     */
+    async submitUpgradeOrder(vendorOrderId, borrowerData, providers) {
+        try {
+            const xmlRequest = this.createUpgradeXml(vendorOrderId, borrowerData, providers);
+            
+            logger.info(`Submitting CreditOrder upgrade for ${vendorOrderId}...`);
+            if (this.config.logRequests) {
+                logger.info('Upgrade Request XML:', xmlRequest);
+            }
+
+            const response = await this.session.post('', xmlRequest);
+            
+            if (this.config.logResponses) {
+                logger.info('Response status:', response.status);
+                logger.info('Response headers:', response.headers);
+                logger.info('Response body:', response.data);
+            }
+
+            // Check for authentication errors
+            if (response.status === 401) {
+                throw new AuthenticationError("Authentication failed - check username/password");
+            }
+
+            // Check for other HTTP errors
+            if (response.status >= 400) {
+                throw new NetworkError(`HTTP ${response.status}: ${response.data}`);
+            }
+
+            // Parse response to get new VendorOrderIdentifier (if any)
+            const newVendorOrderId = this.extractVendorOrderId(response.data);
+            
+            logger.info(`Upgrade order submitted successfully. New VendorOrderIdentifier: ${newVendorOrderId}`);
+            return newVendorOrderId;
+
+        } catch (error) {
+            if (error instanceof AuthenticationError || error instanceof NetworkError) {
+                throw error;
+            }
+            throw new SmartAPIError(`Upgrade order submission failed: ${error.message}`);
         }
     }
 
@@ -1342,7 +1689,7 @@ class CreditReportService {
     /**
      * Refresh an existing credit report
      */
-    async refreshCreditReport(loanId, lenderId, userId) {
+    async refreshCreditReport(loanId, lenderId, userId, providers = null) {
         try {
             // Find the loan to get borrower and lender info
             const loan = await Loan.findById(loanId).populate('borrower lender');
@@ -1367,6 +1714,16 @@ class CreditReportService {
                 throw new ApiError('Cannot refresh report without vendor order ID', 400);
             }
 
+            // Update providers if provided, otherwise use existing ones
+            const providersToUse = providers || existingReport.providers;
+            if (providers) {
+                existingReport.providers = {
+                    equifax: providers.equifax !== false,
+                    experian: providers.experian !== false,
+                    transunion: providers.transunion !== false
+                };
+            }
+
             // Update status to Processing
             existingReport.status = 'Processing';
             await existingReport.save();
@@ -1378,7 +1735,7 @@ class CreditReportService {
                 const newVendorOrderId = await this.submitRefreshOrder(
                     existingReport.smartApiData.vendorOrderId,
                     existingReport.borrowerData,
-                    existingReport.providers
+                    providersToUse
                 );
 
                 // Poll for completion
@@ -1492,6 +1849,298 @@ class CreditReportService {
             return reports;
         } catch (error) {
             logger.error('Error getting all credit reports:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Reissue an existing credit report (retrieve using StatusQuery)
+     */
+    async reissueCreditReport(loanId, lenderId, userId, providers = null) {
+        try {
+            // Find the loan to get borrower and lender info
+            const loan = await Loan.findById(loanId).populate('borrower lender');
+            if (!loan) {
+                throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(lenderId).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Get the existing report for this borrower in this company
+            const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
+            if (!existingReport) {
+                throw new ApiError('No existing credit report found to reissue', 404);
+            }
+
+            // Check if we have a vendorOrderId
+            if (!existingReport.smartApiData?.vendorOrderId) {
+                throw new ApiError('Cannot reissue report without vendor order ID', 400);
+            }
+
+            // Update providers if provided, otherwise use existing ones
+            if (providers) {
+                existingReport.providers = {
+                    equifax: providers.equifax !== false,
+                    experian: providers.experian !== false,
+                    transunion: providers.transunion !== false
+                };
+            }
+
+            // Update status to Processing
+            existingReport.status = 'Processing';
+            await existingReport.save();
+
+            try {
+                // Submit reissue order using existing vendorOrderId
+                logger.info(`Reissuing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                
+                const result = await this.submitReissueOrder(
+                    existingReport.smartApiData.vendorOrderId,
+                    existingReport.borrowerData
+                );
+
+                // Update SmartAPI data with reissue timestamp
+                existingReport.smartApiData.completionTimestamp = new Date();
+                existingReport.smartApiData.rawResponse = result.rawXml;
+
+                // Update credit scores with data from reissued report
+                if (result.serviceData.creditScores && result.serviceData.creditScores.length > 0) {
+                    existingReport.creditScores = result.serviceData.creditScores.map(score => ({
+                        bureau: score.bureau.includes('Equifax') ? 'Equifax' : 
+                               score.bureau.includes('Experian') ? 'Experian' : 
+                               score.bureau.includes('TransUnion') ? 'TransUnion' : 'Unknown',
+                        score: parseInt(score.score),
+                        model: score.model,
+                        dateGenerated: new Date()
+                    }));
+                }
+
+                // Handle documents - update with reissued HTML report
+                if (result.documents && result.documents.length > 0) {
+                    const document = result.documents[0];
+                    let htmlContent = null;
+
+                    if (document.data) {
+                        // Embedded HTML content
+                        htmlContent = document.data;
+                    } else if (document.url) {
+                        // External URL - create redirect HTML
+                        htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=${document.url}">
+    <title>SmartAPI Credit Report</title>
+</head>
+<body>
+    <p>Credit report available at <a href="${document.url}">${document.url}</a>.</p>
+</body>
+</html>`;
+                    }
+
+                    if (htmlContent) {
+                        // Upload reissued report to S3
+                        const s3Info = await this.uploadReportToS3(htmlContent, loanId, existingReport.smartApiData.vendorOrderId);
+                        existingReport.reportFile = s3Info;
+                        
+                        // Extract and update loan with credit data
+                        try {
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            logger.info(`Credit data extraction completed for loan ${loanId} reissue:`, extractionResult);
+                        } catch (extractionError) {
+                            logger.warn('Failed to extract credit data during reissue, but report was updated:', extractionError);
+                        }
+                    }
+                }
+
+                // Clear previous errors and add new ones if any
+                existingReport.errors = [];
+                if (result.errors && result.errors.length > 0) {
+                    existingReport.errors = result.errors.map(error => ({
+                        code: error.code,
+                        message: error.message
+                    }));
+                }
+
+                // Update status based on result
+                existingReport.status = result.status === 'COMPLETED' || result.status === 'Completed' ? 'Completed' : 'Failed';
+                
+                // Update timestamps
+                existingReport.updatedAt = new Date();
+                
+                await existingReport.save();
+
+                logger.info(`Credit report reissued successfully for loan ${loanId}`);
+                return existingReport;
+
+            } catch (error) {
+                // Update status to Failed
+                existingReport.status = 'Failed';
+                existingReport.errors.push({
+                    code: error.name || 'Unknown',
+                    message: error.message
+                });
+                await existingReport.save();
+
+                logger.error(`Credit report reissue failed for loan ${loanId}:`, error);
+                throw error;
+            }
+
+        } catch (error) {
+            logger.error('Error reissuing credit report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Upgrade an existing credit report order
+     */
+    async upgradeCreditReport(loanId, lenderId, userId, providers = null) {
+        try {
+            // Find the loan to get borrower and lender info
+            const loan = await Loan.findById(loanId).populate('borrower lender');
+            if (!loan) {
+                throw new ApiError('Loan not found', 404);
+            }
+
+            // Get the lender to find the company
+            const lender = await Lender.findById(lenderId).populate('company');
+            if (!lender) {
+                throw new ApiError('Lender not found', 404);
+            }
+
+            // Get the existing report for this borrower in this company
+            const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
+            if (!existingReport) {
+                throw new ApiError('No existing credit report found to upgrade', 404);
+            }
+
+            // Check if we have a vendorOrderId
+            if (!existingReport.smartApiData?.vendorOrderId) {
+                throw new ApiError('Cannot upgrade report without vendor order ID', 400);
+            }
+
+            // Update providers if provided, otherwise use existing ones
+            const providersToUse = providers || existingReport.providers;
+            if (providers) {
+                existingReport.providers = {
+                    equifax: providers.equifax !== false,
+                    experian: providers.experian !== false,
+                    transunion: providers.transunion !== false
+                };
+            }
+
+            // Update status to Processing
+            existingReport.status = 'Processing';
+            await existingReport.save();
+
+            try {
+                // Submit upgrade order using existing vendorOrderId
+                logger.info(`Upgrading credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                
+                const newVendorOrderId = await this.submitUpgradeOrder(
+                    existingReport.smartApiData.vendorOrderId,
+                    existingReport.borrowerData,
+                    providersToUse
+                );
+
+                // Poll for completion
+                const result = await this.pollOrder(newVendorOrderId, existingReport.borrowerData);
+
+                // Update SmartAPI data with new order ID and completion info
+                existingReport.smartApiData.vendorOrderId = newVendorOrderId;
+                existingReport.smartApiData.completionTimestamp = new Date();
+                existingReport.smartApiData.rawResponse = result.rawXml;
+
+                // Update credit scores with upgraded data
+                if (result.serviceData.creditScores && result.serviceData.creditScores.length > 0) {
+                    existingReport.creditScores = result.serviceData.creditScores.map(score => ({
+                        bureau: score.bureau.includes('Equifax') ? 'Equifax' : 
+                               score.bureau.includes('Experian') ? 'Experian' : 
+                               score.bureau.includes('TransUnion') ? 'TransUnion' : 'Unknown',
+                        score: parseInt(score.score),
+                        model: score.model,
+                        dateGenerated: new Date()
+                    }));
+                }
+
+                // Handle documents - update with upgraded HTML report
+                if (result.documents && result.documents.length > 0) {
+                    const document = result.documents[0];
+                    let htmlContent = null;
+
+                    if (document.data) {
+                        // Embedded HTML content
+                        htmlContent = document.data;
+                    } else if (document.url) {
+                        // External URL - create redirect HTML
+                        htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=${document.url}">
+    <title>SmartAPI Credit Report</title>
+</head>
+<body>
+    <p>Credit report available at <a href="${document.url}">${document.url}</a>.</p>
+</body>
+</html>`;
+                    }
+
+                    if (htmlContent) {
+                        // Upload upgraded report to S3, replacing the old one
+                        const s3Info = await this.uploadReportToS3(htmlContent, loanId, newVendorOrderId);
+                        existingReport.reportFile = s3Info;
+                        
+                        // Extract and update loan with upgraded credit data
+                        try {
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            logger.info(`Credit data extraction completed for loan ${loanId} upgrade:`, extractionResult);
+                        } catch (extractionError) {
+                            logger.warn('Failed to extract credit data during upgrade, but report was updated:', extractionError);
+                        }
+                    }
+                }
+
+                // Clear previous errors and add new ones if any
+                existingReport.errors = [];
+                if (result.errors && result.errors.length > 0) {
+                    existingReport.errors = result.errors.map(error => ({
+                        code: error.code,
+                        message: error.message
+                    }));
+                }
+
+                // Update status based on result
+                existingReport.status = result.status === 'COMPLETED' ? 'Completed' : 'Failed';
+                
+                // Update timestamps
+                existingReport.updatedAt = new Date();
+                
+                await existingReport.save();
+
+                logger.info(`Credit report upgraded successfully for loan ${loanId}`);
+                return existingReport;
+
+            } catch (error) {
+                // Update status to Failed
+                existingReport.status = 'Failed';
+                existingReport.errors.push({
+                    code: error.name || 'Unknown',
+                    message: error.message
+                });
+                await existingReport.save();
+
+                logger.error(`Credit report upgrade failed for loan ${loanId}:`, error);
+                throw error;
+            }
+
+        } catch (error) {
+            logger.error('Error upgrading credit report:', error);
             throw error;
         }
     }

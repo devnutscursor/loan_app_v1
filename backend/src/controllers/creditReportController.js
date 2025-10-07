@@ -161,6 +161,7 @@ const getCreditReport = catchAsync(async (req, res) => {
  */
 const refreshCreditReport = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
+    const { providers, credentialId, liabilitiesImportMethod } = req.body;
     const { _id: userId } = req.user;
     
     // Verify authorization
@@ -172,7 +173,8 @@ const refreshCreditReport = catchAsync(async (req, res) => {
         const creditReport = await creditReportService.refreshCreditReport(
             loanId,
             lenderId,
-            userId
+            userId,
+            providers
         );
         
         res.status(200).json({
@@ -358,6 +360,136 @@ const getCreditReportStatus = catchAsync(async (req, res) => {
     }
 });
 
+/**
+ * Reissue an existing credit report (retrieve using StatusQuery)
+ * PUT /api/credit-report/:loanId/:lenderId/reissue
+ */
+const reissueCreditReport = catchAsync(async (req, res) => {
+    const { loanId, lenderId } = req.params;
+    const { providers, credentialId, liabilitiesImportMethod } = req.body;
+    const { _id: userId } = req.user;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId);
+    
+    logger.info(`Reissuing credit report for loan ${loanId} by user ${userId}`);
+    
+    try {
+        const creditReport = await creditReportService.reissueCreditReport(
+            loanId,
+            lenderId,
+            userId,
+            providers
+        );
+        
+        res.status(200).json({
+            success: true,
+            message: 'Credit report reissued successfully',
+            data: {
+                // Status data
+                hasActiveReport: true,
+                status: creditReport.status,
+                createdAt: creditReport.createdAt,
+                expiresAt: creditReport.metadata.expiresAt,
+                isExpired: creditReport.isExpired,
+                providers: creditReport.providers,
+                avgCreditScore: creditReport.avgCreditScore,
+                
+                // Full report data
+                id: creditReport._id,
+                loanId: creditReport.loan,
+                borrowerData: {
+                    firstName: creditReport.borrowerData.firstName,
+                    lastName: creditReport.borrowerData.lastName,
+                    // Don't expose sensitive data like SSN in response
+                },
+                creditScores: creditReport.creditScores,
+                reportFile: {
+                    s3Url: creditReport.reportFile?.s3Url,
+                    fileName: creditReport.reportFile?.fileName,
+                    fileSize: creditReport.reportFile?.fileSize,
+                    contentType: creditReport.reportFile?.contentType
+                },
+                accessCount: creditReport.accessCount,
+                lastAccessed: creditReport.lastAccessed
+            }
+        });
+    } catch (error) {
+        logger.error(`Failed to reissue credit report for loan ${loanId}:`, error);
+        
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        
+        throw new ApiError(`Failed to reissue credit report: ${error.message}`, 500);
+    }
+});
+
+/**
+ * Upgrade an existing credit report order
+ * PUT /api/credit-report/:loanId/:lenderId/upgrade
+ */
+const upgradeCreditReport = catchAsync(async (req, res) => {
+    const { loanId, lenderId } = req.params;
+    const { providers, credentialId, liabilitiesImportMethod } = req.body;
+    const { _id: userId } = req.user;
+    
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId);
+    
+    logger.info(`Upgrading credit report for loan ${loanId} by user ${userId}`);
+    
+    try {
+        const creditReport = await creditReportService.upgradeCreditReport(
+            loanId,
+            lenderId,
+            userId,
+            providers
+        );
+        
+        res.status(200).json({
+            success: true,
+            message: 'Credit report upgraded successfully',
+            data: {
+                // Status data
+                hasActiveReport: true,
+                status: creditReport.status,
+                createdAt: creditReport.createdAt,
+                expiresAt: creditReport.metadata.expiresAt,
+                isExpired: creditReport.isExpired,
+                providers: creditReport.providers,
+                avgCreditScore: creditReport.avgCreditScore,
+                
+                // Full report data
+                id: creditReport._id,
+                loanId: creditReport.loan,
+                borrowerData: {
+                    firstName: creditReport.borrowerData.firstName,
+                    lastName: creditReport.borrowerData.lastName,
+                    // Don't expose sensitive data like SSN in response
+                },
+                creditScores: creditReport.creditScores,
+                reportFile: {
+                    s3Url: creditReport.reportFile?.s3Url,
+                    fileName: creditReport.reportFile?.fileName,
+                    fileSize: creditReport.reportFile?.fileSize,
+                    contentType: creditReport.reportFile?.contentType
+                },
+                accessCount: creditReport.accessCount,
+                lastAccessed: creditReport.lastAccessed
+            }
+        });
+    } catch (error) {
+        logger.error(`Failed to upgrade credit report for loan ${loanId}:`, error);
+        
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        
+        throw new ApiError(`Failed to upgrade credit report: ${error.message}`, 500);
+    }
+});
+
 
 module.exports = {
     createCreditReport,
@@ -365,5 +497,7 @@ module.exports = {
     refreshCreditReport,
     getCreditReportHistory,
     getCreditReportFile,
-    getCreditReportStatus
+    getCreditReportStatus,
+    reissueCreditReport,
+    upgradeCreditReport
 };

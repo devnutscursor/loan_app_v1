@@ -24,6 +24,7 @@ const CreditReportPage = () => {
     organizationCredentials,
     selectedCredentialId,
     importMethod,
+    currentOperation,
     
     // Loading states
     loading,
@@ -34,11 +35,12 @@ const CreditReportPage = () => {
     selectedCredential,
     
     // Event handlers
-    handleCreateReport,
-    handleRefreshReport,
+    handleSubmitReport,
+    handleCreateReportClick,
+    handleRefreshReportClick,
+    handleUpgradeReportClick,
     handleViewReport,
     handleProviderChange,
-    handleCreateReportClick,
     handleCancelProviderForm,
     handleBack,
     setImportMethod,
@@ -75,7 +77,8 @@ const CreditReportPage = () => {
               loading={loading}
               reportStatus={reportStatus}
               fileLoading={fileLoading}
-              onRefreshReport={handleRefreshReport}
+              onRefreshReport={handleRefreshReportClick}
+              onUpgradeReport={handleUpgradeReportClick}
               onViewReport={handleViewReport}
               onCreateReport={handleCreateReportClick}
             />
@@ -84,8 +87,9 @@ const CreditReportPage = () => {
               showForm={showProviderForm}
               selectedProviders={selectedProviders}
               loading={loading}
+              currentOperation={currentOperation}
               onProviderChange={handleProviderChange}
-              onCreateReport={handleCreateReport}
+              onSubmitReport={handleSubmitReport}
               onCancel={handleCancelProviderForm}
               userRole={user?.role}
               personalCredentials={personalCredentials}

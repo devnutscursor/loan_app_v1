@@ -17,6 +17,7 @@ const useCreditReport = () => {
   const [creditReport, setCreditReport] = useState(null);
   const [reportStatus, setReportStatus] = useState(null);
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const [currentOperation, setCurrentOperation] = useState(null); // 'create' | 'refresh' | 'upgrade'
   const [fileLoading, setFileLoading] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState({
     equifax: true,
@@ -156,15 +157,36 @@ const useCreditReport = () => {
     }
   };
 
-  const handleCreateReport = async () => {
+  // Unified handler for submitting the form based on operation type
+  const handleSubmitReport = async () => {
     setLoading(true);
     try {
       const currentLenderId = await getLenderId();
-      const response = await customAxios.post(`/api/v1/credit-report/${loanId}/${currentLenderId}`, {
+      let response;
+      let successMessage;
+      
+      const requestData = {
         providers: selectedProviders,
         credentialId: selectedCredentialId || undefined,
         liabilitiesImportMethod: importMethod || undefined
-      });
+      };
+      
+      switch (currentOperation) {
+        case 'create':
+          response = await customAxios.post(`/api/v1/credit-report/${loanId}/${currentLenderId}`, requestData);
+          successMessage = 'Credit report created successfully';
+          break;
+        case 'refresh':
+          response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/refresh`, requestData);
+          successMessage = 'Credit report refreshed successfully';
+          break;
+        case 'upgrade':
+          response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/upgrade`, requestData);
+          successMessage = 'Credit report upgraded successfully';
+          break;
+        default:
+          throw new Error('Invalid operation type');
+      }
       
       // Extract both status and report data from the response
       const responseData = response.data.data;
@@ -190,22 +212,52 @@ const useCreditReport = () => {
         lastAccessed: responseData.lastAccessed
       });
       
-      toast.success('Credit report created successfully');
+      toast.success(successMessage);
       setShowProviderForm(false);
+      setCurrentOperation(null);
       
     } catch (error) {
-      console.error('Error creating credit report:', error);
-      toast.error('Failed to create credit report: ' + (error.response?.data?.message || error.message));
+      console.error(`Error ${currentOperation}ing credit report:`, error);
+      toast.error(`Failed to ${currentOperation} credit report: ` + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefreshReport = async () => {
+  // Click handlers - Toggle behavior for Create and Upgrade
+  const handleCreateReportClick = () => {
+    // Toggle: if form is already showing for 'create', close it
+    if (showProviderForm && currentOperation === 'create') {
+      setShowProviderForm(false);
+      setCurrentOperation(null);
+    } else {
+      setCurrentOperation('create');
+      setShowProviderForm(true);
+    }
+  };
+
+  // Refresh handler - shows confirmation dialog before executing
+  const handleRefreshReportClick = async () => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      'Are you sure you want to refresh this credit report? This will pull fresh data from the credit bureaus using the same bureau selection from the original report.'
+    );
+    
+    if (!confirmed) {
+      return; // User cancelled
+    }
+
     setLoading(true);
     try {
       const currentLenderId = await getLenderId();
-      const response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/refresh`);
+      
+      // Refresh uses existing providers from the report, so we don't need to send them
+      const requestData = {
+        credentialId: selectedCredentialId || undefined,
+        liabilitiesImportMethod: importMethod || undefined
+      };
+      
+      const response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/refresh`, requestData);
       
       // Extract both status and report data from the response
       const responseData = response.data.data;
@@ -238,6 +290,17 @@ const useCreditReport = () => {
       toast.error('Failed to refresh credit report: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpgradeReportClick = () => {
+    // Toggle: if form is already showing for 'upgrade', close it
+    if (showProviderForm && currentOperation === 'upgrade') {
+      setShowProviderForm(false);
+      setCurrentOperation(null);
+    } else {
+      setCurrentOperation('upgrade');
+      setShowProviderForm(true);
     }
   };
 
@@ -280,12 +343,9 @@ const useCreditReport = () => {
   };
   const handleCloseEditAccount = () => setEditOpen(false);
 
-  const handleCreateReportClick = () => {
-    setShowProviderForm(true);
-  };
-
   const handleCancelProviderForm = () => {
     setShowProviderForm(false);
+    setCurrentOperation(null);
   };
 
   const handleBack = () => {
@@ -303,6 +363,7 @@ const useCreditReport = () => {
     organizationCredentials,
     selectedCredentialId,
     importMethod,
+    currentOperation,
     
     // Loading states
     loading,
@@ -313,11 +374,12 @@ const useCreditReport = () => {
     selectedCredential,
     
     // Event handlers
-    handleCreateReport,
-    handleRefreshReport,
+    handleSubmitReport,
+    handleCreateReportClick,
+    handleRefreshReportClick,
+    handleUpgradeReportClick,
     handleViewReport,
     handleProviderChange,
-    handleCreateReportClick,
     handleCancelProviderForm,
     handleBack,
     setImportMethod,

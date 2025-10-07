@@ -5,8 +5,9 @@ const ProviderSelectionForm = ({
   showForm,
   selectedProviders,
   loading,
+  currentOperation = 'create',
   onProviderChange,
-  onCreateReport,
+  onSubmitReport,
   onCancel,
   userRole,
   personalCredentials = [],
@@ -20,6 +21,15 @@ const ProviderSelectionForm = ({
 }) => {
   if (!showForm) return null;
 
+  // Get dynamic text based on operation
+  const operationText = {
+    create: { title: 'Create Credit Report', button: 'Create Report' },
+    refresh: { title: 'Refresh Credit Report', button: 'Refresh Report' },
+    upgrade: { title: 'Upgrade Credit Report', button: 'Upgrade Report' }
+  };
+
+  const { title, button } = operationText[currentOperation] || operationText.create;
+
   const isOrgSelected = 
    userRole === 'lender' &&
    !!selectedCredentialId &&
@@ -27,8 +37,8 @@ const ProviderSelectionForm = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Credit Bureaus</h2>
-      <p className="text-gray-600 mb-6">Choose which credit bureaus to include in the report.</p>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">{title}</h2>
+      <p className="text-gray-600 mb-6">Configure settings for the credit report operation.</p>
       
       <div className="space-y-4 mb-6">
         {Object.entries(selectedProviders).map(([provider, enabled]) => (
@@ -52,7 +62,7 @@ const ProviderSelectionForm = ({
           <button
             type="button"
             onClick={onOpenAddAccount}
-            className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg"
+            className="px-3 py-1.5 text-sm text-black border border-gray-300 hover:bg-gray-50 rounded-lg"
           >
             + Add New Account
           </button>
@@ -112,19 +122,19 @@ const ProviderSelectionForm = ({
           required
         >
           <option value="merge" className='tooltip' data-tooltip='Merge Current Liabilities with Credit Report Liabilities'>Merge Current Liabilities with Credit Report Liabilities</option>
-          <option value="dont_merge" className='tooltip' data-tooltip='Don’t Merge Credit Report Liabilities'>Don’t Merge Credit Report Liabilities</option>
+          <option value="dont_merge" className='tooltip' data-tooltip="Don't Merge Credit Report Liabilities">Don’t Merge Credit Report Liabilities</option>
           <option value="override" className='tooltip' data-tooltip='Override Current Liabilities with Credit Report Liabilities'>Override Current Liabilities with Credit Report Liabilities</option>
         </select>
       </div>
       
       <div className="flex gap-4 mt-4">
         <button
-          onClick={onCreateReport}
+          onClick={onSubmitReport}
           disabled={loading || !Object.values(selectedProviders).some(Boolean)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileText className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
-          {loading ? 'Creating...' : 'Create Report'}
+          {loading ? 'Processing...' : button}
         </button>
         
         <button
