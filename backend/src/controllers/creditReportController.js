@@ -43,20 +43,21 @@ const verifyLoanAuthorization = async (loanId, lenderId) => {
  */
 const createCreditReport = catchAsync(async (req, res) => {
     const { loanId, lenderId } = req.params;
-    const { providers } = req.body;
+    const { providers, credentialId, liabilitiesImportMethod } = req.body;
     const { _id: userId } = req.user;
     
     // Verify authorization
     await verifyLoanAuthorization(loanId, lenderId);
     
-    logger.info(`Creating credit report for loan ${loanId} by user ${userId}`);
+    logger.info(`Creating credit report for loan ${loanId} by user ${userId} with import method: ${liabilitiesImportMethod || 'merge'}`);
     
     try {
         const creditReport = await creditReportService.createCreditReport(
             loanId,
             lenderId,
             userId,
-            providers
+            providers,
+            liabilitiesImportMethod || 'merge'
         );
         
         res.status(201).json({
@@ -167,14 +168,15 @@ const refreshCreditReport = catchAsync(async (req, res) => {
     // Verify authorization
     await verifyLoanAuthorization(loanId, lenderId);
     
-    logger.info(`Refreshing credit report for loan ${loanId} by user ${userId}`);
+    logger.info(`Refreshing credit report for loan ${loanId} by user ${userId} with import method: ${liabilitiesImportMethod || 'merge'}`);
     
     try {
         const creditReport = await creditReportService.refreshCreditReport(
             loanId,
             lenderId,
             userId,
-            providers
+            providers,
+            liabilitiesImportMethod || 'merge'
         );
         
         res.status(200).json({
@@ -372,14 +374,15 @@ const reissueCreditReport = catchAsync(async (req, res) => {
     // Verify authorization
     await verifyLoanAuthorization(loanId, lenderId);
     
-    logger.info(`Reissuing credit report for loan ${loanId} by user ${userId}`);
+    logger.info(`Reissuing credit report for loan ${loanId} by user ${userId} with import method: ${liabilitiesImportMethod || 'merge'}`);
     
     try {
         const creditReport = await creditReportService.reissueCreditReport(
             loanId,
             lenderId,
             userId,
-            providers
+            providers,
+            liabilitiesImportMethod || 'merge'
         );
         
         res.status(200).json({
@@ -437,14 +440,15 @@ const upgradeCreditReport = catchAsync(async (req, res) => {
     // Verify authorization
     await verifyLoanAuthorization(loanId, lenderId);
     
-    logger.info(`Upgrading credit report for loan ${loanId} by user ${userId}`);
+    logger.info(`Upgrading credit report for loan ${loanId} by user ${userId} with import method: ${liabilitiesImportMethod || 'merge'}`);
     
     try {
         const creditReport = await creditReportService.upgradeCreditReport(
             loanId,
             lenderId,
             userId,
-            providers
+            providers,
+            liabilitiesImportMethod || 'merge'
         );
         
         res.status(200).json({

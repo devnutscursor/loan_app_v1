@@ -693,7 +693,7 @@ class CreditReportService {
     }
 
     /**
-     * Create query XML for existing order
+     * Create XML request for query XML for existing order
      */
     createQueryXml(vendorOrderId, borrowerData = null) {
         let xml = `<?xml version="1.0" encoding="utf-8"?>
@@ -1358,7 +1358,7 @@ class CreditReportService {
     /**
      * Extract and update loan with credit data
      */
-    async updateLoanWithCreditData(loanId, xmlContent) {
+    async updateLoanWithCreditData(loanId, xmlContent, importMethod = 'merge') {
       try {
         const extractor = new CreditDataExtractor();
         
@@ -1373,23 +1373,61 @@ class CreditReportService {
           throw new ApiError('Loan not found', 404);
         }
         
-        // Merge extracted debts with existing debts (avoid duplicates)
-        const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
-        const newDebts = extractedDebts.filter(debt => 
-          !existingDebtCreditors.includes(debt.creditor?.toLowerCase())
-        );
+        let debtsAdded = 0;
+        let assetsAdded = 0;
         
-        if (newDebts.length > 0) {
-          loan.debts = [...loan.debts, ...newDebts];
-          logger.info(`Added ${newDebts.length} new debts to loan ${loanId}`);
+        // Handle debts based on import method
+        switch (importMethod) {
+          case 'merge':
+            // Merge extracted debts with existing debts (avoid duplicates)
+            const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+            const newDebts = extractedDebts.filter(debt => 
+              !existingDebtCreditors.includes(debt.creditor?.toLowerCase())
+            );
+            
+            if (newDebts.length > 0) {
+              loan.debts = [...loan.debts, ...newDebts];
+              debtsAdded = newDebts.length;
+              logger.info(`[MERGE] Added ${newDebts.length} new debts to loan ${loanId}`);
+            }
+            break;
+            
+          case 'override':
+            // Replace all existing debts with extracted debts
+            const oldDebtCount = loan.debts.length;
+            loan.debts = extractedDebts;
+            debtsAdded = extractedDebts.length;
+            logger.info(`[OVERRIDE] Replaced ${oldDebtCount} debts with ${extractedDebts.length} extracted debts for loan ${loanId}`);
+            break;
+            
+          case 'dont_merge':
+            // Don't modify debts at all
+            debtsAdded = 0;
+            logger.info(`[DONT_MERGE] Skipped debt import for loan ${loanId}. Extracted ${extractedDebts.length} debts but did not save.`);
+            break;
+            
+          default:
+            // Default to merge if invalid method provided
+            logger.warn(`Invalid import method '${importMethod}', defaulting to 'merge'`);
+            const defaultExistingCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+            const defaultNewDebts = extractedDebts.filter(debt => 
+              !defaultExistingCreditors.includes(debt.creditor?.toLowerCase())
+            );
+            
+            if (defaultNewDebts.length > 0) {
+              loan.debts = [...loan.debts, ...defaultNewDebts];
+              debtsAdded = defaultNewDebts.length;
+            }
+            break;
         }
         
-        // Merge extracted assets with existing assets
+        // Merge extracted assets with existing assets (always merge for now)
         if (extractedAssets.checkingAndSavings.length > 0) {
           loan.assets.checkingAndSavings = [
             ...loan.assets.checkingAndSavings,
             ...extractedAssets.checkingAndSavings
           ];
+          assetsAdded = extractedAssets.checkingAndSavings.length;
           logger.info(`Added ${extractedAssets.checkingAndSavings.length} new assets to loan ${loanId}`);
         }
         
@@ -1402,9 +1440,10 @@ class CreditReportService {
         await loan.save();
         
         return {
-          debtsAdded: newDebts.length,
-          assetsAdded: extractedAssets.checkingAndSavings.length,
-          employmentFound: extractedEmployment.length
+          debtsAdded,
+          assetsAdded,
+          employmentFound: extractedEmployment.length,
+          importMethod
         };
         
       } catch (error) {
@@ -1414,9 +1453,9 @@ class CreditReportService {
     }
 
     /**
-     * Extract and update loan with credit data (refresh mode - no duplicates)
+     * Extract and update loan with credit data (refresh/reissue/upgrade mode)
      */
-    async updateLoanWithCreditDataRefresh(loanId, xmlContent) {
+    async updateLoanWithCreditDataRefresh(loanId, xmlContent, importMethod = 'merge') {
       try {
         const extractor = new CreditDataExtractor();
         
@@ -1431,39 +1470,79 @@ class CreditReportService {
           throw new ApiError('Loan not found', 404);
         }
         
-        // For refresh, we want to update existing data rather than just add new
         let debtsUpdated = 0;
         let assetsUpdated = 0;
         
-        // Update debts - match by creditor name and update existing or add new
-        const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
-        
-        extractedDebts.forEach(extractedDebt => {
-          const creditorLower = extractedDebt.creditor?.toLowerCase();
-          const existingDebtIndex = existingDebtCreditors.indexOf(creditorLower);
-          
-          if (existingDebtIndex !== -1) {
-            // Update existing debt with all fields
-            const existingDebt = loan.debts[existingDebtIndex];
-            existingDebt.monthlyPayment = extractedDebt.monthlyPayment;
-            existingDebt.balance = extractedDebt.balance;
-            existingDebt.accountOpenDate = extractedDebt.accountOpenDate;
-            existingDebt.accountClosedDate = extractedDebt.accountClosedDate;
-            existingDebt.liabilityType = extractedDebt.liabilityType;
-            existingDebt.status = extractedDebt.status;
-            existingDebt.highBalance = extractedDebt.highBalance;
-            existingDebt.pastDueAmount = extractedDebt.pastDueAmount;
-            existingDebt.creditLimit = extractedDebt.creditLimit;
-            existingDebt.currentRating = extractedDebt.currentRating;
-            existingDebt.highestAdverseRating = extractedDebt.highestAdverseRating;
-            existingDebt.comments = extractedDebt.comments;
-            debtsUpdated++;
-          } else {
-            // Add new debt
-            loan.debts.push(extractedDebt);
-            debtsUpdated++;
-          }
-        });
+        // Handle debts based on import method
+        switch (importMethod) {
+          case 'merge':
+            // Update debts - match by creditor name and update existing or add new
+            const existingDebtCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+            
+            extractedDebts.forEach(extractedDebt => {
+              const creditorLower = extractedDebt.creditor?.toLowerCase();
+              const existingDebtIndex = existingDebtCreditors.indexOf(creditorLower);
+              
+              if (existingDebtIndex !== -1) {
+                // Update existing debt with all fields
+                const existingDebt = loan.debts[existingDebtIndex];
+                existingDebt.monthlyPayment = extractedDebt.monthlyPayment;
+                existingDebt.balance = extractedDebt.balance;
+                existingDebt.accountOpenDate = extractedDebt.accountOpenDate;
+                existingDebt.accountClosedDate = extractedDebt.accountClosedDate;
+                existingDebt.liabilityType = extractedDebt.liabilityType;
+                existingDebt.status = extractedDebt.status;
+                existingDebt.highBalance = extractedDebt.highBalance;
+                existingDebt.pastDueAmount = extractedDebt.pastDueAmount;
+                existingDebt.creditLimit = extractedDebt.creditLimit;
+                existingDebt.currentRating = extractedDebt.currentRating;
+                existingDebt.highestAdverseRating = extractedDebt.highestAdverseRating;
+                existingDebt.comments = extractedDebt.comments;
+                debtsUpdated++;
+              } else {
+                // Add new debt
+                loan.debts.push(extractedDebt);
+                debtsUpdated++;
+              }
+            });
+            logger.info(`[MERGE] Updated/added ${debtsUpdated} debts for loan ${loanId}`);
+            break;
+            
+          case 'override':
+            // Replace all existing debts with extracted debts
+            const oldDebtCount = loan.debts.length;
+            loan.debts = extractedDebts;
+            debtsUpdated = extractedDebts.length;
+            logger.info(`[OVERRIDE] Replaced ${oldDebtCount} debts with ${extractedDebts.length} extracted debts for loan ${loanId}`);
+            break;
+            
+          case 'dont_merge':
+            // Don't modify debts at all
+            debtsUpdated = 0;
+            logger.info(`[DONT_MERGE] Skipped debt import for loan ${loanId}. Extracted ${extractedDebts.length} debts but did not save.`);
+            break;
+            
+          default:
+            // Default to merge if invalid method provided
+            logger.warn(`Invalid import method '${importMethod}', defaulting to 'merge'`);
+            const defaultExistingCreditors = loan.debts.map(debt => debt.creditor?.toLowerCase());
+            
+            extractedDebts.forEach(extractedDebt => {
+              const creditorLower = extractedDebt.creditor?.toLowerCase();
+              const existingDebtIndex = defaultExistingCreditors.indexOf(creditorLower);
+              
+              if (existingDebtIndex !== -1) {
+                const existingDebt = loan.debts[existingDebtIndex];
+                existingDebt.monthlyPayment = extractedDebt.monthlyPayment;
+                existingDebt.balance = extractedDebt.balance;
+                debtsUpdated++;
+              } else {
+                loan.debts.push(extractedDebt);
+                debtsUpdated++;
+              }
+            });
+            break;
+        }
         
         // Update assets - for refresh, we'll replace the credit report assets
         // Remove existing credit report assets and add fresh ones
@@ -1487,9 +1566,10 @@ class CreditReportService {
         await loan.save();
         
         return {
-          debtsUpdated: debtsUpdated,
-          assetsUpdated: assetsUpdated,
-          employmentFound: extractedEmployment.length
+          debtsUpdated,
+          assetsUpdated,
+          employmentFound: extractedEmployment.length,
+          importMethod
         };
         
       } catch (error) {
@@ -1501,7 +1581,7 @@ class CreditReportService {
     /**
      * Create a new credit report
      */
-    async createCreditReport(loanId, lenderId, userId, providers = {}) {
+    async createCreditReport(loanId, lenderId, userId, providers = {}, importMethod = 'merge') {
         try {
             // Find the loan and populate borrower and lender
             const loan = await Loan.findById(loanId).populate('borrower lender');
@@ -1555,7 +1635,7 @@ class CreditReportService {
                 await creditReport.save();
 
                 // Generate the credit report
-                logger.info(`Generating credit report for loan ${loanId}`);
+                logger.info(`Generating credit report for loan ${loanId} with import method: ${importMethod}`);
                 const result = await this.submitAndPoll(borrowerData, creditReport.providers);
 
                 // Update SmartAPI data
@@ -1608,9 +1688,9 @@ class CreditReportService {
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, result.vendorOrderId);
                         creditReport.reportFile = s3Info;
                         
-                        // Extract and update loan with credit data
+                        // Extract and update loan with credit data using specified import method
                         try {
-                            const extractionResult = await this.updateLoanWithCreditData(loanId, result.rawXml);
+                            const extractionResult = await this.updateLoanWithCreditData(loanId, result.rawXml, importMethod);
                             logger.info(`Credit data extraction completed for loan ${loanId}:`, extractionResult);
                         } catch (extractionError) {
                             logger.warn('Failed to extract credit data, but report was created:', extractionError);
@@ -1689,7 +1769,7 @@ class CreditReportService {
     /**
      * Refresh an existing credit report
      */
-    async refreshCreditReport(loanId, lenderId, userId, providers = null) {
+    async refreshCreditReport(loanId, lenderId, userId, providers = null, importMethod = 'merge') {
         try {
             // Find the loan to get borrower and lender info
             const loan = await Loan.findById(loanId).populate('borrower lender');
@@ -1730,7 +1810,7 @@ class CreditReportService {
 
             try {
                 // Submit refresh order using existing vendorOrderId
-                logger.info(`Refreshing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                logger.info(`Refreshing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId} with import method: ${importMethod}`);
                 
                 const newVendorOrderId = await this.submitRefreshOrder(
                     existingReport.smartApiData.vendorOrderId,
@@ -1786,9 +1866,9 @@ class CreditReportService {
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, newVendorOrderId);
                         existingReport.reportFile = s3Info;
                         
-                        // Extract and update loan with fresh credit data (refresh mode)
+                        // Extract and update loan with fresh credit data using specified import method
                         try {
-                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml, importMethod);
                             logger.info(`Credit data extraction completed for loan ${loanId} refresh:`, extractionResult);
                         } catch (extractionError) {
                             logger.warn('Failed to extract credit data during refresh, but report was updated:', extractionError);
@@ -1856,7 +1936,7 @@ class CreditReportService {
     /**
      * Reissue an existing credit report (retrieve using StatusQuery)
      */
-    async reissueCreditReport(loanId, lenderId, userId, providers = null) {
+    async reissueCreditReport(loanId, lenderId, userId, providers = null, importMethod = 'merge') {
         try {
             // Find the loan to get borrower and lender info
             const loan = await Loan.findById(loanId).populate('borrower lender');
@@ -1896,7 +1976,7 @@ class CreditReportService {
 
             try {
                 // Submit reissue order using existing vendorOrderId
-                logger.info(`Reissuing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                logger.info(`Reissuing credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId} with import method: ${importMethod}`);
                 
                 const result = await this.submitReissueOrder(
                     existingReport.smartApiData.vendorOrderId,
@@ -1947,9 +2027,9 @@ class CreditReportService {
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, existingReport.smartApiData.vendorOrderId);
                         existingReport.reportFile = s3Info;
                         
-                        // Extract and update loan with credit data
+                        // Extract and update loan with credit data using specified import method
                         try {
-                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml, importMethod);
                             logger.info(`Credit data extraction completed for loan ${loanId} reissue:`, extractionResult);
                         } catch (extractionError) {
                             logger.warn('Failed to extract credit data during reissue, but report was updated:', extractionError);
@@ -1999,7 +2079,7 @@ class CreditReportService {
     /**
      * Upgrade an existing credit report order
      */
-    async upgradeCreditReport(loanId, lenderId, userId, providers = null) {
+    async upgradeCreditReport(loanId, lenderId, userId, providers = null, importMethod = 'merge') {
         try {
             // Find the loan to get borrower and lender info
             const loan = await Loan.findById(loanId).populate('borrower lender');
@@ -2040,7 +2120,7 @@ class CreditReportService {
 
             try {
                 // Submit upgrade order using existing vendorOrderId
-                logger.info(`Upgrading credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId}`);
+                logger.info(`Upgrading credit report for loan ${loanId} using vendorOrderId: ${existingReport.smartApiData.vendorOrderId} with import method: ${importMethod}`);
                 
                 const newVendorOrderId = await this.submitUpgradeOrder(
                     existingReport.smartApiData.vendorOrderId,
@@ -2096,9 +2176,9 @@ class CreditReportService {
                         const s3Info = await this.uploadReportToS3(htmlContent, loanId, newVendorOrderId);
                         existingReport.reportFile = s3Info;
                         
-                        // Extract and update loan with upgraded credit data
+                        // Extract and update loan with upgraded credit data using specified import method
                         try {
-                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml);
+                            const extractionResult = await this.updateLoanWithCreditDataRefresh(loanId, result.rawXml, importMethod);
                             logger.info(`Credit data extraction completed for loan ${loanId} upgrade:`, extractionResult);
                         } catch (extractionError) {
                             logger.warn('Failed to extract credit data during upgrade, but report was updated:', extractionError);

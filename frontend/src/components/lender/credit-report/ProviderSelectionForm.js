@@ -23,9 +23,9 @@ const ProviderSelectionForm = ({
 
   // Get dynamic text based on operation
   const operationText = {
-    create: { title: 'Create Credit Report', button: 'Create Report' },
-    refresh: { title: 'Refresh Credit Report', button: 'Refresh Report' },
-    upgrade: { title: 'Upgrade Credit Report', button: 'Upgrade Report' }
+    create: { title: 'Create Credit Report', button: 'Create Credit Report' },
+    refresh: { title: 'Refresh Credit Report', button: 'Refresh Credit Report' },
+    upgrade: { title: 'Upgrade Credit Report', button: 'Upgrade Credit Report' }
   };
 
   const { title, button } = operationText[currentOperation] || operationText.create;
