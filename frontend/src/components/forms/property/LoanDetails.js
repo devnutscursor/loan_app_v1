@@ -247,6 +247,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="purchasePrice" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Purchase Price
+                <RequiredFieldIndicator />
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -271,6 +272,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="downPayment" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Down Payment
+                <RequiredFieldIndicator />
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -306,6 +308,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="yearAcquired" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Year Acquired
+                <RequiredFieldIndicator/>
               </label>
               <input
                 type="number"
@@ -323,6 +326,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="currentLoanBalance" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Current Loan Balance
+                <RequiredFieldIndicator/>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -344,6 +348,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="requestedLoanAmount" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Requested Loan Amount
+                <RequiredFieldIndicator/>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -368,6 +373,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="refinanceType" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Refinance Type
+                <RequiredFieldIndicator/>
               </label>
               <div className="relative">
                 <select
@@ -432,6 +438,7 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <div>
               <label htmlFor="yearLotAcquired" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                 Year Lot Acquired
+                <RequiredFieldIndicator />
               </label>
               <input
                 type="number"

@@ -64,9 +64,9 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
       isComplete = loanInfo && 
                  loanInfo.loanType && 
                  (
-                   (loanInfo.loanType === 'Purchase' && loanInfo.purchasePrice) ||
-                   (loanInfo.loanType === 'Refinance' && loanInfo.requestedLoanAmount) ||
-                   (loanInfo.loanType === 'Construction' && loanInfo.loanAmount)
+                   (loanInfo.loanType === 'Purchase' && loanInfo.purchasePrice && loanInfo.downPayment) ||
+                   (loanInfo.loanType === 'Refinance' && loanInfo.requestedLoanAmount && loanInfo.currentLoanBalance && loanInfo.refinanceType && loanInfo.yearAcquired) ||
+                   (loanInfo.loanType === 'Construction' && loanInfo.loanAmount && loanInfo.yearLotAcquired)
                  );
     }
     
@@ -261,19 +261,45 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
                 return;
               }
               
-              if (loanInfo.loanType === 'Purchase' && !loanInfo.purchasePrice) {
-                alert('Please enter the purchase price before proceeding');
-                return;
+              if (loanInfo.loanType === 'Purchase') {
+                if (!loanInfo.purchasePrice) {
+                  alert('Please enter the purchase price before proceeding');
+                  return;
+                }
+                if (!loanInfo.downPayment) {
+                  alert('Please enter the down payment before proceeding');
+                  return;
+                }
               }
               
-              if (loanInfo.loanType === 'Refinance' && !loanInfo.requestedLoanAmount) {
-                alert('Please enter the requested loan amount before proceeding');
-                return;
+              if (loanInfo.loanType === 'Refinance') {
+                if (!loanInfo.requestedLoanAmount) {
+                  alert('Please enter the requested loan amount before proceeding');
+                  return;
+                }
+                if (!loanInfo.currentLoanBalance) {
+                  alert('Please enter the current loan balance before proceeding');
+                  return;
+                }
+                if (!loanInfo.refinanceType) {
+                  alert('Please enter the refinance type before proceeding');
+                  return;
+                }
+                if (!loanInfo.yearAcquired) {
+                  alert('Please enter the year acquired before proceeding');
+                  return;
+                }
               }
               
-              if (loanInfo.loanType === 'Construction' && !loanInfo.loanAmount) {
-                alert('Please enter the loan amount before proceeding');
-                return;
+              if (loanInfo.loanType === 'Construction') {
+                if (!loanInfo.loanAmount) {
+                  alert('Please enter the loan amount before proceeding');
+                  return;
+                }
+                if (!loanInfo.yearLotAcquired) {
+                  alert('Please enter the year lot acquired before proceeding');
+                  return;
+                }
               }
               
               nextStep();
