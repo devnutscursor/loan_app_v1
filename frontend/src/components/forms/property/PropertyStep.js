@@ -52,7 +52,6 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
       if (propertyInfo.hasAcceptedOffer === true) {
         isComplete = basicFieldsComplete && 
                     propertyInfo.contractPurchasePrice &&
-                    propertyInfo.zipCode &&
                     propertyInfo.isMixedUse &&
                     propertyInfo.isManufactured &&
                     propertyInfo.numberOfUnits &&
@@ -155,22 +154,23 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
 
   // Validate property information based on whether they have an accepted offer
   const validatePropertyInfo = () => {
-    if (!propertyInfo?.propertyType || !propertyInfo?.occupancyType) {
-      return false;
-    }
+    const basicFieldsComplete = propertyInfo && propertyInfo.propertyType && propertyInfo.occupancyType;
 
+    let isComplete;
     // Additional validation if they have an accepted offer
     if (propertyInfo.hasAcceptedOffer === true) {
-      return (
-        propertyInfo.contractPurchasePrice &&
-        propertyInfo.isMixedUse &&
-        propertyInfo.isManufactured &&
-        propertyInfo.numberOfUnits &&
-        propertyInfo.yearBuilt
-      );
+      isComplete = basicFieldsComplete &&
+      propertyInfo.contractPurchasePrice &&
+      propertyInfo.isMixedUse &&
+      propertyInfo.isManufactured &&
+      propertyInfo.numberOfUnits &&
+      propertyInfo.yearBuilt;
+
+    } else {
+      isComplete = basicFieldsComplete;
     }
 
-    return true;
+    return isComplete;
   };
   
   return (

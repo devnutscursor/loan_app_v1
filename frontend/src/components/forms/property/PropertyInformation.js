@@ -362,6 +362,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               <div>
                 <label htmlFor="isMixedUse" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   {userType === 'borrower' ? 'Is This Property Mixed-Use?' : 'Mixed-Use Property'}
+                  <RequiredFieldIndicator />
                 </label>
                 <div className="relative">
                   <select
@@ -387,6 +388,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               <div>
                 <label htmlFor="isManufactured" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   {userType === 'borrower' ? 'Is This A Manufactured Home?' : 'Manufactured Home'}
+                  <RequiredFieldIndicator />
                 </label>
                 <div className="relative">
                   <select
@@ -414,6 +416,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               <div>
                 <label htmlFor="numberOfUnits" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   Number Of Units
+                  <RequiredFieldIndicator />
                 </label>
                 <input
                   type="number"
@@ -430,7 +433,9 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               <div>
                 <label htmlFor="yearBuilt" className="block text-xs uppercase font-medium text-gray-500 mb-1">
                   Year Built
+                  <RequiredFieldIndicator />
                 </label>
+                
                 <input
                   type="number"
                   id="yearBuilt"

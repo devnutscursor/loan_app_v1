@@ -151,6 +151,27 @@ const BorrowerStep = ({
     return null;
   };
 
+  const handleTabChange = (tab) => {
+    // Only validate if moving away from a tab
+    if (activeTab !== tab) {
+      const validationErrors = validateStep(1, activeTab);
+      
+      if (Object.keys(validationErrors).length === 0) {
+        setActiveTab(tab);
+      } else {
+        // Show error message
+        const errorMessages = Object.values(validationErrors);
+        const message = `Please complete all required fields before proceeding: ${errorMessages.slice(0, 3).join(', ')}${errorMessages.length > 3 ? ` and ${errorMessages.length - 3} more` : ''}`;
+        
+        if (toast) {
+          toast.error(message);
+        } else {
+          alert(message);
+        }
+      }
+    }
+  };
+
   // We don't need these complex handlers anymore since our child components
   // handle their own state and call the parent onChange with the correct format
   // These functions are left as placeholders in case they're needed later
@@ -352,7 +373,7 @@ const BorrowerStep = ({
               ? { background: theme.gradients.primary }
               : {}
           }
-          onClick={() => setActiveTab("personalDetails")}
+          onClick={() => handleTabChange("personalDetails")}
         >
           <div className="flex items-center">
             <span>Personal Details</span>
@@ -370,7 +391,7 @@ const BorrowerStep = ({
               ? { background: theme.gradients.primary }
               : {}
           }
-          onClick={() => setActiveTab("residenceHistory")}
+          onClick={() => handleTabChange("residenceHistory")}
         >
           <div className="flex items-center">
             <span>Residence History</span>
@@ -388,7 +409,7 @@ const BorrowerStep = ({
               ? { background: theme.gradients.primary }
               : {}
           }
-          onClick={() => setActiveTab("employmentHistory")}
+          onClick={() => handleTabChange("employmentHistory")}
         >
           <div className="flex items-center">
             <span>Employment History</span>
@@ -431,9 +452,9 @@ const BorrowerStep = ({
             }}
             onClick={() => {
               if (activeTab === "personalDetails") {
-                setActiveTab("residenceHistory");
+                handleTabChange("residenceHistory");
               } else if (activeTab === "residenceHistory") {
-                setActiveTab("employmentHistory");
+                handleTabChange("employmentHistory");
               }
             }}
           >

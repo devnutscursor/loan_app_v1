@@ -370,7 +370,7 @@ const LenderManualLoanCreation = () => {
     // If we're using test data and the override flag is set, bypass validation
     if (window._tempValidateOverride) {
       console.log("Validation bypassed due to test data override");
-      return true;
+      return {};
     }
 
     console.log(`🔍 VALIDATING STEP ${step} (tabName: ${tabName})`);
@@ -383,40 +383,86 @@ const LenderManualLoanCreation = () => {
       case 1: // Borrower step
         const primaryBorrower = formData.borrowers[0];
 
-        // Personal details validation
-        if (!primaryBorrower.firstName)
-          newErrors["borrowers[0].firstName"] = "First name is required";
-        if (!primaryBorrower.lastName)
-          newErrors["borrowers[0].lastName"] = "Last name is required";
-        if (!primaryBorrower.dateOfBirth)
-          newErrors["borrowers[0].dateOfBirth"] = "Date of birth is required";
-        if (!primaryBorrower.ssn)
-          newErrors["borrowers[0].ssn"] = "SSN is required";
-        if (!primaryBorrower.email)
-          newErrors["borrowers[0].email"] = "Email is required";
-        if (!primaryBorrower.phone)
-          newErrors["borrowers[0].phone"] = "Phone number is required";
-
-        // Address validation
-        if (!primaryBorrower.currentAddress.streetAddress)
-          newErrors["borrowers[0].currentAddress.streetAddress"] =
-            "Street address is required";
-        if (!primaryBorrower.currentAddress.city)
-          newErrors["borrowers[0].currentAddress.city"] = "City is required";
-        if (!primaryBorrower.currentAddress.state)
-          newErrors["borrowers[0].currentAddress.state"] = "State is required";
-        if (!primaryBorrower.currentAddress.zipCode)
-          newErrors["borrowers[0].currentAddress.zipCode"] =
-            "ZIP code is required";
-
-        // Employment validation
-        if (primaryBorrower.employers.length > 0) {
-          if (!primaryBorrower.employers[0].companyName)
+        if (!tabName || tabName === 'personalDetails') {
+          // Personal details validation
+          if (!primaryBorrower.firstName)
+            newErrors["borrowers[0].firstName"] = "First name is required";
+          if (!primaryBorrower.lastName)
+            newErrors["borrowers[0].lastName"] = "Last name is required";
+          if (!primaryBorrower.dateOfBirth)
+            newErrors["borrowers[0].dateOfBirth"] = "Date of birth is required";
+          if (!primaryBorrower.ssn)
+            newErrors["borrowers[0].ssn"] = "SSN is required";
+          if (!primaryBorrower.email)
+            newErrors["borrowers[0].email"] = "Email is required";
+          if (!primaryBorrower.phone)
+            newErrors["borrowers[0].phone"] = "Phone number is required";
+          if (!primaryBorrower.maritalStatus)
+            newErrors["borrowers[0].maritalStatus"] = "Marital status is required";
+          if (!primaryBorrower.citizenship)
+            newErrors["borrowers[0].citizenship"] = "Citizenship is required";
+        }
+      
+        if (!tabName || tabName === 'residenceHistory') {
+          // Address validation
+          if (!primaryBorrower.currentAddress?.streetAddress)
+            newErrors["borrowers[0].currentAddress.streetAddress"] =
+              "Street address is required";
+          if (!primaryBorrower.currentAddress?.city)
+            newErrors["borrowers[0].currentAddress.city"] = "City is required";
+          if (!primaryBorrower.currentAddress?.state)
+            newErrors["borrowers[0].currentAddress.state"] = "State is required";
+          if (!primaryBorrower.currentAddress?.zipCode)
+            newErrors["borrowers[0].currentAddress.zipCode"] =
+              "ZIP code is required";
+          if (!primaryBorrower.currentAddress?.housingStatus)
+            newErrors["borrowers[0].currentAddress.housingStatus"] =
+              "Housing status is required";
+          if (primaryBorrower.currentAddress?.yearsAtAddress === undefined || primaryBorrower.currentAddress?.yearsAtAddress === '')
+            newErrors["borrowers[0].currentAddress.yearsAtAddress"] =
+              "Years at address is required";
+          if (primaryBorrower.currentAddress?.monthsAtAddress === undefined || primaryBorrower.currentAddress?.monthsAtAddress === '')
+            newErrors["borrowers[0].currentAddress.monthsAtAddress"] =
+              "Months at address is required";
+        }
+      
+        if (!tabName || tabName === 'employmentHistory') {
+          // Employment validation
+          if (primaryBorrower.employers?.length > 0) {
+            if (!primaryBorrower.employers[0].companyName)
+              newErrors["borrowers[0].employers[0].companyName"] =
+                "Company name is required";
+            if (!primaryBorrower.employers[0].jobTitle)
+              newErrors["borrowers[0].employers[0].jobTitle"] =
+                "Job title is required";
+            if (!primaryBorrower.employers[0].employmentStatus)
+              newErrors["borrowers[0].employers[0].employmentStatus"] =
+                "Employment status is required";
+            if (!primaryBorrower.employers[0].startDate)
+              newErrors["borrowers[0].employers[0].startDate"] =
+                "Start date is required";
+            if (primaryBorrower.employers[0].yearsInProfession === undefined || primaryBorrower.employers[0].yearsInProfession === '')
+              newErrors["borrowers[0].employers[0].yearsInProfession"] =
+                "Years in profession is required";
+            if (primaryBorrower.employers[0].monthsInProfession === undefined || primaryBorrower.employers[0].monthsInProfession === '')
+              newErrors["borrowers[0].employers[0].monthsInProfession"] =
+                "Months in profession is required";
+            if (!primaryBorrower.employers[0].streetAddress)
+              newErrors["borrowers[0].employers[0].streetAddress"] =
+                "Company address is required";
+            if (!primaryBorrower.employers[0].city)
+              newErrors["borrowers[0].employers[0].city"] =
+                "Company city is required";
+            if (!primaryBorrower.employers[0].state)
+              newErrors["borrowers[0].employers[0].state"] =
+                "Company state is required";
+            if (!primaryBorrower.employers[0].zipCode)
+              newErrors["borrowers[0].employers[0].zipCode"] =
+                "Company ZIP code is required";
+          } else {
             newErrors["borrowers[0].employers[0].companyName"] =
-              "Company name is required";
-          if (!primaryBorrower.employers[0].jobTitle)
-            newErrors["borrowers[0].employers[0].jobTitle"] =
-              "Job title is required";
+              "At least one employer is required";
+          }
         }
         break;
 
@@ -667,7 +713,7 @@ const LenderManualLoanCreation = () => {
     console.log('✅ Validation passed:', Object.keys(newErrors).length === 0);
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
+    return newErrors;
   };
 
   // Fill form with test data (for development/testing only)
