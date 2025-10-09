@@ -152,24 +152,7 @@ const BorrowerStep = ({
   };
 
   const handleTabChange = (tab) => {
-    // Only validate if moving away from a tab
-    if (activeTab !== tab) {
-      const validationErrors = validateStep(1, activeTab);
-      
-      if (Object.keys(validationErrors).length === 0) {
-        setActiveTab(tab);
-      } else {
-        // Show error message
-        const errorMessages = Object.values(validationErrors);
-        const message = `Please complete all required fields before proceeding: ${errorMessages.slice(0, 3).join(', ')}${errorMessages.length > 3 ? ` and ${errorMessages.length - 3} more` : ''}`;
-        
-        if (toast) {
-          toast.error(message);
-        } else {
-          alert(message);
-        }
-      }
-    }
+    setActiveTab(tab);
   };
 
   // We don't need these complex handlers anymore since our child components

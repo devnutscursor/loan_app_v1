@@ -272,10 +272,11 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 hover:opacity-90"
             style={{ background: theme.gradients.primary, '--focus-ring-color': theme.colors.primary }}
             onClick={() => {
-              if (validateTab('income')) {
+              const errors = validateTab('income');
+              if (Object.keys(errors).length === 0) {
                 setActiveTab('debts');
               } else {
-                alert('Please complete all required fields before proceeding');
+                alert(`Please complete all required fields before proceeding: ${Object.values(errors).join(', ')}`);
               }
             }}
           >

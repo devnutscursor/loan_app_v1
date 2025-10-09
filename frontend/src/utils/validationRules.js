@@ -202,6 +202,20 @@ export const getRequiredFieldsForStep = (step, formData, tabName = null) => {
     case 4: // Additional Information step
       if (!tabName || tabName === 'propertiesOwned') {
         requiredFields['propertiesOwned.ownsProperty'] = additionalRequiredFields['propertiesOwned.ownsProperty'];
+
+        if (formData.propertiesOwned?.ownsProperty === true) {
+          const properties = formData.propertiesOwned.properties || [];
+          
+          if (properties.length > 0) {
+            // Validate first property at minimum
+            properties.forEach((property, index) => {
+              requiredFields[`propertiesOwned.properties[${index}].propertyAddress.streetAddress`] = `Property ${index + 1}: Street address is required`;
+              requiredFields[`propertiesOwned.properties[${index}].propertyAddress.city`] = `Property ${index + 1}: City is required`;
+              requiredFields[`propertiesOwned.properties[${index}].propertyAddress.state`] = `Property ${index + 1}: State is required`;
+              requiredFields[`propertiesOwned.properties[${index}].propertyAddress.zipCode`] = `Property ${index + 1}: ZIP code is required`;
+            });
+          }
+        }
       }
       if (!tabName || tabName === 'militaryService') {
         requiredFields['militaryService.hasServed'] = additionalRequiredFields['militaryService.hasServed'];

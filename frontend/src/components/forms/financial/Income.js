@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
+import RequiredFieldIndicator from '@/components/common/RequiredFieldIndicator';
 
 /**
  * Income Form Component
@@ -147,6 +148,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
         <div className="mb-4">
           <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
             Base Income
+            <RequiredFieldIndicator />
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

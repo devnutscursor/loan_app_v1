@@ -233,10 +233,14 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
             type="button"
             className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
-              if (validateTab('propertiesOwned')) {
+              const errors = validateTab('propertiesOwned');
+              if (Object.keys(errors).length === 0) {
                 setActiveTab('militaryService');
               } else {
-                alert('Please complete all required fields before proceeding');
+                const errorMessages = Object.values(errors);
+                const errorList = errorMessages.slice(0, 2).join('\n• ');
+                const additionalCount = errorMessages.length > 2 ? `\n\n...and ${errorMessages.length - 2} more fields required` : '';
+                alert(`Please fix the following errors:\n\n• ${errorList}${additionalCount}`);
               }
             }}
           >

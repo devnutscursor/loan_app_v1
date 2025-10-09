@@ -585,6 +585,44 @@ const LenderManualLoanCreation = () => {
               newErrors["propertiesOwned.ownsProperty"] =
                 "Please indicate if borrower owns additional property";
             }
+
+
+            if (formData.propertiesOwned?.ownsProperty === true) {
+              const properties = formData.propertiesOwned.properties || [];
+              
+              if (properties.length === 0) {
+                newErrors["propertiesOwned.properties"] =
+                  "Please add at least one property";
+              } else {
+                // Validate each property
+                properties.forEach((property, index) => {
+                  // Street Address
+                  if (!property.propertyAddress?.streetAddress) {
+                    newErrors[`propertiesOwned.properties[${index}].propertyAddress.streetAddress`] =
+                      `Property ${index + 1}: Street address is required`;
+                  }
+                  
+                  // City
+                  if (!property.propertyAddress?.city) {
+                    newErrors[`propertiesOwned.properties[${index}].propertyAddress.city`] =
+                      `Property ${index + 1}: City is required`;
+                  }
+                  
+                  // State
+                  if (!property.propertyAddress?.state) {
+                    newErrors[`propertiesOwned.properties[${index}].propertyAddress.state`] =
+                      `Property ${index + 1}: State is required`;
+                  }
+                  
+                  // ZIP Code
+                  if (!property.propertyAddress?.zipCode) {
+                    newErrors[`propertiesOwned.properties[${index}].propertyAddress.zipCode`] =
+                      `Property ${index + 1}: ZIP code is required`;
+                  }
+                  
+                });
+              }
+            }
           } else if (tabName === "militaryService") {
             // MilitaryService validation - make sure they've answered the question
             if (formData.militaryService?.hasServed === undefined) {

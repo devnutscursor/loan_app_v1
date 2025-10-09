@@ -292,7 +292,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <h6 className="text-sm font-medium text-gray-700 mb-3">Property Address</h6>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">STREET ADDRESS</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">STREET ADDRESS <RequiredFieldIndicator /></label>
                   <input
                     type="text"
                     value={property.propertyAddress?.streetAddress || ''}
@@ -310,7 +310,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">CITY</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">CITY <RequiredFieldIndicator /></label>
                     <input
                       type="text"
                       value={property.propertyAddress?.city || ''}
@@ -319,7 +319,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">STATE</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">STATE <RequiredFieldIndicator /></label>
                     <select
                       value={property.propertyAddress?.state || ''}
                       onChange={(e) => updateProperty(index, 'propertyAddress.state', e.target.value)}
@@ -379,7 +379,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">ZIP CODE</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">ZIP CODE <RequiredFieldIndicator /></label>
                     <input
                       type="text"
                       value={property.propertyAddress?.zipCode || ''}
