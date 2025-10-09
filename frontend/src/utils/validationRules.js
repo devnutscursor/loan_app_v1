@@ -209,16 +209,18 @@ export const getRequiredFieldsForStep = (step, formData, tabName = null) => {
       break;
       
     case 5: // Declarations & Demographics step
-      if (!tabName || tabName === 'declarations') {
-        requiredFields['declarations.occupyAsPrimary'] = declarationsRequiredFields['declarations.occupyAsPrimary'];
-        requiredFields['declarations.firstTimeBuyer'] = declarationsRequiredFields['declarations.firstTimeBuyer'];
-      }
-      if (!tabName || tabName === 'demographics') {
-        requiredFields['demographics.ethnicity'] = declarationsRequiredFields['demographics.ethnicity'];
-        requiredFields['demographics.gender'] = declarationsRequiredFields['demographics.gender'];
-        requiredFields['demographics.race'] = declarationsRequiredFields['demographics.race'];
-      }
+      // if (!tabName || tabName === 'declarations') {
+      //   requiredFields['declarations.occupyAsPrimary'] = declarationsRequiredFields['declarations.occupyAsPrimary'];
+      //   requiredFields['declarations.firstTimeBuyer'] = declarationsRequiredFields['declarations.firstTimeBuyer'];
+      // }
+      // if (!tabName || tabName === 'demographics') {
+      //   requiredFields['demographics.ethnicity'] = declarationsRequiredFields['demographics.ethnicity'];
+      //   requiredFields['demographics.gender'] = declarationsRequiredFields['demographics.gender'];
+      //   requiredFields['demographics.race'] = declarationsRequiredFields['demographics.race'];
+      // }
+      // All fields in this step are optional - no validation required
       break;
+
   }
   
   return requiredFields;

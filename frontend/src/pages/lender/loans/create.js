@@ -563,94 +563,94 @@ const LenderManualLoanCreation = () => {
         break;
 
       case 5: // Declarations & Demographics step
-        console.log('🔍 STEP 5 VALIDATION - Declarations & Demographics');
-        console.log('📊 Declarations data:', formData.declarations);
-        console.log('📊 Demographics data:', formData.demographics);
+        console.log('🔍 STEP 5 VALIDATION - Declarations & Demographics (ALL Optional)');
+        // console.log('📊 Declarations data:', formData.declarations);
+        // console.log('📊 Demographics data:', formData.demographics);
         
-        if (tabName) {
-          if (tabName === "declarations") {
-            console.log('🔍 Validating declarations tab');
-            // Declarations validation - make sure they've answered the required questions
-            if (formData.declarations?.occupyAsPrimary === undefined) {
-              console.log('❌ Missing occupyAsPrimary');
-              newErrors["declarations.occupyAsPrimary"] =
-                "Please indicate if borrower will occupy the property as primary residence";
-            } else {
-              console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
-            }
-            if (formData.declarations?.firstTimeBuyer === undefined) {
-              console.log('❌ Missing firstTimeBuyer');
-              newErrors["declarations.firstTimeBuyer"] =
-                "Please indicate if borrower is a first time homebuyer";
-            } else {
-              console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
-            }
-          } else if (tabName === "demographics") {
-            console.log('🔍 Validating demographics tab');
-            // Demographics validation - verify required fields
-            if (!formData.demographics?.ethnicity) {
-              console.log('❌ Missing ethnicity');
-              newErrors["demographics.ethnicity"] =
-                "Please select borrower ethnicity";
-            } else {
-              console.log('✅ ethnicity found:', formData.demographics.ethnicity);
-            }
-            if (!formData.demographics?.gender) {
-              console.log('❌ Missing gender');
-              newErrors["demographics.gender"] =
-                "Please select borrower gender";
-            } else {
-              console.log('✅ gender found:', formData.demographics.gender);
-            }
-            if (!formData.demographics?.race) {
-              console.log('❌ Missing race');
-              newErrors["demographics.race"] = "Please select borrower race";
-            } else {
-              console.log('✅ race found:', formData.demographics.race);
-            }
-          }
-        } else {
-          console.log('🔍 Validating entire Step 5');
-          // If no tab specified, validate the whole step
-          // Check declarations
-          if (formData.declarations?.occupyAsPrimary === undefined) {
-            console.log('❌ Missing occupyAsPrimary');
-            newErrors["declarations.occupyAsPrimary"] =
-              "Please indicate if borrower will occupy the property as primary residence";
-          } else {
-            console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
-          }
-          if (formData.declarations?.firstTimeBuyer === undefined) {
-            console.log('❌ Missing firstTimeBuyer');
-            newErrors["declarations.firstTimeBuyer"] =
-              "Please indicate if borrower is a first time homebuyer";
-          } else {
-            console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
-          }
+        // if (tabName) {
+        //   if (tabName === "declarations") {
+        //     console.log('🔍 Validating declarations tab');
+        //     // Declarations validation - make sure they've answered the required questions
+        //     if (formData.declarations?.occupyAsPrimary === undefined) {
+        //       console.log('❌ Missing occupyAsPrimary');
+        //       newErrors["declarations.occupyAsPrimary"] =
+        //         "Please indicate if borrower will occupy the property as primary residence";
+        //     } else {
+        //       console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
+        //     }
+        //     if (formData.declarations?.firstTimeBuyer === undefined) {
+        //       console.log('❌ Missing firstTimeBuyer');
+        //       newErrors["declarations.firstTimeBuyer"] =
+        //         "Please indicate if borrower is a first time homebuyer";
+        //     } else {
+        //       console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
+        //     }
+        //   } else if (tabName === "demographics") {
+        //     console.log('🔍 Validating demographics tab');
+        //     // Demographics validation - verify required fields
+        //     if (!formData.demographics?.ethnicity) {
+        //       console.log('❌ Missing ethnicity');
+        //       newErrors["demographics.ethnicity"] =
+        //         "Please select borrower ethnicity";
+        //     } else {
+        //       console.log('✅ ethnicity found:', formData.demographics.ethnicity);
+        //     }
+        //     if (!formData.demographics?.gender) {
+        //       console.log('❌ Missing gender');
+        //       newErrors["demographics.gender"] =
+        //         "Please select borrower gender";
+        //     } else {
+        //       console.log('✅ gender found:', formData.demographics.gender);
+        //     }
+        //     if (!formData.demographics?.race) {
+        //       console.log('❌ Missing race');
+        //       newErrors["demographics.race"] = "Please select borrower race";
+        //     } else {
+        //       console.log('✅ race found:', formData.demographics.race);
+        //     }
+        //   }
+        // } else {
+        //   console.log('🔍 Validating entire Step 5');
+        //   // If no tab specified, validate the whole step
+        //   // Check declarations
+        //   if (formData.declarations?.occupyAsPrimary === undefined) {
+        //     console.log('❌ Missing occupyAsPrimary');
+        //     newErrors["declarations.occupyAsPrimary"] =
+        //       "Please indicate if borrower will occupy the property as primary residence";
+        //   } else {
+        //     console.log('✅ occupyAsPrimary found:', formData.declarations.occupyAsPrimary);
+        //   }
+        //   if (formData.declarations?.firstTimeBuyer === undefined) {
+        //     console.log('❌ Missing firstTimeBuyer');
+        //     newErrors["declarations.firstTimeBuyer"] =
+        //       "Please indicate if borrower is a first time homebuyer";
+        //   } else {
+        //     console.log('✅ firstTimeBuyer found:', formData.declarations.firstTimeBuyer);
+        //   }
 
-          // Check demographics
-          if (!formData.demographics?.ethnicity) {
-            console.log('❌ Missing ethnicity');
-            newErrors["demographics.ethnicity"] =
-              "Please select borrower ethnicity";
-          } else {
-            console.log('✅ ethnicity found:', formData.demographics.ethnicity);
-          }
-          if (!formData.demographics?.gender) {
-            console.log('❌ Missing gender');
-            newErrors["demographics.gender"] = "Please select borrower gender";
-          } else {
-            console.log('✅ gender found:', formData.demographics.gender);
-          }
-          if (!formData.demographics?.race) {
-            console.log('❌ Missing race');
-            newErrors["demographics.race"] = "Please select borrower race";
-          } else {
-            console.log('✅ race found:', formData.demographics.race);
-          }
-        }
+        //   // Check demographics
+        //   if (!formData.demographics?.ethnicity) {
+        //     console.log('❌ Missing ethnicity');
+        //     newErrors["demographics.ethnicity"] =
+        //       "Please select borrower ethnicity";
+        //   } else {
+        //     console.log('✅ ethnicity found:', formData.demographics.ethnicity);
+        //   }
+        //   if (!formData.demographics?.gender) {
+        //     console.log('❌ Missing gender');
+        //     newErrors["demographics.gender"] = "Please select borrower gender";
+        //   } else {
+        //     console.log('✅ gender found:', formData.demographics.gender);
+        //   }
+        //   if (!formData.demographics?.race) {
+        //     console.log('❌ Missing race');
+        //     newErrors["demographics.race"] = "Please select borrower race";
+        //   } else {
+        //     console.log('✅ race found:', formData.demographics.race);
+        //   }
+        // }
         
-        console.log('🔍 Step 5 validation errors:', newErrors);
+        // console.log('🔍 Step 5 validation errors:', newErrors);
         break;
 
       case 6: // Review & Submit
