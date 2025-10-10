@@ -3,7 +3,7 @@ import React from 'react';
 export default function LenderProfileTabs({ active, onChange }) {
   const tabs = [
     { key: 'profile', label: 'Profile' },
-    { key: 'credentials', label: 'Vendor Credentials' }
+    { key: 'credentials', label: 'Credentials' }
   ];
 
   return (

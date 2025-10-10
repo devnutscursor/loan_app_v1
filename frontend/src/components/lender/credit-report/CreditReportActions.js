@@ -50,7 +50,7 @@ const CreditReportActions = ({
               className="inline-flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileText className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
-              Create New Credit Report
+              Re-Order Credit Report
             </button>
             
             <button
@@ -65,7 +65,7 @@ const CreditReportActions = ({
             <button
               onClick={onUpgradeReport}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <ArrowUpCircle className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
               Upgrade Credit Report

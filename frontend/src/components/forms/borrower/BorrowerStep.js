@@ -468,13 +468,9 @@ const BorrowerStep = ({
                     ? displayMessages[0]
                     : `Please complete the following required fields: ${displayMessages.join(', ')}${errorMessages.length > 3 ? ` and ${errorMessages.length - 3} more` : ''}`;
                   
-                  // Use toast instead of alert
-                  if (toast) {
-                    toast.error(message);
-                  } else {
-                    // Fallback to alert if toast is not available
-                    alert(message);
-                  }
+
+                  alert(message);
+                  
                 }
               }
             }}
