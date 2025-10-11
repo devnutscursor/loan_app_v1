@@ -17,6 +17,12 @@ router.get('/company/:companyId', controller.getCompanyCredentials);
 
 router.get('/lender/:lenderUserId', controller.getLenderEffectiveCredentials);
 
+// Get available credential types
+router.get('/types', controller.getCredentialTypes);
+
+// Get MeridianLink providers
+router.get('/meridianlink-providers', controller.getMeridianLinkProviders);
+
 module.exports = router;
 
 

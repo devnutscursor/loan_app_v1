@@ -25,6 +25,56 @@ const creditVendorCredentialSchema = new mongoose.Schema({
   iv: { type: String, required: true, select: false },          // base64
   authTag: { type: String, required: true, select: false },     // base64
 
+  // Add credential type
+  credentialType: {
+    type: String,
+    enum: ['credit_account', 'aus_du', 'aus_lpa', 'doc_magic', 'freddie_lpa', 'fannie_du'],
+    required: true
+  },
+  
+  // Add credential type display information
+  credentialTypeInfo: {
+    displayName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true
+    },
+    category: {
+      type: String,
+      enum: ['credit_reporting', 'automated_underwriting', 'document_generation'],
+      required: true
+    },
+    isVisible: {
+      type: Boolean,
+      default: true
+    }
+  },
+  
+  // Add API endpoint configuration (for credit accounts)
+  apiConfiguration: {
+    smartApiUrl: {
+      type: String,
+      trim: true
+    },
+    creditApiUrl: {
+      type: String,
+      trim: true
+    },
+    mclInterface: {
+      type: String,
+      trim: true
+    }
+  },
+  
+  mlcId: {
+    type: String,
+    trim: true
+  }
+
 }, { timestamps: true });
 
 // Indexes for quick lookups

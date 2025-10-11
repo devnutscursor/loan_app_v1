@@ -1,6 +1,8 @@
 const CreditVendorCredential = require('../models/creditVendorCredentials.model');
 const User = require('../models/user.model');
 const Lender = require('../models/lender.model');
+const credentialTypeService = require('../services/credentialTypeService');
+const { MERIDIAN_LINK_PROVIDERS } = require('../constants/meridianLinkProviders');
 
 // Ensure we never send encrypted secrets back
 const publicSelect = '';
@@ -9,10 +11,28 @@ const secretSelect = '+usernameEnc +passwordEnc +iv +authTag';
 // Create new credential (for Company or User)
 exports.createCredential = async (req, res, next) => {
   try {
-    const { ownerType, ownerId, username, password, vendorKey, vendorName } = req.body;
+    const { 
+      ownerType, 
+      ownerId, 
+      username, 
+      password, 
+      vendorKey, 
+      vendorName,
+      credentialType,
+      smartApiUrl,
+      creditApiUrl,
+      mclInterface,
+      mlcId
+    } = req.body;
 
-    if (!ownerType || !ownerId || !username || !password || !vendorKey || !vendorName) {
+    if (!ownerType || !ownerId || !username || !password || !vendorKey || !vendorName || !credentialType) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Validate credential type
+    const typeConfig = credentialTypeService.getTypeConfig(credentialType);
+    if (!typeConfig) {
+      return res.status(400).json({ success: false, message: 'Invalid credential type' });
     }
 
     const existingCredential = await CreditVendorCredential.findOne({ username });
@@ -37,7 +57,43 @@ exports.createCredential = async (req, res, next) => {
       }
     }
 
-    const doc = new CreditVendorCredential({ ownerType, ownerId, vendorKey, vendorName, username });
+    // Auto-populate MeridianLink provider configuration
+    let finalVendorName = vendorName;
+    let apiConfig = {};
+    let mlcIdValue = mlcId;
+    
+    const meridianProvider = MERIDIAN_LINK_PROVIDERS.find(p => p.key === vendorKey);
+    if (meridianProvider) {
+      finalVendorName = meridianProvider.name;
+      
+      apiConfig = {
+        smartApiUrl: meridianProvider.smartApiUrl,
+        creditApiUrl: meridianProvider.creditApiUrl,
+        mclInterface: mclInterface || ''
+      };
+      mlcIdValue = meridianProvider.mlcId;
+    }
+
+    const doc = new CreditVendorCredential({ 
+      ownerType, 
+      ownerId, 
+      vendorKey, 
+      vendorName: finalVendorName, 
+      username,
+      credentialType,
+      credentialTypeInfo: {
+        displayName: typeConfig.displayName,
+        description: typeConfig.description,
+        category: typeConfig.category,
+        isVisible: typeConfig.isVisible
+      },
+      apiConfiguration: {
+        smartApiUrl,
+        creditApiUrl,
+        mclInterface
+      },
+      mlcId
+    });
     doc.setPassword(password);
     await doc.save();
 
@@ -61,7 +117,7 @@ exports.createCredential = async (req, res, next) => {
 exports.updateCredential = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { vendorKey, vendorName, username, password } = req.body;
+    const { vendorKey, username, password, credentialType, smartApiUrl, creditApiUrl, mlcId } = req.body;
 
     const doc = await CreditVendorCredential.findById(id).select(secretSelect);
     if (!doc) return res.status(404).json({ success: false, message: 'Credential not found' });
@@ -74,13 +130,42 @@ exports.updateCredential = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this credential' });
     }
 
-    if (vendorKey !== undefined) doc.vendorKey = String(vendorKey).toLowerCase().trim();
-    if (vendorName !== undefined) doc.vendorName = String(vendorName).trim();
+    if (vendorKey !== undefined) {
+      doc.vendorKey = String(vendorKey).toLowerCase().trim();
+      
+      // Auto-populate MeridianLink provider configuration
+      const meridianProvider = MERIDIAN_LINK_PROVIDERS.find(p => p.key === vendorKey);
+      if (meridianProvider) {
+        doc.vendorName = meridianProvider.name;
+        
+        doc.apiConfiguration = {
+          smartApiUrl: meridianProvider.smartApiUrl,
+          creditApiUrl: meridianProvider.creditApiUrl,
+          mclInterface: doc.apiConfiguration?.mclInterface || ''
+        };
+        doc.mlcId = meridianProvider.mlcId;
+      }
+    }
     if (password !== undefined) {
       doc.setPassword(password);
     }
     if (username !== undefined) {
       doc.username = String(username).trim();
+    }
+    if (credentialType !== undefined) {
+      // Validate credential type
+      const typeConfig = credentialTypeService.getTypeConfig(credentialType);
+      if (!typeConfig) {
+        return res.status(400).json({ success: false, message: 'Invalid credential type' });
+      }
+      
+      doc.credentialType = credentialType;
+      doc.credentialTypeInfo = {
+        displayName: typeConfig.displayName,
+        description: typeConfig.description,
+        category: typeConfig.category,
+        isVisible: typeConfig.isVisible
+      };
     }
 
     await doc.save();
@@ -90,7 +175,7 @@ exports.updateCredential = async (req, res, next) => {
     if (err.code === 11000) {
       // duplicate key error
       if (err.keyPattern.username) {
-        return res.status(400).json({ error: "Username already exists globally" });
+        return res.status(400).json({ message: "Username already exists globally" });
       }
       if (err.keyPattern?.ownerId && err.keyPattern?.vendorKey && err.keyPattern?.ownerType) {
         return res.status(400).json({ message: "This owner already has credentials for this vendor" });
@@ -186,6 +271,36 @@ exports.getLenderEffectiveCredentials = async (req, res, next) => {
     }
 
     return res.json({ success: true, data: userCreds });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Get available credential types
+ */
+exports.getCredentialTypes = async (req, res, next) => {
+  try {
+    const types = credentialTypeService.getAvailableTypes();
+    
+    res.status(200).json({
+      success: true,
+      data: types
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Get MeridianLink credit providers
+ */
+exports.getMeridianLinkProviders = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: MERIDIAN_LINK_PROVIDERS
+    });
   } catch (error) {
     return next(error);
   }

@@ -43,31 +43,35 @@ export function useCompanyCredentials({ companyId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const create = useCallback(async ({ vendorKey, username, password }) => {
+  const create = useCallback(async ({ vendorKey, vendorName, username, password, credentialType, smartApiUrl, creditApiUrl, mclInterface, mlcId }) => {
     if (!companyId) return { success: false };
     setSaving(true);
-    const vendor = VENDORS.find(v => v.key === vendorKey);
     const res = await CredentialService.create({
       ownerType: 'Company',
       ownerId: companyId,
       vendorKey,
-      vendorName: vendor?.name || vendorKey,
+      vendorName,
       username,
-      password
+      password,
+      credentialType,
+      smartApiUrl,
+      creditApiUrl,
+      mclInterface,
+      mlcId
     });
     setSaving(false);
     if (res.success) await load();
     return res;
   }, [companyId, load]);
 
-  const update = useCallback(async (id, { vendorKey, username, password }) => {
+  const update = useCallback(async (id, { vendorKey, vendorName, username, password, credentialType }) => {
     setSaving(true);
-    const vendor = vendorKey ? VENDORS.find(v => v.key === vendorKey) : null;
     const payload = {
       vendorKey,
-      vendorName: vendor ? vendor.name : undefined,
+      vendorName,
       username,
-      password
+      password,
+      credentialType
     };
     const res = await CredentialService.update(id, payload);
     setSaving(false);
