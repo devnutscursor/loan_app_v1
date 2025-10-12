@@ -6,6 +6,7 @@ import customAxios from '../../utils/axios';
 import CredentialService from '../../services/api/creditVendorCredential.service';
 import { useLenderCredentials } from './useLenderCredentials';
 import { useCompanyCredentials } from '../company/useCompanyCredentials';
+import ConsentService from '../../services/consent.service';
 
 const useCreditReport = () => {
   const router = useRouter();
@@ -31,6 +32,13 @@ const useCreditReport = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState(null);
+
+  // Credit report consent state
+  const [borrowerConsent, setBorrowerConsent] = useState(null);
+  const [consentRequired, setConsentRequired] = useState(false);
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  const [manualConsentModalOpen, setManualConsentModalOpen] = useState(false);
+  const [consentLoading, setConsentLoading] = useState(false);
 
   // Load credentials based on user role
   const userId = user?._id;
@@ -67,8 +75,35 @@ const useCreditReport = () => {
   useEffect(() => {
     if (loanId && (user?.role === 'lender' || user?.role === 'company')) {
       fetchCreditReportStatus();
+      checkBorrowerConsent();
     }
   }, [loanId, user]);
+
+  // Check borrower consent status
+  const checkBorrowerConsent = async () => {
+    if (!loanId) return;
+    
+    try {
+      // Get loan to find borrower ID
+      const loanResponse = await customAxios.get(`/api/v1/loans/${loanId}`);
+      const borrowerId = loanResponse.data.data?.borrower?._id || loanResponse.data.data?.borrower;
+      
+      if (!borrowerId) {
+        console.warn('Could not determine borrower ID for consent check');
+        return;
+      }
+      
+      // Check consent status
+      const consentResult = await ConsentService.checkCreditReportConsentStatus(borrowerId);
+      
+      if (consentResult.success) {
+        setBorrowerConsent(consentResult.data);
+        console.log('Borrower consent status:', consentResult.data);
+      }
+    } catch (error) {
+      console.error('Error checking borrower consent:', error);
+    }
+  };
 
   // Load organization credentials when provider form is shown (for lender)
   useEffect(() => {
@@ -218,7 +253,15 @@ const useCreditReport = () => {
       
     } catch (error) {
       console.error(`Error ${currentOperation}ing credit report:`, error);
-      toast.error(`Failed to ${currentOperation} credit report: ` + (error.response?.data?.message || error.message));
+      
+      // Handle consent-specific errors
+      if (error.response?.data?.error === 'CONSENT_REQUIRED' || error.response?.data?.error === 'CONSENT_MISMATCH') {
+        setConsentRequired(true);
+        setConsentModalOpen(true);
+        toast.error('Borrower authorization required to pull credit report');
+      } else {
+        toast.error(`Failed to ${currentOperation} credit report: ` + (error.response?.data?.message || error.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -287,7 +330,15 @@ const useCreditReport = () => {
       
     } catch (error) {
       console.error('Error refreshing credit report:', error);
-      toast.error('Failed to refresh credit report: ' + (error.response?.data?.message || error.message));
+      
+      // Handle consent-specific errors
+      if (error.response?.data?.error === 'CONSENT_REQUIRED' || error.response?.data?.error === 'CONSENT_MISMATCH') {
+        setConsentRequired(true);
+        setConsentModalOpen(true);
+        toast.error('Borrower authorization required to refresh credit report');
+      } else {
+        toast.error('Failed to refresh credit report: ' + (error.response?.data?.message || error.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -339,7 +390,15 @@ const useCreditReport = () => {
       
     } catch (error) {
       console.error('Error reissuing credit report:', error);
-      toast.error('Failed to reissue credit report: ' + (error.response?.data?.message || error.message));
+      
+      // Handle consent-specific errors
+      if (error.response?.data?.error === 'CONSENT_REQUIRED' || error.response?.data?.error === 'CONSENT_MISMATCH') {
+        setConsentRequired(true);
+        setConsentModalOpen(true);
+        toast.error('Borrower authorization required to reissue credit report');
+      } else {
+        toast.error('Failed to reissue credit report: ' + (error.response?.data?.message || error.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -404,6 +463,81 @@ const useCreditReport = () => {
     router.back();
   };
 
+  // Consent management functions
+  const handleOpenConsentModal = () => {
+    setConsentModalOpen(true);
+  };
+
+  const handleCloseConsentModal = () => {
+    setConsentModalOpen(false);
+    setConsentRequired(false);
+  };
+
+  const handleOpenManualConsentModal = () => {
+    setConsentModalOpen(false);
+    setManualConsentModalOpen(true);
+  };
+
+  const handleCloseManualConsentModal = () => {
+    setManualConsentModalOpen(false);
+  };
+
+  const handleRecordManualConsent = async (consentData) => {
+    try {
+      setConsentLoading(true);
+      const result = await ConsentService.grantCreditReportConsent(consentData);
+      
+      if (result.success) {
+        toast.success('Consent recorded successfully');
+        setManualConsentModalOpen(false);
+        setConsentModalOpen(false);
+        setConsentRequired(false);
+        
+        // Refresh consent status
+        await checkBorrowerConsent();
+      } else {
+        toast.error('Failed to record consent: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error recording consent:', error);
+      toast.error('Failed to record consent');
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
+  const handleSendConsentEmail = async () => {
+    try {
+      // Get loan to find borrower ID
+      const loanResponse = await customAxios.get(`/api/v1/loans/${loanId}`);
+      const borrowerId = loanResponse.data.data?.borrower?._id || loanResponse.data.data?.borrower;
+      
+      if (!borrowerId) {
+        toast.error('Could not determine borrower ID');
+        return;
+      }
+      
+      setConsentLoading(true);
+      
+      const result = await ConsentService.sendConsentRequestEmail({
+        borrowerId,
+        loanId
+      });
+      
+      if (result.success) {
+        toast.success(`Authorization request sent to ${result.data.emailSentTo}`);
+        setConsentModalOpen(false);
+      } else {
+        toast.error('Failed to send email: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error sending consent email:', error);
+      toast.error('Failed to send authorization request');
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
   return {
     // Data
     loanId,
@@ -425,6 +559,13 @@ const useCreditReport = () => {
     editOpen,
     selectedCredential,
     
+    // Consent state
+    borrowerConsent,
+    consentRequired,
+    consentModalOpen,
+    manualConsentModalOpen,
+    consentLoading,
+    
     // Event handlers
     handleSubmitReport,
     handleCreateReportClick,
@@ -441,6 +582,16 @@ const useCreditReport = () => {
     handleCloseAddAccount,
     handleOpenEditAccount,
     handleCloseEditAccount,
+    
+    // Consent handlers
+    handleOpenConsentModal,
+    handleCloseConsentModal,
+    handleOpenManualConsentModal,
+    handleCloseManualConsentModal,
+    handleRecordManualConsent,
+    handleSendConsentEmail,
+    checkBorrowerConsent,
+    
     // Surface CRUD for modals
     credsHook: credentialsHook
   };

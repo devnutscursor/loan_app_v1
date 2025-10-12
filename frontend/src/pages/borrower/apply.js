@@ -27,6 +27,13 @@ const LoanApplication = () => {
     errors,
     setErrors,
     
+    // Credit report consent
+    hasExistingConsent,
+    creditReportConsent,
+    setCreditReportConsent,
+    loadingConsent,
+    consentData,
+    
     // Context
     isLenderContext,
     userRole,
@@ -124,6 +131,11 @@ const LoanApplication = () => {
             handleSubmit={handleSubmit}
             loading={loading}
             userType="borrower"
+            hasExistingConsent={hasExistingConsent}
+            creditReportConsent={creditReportConsent}
+            setCreditReportConsent={setCreditReportConsent}
+            loadingConsent={loadingConsent}
+            consentData={consentData}
           />
         );
       

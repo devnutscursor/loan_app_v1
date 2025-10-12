@@ -12,9 +12,26 @@ import { formatDate, formatCurrency, formatPhoneNumber } from '../../../utils/fo
  * @param {Function} props.setCurrentStep - Function to navigate to specific steps
  * @param {Function} props.handleSubmit - Function to submit the application
  * @param {Boolean} props.loading - Loading state for submission
+ * @param {String} props.userType - User type (borrower/lender)
+ * @param {Boolean} props.hasExistingConsent - Whether borrower has already consented
+ * @param {Boolean} props.creditReportConsent - Current consent checkbox state
+ * @param {Function} props.setCreditReportConsent - Function to update consent checkbox
+ * @param {Boolean} props.loadingConsent - Loading state for consent check
+ * @param {Object} props.consentData - Consent data from API
  * @returns {JSX.Element} Review & Submit step component
  */
-const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
+const ReviewStep = ({ 
+  formData, 
+  setCurrentStep, 
+  handleSubmit, 
+  loading,
+  userType = 'borrower',
+  hasExistingConsent = false,
+  creditReportConsent = false,
+  setCreditReportConsent = () => {},
+  loadingConsent = false,
+  consentData = null
+}) => {
   // Get primary borrower info
   const borrower = formData.borrowers?.[0] || {};
   
@@ -483,6 +500,81 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
     </div>
   );
 
+  // Credit report consent section
+  const renderCreditReportConsent = () => (
+    <div className="mt-6 border border-blue-200 rounded-lg p-6 bg-blue-50">
+      <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        Credit Report Authorization <span className="text-sm font-normal text-gray-600">(Optional)</span>
+      </h3>
+      
+      {loadingConsent ? (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <svg className="animate-spin h-4 w-4 text-blue-600" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+          </svg>
+          Checking authorization status...
+        </div>
+      ) : hasExistingConsent ? (
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-md">
+            <svg className="h-5 w-5 text-green-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-900">
+                ✓ Authorization on file
+              </p>
+              <p className="text-sm text-green-700 mt-1">
+                You provided consent on {consentData?.consentDate ? new Date(consentData.consentDate).toLocaleDateString() : 'a previous application'}.
+              </p>
+              <p className="text-xs text-green-600 mt-2">
+                Your credit report authorization remains valid for this and future loan applications with your lender.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="p-4 bg-white border border-blue-300 rounded-md">
+            <p className="text-sm text-gray-700 mb-3">
+              By checking this box, you authorize your lender to obtain your credit report from credit reporting 
+              agencies for the purpose of evaluating your loan application. This authorization will remain valid 
+              for future loan applications with this lender.
+            </p>
+            <p className="text-xs text-blue-600 font-medium mb-3">
+              Note: You can provide this authorization now or later. Your lender will request it when needed for credit evaluation.
+            </p>
+            
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={creditReportConsent}
+                onChange={(e) => setCreditReportConsent(e.target.checked)}
+                className="mt-1 form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-900">
+                I authorize the lender to pull my credit report for loan evaluation purposes
+              </span>
+            </label>
+          </div>
+          
+          <div className="text-xs text-gray-500 pl-1">
+            <p className="flex items-center gap-1">
+              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              This authorization complies with the Fair Credit Reporting Act (FCRA) and helps expedite your loan application.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // Legal agreement and submission
   const renderLegalAgreement = () => (
     <div className="mt-6 border-t border-gray-300 pt-6">
@@ -554,6 +646,9 @@ const ReviewStep = ({ formData, setCurrentStep, handleSubmit, loading }) => {
           {/* Declarations & Demographics */}
           {renderSection('Declarations', renderDeclarations(), 5)}
           {renderSection('Demographics', renderDemographics(), 5)}
+          
+          {/* Credit Report Consent - Only visible for borrowers, not lenders */}
+          {userType === 'borrower' && renderCreditReportConsent()}
           
           {/* Legal agreement and submission */}
           {renderLegalAgreement()}

@@ -10,6 +10,7 @@ const {
     upgradeCreditReport
 } = require('../controllers/creditReportController');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { verifyCreditReportConsent } = require('../middleware/creditConsent.middleware');
 
 const router = express.Router();
 
@@ -22,10 +23,10 @@ router.use(authorize('lender', 'company'));
 /**
  * @route   POST /api/credit-report/:loanId/:lenderId
  * @desc    Create a new credit report for a loan
- * @access  Private (Lender only)
+ * @access  Private (Lender only) - Requires borrower consent
  * @body    { providers: { equifax: boolean, experian: boolean, transunion: boolean } }
  */
-router.post('/:loanId/:lenderId', createCreditReport);
+router.post('/:loanId/:lenderId', verifyCreditReportConsent, createCreditReport);
 
 /**
  * @route   GET /api/credit-report/:loanId/:lenderId
@@ -37,23 +38,23 @@ router.get('/:loanId/:lenderId', getCreditReport);
 /**
  * @route   PUT /api/credit-report/:loanId/:lenderId/refresh
  * @desc    Refresh an existing credit report
- * @access  Private (Lender only)
+ * @access  Private (Lender only) - Requires borrower consent
  */
-router.put('/:loanId/:lenderId/refresh', refreshCreditReport);
+router.put('/:loanId/:lenderId/refresh', verifyCreditReportConsent, refreshCreditReport);
 
 /**
  * @route   PUT /api/credit-report/:loanId/:lenderId/reissue
  * @desc    Reissue an existing credit report (retrieve using StatusQuery)
- * @access  Private (Lender only)
+ * @access  Private (Lender only) - Requires borrower consent
  */
-router.put('/:loanId/:lenderId/reissue', reissueCreditReport);
+router.put('/:loanId/:lenderId/reissue', verifyCreditReportConsent, reissueCreditReport);
 
 /**
  * @route   PUT /api/credit-report/:loanId/:lenderId/upgrade
  * @desc    Upgrade an existing credit report order
- * @access  Private (Lender only)
+ * @access  Private (Lender only) - Requires borrower consent
  */
-router.put('/:loanId/:lenderId/upgrade', upgradeCreditReport);
+router.put('/:loanId/:lenderId/upgrade', verifyCreditReportConsent, upgradeCreditReport);
 
 /**
  * @route   GET /api/credit-report/:loanId/:lenderId/history

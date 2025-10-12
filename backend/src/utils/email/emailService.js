@@ -598,6 +598,134 @@ This is an automated email. Please do not reply to this message.
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Send credit report consent request email
+   * @param {Object} options - Email options
+   * @param {string} options.email - Borrower email
+   * @param {string} options.borrowerName - Borrower name
+   * @param {string} options.lenderName - Lender/company name
+   * @param {string} options.consentUrl - Consent URL with token
+   * @param {string} options.expiresIn - Expiration time (e.g., "7 days")
+   * @returns {Promise<Object>} - Email send result
+   */
+  async sendConsentRequestEmail(options) {
+    try {
+      const { 
+        email, 
+        borrowerName, 
+        lenderName,
+        consentUrl,
+        expiresIn = '7 days'
+      } = options;
+      
+      const subject = `Authorization Request from ${lenderName}`;
+      
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+          <!-- Header -->
+          <div style="background-color: #2563eb; color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">Credit Report Authorization Request</h1>
+          </div>
+          
+          <!-- Body -->
+          <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <p style="font-size: 16px; color: #1f2937; margin-bottom: 20px;">
+              Hello ${borrowerName},
+            </p>
+            
+            <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 20px;">
+              <strong>${lenderName}</strong> is requesting your authorization to pull your credit report 
+              for the purpose of evaluating your loan application.
+            </p>
+            
+            <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+              <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                <strong>What this means:</strong><br>
+                By providing authorization, you allow ${lenderName} to obtain your credit report 
+                from credit reporting agencies. This will help expedite your loan application process.
+              </p>
+            </div>
+            
+            <p style="font-size: 16px; color: #1f2937; line-height: 1.6; margin-bottom: 25px;">
+              This authorization is required by the Fair Credit Reporting Act (FCRA) and will remain 
+              valid for future loan applications with ${lenderName}.
+            </p>
+            
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${consentUrl}" 
+                 style="display: inline-block; background-color: #2563eb; color: white; padding: 14px 32px; 
+                        text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600;
+                        box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
+                Provide Authorization
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #6b7280; text-align: center; margin-top: 20px;">
+              Or copy and paste this link in your browser:<br>
+              <a href="${consentUrl}" style="color: #2563eb; word-break: break-all;">${consentUrl}</a>
+            </p>
+            
+            <!-- Important Info -->
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-top: 30px; border-radius: 4px;">
+              <p style="margin: 0; color: #92400e; font-size: 13px;">
+                <strong>⚠️ Important:</strong> This link will expire in <strong>${expiresIn}</strong>. 
+                If you did not request a loan with ${lenderName}, please disregard this email.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 13px; color: #6b7280; margin: 5px 0;">
+                If you have questions, please contact ${lenderName} directly.
+              </p>
+              <p style="font-size: 13px; color: #6b7280; margin: 5px 0;">
+                This is an automated message from the loan application system.
+              </p>
+            </div>
+          </div>
+          
+          <!-- Footer Note -->
+          <div style="text-align: center; margin-top: 20px; padding: 15px;">
+            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+              This email contains sensitive information. Please do not forward it to others.
+            </p>
+          </div>
+        </div>
+      `;
+      
+      const text = `
+Hello ${borrowerName},
+
+${lenderName} is requesting your authorization to pull your credit report for the purpose of evaluating your loan application.
+
+What this means:
+By providing authorization, you allow ${lenderName} to obtain your credit report from credit reporting agencies. This will help expedite your loan application process.
+
+This authorization is required by the Fair Credit Reporting Act (FCRA) and will remain valid for future loan applications with ${lenderName}.
+
+To provide your authorization, please click the link below:
+${consentUrl}
+
+⚠️ Important: This link will expire in ${expiresIn}. If you did not request a loan with ${lenderName}, please disregard this email.
+
+If you have questions, please contact ${lenderName} directly.
+
+This is an automated message from the loan application system.
+      `;
+      
+      return await this.sendEmail({
+        to: email,
+        subject,
+        text,
+        html
+      });
+    } catch (error) {
+      logger.error('Error sending consent request email:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

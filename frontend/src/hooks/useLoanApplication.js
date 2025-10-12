@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { LoanService } from '../services';
 import { validateStep as validateStepRules } from '../utils/validationRules';
+import ConsentService from '../services/consent.service';
 
 export const useLoanApplication = () => {
   const router = useRouter();
@@ -19,6 +20,12 @@ export const useLoanApplication = () => {
   const [loading, setLoading] = useState(false);
   const [draftId, setDraftId] = useState(draft || null);
   const [loanTypes, setLoanTypes] = useState([]);
+  
+  // Credit report consent state
+  const [hasExistingConsent, setHasExistingConsent] = useState(false);
+  const [creditReportConsent, setCreditReportConsent] = useState(false);
+  const [loadingConsent, setLoadingConsent] = useState(false);
+  const [consentData, setConsentData] = useState(null);
   const [formData, setFormData] = useState({
     borrowers: [
       {
@@ -341,6 +348,41 @@ export const useLoanApplication = () => {
     }
   }, [router.isReady, draft]);
 
+  // Check credit report consent status for borrowers
+  useEffect(() => {
+    const checkConsentStatus = async () => {
+      // Only check for borrower role (not lender creating loans)
+      if (user?.role !== 'borrower' || isLenderContext) {
+        return;
+      }
+      
+      try {
+        setLoadingConsent(true);
+        const result = await ConsentService.checkCreditReportConsentStatus();
+        
+        if (result.success && result.data) {
+          setHasExistingConsent(result.data.hasConsent);
+          setConsentData(result.data);
+          
+          // Auto-check consent checkbox if already consented
+          if (result.data.hasConsent) {
+            setCreditReportConsent(true);
+          }
+          
+          console.log('Consent status loaded:', result.data);
+        }
+      } catch (error) {
+        console.error('Error checking consent status:', error);
+      } finally {
+        setLoadingConsent(false);
+      }
+    };
+    
+    if (user && user.role === 'borrower' && !isLenderContext) {
+      checkConsentStatus();
+    }
+  }, [user, isLenderContext]);
+
   // Handle form input changes
   const handleChange = (nameOrEvent, valueOrNull = null) => {
     if (nameOrEvent && nameOrEvent.target) {
@@ -496,6 +538,29 @@ export const useLoanApplication = () => {
         toast.error('Please fix all errors before submitting the application');
         setLoading(false);
         return;
+      }
+
+      // Check credit report consent (only for borrowers, not lender context)
+      // Consent is OPTIONAL during application - can be provided later when credit is pulled
+      if (user?.role === 'borrower' && !isLenderContext) {
+        // Grant consent if they checked the box (optional)
+        if (creditReportConsent && !hasExistingConsent) {
+          try {
+            console.log('Granting credit report consent during application submission...');
+            const consentResult = await ConsentService.grantCreditReportConsent({
+              consentMethod: 'application_submission'
+            });
+            
+            if (consentResult.success) {
+              console.log('✅ Credit report consent granted successfully');
+            } else {
+              console.warn('⚠️ Failed to record consent, but continuing with submission');
+            }
+          } catch (consentError) {
+            console.error('Error granting consent:', consentError);
+            // Continue with submission - consent can be recorded separately if needed
+          }
+        }
       }
       
       const primaryBorrower = formData.borrowers?.[0] || {};
@@ -1135,6 +1200,13 @@ export const useLoanApplication = () => {
     setFormData,
     errors,
     setErrors,
+    
+    // Credit report consent state
+    hasExistingConsent,
+    creditReportConsent,
+    setCreditReportConsent,
+    loadingConsent,
+    consentData,
     
     // Context
     isLenderContext,

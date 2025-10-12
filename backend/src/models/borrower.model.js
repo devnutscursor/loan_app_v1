@@ -369,6 +369,56 @@ const borrowerSchema = new mongoose.Schema({
     signatureDate: {
       type: Date
     }
+  },
+  // Credit Report Consent
+  creditReportConsent: {
+    hasConsented: {
+      type: Boolean,
+      default: false
+    },
+    consentDate: {
+      type: Date
+    },
+    consentMethod: {
+      type: String,
+      enum: ['application_submission', 'manual_agreement', 'email_confirmation', 'in_person', 'phone_verbal', 'grandfathered'],
+      trim: true
+    },
+    consentIpAddress: {
+      type: String,
+      trim: true
+    },
+    consentUserAgent: {
+      type: String,
+      trim: true
+    },
+    revokedDate: {
+      type: Date
+    },
+    isRevoked: {
+      type: Boolean,
+      default: false
+    },
+    lenderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lender'
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company'
+    },
+    consentVersion: {
+      type: String,
+      default: '1.0'
+    },
+    notes: {
+      type: String,
+      trim: true
+    },
+    recordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User' // Track who recorded manual consent
+    }
   }
 }, {
   timestamps: true
@@ -378,5 +428,43 @@ const borrowerSchema = new mongoose.Schema({
 borrowerSchema.index({ lender: 1 });
 borrowerSchema.index({ user: 1 });
 borrowerSchema.index({ lender: 1, isActive: 1 });
+borrowerSchema.index({ 'creditReportConsent.hasConsented': 1, 'creditReportConsent.isRevoked': 1 });
+borrowerSchema.index({ lender: 1, 'creditReportConsent.hasConsented': 1 });
+
+// Methods
+
+/**
+ * Check if borrower has valid credit report consent
+ * @returns {Boolean} True if consented and not revoked
+ */
+borrowerSchema.methods.hasCreditReportConsent = function() {
+  return this.creditReportConsent?.hasConsented === true && 
+         this.creditReportConsent?.isRevoked !== true;
+};
+
+/**
+ * Check if borrower's consent is for the specific lender/company
+ * @param {ObjectId} lenderId - The lender ID to check against
+ * @param {ObjectId} companyId - The company ID to check against (optional)
+ * @returns {Boolean} True if consent is valid for the specified lender/company
+ */
+borrowerSchema.methods.hasConsentForLender = function(lenderId, companyId = null) {
+  if (!this.hasCreditReportConsent()) {
+    return false;
+  }
+  
+  // Check if consent is for the specified lender
+  const lenderMatches = !this.creditReportConsent.lenderId || 
+                        this.creditReportConsent.lenderId.toString() === lenderId.toString();
+  
+  // If company ID is provided, check it matches
+  if (companyId) {
+    const companyMatches = !this.creditReportConsent.companyId || 
+                          this.creditReportConsent.companyId.toString() === companyId.toString();
+    return lenderMatches && companyMatches;
+  }
+  
+  return lenderMatches;
+};
 
 module.exports = mongoose.model('Borrower', borrowerSchema);

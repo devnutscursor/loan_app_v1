@@ -11,6 +11,9 @@ import ReportDetails from "../../../../components/lender/credit-report/ReportDet
 import useCreditReport from "../../../../hooks/lender/useCreditReport";
 import AddCredentialModal from "@/components/lender/credentials/AddCredentialModal";
 import EditCredentialModal from "@/components/lender/credentials/EditCredentialModal";
+import ConsentRequiredModal from "../../../../components/lender/credit-report/ConsentRequiredModal";
+import ManualConsentModal from "../../../../components/lender/credit-report/ManualConsentModal";
+import ConsentStatusBanner from "../../../../components/lender/credit-report/ConsentStatusBanner";
 
 const CreditReportPage = () => {
   const {
@@ -34,6 +37,13 @@ const CreditReportPage = () => {
     editOpen,
     selectedCredential,
     
+    // Consent state
+    borrowerConsent,
+    consentRequired,
+    consentModalOpen,
+    manualConsentModalOpen,
+    consentLoading,
+    
     // Event handlers
     handleSubmitReport,
     handleCreateReportClick,
@@ -50,6 +60,15 @@ const CreditReportPage = () => {
     handleCloseAddAccount,
     handleOpenEditAccount,
     handleCloseEditAccount,
+    
+    // Consent handlers
+    handleOpenConsentModal,
+    handleCloseConsentModal,
+    handleOpenManualConsentModal,
+    handleCloseManualConsentModal,
+    handleRecordManualConsent,
+    handleSendConsentEmail,
+    
     credsHook
   } = useCreditReport();
 
@@ -68,6 +87,14 @@ const CreditReportPage = () => {
             onBack={handleBack}
           />
 
+          {/* Consent Status Banner */}
+          <ConsentStatusBanner
+            borrowerConsent={borrowerConsent}
+            loading={false}
+            onRecordManualConsent={handleOpenManualConsentModal}
+            onSendEmailRequest={handleSendConsentEmail}
+          />
+
           <div className="space-y-6">
             <CreditReportStatusCard
               loading={loading}
@@ -83,6 +110,7 @@ const CreditReportPage = () => {
               onUpgradeReport={handleUpgradeReportClick}
               onViewReport={handleViewReport}
               onCreateReport={handleCreateReportClick}
+              borrowerConsent={borrowerConsent}
             />
 
             <ProviderSelectionForm
@@ -126,6 +154,29 @@ const CreditReportPage = () => {
         onDelete={credsHook.remove}
         vendors={credsHook.vendors}
         credential={selectedCredential}
+      />
+      
+      {/* Consent Modals */}
+      <ConsentRequiredModal
+        isOpen={consentModalOpen}
+        onClose={handleCloseConsentModal}
+        borrowerName={creditReport?.borrowerData?.firstName && creditReport?.borrowerData?.lastName 
+          ? `${creditReport.borrowerData.firstName} ${creditReport.borrowerData.lastName}`
+          : 'this borrower'}
+        onSendEmailRequest={handleSendConsentEmail}
+        onRecordManualConsent={handleOpenManualConsentModal}
+        onCancel={handleCloseConsentModal}
+      />
+      
+      <ManualConsentModal
+        isOpen={manualConsentModalOpen}
+        onClose={handleCloseManualConsentModal}
+        borrowerName={creditReport?.borrowerData?.firstName && creditReport?.borrowerData?.lastName 
+          ? `${creditReport.borrowerData.firstName} ${creditReport.borrowerData.lastName}`
+          : 'this borrower'}
+        borrowerId={creditReport?.borrowerData?.id}
+        onSubmit={handleRecordManualConsent}
+        loading={consentLoading}
       />
       </MainLayout>
     </ProtectedRoute>

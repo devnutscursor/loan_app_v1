@@ -27,6 +27,8 @@ const loanProgramRoutes = require('./routes/loanProgram.routes');
 const loanRateRoutes = require('./routes/loanRate.routes');
 const creditReportRoutes = require('./routes/creditReport.routes');
 const creditVendorCredentialRoutes = require('./routes/creditVendorCredential.routes');
+const consentRoutes = require('./routes/consent.routes');
+const consentEmailRoutes = require('./routes/consentEmail.routes');
 const noteRoutes = require('./routes/note.routes');
 const testRoutes = require('./routes/test.routes'); // Import test routes
 
@@ -247,6 +249,8 @@ app.use('/api/v1/loan-programs', loanProgramRoutes);
 app.use('/api/v1/loan-rates', loanRateRoutes);
 app.use('/api/v1/credit-report', creditReportRoutes);
 app.use('/api/v1/credit-vendor-credentials', creditVendorCredentialRoutes);
+app.use('/api/v1/consent', consentRoutes);
+app.use('/api/v1/consent-email', consentEmailRoutes);
 app.use('/api/v1/notes', noteRoutes);
 app.use('/api/v1/test', testRoutes); // Register test routes
 
