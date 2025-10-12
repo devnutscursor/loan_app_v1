@@ -20,7 +20,7 @@ export function useLenderCredentials({ userId, companyId, role }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const create = useCallback(async ({ vendorKey, username, password, credentialType, smartApiUrl, creditApiUrl, mclInterface, mlcId }) => {
+  const create = useCallback(async ({ vendorKey, username, password, credentialType, smartApiUrl, creditApiUrl, mclInterface, mlcId, vendorName }) => {
     if (!userId) return { success: false };
     setSaving(true);
     const res = await CredentialService.create({
