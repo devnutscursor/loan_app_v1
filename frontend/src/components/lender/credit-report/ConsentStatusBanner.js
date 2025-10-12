@@ -61,21 +61,12 @@ export default function ConsentStatusBanner({
           <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-red-900">
-              ⚠️ Authorization Revoked
+              Authorization Revoked
             </h3>
             <p className="text-sm text-red-700 mt-1">
               Borrower revoked credit report authorization on {borrowerConsent.revokedDate ? new Date(borrowerConsent.revokedDate).toLocaleDateString() : 'file'}.
               You cannot pull new credit reports until new authorization is obtained.
             </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={onRecordManualConsent}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-red-300 text-red-700 rounded-md hover:bg-red-50"
-              >
-                <FileText className="h-4 w-4" />
-                Record New Consent
-              </button>
-            </div>
           </div>
         </div>
       </div>

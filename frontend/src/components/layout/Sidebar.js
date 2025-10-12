@@ -20,7 +20,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: "My Loan Officer", href: '/borrower/loan-officer', icon: 'user' },
         { name: 'Calculators', href: '/borrower/calculators', icon: 'calculator' },
         { name: 'Documents', href: '/borrower/documents', icon: 'document-duplicate' },
-        { name: 'Profile', href: '/borrower/profile', icon: 'user' },
+        { name: 'Settings', href: '/borrower/profile', icon: 'cog' },
         // { name: 'Settings', href: '/borrower/settings', icon: 'cog' }
       ];
     }

@@ -381,7 +381,7 @@ const borrowerSchema = new mongoose.Schema({
     },
     consentMethod: {
       type: String,
-      enum: ['application_submission', 'manual_agreement', 'email_confirmation', 'in_person', 'phone_verbal', 'grandfathered'],
+      enum: ['application_submission', 'manual_agreement', 'email_confirmation', 'in_person', 'phone_verbal', 'grandfathered', 'profile_page'],
       trim: true
     },
     consentIpAddress: {

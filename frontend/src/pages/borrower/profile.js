@@ -6,6 +6,7 @@ import ProfileHeader from '../../components/borrower/profile/ProfileHeader';
 import ProfilePicture from '../../components/borrower/profile/ProfilePicture';
 import ProfileForm from '../../components/borrower/profile/ProfileForm';
 import ProfileLoadingState from '../../components/borrower/profile/ProfileLoadingState';
+import CreditSettings from '../../components/borrower/profile/CreditSettings';
 import { useProfile } from '../../hooks/useProfile';
 
 const Profile = () => {
@@ -58,6 +59,11 @@ const Profile = () => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Credit Settings Section */}
+          <div className="mt-8">
+            <CreditSettings />
           </div>
         </div>
 
