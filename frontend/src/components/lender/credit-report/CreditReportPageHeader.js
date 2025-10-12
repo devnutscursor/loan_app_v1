@@ -13,7 +13,6 @@ const CreditReportPageHeader = ({ loanId, onBack }) => {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Credit Report</h1>
-          <p className="text-gray-600">Loan ID: {loanId}</p>
         </div>
       </div>
     </div>

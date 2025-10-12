@@ -1596,10 +1596,10 @@ class CreditReportService {
             }
 
             // Check if there's already an active credit report for this borrower in this company
-            const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
-            if (existingReport) {
-                throw new ApiError('An active credit report already exists for this borrower', 409);
-            }
+            // const existingReport = await CreditReport.findActiveByBorrower(loan.borrower._id, lender.company._id);
+            // if (existingReport) {
+            //     throw new ApiError('An active credit report already exists for this borrower', 409);
+            // }
 
             // Extract borrower data (currently using test data)
             const borrowerData = this.extractBorrowerData(loan);

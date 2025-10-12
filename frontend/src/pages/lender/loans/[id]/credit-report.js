@@ -107,10 +107,6 @@ const CreditReportPage = () => {
               creditScores={creditReport?.creditScores}
             />
 
-            <ReportDetails
-              loading={loading}
-              creditReport={creditReport}
-            />
           </div>
         </div>
       {/* Modals reused from credentials UI */}
