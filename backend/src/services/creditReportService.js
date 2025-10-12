@@ -1885,8 +1885,18 @@ class CreditReportService {
                     }));
                 }
 
-                // Update status based on result
-                existingReport.status = result.status === 'COMPLETED' ? 'Completed' : 'Failed';
+                // Update status based on result - check for documents OR completed status
+                const hasDocuments = result.documents && result.documents.length > 0;
+                const statusCompleted = ['COMPLETED', 'Completed', 'Success', 'SUCCESS'].includes(result.status);
+
+                if (hasDocuments || statusCompleted) {
+                    existingReport.status = 'Completed';
+                } else if (result.status === 'Error' || result.status === 'ERROR' || result.status === 'Failed') {
+                    existingReport.status = 'Failed';
+                } else {
+                    // If we got here with documents in the HTML upload section, mark as completed
+                    existingReport.status = existingReport.reportFile?.s3Url ? 'Completed' : 'Failed';
+                }
                 
                 // Update timestamps
                 existingReport.updatedAt = new Date();
@@ -2046,8 +2056,18 @@ class CreditReportService {
                     }));
                 }
 
-                // Update status based on result
-                existingReport.status = result.status === 'COMPLETED' || result.status === 'Completed' ? 'Completed' : 'Failed';
+                // Update status based on result - check for documents OR completed status
+                const hasDocuments = result.documents && result.documents.length > 0;
+                const statusCompleted = ['COMPLETED', 'Completed', 'Success', 'SUCCESS'].includes(result.status);
+
+                if (hasDocuments || statusCompleted) {
+                    existingReport.status = 'Completed';
+                } else if (result.status === 'Error' || result.status === 'ERROR' || result.status === 'Failed') {
+                    existingReport.status = 'Failed';
+                } else {
+                    // If we got here with documents in the HTML upload section, mark as completed
+                    existingReport.status = existingReport.reportFile?.s3Url ? 'Completed' : 'Failed';
+                }
                 
                 // Update timestamps
                 existingReport.updatedAt = new Date();
@@ -2195,8 +2215,18 @@ class CreditReportService {
                     }));
                 }
 
-                // Update status based on result
-                existingReport.status = result.status === 'COMPLETED' ? 'Completed' : 'Failed';
+                // Update status based on result - check for documents OR completed status
+                const hasDocuments = result.documents && result.documents.length > 0;
+                const statusCompleted = ['COMPLETED', 'Completed', 'Success', 'SUCCESS'].includes(result.status);
+
+                if (hasDocuments || statusCompleted) {
+                    existingReport.status = 'Completed';
+                } else if (result.status === 'Error' || result.status === 'ERROR' || result.status === 'Failed') {
+                    existingReport.status = 'Failed';
+                } else {
+                    // If we got here with documents in the HTML upload section, mark as completed
+                    existingReport.status = existingReport.reportFile?.s3Url ? 'Completed' : 'Failed';
+                }
                 
                 // Update timestamps
                 existingReport.updatedAt = new Date();

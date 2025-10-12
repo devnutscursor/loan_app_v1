@@ -293,6 +293,58 @@ const useCreditReport = () => {
     }
   };
 
+  // Reissue handler - retrieves existing report without new credit pull
+  const handleReissueReportClick = async () => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      'Are you sure you want to reissue this credit report? This will retrieve the existing report without pulling new credit data.'
+    );
+    
+    if (!confirmed) {
+      return; // User cancelled
+    }
+
+    setLoading(true);
+    try {
+      const currentLenderId = await getLenderId();
+      
+      // Reissue doesn't need any additional parameters
+      const response = await customAxios.put(`/api/v1/credit-report/${loanId}/${currentLenderId}/reissue`);
+      
+      // Extract both status and report data from the response
+      const responseData = response.data.data;
+      
+      // Update both states with the complete data
+      setReportStatus({
+        hasActiveReport: responseData.hasActiveReport,
+        status: responseData.status,
+        createdAt: responseData.createdAt,
+        expiresAt: responseData.expiresAt,
+        isExpired: responseData.isExpired,
+        providers: responseData.providers,
+        avgCreditScore: responseData.avgCreditScore
+      });
+      
+      setCreditReport({
+        id: responseData.id,
+        loanId: responseData.loanId,
+        borrowerData: responseData.borrowerData,
+        creditScores: responseData.creditScores,
+        reportFile: responseData.reportFile,
+        accessCount: responseData.accessCount,
+        lastAccessed: responseData.lastAccessed
+      });
+      
+      toast.success('Credit report reissued successfully');
+      
+    } catch (error) {
+      console.error('Error reissuing credit report:', error);
+      toast.error('Failed to reissue credit report: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpgradeReportClick = () => {
     // Toggle: if form is already showing for 'upgrade', close it
     if (showProviderForm && currentOperation === 'upgrade') {
@@ -377,6 +429,7 @@ const useCreditReport = () => {
     handleSubmitReport,
     handleCreateReportClick,
     handleRefreshReportClick,
+    handleReissueReportClick,
     handleUpgradeReportClick,
     handleViewReport,
     handleProviderChange,

@@ -1,11 +1,12 @@
 import React from 'react';
-import { RefreshCw, Eye, FileText, ArrowUpCircle } from 'lucide-react';
+import { RefreshCw, Eye, FileText, ArrowUpCircle, RotateCcw, Info } from 'lucide-react';
 
 const CreditReportActions = ({ 
   loading, 
   reportStatus, 
   fileLoading, 
   onRefreshReport,
+  onReissueReport,
   onUpgradeReport, 
   onViewReport, 
   onCreateReport 
@@ -43,33 +44,66 @@ const CreditReportActions = ({
           )}
           
           {/* Action Buttons Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button
-              onClick={onCreateReport}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileText className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
-              Re-Order Credit Report
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Re-Order Button */}
+            <div className="group relative">
+              <button
+                onClick={onCreateReport}
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileText className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
+                Re-Order Credit Report
+              </button>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                New credit pull with fresh data from bureaus
+              </div>
+            </div>
             
-            <button
-              onClick={onRefreshReport}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Credit Report
-            </button>
+            {/* Refresh Button */}
+            <div className="group relative">
+              <button
+                onClick={onRefreshReport}
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh Credit Report
+              </button>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                Pull fresh credit data from bureaus
+              </div>
+            </div>
             
-            <button
-              onClick={onUpgradeReport}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <ArrowUpCircle className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
-              Upgrade Credit Report
-            </button>
+            {/* Reissue Button */}
+            <div className="group relative">
+              <button
+                onClick={onReissueReport}
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RotateCcw className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
+                Reissue Credit Report
+              </button>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                Retrieve existing report (no new credit pull)
+              </div>
+            </div>
+            
+            {/* Upgrade Button */}
+            <div className="group relative">
+              <button
+                onClick={onUpgradeReport}
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-black border border-gray-300 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowUpCircle className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
+                Upgrade Credit Report
+              </button>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                Upgrade bureau coverage or liabilities import method of existing report
+              </div>
+            </div>
           </div>
         </div>
       ) : (

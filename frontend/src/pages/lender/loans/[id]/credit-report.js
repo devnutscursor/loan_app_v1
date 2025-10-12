@@ -38,6 +38,7 @@ const CreditReportPage = () => {
     handleSubmitReport,
     handleCreateReportClick,
     handleRefreshReportClick,
+    handleReissueReportClick,
     handleUpgradeReportClick,
     handleViewReport,
     handleProviderChange,
@@ -78,6 +79,7 @@ const CreditReportPage = () => {
               reportStatus={reportStatus}
               fileLoading={fileLoading}
               onRefreshReport={handleRefreshReportClick}
+              onReissueReport={handleReissueReportClick}
               onUpgradeReport={handleUpgradeReportClick}
               onViewReport={handleViewReport}
               onCreateReport={handleCreateReportClick}
@@ -100,6 +102,7 @@ const CreditReportPage = () => {
               onOpenEditAccount={handleOpenEditAccount}
               importMethod={importMethod}
               setImportMethod={setImportMethod}
+              hasActiveReport={reportStatus?.hasActiveReport}
             />
 
             <CreditScoresDisplay

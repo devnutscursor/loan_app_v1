@@ -17,13 +17,17 @@ const ProviderSelectionForm = ({
   onOpenAddAccount,
   onOpenEditAccount,
   importMethod,
-  setImportMethod
+  setImportMethod,
+  hasActiveReport = false
 }) => {
   if (!showForm) return null;
 
-  // Get dynamic text based on operation
+  // Get dynamic text based on operation and whether report exists
   const operationText = {
-    create: { title: 'Re-Order Credit Report', button: 'Re-Order Credit Report' },
+    create: { 
+      title: hasActiveReport ? 'Re-Order Credit Report' : 'Create Credit Report',
+      button: hasActiveReport ? 'Re-Order Credit Report' : 'Create Credit Report'
+    },
     refresh: { title: 'Refresh Credit Report', button: 'Refresh Credit Report' },
     upgrade: { title: 'Upgrade Credit Report', button: 'Upgrade Credit Report' }
   };
@@ -127,10 +131,20 @@ const ProviderSelectionForm = ({
         </select>
       </div>
       
+      {/* Validation message */}
+      {(!selectedCredentialId || !Object.values(selectedProviders).some(Boolean)) && (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+          <p className="text-sm text-amber-800">
+            {!selectedCredentialId && '⚠️ Please select a credit account to proceed.'}
+            {selectedCredentialId && !Object.values(selectedProviders).some(Boolean) && '⚠️ Please select at least one bureau provider.'}
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-4 mt-4">
         <button
           onClick={onSubmitReport}
-          disabled={loading || !Object.values(selectedProviders).some(Boolean)}
+          disabled={loading || !Object.values(selectedProviders).some(Boolean) || !selectedCredentialId}
           className="inline-flex items-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileText className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
