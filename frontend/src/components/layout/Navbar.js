@@ -237,7 +237,7 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                           </Link>
                         )}
                         
-                        {user.role === 'admin' && (
+                        {/* {user.role === 'admin' && (
                           <Link 
                             href="/admin/dashboard" 
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -245,7 +245,7 @@ const Navbar = ({ user, sidebarOpen, setSidebarOpen }) => {
                           >
                             Your Profile
                           </Link>
-                        )}
+                        )} */}
                         
                         {/* <Link 
                           href="/settings" 
