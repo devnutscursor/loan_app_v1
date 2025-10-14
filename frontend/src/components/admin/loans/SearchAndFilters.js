@@ -25,7 +25,7 @@ const SearchAndFilters = ({
             id="search-input"
             type="text"
             placeholder="Search by borrower name or loan number..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-50 shadow-md rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             value={searchTerm}
             onChange={onSearchChange}
           />
@@ -43,7 +43,7 @@ const SearchAndFilters = ({
             id="borrower-filter"
             value={selectedBorrower}
             onChange={onBorrowerChange}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 bg-white  focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
           >
             <option value="all">All Borrowers</option>
             {borrowers.map((borrower) => (
@@ -63,7 +63,7 @@ const SearchAndFilters = ({
             id="filter-dropdown"
             value={activeFilter}
             onChange={(e) => onFilterChange(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 bg-white  focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
           >
             <option value="all">All Loans</option>
             <option value="recent">Recent</option>

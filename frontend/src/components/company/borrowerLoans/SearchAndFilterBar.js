@@ -10,23 +10,23 @@ const SearchAndFilterBar = ({ searchTerm, onSearchChange, activeFilter, onFilter
       <input
         type="text"
         placeholder="Search by loan number, status or amount..."
-        className="block w-full pl-10 pr-3 py-2 border border-gray-50 shadow-md rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         value={searchTerm}
         onChange={onSearchChange}
       />
     </div>
     <div className="flex gap-2">
       <div className="inline-flex rounded-md shadow-sm">
-        <button type="button" onClick={() => onFilterChange('all')} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-50 shadow-md text-sm font-medium ${activeFilter === 'all' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+        <button type="button" onClick={() => onFilterChange('all')} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white shadow-md text-sm font-medium ${activeFilter === 'all' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           All
         </button>
-        <button type="button" onClick={() => onFilterChange('pending')} className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-50 shadow-md text-sm font-medium ${activeFilter === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+        <button type="button" onClick={() => onFilterChange('pending')} className={`relative inline-flex items-center px-4 py-2 border-t border border-gray-300 bg-white  shadow-md text-sm font-medium ${activeFilter === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           Pending
         </button>
-        <button type="button" onClick={() => onFilterChange('approved')} className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-50 shadow-md text-sm font-medium ${activeFilter === 'approved' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+        <button type="button" onClick={() => onFilterChange('approved')} className={`relative inline-flex items-center px-4 py-2 border-t border border-gray-300 bg-white shadow-md text-sm font-medium ${activeFilter === 'approved' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           Approved
         </button>
-        <button type="button" onClick={() => onFilterChange('rejected')} className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-50 shadow-md text-sm font-medium ${activeFilter === 'rejected' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+        <button type="button" onClick={() => onFilterChange('rejected')} className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${activeFilter === 'rejected' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           Rejected
         </button>
       </div>
