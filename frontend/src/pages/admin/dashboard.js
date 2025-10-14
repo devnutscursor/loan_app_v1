@@ -6,6 +6,36 @@ import LoanStatistics from '@/components/admin/dashboard/LoanStatistics';
 import UserStatistics from '@/components/admin/dashboard/UserStatistics';
 import useAdminDashboard from '@/hooks/admin/useAdminDashboard';
 
+// Skeleton component for stat cards
+const StatCardSkeleton = () => (
+  <div className="bg-white overflow-hidden shadow rounded-lg animate-pulse">
+    <div className="p-5">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <div className="h-12 w-12 rounded-md bg-gray-200"></div>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+          <div className="h-8 bg-gray-200 rounded w-20"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Skeleton component for chart/statistics sections
+const ChartSkeleton = () => (
+  <div className="bg-white overflow-hidden shadow rounded-lg animate-pulse">
+    <div className="p-5">
+      <div className="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+      <div className="space-y-3">
+        <div className="h-32 bg-gray-200 rounded"></div>
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  </div>
+);
 
 const AdminDashboard = () => {
   const { 
@@ -18,11 +48,25 @@ const AdminDashboard = () => {
     return (
       <ProtectedRoute roles={['admin']}>
         <MainLayout title="Admin Dashboard">
-          <div className="flex justify-center items-center h-screen">
-            <svg className="animate-spin h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+          <div className="py-6">
+            <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
+              {/* Skeleton Title */}
+              <div className="h-8 bg-gray-200 rounded w-48 mb-6 animate-pulse"></div>
+              
+              {/* Skeleton Summary Cards */}
+              <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+              </div>
+              
+              {/* Skeleton Main Content */}
+              <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <ChartSkeleton />
+                <ChartSkeleton />
+              </div>
+            </div>
           </div>
         </MainLayout>
       </ProtectedRoute>
