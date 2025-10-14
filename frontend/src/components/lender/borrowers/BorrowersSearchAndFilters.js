@@ -18,7 +18,7 @@ const BorrowersSearchAndFilters = ({
         <input
           type="text"
           placeholder="Search by name, email or phone..."
-          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="block w-full pl-10 pr-3 py-2 border border-gray-50 shadow-md rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           value={searchTerm}
           onChange={onSearchChange}
         />
@@ -30,7 +30,7 @@ const BorrowersSearchAndFilters = ({
           <button
             type="button"
             onClick={() => onFilterChange('all')}
-            className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium 
+            className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-50 shadow-md text-sm font-medium 
             ${activeFilter === 'all'
                 ? 'bg-blue-50 text-blue-700 border-blue-300'
                 : 'bg-white text-gray-700 hover:bg-gray-50'}`}
@@ -40,7 +40,7 @@ const BorrowersSearchAndFilters = ({
           <button
             type="button"
             onClick={() => onFilterChange('recent')}
-            className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 text-sm font-medium 
+            className={`relative inline-flex items-center px-4 py-2 border-t border-b border-gray-50 shadow-md text-sm font-medium 
             ${activeFilter === 'recent'
                 ? 'bg-blue-50 text-blue-700 border-blue-300'
                 : 'bg-white text-gray-700 hover:bg-gray-50'}`}
@@ -50,7 +50,7 @@ const BorrowersSearchAndFilters = ({
           <button
             type="button"
             onClick={() => onFilterChange('hasLoans')}
-            className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium 
+            className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-50 shadow-md text-sm font-medium 
             ${activeFilter === 'hasLoans'
                 ? 'bg-blue-50 text-blue-700 border-blue-300'
                 : 'bg-white text-gray-700 hover:bg-gray-50'}`}
