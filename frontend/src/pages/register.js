@@ -59,9 +59,6 @@ const Register = () => {
 
               {/* Form footer - always visible at the bottom */}
               <FormFooter 
-                formData={formData} 
-                errors={errors} 
-                handleChange={handleChange} 
                 loading={loading} 
               />
             </form>

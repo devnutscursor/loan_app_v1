@@ -19,7 +19,6 @@ export const useRegister = () => {
     mobilePhone: '',
     clientFacingTitle: '',
     role: 'lender',
-    termsAccepted: false,
     // Lender-specific fields
     companyId: '',
     // Company-specific fields
@@ -32,7 +31,18 @@ export const useRegister = () => {
     primaryContactEmail: '',
     primaryContactPhone: '',
     primaryContactPassword: '',
-    primaryContactConfirmPassword: ''
+    primaryContactConfirmPassword: '',
+    // Address fields
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    // Other company fields
+    website: '',
+    legalEntityType: '',
+    legalEntityOrganizedUnder: '',
+    posLoanAppAssignee: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -139,18 +149,29 @@ export const useRegister = () => {
       }
     }
     
-    if (!formData.termsAccepted) {
-      newErrors.termsAccepted = 'You must accept the terms and conditions';
-    }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return { isValid: Object.keys(newErrors).length === 0, errors: newErrors };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    const { isValid, errors: validationErrors } = validateForm();
+  
+    if (!isValid) {
+      const errorMessages = Object.values(validationErrors);
+      
+      if (errorMessages.length === 1) {
+        toast.error(errorMessages[0]);
+      } else if (errorMessages.length <= 3) {
+        // Show first 3 errors
+        toast.error(errorMessages.slice(0, 3).join(', '));
+      } else {
+        toast.error(`Please fix ${errorMessages.length} errors in the form`);
+      }
+      return;
+    }
     
     setLoading(true);
     
@@ -193,7 +214,14 @@ export const useRegister = () => {
           maxLenders: parseInt(formData.maxLenders),
           nmls: formData.nmls || undefined,
           website: formData.website || undefined,
-          address: formData.address || undefined,
+          address: {
+            addressLine1: formData.addressLine1 || undefined,
+            addressLine2: formData.addressLine2 || undefined,
+            city: formData.city || undefined,
+            state: formData.state || undefined,
+            zipCode: formData.zipCode || undefined,
+            country: 'United States'
+          },
           legalEntityType: formData.legalEntityType || undefined,
           legalEntityOrganizedUnder: formData.legalEntityOrganizedUnder || undefined,
           posLoanAppAssignee: formData.posLoanAppAssignee || undefined,
