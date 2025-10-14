@@ -3107,20 +3107,23 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                             </>
                           )}
 
-                          <button
-                            title="Credit Report"
-                            onClick={() => {
-                              router.push({
-                                pathname: `/lender/loans/${id}/credit-report`,
-                                query: {
-                                  lenderId: loan?.lender, // Pass the lenderId 
-                                }
-                              });
-                            }}
-                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
-                          >
-                            <CreditCard className="h-5 w-5" />
-                          </button>
+                          {user.role !== "admin" && (
+                            <button
+                              title="Credit Report"
+                              onClick={() => {
+                                router.push({
+                                  pathname: `/lender/loans/${id}/credit-report`,
+                                  query: {
+                                    lenderId: loan?.lender, // Pass the lenderId 
+                                  }
+                                });
+                              }}
+                              className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
+                            >
+                              <CreditCard className="h-5 w-5" />
+                            </button>
+                          )}
+
                           
                           <button
                             title="Download 3.4 File"
