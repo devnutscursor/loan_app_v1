@@ -155,9 +155,9 @@ export async function generateURLAPdf(borrowerDetails,assets,income,debts,proper
   if (borrowerDetails.ssn) {
     const ssn = borrowerDetails.ssn.replace(/\D/g, '').padEnd(9, '0');
     try {
-      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN1[0]').setText(ssn.slice(0, 3));
-      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN2[0]').setText(ssn.slice(3, 5));
-      form.getTextField('topmostSubform[0].Page1[0]._1a_SSN3[0]').setText(ssn.slice(5, 9));
+      form.getTextField('5').setText(ssn.slice(0, 2));
+      form.getTextField('6').setText(ssn.slice(2, 6));
+      form.getTextField('7').setText(ssn.slice(6, 10));
     } catch (e) {
       console.log('Error setting SSN fields:', e.message);
     }
@@ -178,7 +178,7 @@ export async function generateURLAPdf(borrowerDetails,assets,income,debts,proper
         citizenshipOption = 'Non-Permanent Resident Alien';
         break;
       default:
-        citizenshipOption = 'U.S. Citizen'; // Default fallback
+        citizenshipOption = 'Non-Permanent Resident Alien'; // Default fallback
     }
     citizenshipGroup.select(citizenshipOption);
   }
@@ -1519,9 +1519,6 @@ export async function generateURLAPdf(borrowerDetails,assets,income,debts,proper
       } else if (loanType.includes('refinance')) {
         purposeRadioGroup = 'Group11';
         form.getRadioGroup(purposeRadioGroup).select('Refinance');
-      } else if (loanType.includes('construction')) {
-        purposeRadioGroup = 'Group11';
-        form.getRadioGroup(purposeRadioGroup).select('Construction');
       } else {
         // Other purpose - specify in text field
         purposeRadioGroup = 'Group11';
