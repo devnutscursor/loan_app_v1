@@ -10,11 +10,25 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
   const [selectedBorrowerId, setSelectedBorrowerId] = useState(null);
   const [matchFound, setMatchFound] = useState(false);
   const [creatingNewBorrower, setCreatingNewBorrower] = useState(false);
+  const [selectingBorrower, setSelectingBorrower] = useState(false);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCreatingNewBorrower(false);
+      setSelectingBorrower(false);
+      setSelectedBorrowerId(null);
+      setSearchTerm('');
+      setMatchFound(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       // Reset selection when modal opens
       setSelectedBorrowerId(null);
+      setCreatingNewBorrower(false);
+      setSelectingBorrower(false);
       
       // If initialBorrowers are provided and not empty, use them (pre-filtered matches)
       if (initialBorrowers && Array.isArray(initialBorrowers) && initialBorrowers.length > 0) {
@@ -115,6 +129,7 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
     
     try {
       setCreatingNewBorrower(true);
+      console.log('Creating new borrower with data:', borrowerDataFromXml);
       
       // Signal to parent component to create a new borrower
       onBorrowerSelected({
@@ -122,7 +137,8 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
         data: borrowerDataFromXml
       });
       
-      // Don't close modal here - parent component will handle showing referral link
+      // Reset state after signaling - parent will close modal and show referral link
+      setCreatingNewBorrower(false);
     } catch (error) {
       console.error('Error creating new borrower:', error);
       toast.error('Failed to create new borrower');
@@ -153,13 +169,18 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
     
     console.log('Selected existing borrower:', selectedBorrower);
     
+    // Set loading state before triggering the upload process
+    setSelectingBorrower(true);
+    
+    // Call parent handler - parent will manage closing the modal after API call
     onBorrowerSelected({
       action: 'select',
       borrowerId: selectedBorrowerId,
       borrower: selectedBorrower
     });
     
-    onClose();
+    // Don't close modal here - let parent close it after API completes
+    // The parent component's handleBorrowerSelected will call setShowBorrowerSelection(false)
   };
 
   // Get borrower display name with fallbacks
@@ -231,7 +252,7 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200">
@@ -351,17 +372,24 @@ const BorrowerSelectionModal = ({ isOpen, onClose, onBorrowerSelected, borrowerD
           <div className="flex justify-end space-x-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={selectingBorrower || creatingNewBorrower}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={handleSelectBorrower}
-              disabled={!selectedBorrowerId || creatingNewBorrower}
+              disabled={!selectedBorrowerId || creatingNewBorrower || selectingBorrower}
               className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
             >
-              {creatingNewBorrower && <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />}
-              {selectedBorrowerId === 'new' ? 'Create New' : 'Select Borrower'}
+              {(creatingNewBorrower || selectingBorrower) && (
+                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+              )}
+              {selectingBorrower 
+                ? 'Processing...' 
+                : selectedBorrowerId === 'new' 
+                  ? 'Create New' 
+                  : 'Select Borrower'}
             </button>
           </div>
         </div>
