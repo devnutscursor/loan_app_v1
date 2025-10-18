@@ -79,7 +79,7 @@ export const generateMismoXml = (loan) => {
 };
 
 /**
- * Format date as YYYYMMDD
+ * Format date as YYYYMMDD (no hyphens)
  * @param {Date} date - Date to format
  * @returns {string} - Formatted date string
  */
@@ -87,6 +87,28 @@ const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
   return d.toISOString().split('T')[0].replace(/-/g, '');
+};
+
+/**
+ * Format date as YYYY-MM-DD (with hyphens)
+ * @param {Date} date - Date to format
+ * @returns {string} - Formatted date string with hyphens
+ */
+const formatDateWithHyphens = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toISOString().split('T')[0];
+};
+
+/**
+ * Format number to always include decimal point and at least one decimal place
+ * @param {number} value - Number to format
+ * @returns {string} - Formatted number string
+ */
+const formatNumber = (value) => {
+  if (!value && value !== 0) return '0.0';
+  const num = parseFloat(value);
+  return num % 1 === 0 ? `${num}.0` : num.toString();
 };
 
 /**
@@ -108,7 +130,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${account.value || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(account.value || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>${account.accountType === 'Checking' ? 'CheckingAccount' : 
                            account.accountType === 'Savings' ? 'SavingsAccount' : 
                            account.accountType === 'Money Market' ? 'MoneyMarketAccount' : 
@@ -130,7 +152,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${stock.value || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(stock.value || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>Stock</AssetType>
               </ASSET_DETAIL>
             </ASSET>`;
@@ -144,7 +166,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${gift.value || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(gift.value || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>GiftOfCash</AssetType>
                 <FundsSourceType>${mapGiftSource(gift.source)}</FundsSourceType>
               </ASSET_DETAIL>
@@ -162,7 +184,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${misc.earnestMoney || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(misc.earnestMoney || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>Other</AssetType>
                 <AssetTypeOtherDescription>EarnestMoney</AssetTypeOtherDescription>
               </ASSET_DETAIL>
@@ -175,7 +197,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${misc.lifeInsurance || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(misc.lifeInsurance || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>LifeInsurance</AssetType>
               </ASSET_DETAIL>
             </ASSET>`;
@@ -187,7 +209,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${misc.vestedInterestInRetirement || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(misc.vestedInterestInRetirement || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>RetirementFund</AssetType>
               </ASSET_DETAIL>
             </ASSET>`;
@@ -199,7 +221,7 @@ const generateAssetsXml = (loan) => {
       xml += `
             <ASSET SequenceNumber="${assetCounter}" xlink:label="ASSET_${assetCounter}">
               <ASSET_DETAIL>
-                <AssetCashOrMarketValueAmount>${misc.otherAssets || 0}</AssetCashOrMarketValueAmount>
+                <AssetCashOrMarketValueAmount>${formatNumber(misc.otherAssets || 0)}</AssetCashOrMarketValueAmount>
                 <AssetType>Other</AssetType>
                 <AssetTypeOtherDescription>OtherLiquidAsset</AssetTypeOtherDescription>
               </ASSET_DETAIL>
@@ -255,12 +277,12 @@ const generateCollateralsXml = (loan) => {
                 </ADDRESS>
                 <PROPERTY_DETAIL>
                   <PropertyUsageType>${mapOccupancyType(property.occupancyType)}</PropertyUsageType>
-                  <PropertyEstimatedValueAmount>${property.propertyValue || 0}</PropertyEstimatedValueAmount>
+                  <PropertyEstimatedValueAmount>${formatNumber(property.propertyValue || 0)}</PropertyEstimatedValueAmount>
                 </PROPERTY_DETAIL>
                 <SALES_CONTRACTS>
                   <SALES_CONTRACT>
                     <SALES_CONTRACT_DETAIL>
-                      <SalesContractAmount>${property.contractPurchasePrice || property.propertyValue || 0}</SalesContractAmount>
+                      <SalesContractAmount>${formatNumber(property.contractPurchasePrice || property.propertyValue || 0)}</SalesContractAmount>
                     </SALES_CONTRACT_DETAIL>
                   </SALES_CONTRACT>
                 </SALES_CONTRACTS>
@@ -303,11 +325,10 @@ const generateLiabilitiesXml = (loan) => {
             <LIABILITY SequenceNumber="${index + 1}" xlink:label="LIABILITY_${index + 1}">
               <LIABILITY_DETAIL>
                 <LiabilityExclusionIndicator>false</LiabilityExclusionIndicator>
-                <LiabilityMonthlyPaymentAmount>${debt.monthlyPayment || 0}</LiabilityMonthlyPaymentAmount>
+                <LiabilityMonthlyPaymentAmount>${formatNumber(debt.monthlyPayment || 0)}</LiabilityMonthlyPaymentAmount>
                 <LiabilityPayoffStatusIndicator>${debt.paidAtClosing || debt.willBePaidOff ? 'true' : 'false'}</LiabilityPayoffStatusIndicator>
                 <LiabilityType>${mapLiabilityType(debt)}</LiabilityType>
-                ${debt.debtType ? `<LiabilityTypeOtherDescription>${debt.debtType}</LiabilityTypeOtherDescription>` : ''}
-                <LiabilityUnpaidBalanceAmount>${debt.balance || 0}</LiabilityUnpaidBalanceAmount>
+                <LiabilityUnpaidBalanceAmount>${formatNumber(debt.balance || 0)}</LiabilityUnpaidBalanceAmount>
               </LIABILITY_DETAIL>
               <LIABILITY_HOLDER>
                 <NAME>
@@ -367,7 +388,7 @@ const generateExpensesXml = (loan) => {
     xml += `
             <EXPENSE SequenceNumber="${index + 1}" xlink:label="EXPENSE_${index + 1}">
               <ExpenseType>${expense.expenseType || 'Other'}</ExpenseType>
-              <ExpenseMonthlyPaymentAmount>${expense.amount || 0}</ExpenseMonthlyPaymentAmount>
+              <ExpenseMonthlyPaymentAmount>${formatNumber(expense.amount || 0)}</ExpenseMonthlyPaymentAmount>
             </EXPENSE>`;
   });
   
@@ -408,15 +429,15 @@ const generateLoansXml = (loan) => {
                 <HELOCIndicator>${loanDetails.refinanceType === 'Home Equity Line of Credit' ? 'true' : 'false'}</HELOCIndicator>
               </LOAN_DETAIL>
               <TERMS_OF_LOAN>
-                <BaseLoanAmount>${loanDetails.loanAmount || 0}</BaseLoanAmount>
+                <BaseLoanAmount>${formatNumber(loanDetails.loanAmount || 0)}</BaseLoanAmount>
                 <LoanPurposeType>${mapLoanPurposeType(loanDetails.loanType)}</LoanPurposeType>
                 <MortgageType>${getMortgageType(loan)}</MortgageType>
-                <NoteRatePercent>${loanParams.interestRate || 0}</NoteRatePercent>
-                <NoteAmount>${loanDetails.loanAmount || 0}</NoteAmount>
+                <NoteRatePercent>${formatNumber(loanParams.interestRate || 0)}</NoteRatePercent>
+                <NoteAmount>${formatNumber(loanDetails.loanAmount || 0)}</NoteAmount>
               </TERMS_OF_LOAN>
               <PAYMENT>
                 <PAYMENT_RULE>
-                  <InitialPrincipalAndInterestPaymentAmount>${loan.loanCalculations?.principalAndInterest || calculateMonthlyPayment(loanDetails.loanAmount, loanParams.interestRate, (loanParams.loanTerm || 30))}</InitialPrincipalAndInterestPaymentAmount>
+                  <InitialPrincipalAndInterestPaymentAmount>${formatNumber(loan.loanCalculations?.principalAndInterest || calculateMonthlyPayment(loanDetails.loanAmount, loanParams.interestRate, (loanParams.loanTerm || 30)))}</InitialPrincipalAndInterestPaymentAmount>
                 </PAYMENT_RULE>
               </PAYMENT>
             </LOAN>
@@ -437,7 +458,7 @@ const generateHousingExpensesXml = (loan) => {
   if (propertiesOwned.firstMortgage || propertiesOwned.rent) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${propertiesOwned.firstMortgage || propertiesOwned.rent || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(propertiesOwned.firstMortgage || propertiesOwned.rent || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Present</HousingExpenseTimingType>
                   <HousingExpenseType>${propertiesOwned.firstMortgage ? 'FirstMortgagePrincipalAndInterest' : 'Rent'}</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -447,7 +468,7 @@ const generateHousingExpensesXml = (loan) => {
   if (propertiesOwned.otherHousingExpenses) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${propertiesOwned.otherHousingExpenses || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(propertiesOwned.otherHousingExpenses || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Present</HousingExpenseTimingType>
                   <HousingExpenseType>Other</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -457,7 +478,7 @@ const generateHousingExpensesXml = (loan) => {
   if (loanCalculations.principalAndInterest) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${loanCalculations.principalAndInterest || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(loanCalculations.principalAndInterest || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Proposed</HousingExpenseTimingType>
                   <HousingExpenseType>FirstMortgagePrincipalAndInterest</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -467,7 +488,7 @@ const generateHousingExpensesXml = (loan) => {
   if (loanCalculations.mortgageInsurance) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${loanCalculations.mortgageInsurance || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(loanCalculations.mortgageInsurance || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Proposed</HousingExpenseTimingType>
                   <HousingExpenseType>MIPremium</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -477,7 +498,7 @@ const generateHousingExpensesXml = (loan) => {
   if (loanCalculations.taxes) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${loanCalculations.taxes || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(loanCalculations.taxes || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Proposed</HousingExpenseTimingType>
                   <HousingExpenseType>RealEstateTax</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -487,7 +508,7 @@ const generateHousingExpensesXml = (loan) => {
   if (loanCalculations.insurance) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${loanCalculations.insurance || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(loanCalculations.insurance || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Proposed</HousingExpenseTimingType>
                   <HousingExpenseType>HazardInsurance</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -497,7 +518,7 @@ const generateHousingExpensesXml = (loan) => {
   if (loanCalculations.hoa) {
     xml += `
                 <HOUSING_EXPENSE>
-                  <HousingExpensePaymentAmount>${loanCalculations.hoa || 0}</HousingExpensePaymentAmount>
+                  <HousingExpensePaymentAmount>${formatNumber(loanCalculations.hoa || 0)}</HousingExpensePaymentAmount>
                   <HousingExpenseTimingType>Proposed</HousingExpenseTimingType>
                   <HousingExpenseType>HomeownersAssociationDuesAndCondominiumFees</HousingExpenseType>
                 </HOUSING_EXPENSE>`;
@@ -633,7 +654,7 @@ const generatePartiesXml = (loan) => {
                 <ROLE SequenceNumber="1" xlink:label="BORROWER_1">
                   <BORROWER>
                     <BORROWER_DETAIL>
-                      <BorrowerBirthDate>${formatDate(new Date(borrower.dateOfBirth || new Date()))}</BorrowerBirthDate>
+                      <BorrowerBirthDate>${formatDateWithHyphens(new Date(borrower.dateOfBirth || new Date()))}</BorrowerBirthDate>
                       <DependentCount>${dependents.length || 0}</DependentCount>
                       <MaritalStatusType>${mapMaritalStatus(borrower.maritalStatus)}</MaritalStatusType>
                       <SelfDeclaredMilitaryServiceIndicator>${militaryService?.hasServed ? 'true' : 'false'}</SelfDeclaredMilitaryServiceIndicator>
@@ -658,6 +679,7 @@ const generatePartiesXml = (loan) => {
               ${generateTaxpayerIdentifiersXml(loan)}
             </PARTY>
             ${generateLoanOriginationPartyXml(loan)}
+            ${generateLoanOriginatorPartyXml(loan)}
           </PARTIES>`;
   
   return xml;
@@ -718,38 +740,21 @@ const generateRelationshipsXml = (loan) => {
   const assets = loan.assets || {};
   const debts = loan.debts || [];
   const income = loan.income || {};
+  const expenses = loan.expenses || [];
   
   let xml = `
           <RELATIONSHIPS xsi:type="RELATIONSHIPS">`;
   
   let relationshipCounter = 1;
   
-  // Asset relationships
-  if (assets.checkingAndSavings && assets.checkingAndSavings.length > 0) {
-    assets.checkingAndSavings.forEach((_, index) => {
-      xml += `
-            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${index + 1}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
-      relationshipCounter++;
-    });
-  }
-  
-  if (assets.stocksAndBonds && assets.stocksAndBonds.length > 0) {
-    const startIndex = (assets.checkingAndSavings?.length || 0) + 1;
-    assets.stocksAndBonds.forEach((_, index) => {
-      xml += `
-            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${startIndex + index}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
-      relationshipCounter++;
-    });
-  }
-  
-  // Liability relationships
-  debts.forEach((_, index) => {
+  // Expense relationships - add first according to working XML
+  expenses.forEach((_, index) => {
     xml += `
-            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="LIABILITY_${index + 1}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/LIABILITY_IsAssociatedWith_ROLE" />`;
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="EXPENSE_${index + 1}" xlink:to="BORROWER_0" xlink:arcrole="urn:fdc:mismo.org:2009:residential/EXPENSE_IsAssociatedWith_ROLE" />`;
     relationshipCounter++;
   });
   
-  // Income relationships
+  // Income relationships - add before asset relationships in working XML
   if (income && loan.borrowerDetails?.employers) {
     const employers = loan.borrowerDetails.employers;
     let incomeCounter = 1;
@@ -778,6 +783,73 @@ const generateRelationshipsXml = (loan) => {
       incomeCounter++;
     }
   }
+  
+  // Asset relationships
+  if (assets.checkingAndSavings && assets.checkingAndSavings.length > 0) {
+    assets.checkingAndSavings.forEach((_, index) => {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${index + 1}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+    });
+  }
+  
+  if (assets.stocksAndBonds && assets.stocksAndBonds.length > 0) {
+    const startIndex = (assets.checkingAndSavings?.length || 0) + 1;
+    assets.stocksAndBonds.forEach((_, index) => {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${startIndex + index}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+    });
+  }
+  
+  // Add other asset relationships
+  if (assets.giftsAndGrants && assets.giftsAndGrants.length > 0) {
+    const startIndex = (assets.checkingAndSavings?.length || 0) + (assets.stocksAndBonds?.length || 0) + 1;
+    assets.giftsAndGrants.forEach((_, index) => {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${startIndex + index}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+    });
+  }
+  
+  // Add miscellaneous asset relationships
+  if (assets.miscellaneous) {
+    const misc = assets.miscellaneous;
+    let currentAssetIndex = (assets.checkingAndSavings?.length || 0) + 
+                           (assets.stocksAndBonds?.length || 0) + 
+                           (assets.giftsAndGrants?.length || 0) + 1;
+    
+    if (misc.earnestMoney) {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${currentAssetIndex}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+      currentAssetIndex++;
+    }
+    if (misc.lifeInsurance) {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${currentAssetIndex}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+      currentAssetIndex++;
+    }
+    if (misc.vestedInterestInRetirement) {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${currentAssetIndex}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+      currentAssetIndex++;
+    }
+    if (misc.otherAssets) {
+      xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="ASSET_${currentAssetIndex}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/ASSET_IsAssociatedWith_ROLE" />`;
+      relationshipCounter++;
+    }
+  }
+  
+  // Liability relationships
+  debts.forEach((_, index) => {
+    xml += `
+            <RELATIONSHIP SequenceNumber="${relationshipCounter}" xlink:from="LIABILITY_${index + 1}" xlink:to="BORROWER_1" xlink:arcrole="urn:fdc:mismo.org:2009:residential/LIABILITY_IsAssociatedWith_ROLE" />`;
+    relationshipCounter++;
+  });
   
   xml += `
           </RELATIONSHIPS>`;
@@ -809,7 +881,6 @@ export const downloadXmlFile = (xmlString, filename) => {
  */
 const generateCurrentIncomeXml = (loan) => {
   const incomes = [];
-  let sequenceNumber = 1;
 
   if (loan.income.baseIncome) {
     incomes.push({
@@ -859,10 +930,10 @@ const generateCurrentIncomeXml = (loan) => {
   return `
                     <CURRENT_INCOME>
                       <CURRENT_INCOME_ITEMS>
-                        ${incomes.map(income => `
-                        <CURRENT_INCOME_ITEM SequenceNumber="${sequenceNumber++}" xlink:label="CURRENT_INCOME_ITEM_${sequenceNumber}">
+                        ${incomes.map((income, index) => `
+                        <CURRENT_INCOME_ITEM SequenceNumber="${index + 1}" xlink:label="CURRENT_INCOME_ITEM_${index + 1}">
                           <CURRENT_INCOME_ITEM_DETAIL>
-                            <CurrentIncomeMonthlyTotalAmount>${income.amount}</CurrentIncomeMonthlyTotalAmount>
+                            <CurrentIncomeMonthlyTotalAmount>${formatNumber(income.amount)}</CurrentIncomeMonthlyTotalAmount>
                             <EmploymentIncomeIndicator>${income.employmentIncome}</EmploymentIncomeIndicator>
                             <IncomeType>${income.type}</IncomeType>
                             ${income.otherTypeDescription ? `<OtherIncomeTypeDescription>${income.otherTypeDescription}</OtherIncomeTypeDescription>` : ''}
@@ -909,25 +980,76 @@ const mapOtherIncomeType = (incomeType) => {
  */
 const generateDeclarationsXml = (loan) => {
   const declarations = loan.declarations || {};
+  const loanDetails = loan.loanDetails || {};
+  const isFHA = getMortgageType(loan) === 'FHA';
   
-  return `
+  let xml = `
                     <DECLARATION>
                       <DECLARATION_DETAIL>
                         <BankruptcyIndicator>${declarations.declaredBankruptcy ? 'true' : 'false'}</BankruptcyIndicator>
                         <CitizenshipResidencyType>${mapCitizenshipType(loan.borrowerDetails?.citizenship)}</CitizenshipResidencyType>
                         <HomeownerPastThreeYearsType>${declarations.hadOwnershipInterest ? 'Yes' : 'No'}</HomeownerPastThreeYearsType>
-                        <IntentToOccupyType>${declarations.occupyAsPrimary ? 'Yes' : 'No'}</IntentToOccupyType>
+                        <IntentToOccupyType>${declarations.occupyAsPrimary ? 'Yes' : 'No'}</IntentToOccupyType>`;
+  
+  // Add FHA-specific field
+  if (isFHA) {
+    xml += `
+                        <FHASecondaryResidenceIndicator>${declarations.fhaSecondaryResidence ? 'true' : 'false'}</FHASecondaryResidenceIndicator>`;
+  }
+  
+  xml += `
                         <OutstandingJudgmentsIndicator>${declarations.outstandingJudgements ? 'true' : 'false'}</OutstandingJudgmentsIndicator>
                         <PartyToLawsuitIndicator>${declarations.partyToLawsuit ? 'true' : 'false'}</PartyToLawsuitIndicator>
-                        <PresentlyDelinquentIndicator>${declarations.delinquent ? 'true' : 'false'}</PresentlyDelinquentIndicator>
-                        <PriorPropertyForeclosureCompletedIndicator>${declarations.propertyForeclosed ? 'true' : 'false'}</PriorPropertyForeclosureCompletedIndicator>
+                        <PresentlyDelinquentIndicator>${declarations.delinquent ? 'true' : 'false'}</PresentlyDelinquentIndicator>`;
+  
+  // Add FHA-specific fields
+  if (isFHA) {
+    xml += `
+                        <PriorPropertyDeedInLieuConveyedIndicator>${declarations.priorPropertyDeedInLieu ? 'true' : 'false'}</PriorPropertyDeedInLieuConveyedIndicator>`;
+  }
+  
+  xml += `
+                        <PriorPropertyForeclosureCompletedIndicator>${declarations.propertyForeclosed ? 'true' : 'false'}</PriorPropertyForeclosureCompletedIndicator>`;
+  
+  // Add FHA-specific fields
+  if (isFHA) {
+    xml += `
+                        <PriorPropertyShortSaleCompletedIndicator>${declarations.priorPropertyShortSale ? 'true' : 'false'}</PriorPropertyShortSaleCompletedIndicator>
+                        <PropertyProposedCleanEnergyLienIndicator>${declarations.proposedCleanEnergyLien ? 'true' : 'false'}</PropertyProposedCleanEnergyLienIndicator>`;
+  }
+  
+  xml += `
                         <UndisclosedBorrowedFundsIndicator>${declarations.borrowingMoney ? 'true' : 'false'}</UndisclosedBorrowedFundsIndicator>
-                        ${declarations.borrowingMoneyAmount ? `<UndisclosedBorrowedFundsAmount>${declarations.borrowingMoneyAmount}</UndisclosedBorrowedFundsAmount>` : ''}
-                        <UndisclosedComakerOfNoteIndicator>${declarations.coSigner ? 'true' : 'false'}</UndisclosedComakerOfNoteIndicator>
+                        ${declarations.borrowingMoneyAmount ? `<UndisclosedBorrowedFundsAmount>${formatNumber(declarations.borrowingMoneyAmount)}</UndisclosedBorrowedFundsAmount>` : ''}
+                        <UndisclosedComakerOfNoteIndicator>${declarations.coSigner ? 'true' : 'false'}</UndisclosedComakerOfNoteIndicator>`;
+  
+  // Add FHA-specific field
+  if (isFHA) {
+    xml += `
+                        <UndisclosedCreditApplicationIndicator>${declarations.undisclosedCreditApplication ? 'true' : 'false'}</UndisclosedCreditApplicationIndicator>`;
+  }
+  
+  xml += `
                         <UndisclosedMortgageApplicationIndicator>${declarations.applyingForMortgage ? 'true' : 'false'}</UndisclosedMortgageApplicationIndicator>
-                        <AlimonyChildSupportObligationIndicator>${declarations.alimonyChildSupport ? 'true' : 'false'}</AlimonyChildSupportObligationIndicator>
+                        <AlimonyChildSupportObligationIndicator>${declarations.alimonyChildSupport ? 'true' : 'false'}</AlimonyChildSupportObligationIndicator>`;
+  
+  // Add FHA-specific extension
+  if (isFHA) {
+    xml += `
+                        <EXTENSION>
+                          <OTHER>
+                            <ULAD:DECLARATION_DETAIL_EXTENSION>
+                              <ULAD:SpecialBorrowerSellerRelationshipIndicator>${declarations.specialBorrowerSellerRelationship ? 'true' : 'false'}</ULAD:SpecialBorrowerSellerRelationshipIndicator>
+                            </ULAD:DECLARATION_DETAIL_EXTENSION>
+                          </OTHER>
+                        </EXTENSION>`;
+  }
+  
+  xml += `
                       </DECLARATION_DETAIL>
                     </DECLARATION>`;
+  
+  return xml;
 };
 
 /**
@@ -968,21 +1090,19 @@ const generateEmployersXml = (loan) => {
                         </LEGAL_ENTITY>
                         <ADDRESS>
                           <AddressLineText>${employer.streetAddress || ''}</AddressLineText>
-                          <AddressUnitIdentifier>${employer.aptSteNum || ''}</AddressUnitIdentifier>
+                          ${employer.aptSteNum ? `<AddressUnitIdentifier>${employer.aptSteNum}</AddressUnitIdentifier>` : ''}
                           <CityName>${employer.city || ''}</CityName>
                           <PostalCode>${employer.zipCode || ''}</PostalCode>
                           <StateCode>${employer.state || ''}</StateCode>
                         </ADDRESS>
                         <EMPLOYMENT>
                           <EmploymentBorrowerSelfEmployedIndicator>${employer.isSelfEmployed === 'Yes' ? 'true' : 'false'}</EmploymentBorrowerSelfEmployedIndicator>
-                          <EmploymentMonthlyIncomeAmount>${employer.monthlyIncome || 0}</EmploymentMonthlyIncomeAmount>
+                          <EmploymentMonthlyIncomeAmount>${formatNumber(employer.monthlyIncome || 0)}</EmploymentMonthlyIncomeAmount>
                           <EmploymentClassificationType>Primary</EmploymentClassificationType>
                           <EmploymentPositionDescription>${employer.jobTitle || ''}</EmploymentPositionDescription>
-                          <EmploymentStartDate>${formatDate(employer.startDate)}</EmploymentStartDate>
+                          <EmploymentStartDate>${formatDateWithHyphens(employer.startDate)}</EmploymentStartDate>
                           <EmploymentStatusType>${mapEmploymentStatusToMismo(employer.employmentStatus)}</EmploymentStatusType>
-                          <YearsInProfession>${calculateYearsInProfession(employer.startDate)}</YearsInProfession>
-                          <MonthsInProfession>${calculateRemainingMonthsInProfession(employer.startDate)}</MonthsInProfession>
-                          
+                          <EmploymentTimeInLineOfWorkMonthsCount>${calculateTotalMonthsInProfession(employer.startDate)}</EmploymentTimeInLineOfWorkMonthsCount>
                           <SpecialBorrowerEmployerRelationshipIndicator>false</SpecialBorrowerEmployerRelationshipIndicator>
                           <OwnershipInterestType>LessThan25Percent</OwnershipInterestType>
                         </EMPLOYMENT>
@@ -1006,6 +1126,9 @@ const generateResidencesXml = (loan) => {
   let xml = '';
   
   if (borrowerDetails.currentAddress) {
+    const isRenting = borrowerDetails.currentAddress.housingStatus === 'Rent';
+    const propertiesOwned = loan.propertiesOwned || {};
+    
     xml = `
                     <RESIDENCES>
                       <RESIDENCE>
@@ -1015,7 +1138,19 @@ const generateResidencesXml = (loan) => {
                           <CityName>${borrowerDetails.currentAddress.city || ''}</CityName>
                           <PostalCode>${borrowerDetails.currentAddress.zipCode || ''}</PostalCode>
                           <StateCode>${borrowerDetails.currentAddress.state || ''}</StateCode>
-                        </ADDRESS>
+                        </ADDRESS>`;
+    
+    // Add LANDLORD section if renting
+    if (isRenting && propertiesOwned.rent) {
+      xml += `
+                        <LANDLORD>
+                          <LANDLORD_DETAIL>
+                            <MonthlyRentAmount>${formatNumber(propertiesOwned.rent)}</MonthlyRentAmount>
+                          </LANDLORD_DETAIL>
+                        </LANDLORD>`;
+    }
+    
+    xml += `
                         <RESIDENCE_DETAIL>
                           <BorrowerResidencyBasisType>${mapHousingStatus(borrowerDetails.currentAddress.housingStatus)}</BorrowerResidencyBasisType>
                           <BorrowerResidencyDurationMonthsCount>${(borrowerDetails.currentAddress.yearsAtAddress || 0) * 12 + (borrowerDetails.currentAddress.monthsAtAddress || 0)}</BorrowerResidencyDurationMonthsCount>
@@ -1099,28 +1234,26 @@ const generateMilitaryServicesXml = (loan) => {
   if (militaryService.hasServed || militaryService.isSurvivingSpouse) {
     xml = `
                     <MILITARY_SERVICES>
-                      <MILITARY_SERVICE>
-                        <MILITARY_SERVICE_DETAIL>`;
+                      <MILITARY_SERVICE>`;
     
     if (militaryService.currentlyServing) {
       xml += `
-                          <MilitaryStatusType>ActiveDuty</MilitaryStatusType>`;
+                        <MilitaryStatusType>ActiveDuty</MilitaryStatusType>`;
     } else if (militaryService.isRetired) {
       xml += `
-                          <MilitaryStatusType>Retired</MilitaryStatusType>`;
+                        <MilitaryStatusType>Retired</MilitaryStatusType>`;
     } else if (militaryService.isNonActivated) {
       xml += `
-                          <MilitaryStatusType>ReserveNationalGuardNeverActivated</MilitaryStatusType>`;
+                        <MilitaryStatusType>ReserveNationalGuardNeverActivated</MilitaryStatusType>`;
     } else if (militaryService.isSurvivingSpouse) {
       xml += `
-                          <MilitaryStatusType>SurvivingSpouse</MilitaryStatusType>`;
+                        <MilitaryStatusType>SurvivingSpouse</MilitaryStatusType>`;
     } else {
       xml += `
-                          <MilitaryStatusType>Veteran</MilitaryStatusType>`;
+                        <MilitaryStatusType>Veteran</MilitaryStatusType>`;
     }
     
     xml += `
-                        </MILITARY_SERVICE_DETAIL>
                       </MILITARY_SERVICE>
                     </MILITARY_SERVICES>`;
   }
@@ -1370,6 +1503,65 @@ const generateLoanOriginationPartyXml = (loan) => {
 };
 
 /**
+ * Generate Loan Originator Party XML section
+ * @param {Object} loan - Loan data
+ * @returns {string} - XML for loan originator party
+ */
+const generateLoanOriginatorPartyXml = (loan) => {
+  const lenderDetails = loan.lenderDetails || {};
+  
+  // Only generate if lender details exist
+  if (!lenderDetails.firstName && !lenderDetails.lastName && !lenderDetails.name) {
+    return '';
+  }
+  
+  const firstName = lenderDetails.firstName || '';
+  const lastName = lenderDetails.lastName || '';
+  const fullName = lenderDetails.name || `${firstName} ${lastName}`.trim();
+  
+  return `
+            <PARTY>
+              <INDIVIDUAL>
+                <CONTACT_POINTS>
+                  ${lenderDetails.email ? `<CONTACT_POINT>
+                    <CONTACT_POINT_EMAIL>
+                      <ContactPointEmailValue>${lenderDetails.email}</ContactPointEmailValue>
+                    </CONTACT_POINT_EMAIL>
+                  </CONTACT_POINT>` : ''}
+                  ${lenderDetails.phone ? `<CONTACT_POINT>
+                    <CONTACT_POINT_TELEPHONE>
+                      <ContactPointTelephoneValue>${lenderDetails.phone}</ContactPointTelephoneValue>
+                    </CONTACT_POINT_TELEPHONE>
+                    <CONTACT_POINT_DETAIL>
+                      <ContactPointRoleType>Work</ContactPointRoleType>
+                    </CONTACT_POINT_DETAIL>
+                  </CONTACT_POINT>` : ''}
+                </CONTACT_POINTS>
+                <NAME>
+                  ${firstName ? `<FirstName>${firstName}</FirstName>` : ''}
+                  ${lastName ? `<LastName>${lastName}</LastName>` : ''}
+                  <FullName>${fullName}</FullName>
+                </NAME>
+              </INDIVIDUAL>
+              <ROLES>
+                <ROLE SequenceNumber="1" xlink:label="LOAN_ORIGINATOR_1">
+                  ${lenderDetails.licenseNumber ? `<LICENSES>
+                    <LICENSE>
+                      <LICENSE_DETAIL>
+                        <LicenseAuthorityLevelType>PublicState</LicenseAuthorityLevelType>
+                        <LicenseIdentifier>${lenderDetails.licenseNumber}</LicenseIdentifier>
+                      </LICENSE_DETAIL>
+                    </LICENSE>
+                  </LICENSES>` : ''}
+                  <ROLE_DETAIL>
+                    <PartyRoleType>LoanOriginator</PartyRoleType>
+                  </ROLE_DETAIL>
+                </ROLE>
+              </ROLES>
+            </PARTY>`;
+};
+
+/**
  * Generate Taxpayer Identifiers XML section
  * @param {Object} loan - Loan data
  * @returns {string} - XML for taxpayer identifiers
@@ -1398,46 +1590,29 @@ const generateTaxpayerIdentifiersXml = (loan) => {
  */
 const mapEmploymentStatusToMismo = (status) => {
   const mapping = {
-    'Full-time': 'currentEmployer',
-    'Part-time': 'currentEmployer',
-    'Self-employed': 'currentEmployer'
+    'Full-time': 'Current',
+    'Part-time': 'Current',
+    'Self-employed': 'Current'
   };
-  return mapping[status] || 'currentEmployer';
+  return mapping[status] || 'Current';
 };
 
 /**
- * Calculate years in profession from a start date
+ * Calculate total months in profession from a start date
  * @param {string | Date} startDate - The start date of the employment
- * @returns {number} - The number of years in the profession
+ * @returns {number} - The total number of months in the profession
  */
-const calculateYearsInProfession = (startDate) => {
+const calculateTotalMonthsInProfession = (startDate) => {
   if (!startDate) return 0;
   const start = new Date(startDate);
   const now = new Date();
-  let years = now.getFullYear() - start.getFullYear();
-  const m = now.getMonth() - start.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < start.getDate())) {
-    years--;
+  
+  let months = (now.getFullYear() - start.getFullYear()) * 12;
+  months += now.getMonth() - start.getMonth();
+  
+  if (now.getDate() < start.getDate()) {
+    months--;
   }
-  return years > 0 ? years : 0;
-};
-
-/**
- * Calculate remaining months in profession from a start date
- * @param {string | Date} startDate - The start date of the employment
- * @returns {number} - The number of remaining months
- */
-const calculateRemainingMonthsInProfession = (startDate) => {
-    if (!startDate) return 0;
-    const start = new Date(startDate);
-    const now = new Date();
-    let months = now.getMonth() - start.getMonth();
-    let years = now.getFullYear() - start.getFullYear();
-    if (now.getDate() < start.getDate()) {
-        months--;
-    }
-    if (months < 0) {
-        months += 12;
-    }
-    return months;
+  
+  return months > 0 ? months : 0;
 }; 

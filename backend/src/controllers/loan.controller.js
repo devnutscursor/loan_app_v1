@@ -2763,9 +2763,16 @@ function extractLoanDataFromXML(parsedXML) {
 };
 
     
+    // Find the SubjectLoan specifically (handle both single and multiple loan scenarios)
+    const loans = getArray(deal, 'loans.loan');
+    const subjectLoan = loans.find(loan => 
+      getValue(loan, 'loanroletype') === 'SubjectLoan' || 
+      getValue(loan, 'attr.loanroletype') === 'SubjectLoan'
+    ) || loans[0]; // Fallback to first loan if SubjectLoan not found
+
     const loanDetails = {
-      loanAmount: getNumber(deal, 'loans.loan.terms_of_loan.baseloanamount'),
-      loanType: getValue(deal, 'loans.loan.terms_of_loan.loanpurposetype'),
+      loanAmount: getNumber(subjectLoan, 'terms_of_loan.baseloanamount'),
+      loanType: getValue(subjectLoan, 'terms_of_loan.loanpurposetype'),
   };
     
     const property = {
