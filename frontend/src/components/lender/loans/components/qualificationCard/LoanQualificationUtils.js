@@ -319,7 +319,12 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   
   // Determine qualification
   const dtiLimit = selectedProgram?.restrictions?.dtiRestriction?.max || 43;
-  const isQualified = dti <= dtiLimit;
+  const minDownPayment = loan?.loanParameters?.downPaymentMin || selectedProgram?.restrictions?.downPaymentRestriction?.min || 3;
+  
+  // Check both DTI and down payment requirements
+  const isDTIQualified = dti <= dtiLimit;
+  const isDownPaymentQualified = defaultDownPaymentPercent >= minDownPayment;
+  const isQualified = isDTIQualified && isDownPaymentQualified;
   
   return {
     loanAmount: defaultLoanAmount,

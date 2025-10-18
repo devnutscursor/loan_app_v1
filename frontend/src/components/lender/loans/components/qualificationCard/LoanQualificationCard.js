@@ -345,7 +345,12 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       ) || loanPrograms[0];
 
       const dtiLimit = selectedProgForQual?.restrictions?.dtiRestriction?.max ?? 43;
-      const isQualifiedComputed = computedDti <= dtiLimit;
+      const minDownPayment = currentLoan?.loanParameters?.downPaymentMin || (selectedProgForQual?.restrictions?.downPaymentRestriction?.min ?? 3);
+
+      // Check both DTI and down payment requirements
+      const isDTIQualified = computedDti <= dtiLimit;
+      const isDownPaymentQualified = downPaymentPercent >= minDownPayment;
+      const isQualifiedComputed = isDTIQualified && isDownPaymentQualified;
 
       setCalculations({
         loanAmount,
@@ -773,8 +778,13 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       });
 
       // Determine qualification
-      const dtiMax = 43; // Default maximum DTI
-      const isQualified = dti <= dtiMax;
+      const dtiMax = selectedProgram?.restrictions?.dtiRestriction?.max || 43;
+      const minDownPayment = loanData?.loanParameters?.downPaymentMin || selectedProgram?.restrictions?.downPaymentRestriction?.min || 3;
+      
+      // Check both DTI and down payment requirements
+      const isDTIQualified = dti <= dtiMax;
+      const isDownPaymentQualified = downPaymentPercent >= minDownPayment;
+      const isQualified = isDTIQualified && isDownPaymentQualified;
       
       // Create calculations object
       const calculations = {

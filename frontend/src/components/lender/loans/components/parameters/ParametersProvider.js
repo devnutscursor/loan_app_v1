@@ -247,8 +247,11 @@ const ParametersProvider = ({
     const dti = params.income > 0 ? 
       ((params.debts + monthlyPayment) / params.income) * 100 : 0;
     
-    // Determine qualification
-    const isQualified = dti <= params.dtiMax;
+    // Determine qualification - check both DTI and down payment
+    const minDownPayment = params.downPaymentMin || selectedProgram?.restrictions?.downPaymentRestriction?.min || 3;
+    const isDTIQualified = dti <= params.dtiMax;
+    const isDownPaymentQualified = params.downPaymentPercent >= minDownPayment;
+    const isQualified = isDTIQualified && isDownPaymentQualified;
     
     // Update calculation state
     setCalculations({
@@ -289,10 +292,12 @@ const ParametersProvider = ({
     // Special handling for down payment which affects down payment percentage
     if (name === 'downPayment') {
       updateParamsAndCalculate(prev => {
-        const downPaymentPercent = (numValue / prev.loanAmount) * 100;
+        // Clamp down payment to valid range (0 to loan amount)
+        const clampedValue = Math.max(0, Math.min(numValue, prev.loanAmount));
+        const downPaymentPercent = (clampedValue / prev.loanAmount) * 100;
         return {
           ...prev,
-          downPayment: numValue,
+          downPayment: clampedValue,
           downPaymentPercent: downPaymentPercent
         };
       });
@@ -300,11 +305,13 @@ const ParametersProvider = ({
     // Special handling for down payment percentage which affects down payment
     else if (name === 'downPaymentPercent') {
       updateParamsAndCalculate(prev => {
-        const downPayment = (numValue / 100) * prev.loanAmount;
+        // Clamp down payment percent to 0-100%
+        const clampedPercent = Math.max(0, Math.min(numValue, 100));
+        const downPayment = (clampedPercent / 100) * prev.loanAmount;
         return {
           ...prev,
           downPayment: downPayment,
-          downPaymentPercent: numValue
+          downPaymentPercent: clampedPercent
         };
       });
     }
@@ -316,6 +323,58 @@ const ParametersProvider = ({
           ...prev,
           loanAmount: numValue,
           downPayment: downPayment
+        };
+      });
+    }
+    // Validation for Rate Adjustment
+    else if (name === 'rateAdjustment') {
+      updateParamsAndCalculate(prev => {
+        // Get the base interest rate (without adjustment)
+        const baseRate = prev.interestRate || 0;
+        // Clamp between -(baseRate) and 100%
+        const clampedValue = Math.max(-baseRate, Math.min(numValue, 100));
+        return {
+          ...prev,
+          [name]: clampedValue
+        };
+      });
+    }
+    // Validation for DTI Max
+    else if (name === 'dtiMax') {
+      updateParamsAndCalculate(prev => {
+        // Clamp to 0-100%
+        const clampedValue = Math.max(0, Math.min(numValue, 100));
+        return {
+          ...prev,
+          [name]: clampedValue
+        };
+      });
+    }
+    // Validation for Down Payment Min
+    else if (name === 'downPaymentMin') {
+      updateParamsAndCalculate(prev => {
+        // Clamp to 0-100%
+        let clampedValue = Math.max(0, Math.min(numValue, 100));
+        // Auto-adjust max if min exceeds it
+        const newMax = clampedValue > prev.downPaymentMax ? clampedValue : prev.downPaymentMax;
+        return {
+          ...prev,
+          downPaymentMin: clampedValue,
+          downPaymentMax: newMax
+        };
+      });
+    }
+    // Validation for Down Payment Max
+    else if (name === 'downPaymentMax') {
+      updateParamsAndCalculate(prev => {
+        // Clamp to 0-100%
+        let clampedValue = Math.max(0, Math.min(numValue, 100));
+        // Auto-adjust min if max is below it
+        const newMin = clampedValue < prev.downPaymentMin ? clampedValue : prev.downPaymentMin;
+        return {
+          ...prev,
+          downPaymentMin: newMin,
+          downPaymentMax: clampedValue
         };
       });
     }
@@ -451,8 +510,11 @@ const ParametersProvider = ({
     const dti = localParams.income > 0 ? 
       ((localParams.debts + monthlyPayment) / localParams.income) * 100 : 0;
     
-    // Determine if the applicant qualifies based on DTI
-    const isQualified = dti <= localParams.dtiMax;
+    // Determine if the applicant qualifies based on DTI and down payment
+    const minDownPayment = localParams.downPaymentMin || selectedProgram?.restrictions?.downPaymentRestriction?.min || 3;
+    const isDTIQualified = dti <= localParams.dtiMax;
+    const isDownPaymentQualified = localParams.downPaymentPercent >= minDownPayment;
+    const isQualified = isDTIQualified && isDownPaymentQualified;
     
     // Update calculation state
     setCalculations({
