@@ -216,25 +216,25 @@ if (loading && milestones.length === 0) {
       </div>
 
       {/* Milestones List */}
-      <div className="space-y-4 overflow-x-auto">
+      <div className="space-y-2">
         {milestones.map((milestone, index) => (
           <div
             key={milestone._id}
-            className={`min-w-[530px] border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 ${milestone.status === 'completed' 
+            className={`w-full border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 ${milestone.status === 'completed' 
               ? 'border-l-4 border-l-green-500' 
               : milestone.status === 'in_progress' 
                 ? 'border-l-4 border-l-blue-500 bg-blue-100' 
                 : 'border-l-4 border-l-gray-300'}`}
           >
-            <div className="flex items-center justify-between py-2 px-3 ">
-              <div className="flex items-center flex-1">
-                <div className="mr-2">
+            <div className="flex items-center justify-between py-2 px-3">
+              <div className="flex items-center flex-1 min-w-0">
+                <div className="mr-2 flex-shrink-0">
                   <MilestoneStatusIcon status={milestone.status} />
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-base font-medium text-gray-900">{milestone.name}</h4>
-                    <div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <h4 className="text-base font-medium text-gray-900 truncate">{milestone.name}</h4>
+                    <div className="flex-shrink-0">
                       {milestone.status === 'completed' ? (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
                           Completed
@@ -251,21 +251,19 @@ if (loading && milestones.length === 0) {
                     </div>
                   </div>
                   {milestone.description && (
-                    <p className="text-xs text-gray-600">{milestone.description}</p>
+                    <p className="text-xs text-gray-600 mt-1 break-words">{milestone.description}</p>
                   )}
-                  
                 </div>
               </div>
-
             </div>
             
-            {/* Action buttons bar and Timeline */}
-            <div className="bg-gray-50 px-3 py-2 border-t border-gray-100 flex justify-between items-center">
-              {/* Timeline moved to gray area - LEFT SIDE */}
+            {/* Timeline and Action buttons */}
+            <div className="bg-gray-50 px-3 py-2 border-t border-gray-100">
+              {/* Timeline - Always visible */}
               {(milestone.startDate || milestone.deadlineDate) && (
-                <div className="flex items-center">
-                  <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
-                  <span className="text-xs text-gray-600">
+                <div className="flex items-start mb-3">
+                  <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-gray-600 min-w-0 flex-1">
                     <span className="font-medium">Timeline:</span> 
                     {milestone.startDate && 
                       <> {new Date(milestone.startDate).toLocaleDateString()}</>
@@ -275,7 +273,7 @@ if (loading && milestones.length === 0) {
                     {milestone.deadlineDate && (() => {
                       const deadlineStatus = getDeadlineStatus(milestone.deadlineDate);
                       return (
-                        <span className={`font-medium inline-flex items-center ${
+                        <span className={`font-medium inline-flex items-center flex-wrap ${
                           deadlineStatus === 'overdue' 
                             ? 'text-red-600' 
                             : deadlineStatus === 'approaching' 
@@ -296,59 +294,122 @@ if (loading && milestones.length === 0) {
                         </span>
                       );
                     })()}
-                  </span>
+                  </div>
                 </div>
               )}
               
-              {/* Action buttons - RIGHT SIDE */}
+              {/* Action buttons */}
               <div className="flex items-center space-x-2">
-                {/* Status buttons */}
-                <div className="flex space-x-2">
-                {milestone.status !== 'completed' && (
-                  <button
-                    onClick={() => handleStatusChange(milestone._id, 'completed')}
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-green-300 rounded-md text-green-700  hover:bg-green-100 transition-colors duration-200"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" /> Mark Complete
-                  </button>
-                )}
+                {/* Desktop: Horizontal layout */}
+                <div className="hidden sm:flex items-center space-x-2">
+                  {/* Status buttons */}
+                  <div className="flex space-x-2">
+                  {milestone.status !== 'completed' && (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'completed')}
+                      className="inline-flex items-center px-3 py-1 text-xs font-medium border border-green-300 rounded-md text-green-700  hover:bg-green-100 transition-colors duration-200"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" /> Mark Complete
+                    </button>
+                  )}
+                  
+                  {milestone.status !== 'in_progress' && milestone.status !== 'completed' && (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'in_progress')}
+                      className="inline-flex items-center px-3 py-1 text-xs font-medium border border-blue-300 rounded-md text-blue-700  hover:bg-blue-100 transition-colors duration-200"
+                    >
+                      <Edit className="h-3 w-3 mr-1" /> Mark In Progress
+                    </button>
+                  )}
+                  
+                  {milestone.status !== 'pending' && (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'pending')}
+                      className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Mark Pending
+                    </button>
+                  )}
+                </div>
                 
-                {milestone.status !== 'in_progress' && milestone.status !== 'completed' && (
+                <div className="flex space-x-1 ml-2 border-l border-gray-200 pl-2">
+                  {/* Edit button */}
                   <button
-                    onClick={() => handleStatusChange(milestone._id, 'in_progress')}
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-blue-300 rounded-md text-blue-700  hover:bg-blue-100 transition-colors duration-200"
+                    onClick={() => handleEditMilestone(milestone)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <Edit className="h-3 w-3 mr-1" /> Mark In Progress
+                    <Edit className="h-3 w-3 mr-1" /> Edit
                   </button>
-                )}
-                
-                {milestone.status !== 'pending' && (
-                  <button
-                    onClick={() => handleStatusChange(milestone._id, 'pending')}
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Mark Pending
-                  </button>
-                )}
-              </div>
-              
-              <div className="flex space-x-1 ml-2 border-l border-gray-200 pl-2">
-                {/* Edit button */}
-                <button
-                  onClick={() => handleEditMilestone(milestone)}
-                  className="inline-flex items-center px-3 py-1 text-xs font-medium border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <Edit className="h-3 w-3 mr-1" /> Edit
-                </button>
 
-                {/* Delete button */}
-                <button
-                  onClick={() => setConfirmDelete(milestone._id)}
-                  className="inline-flex items-center px-3 py-1 text-xs font-medium border border-red-200 rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors duration-200"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" /> Delete
-                </button>
-              </div>
+                  {/* Delete button */}
+                  <button
+                    onClick={() => setConfirmDelete(milestone._id)}
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium border border-red-200 rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors duration-200"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                  </button>
+                </div>
+                </div>
+
+                {/* Mobile: 2x2 Grid Layout */}
+                <div className="sm:hidden grid grid-cols-2 gap-2 w-full">
+                  {/* Button 1: Complete or In Progress */}
+                  {milestone.status !== 'completed' ? (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'completed')}
+                      className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-green-300 rounded-md text-green-700 hover:bg-green-100 transition-colors duration-200"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" /> Complete
+                    </button>
+                  ) : milestone.status !== 'in_progress' ? (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'in_progress')}
+                      className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-blue-300 rounded-md text-blue-700 hover:bg-blue-100 transition-colors duration-200"
+                    >
+                      <Edit className="h-3 w-3 mr-1" /> In Progress
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'pending')}
+                      className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Pending
+                    </button>
+                  )}
+
+                  {/* Button 2: Pending or In Progress */}
+                  {milestone.status === 'pending' ? (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'in_progress')}
+                      className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-blue-300 rounded-md text-blue-700 hover:bg-blue-100 transition-colors duration-200"
+                    >
+                      <Edit className="h-3 w-3 mr-1" /> In Progress
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusChange(milestone._id, 'pending')}
+                      className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Pending
+                    </button>
+                  )}
+
+                  {/* Button 3: Edit */}
+                  <button
+                    onClick={() => handleEditMilestone(milestone)}
+                    className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-500 bg-white hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <Edit className="h-3 w-3 mr-1" /> Edit
+                  </button>
+
+                  {/* Button 4: Delete */}
+                  <button
+                    onClick={() => setConfirmDelete(milestone._id)}
+                    className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-red-200 rounded-md text-red-600 bg-white hover:bg-red-50 transition-colors duration-200"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>

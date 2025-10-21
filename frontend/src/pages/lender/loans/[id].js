@@ -8,7 +8,7 @@ import { lenderService, companyService } from "../../../services/api";
 import { useAuth } from "../../../contexts/AuthContext";
 import loanService from "../../../services/loan.service";
 import LoanDashboard from "../../../components/lender/loans/LoanDashboard";
-import { MessageCircle, StickyNote, Download, Settings, FileText, CreditCard } from "lucide-react";
+import { MessageCircle, StickyNote, Download, Settings, FileText, CreditCard, Menu } from "lucide-react";
 import {  StandardFonts } from 'pdf-lib';
 import {
   BarChart2,
@@ -19,8 +19,6 @@ import {
   Files, // instead of FileStack
   Trophy, // or Flag if you prefer
   FileSpreadsheet, // For Application tab icon
-  ChevronDown, // For accordion expand/collapse
-  ChevronRight,
 } from "lucide-react";
 // Form components for editing
 import PersonalDetails from "../../../components/forms/borrower/PersonalDetails";
@@ -41,6 +39,9 @@ import DocumentsCard from "../../../components/borrower/loan/DocumentsCard";
 import LenderDocumentRequirements from "../../../components/lender/documents/LenderDocumentRequirements";
 import BorrowerScenarioTailwind from "../../../components/lender/loans/BorrowerScenarioTailwind";
 import LoanMilestones from "../../../components/lender/loans/LoanMilestones";
+import VerticalTabNavigation from "../../../components/lender/loans/VerticalTabNavigation";
+import MobileExpandableNavigation from "../../../components/lender/loans/MobileExpandableNavigation";
+import LoanDetailsSkeleton from "../../../components/lender/loans/LoanDetailsSkeleton";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
@@ -2112,6 +2113,9 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
   // Add new state to track accordion expansion
   const [isApplicationExpanded, setIsApplicationExpanded] = useState(true);
+  
+  // State for mobile navigation drawer
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Functions to handle dependents array
   const handleAddDependent = () => {
@@ -2848,153 +2852,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
         <div className="overflow-hidden">
           <div className="max-w-7xl mx-auto">
             {loading ? (
-              <div className="animate-pulse">
-                {/* Header skeleton */}
-                <div className="max-w-7xl mx-auto">
-                  <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
-                    {/* Back button skeleton */}
-                    <div className="flex items-center px-2 py-1 rounded">
-                      <div className="h-5 w-5 bg-gray-200 rounded"></div>
-                      <div className="ml-1 h-4 w-16 bg-gray-200 rounded"></div>
-                    </div>
-                    <div className="block w-px h-5 bg-gray-200"></div>
-                    {/* Title skeleton */}
-                    <div className="h-7 w-48 bg-gray-200 rounded"></div>
-                  </div>
-
-                  {/* Loan info header skeleton */}
-                  <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Loan icon skeleton */}
-                      <div className="flex-shrink-0 bg-gray-200 rounded-md p-2 h-10 w-10"></div>
-                      <div className="ml-2 min-w-0">
-                        {/* Loan number skeleton */}
-                        <div className="h-5 bg-gray-200 rounded w-24 mb-1"></div>
-                        {/* Loan type skeleton */}
-                        <div className="h-4 bg-gray-200 rounded w-20"></div>
-                      </div>
-                    </div>
-                    {/* Action buttons skeleton */}
-                    <div className="flex items-center gap-1">
-                      {/* Circular button skeletons */}
-                      {[1, 2, 3, 4].map((i) => (
-                        <div
-                          key={i}
-                          className="h-9 w-9 bg-gray-200 rounded-full"
-                        ></div>
-                      ))}
-                      {/* Main action button skeleton */}
-                      <div className="ml-2 h-9 w-40 bg-gray-200 rounded-md"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex">
-                  {/* Tabs skeleton */}
-                  <div className="w-60 flex-shrink-0 mr-6">
-                    <div className="rounded-xl bg-white p-2 shadow-md border border-gray-100">
-                      <div className="flex flex-col space-y-2">
-                        {[1, 2, 3, 4].map((tab) => (
-                          <div key={tab} className="py-3 px-4 rounded-lg">
-                            <div className="flex items-center">
-                              <div className="h-5 w-5 bg-gray-200 rounded mr-3"></div>
-                              <div className="h-5 bg-gray-200 rounded w-24"></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content area skeleton */}
-                  <div className="flex-1">
-                    <div className="bg-white rounded-lg shadow p-6 mb-6">
-                      <div className="flex justify-between mb-4">
-                        <div className="h-7 bg-gray-200 rounded w-48"></div>
-                        <div className="h-7 bg-gray-200 rounded w-24"></div>
-                      </div>
-
-                      {/* Dashboard-like content skeleton */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                        <div className="space-y-4">
-                          {/* Card 1 */}
-                          <div className="bg-gray-100 p-4 rounded-lg">
-                            <div className="h-5 bg-gray-200 rounded w-32 mb-3"></div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Card 2 */}
-                          <div className="bg-gray-100 p-4 rounded-lg">
-                            <div className="h-5 bg-gray-200 rounded w-40 mb-3"></div>
-                            <div className="flex items-center mb-3">
-                              <div className="h-10 w-10 bg-gray-200 rounded-full mr-3"></div>
-                              <div>
-                                <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
-                                <div className="h-3 bg-gray-200 rounded w-24"></div>
-                              </div>
-                            </div>
-                            <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
-                              <div className="h-4 bg-gray-200 rounded w-36 mb-2"></div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          {/* Card 3 */}
-                          <div className="bg-gray-100 p-4 rounded-lg">
-                            <div className="h-5 bg-gray-200 rounded w-48 mb-3"></div>
-                            <div className="flex justify-between items-center mb-3">
-                              <div className="flex items-center">
-                                <div className="h-6 w-10 bg-gray-200 rounded mr-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-24"></div>
-                              </div>
-                              <div className="h-4 bg-gray-200 rounded w-16"></div>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4"></div>
-                            <div className="flex gap-3">
-                              <div className="flex-1 p-3 bg-gray-200 rounded"></div>
-                              <div className="flex-1 p-3 bg-gray-200 rounded"></div>
-                            </div>
-                          </div>
-
-                          {/* Card 4 */}
-                          <div className="bg-gray-100 p-4 rounded-lg">
-                            <div className="h-5 bg-gray-200 rounded w-36 mb-3"></div>
-                            <div className="flex items-center mb-3">
-                              <div className="h-16 w-16 rounded-full bg-gray-200 mr-3"></div>
-                              <div className="grid grid-cols-2 gap-2 flex-1">
-                                <div className="h-10 bg-gray-200 rounded"></div>
-                                <div className="h-10 bg-gray-200 rounded"></div>
-                                <div className="h-10 bg-gray-200 rounded"></div>
-                                <div className="h-10 bg-gray-200 rounded"></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LoanDetailsSkeleton />
             ) : error ? (
               <div className="bg-red-50 p-4 rounded-md">
                 <div className="flex">
@@ -3049,12 +2907,12 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       </span>
                     </Link>
                     <span className="block w-px h-5 bg-gray-200"></span>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-none">
+                    <h1 className="text-xl font-bold sm:text-2xl text-gray-900 tracking-tight leading-none">
                       Loan Application Details
                     </h1>
                   </div>
                 </div>
-                <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-2 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div className="bg-white shadow-sm rounded-lg mb-6 px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-md p-2">
                         <svg
@@ -3150,7 +3008,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                         <div className="w-full lg:w-auto flex items-center col-span-1 sm:col-span-2 lg:col-span-1">
                           <button
                             onClick={handleSendPreApprovalLetter}
-                            className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 min-w-[300px] sm:min-w-0 text-center text-xs lg:text-sm"
+                            className="ml-2 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 min-w-[300px] sm:min-w-0 text-center text-xs lg:text-sm"
                           >
                             <svg
                               className="h-5 w-5"
@@ -3172,144 +3030,24 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                     </div>
                   </div>
                 </div>
-                <div className="flex overflow-x-auto">
-                  {/* Vertical Tabs Navigation */}
-                  {/* Vertical Tabs Navigation */}
-                  <div className="w-60 flex-shrink-0 mr-6 min-w-[240px]">
-                    <div className="rounded-xl bg-white p-3 shadow-lg border border-gray-100 sticky top-4">
-                      <nav
-                        className="flex flex-col space-y-2"
-                        aria-label="Tabs"
-                      >
-                        {mainTabs.map((tab) => {
-                          const isActive = tab.id === activeTab;
-                          const isExpanded =
-                            tab.id === "application" && isApplicationExpanded;
-                          return (
-                            <div key={tab.id} className="group">
-                              <button
-                                onClick={() => handleTabClick(tab.id)}
-                                className={`
-                                relative w-full flex items-center justify-between py-3 px-4 rounded-lg text-sm font-medium
-                                transform transition-all duration-300 ease-in-out
-                                ${
-                                  isActive
-                                    ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
-                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
-                                }
-                              `}
-                              >
-                                <div className="flex items-center">
-                                  <span
-                                    className={`mr-3 transition-all duration-300 ${
-                                      isActive
-                                        ? "text-blue-700 opacity-100 scale-110"
-                                        : "opacity-70 group-hover:opacity-90"
-                                    }`}
-                                  >
-                                    <tab.icon
-                                      className={`h-5 w-5 ${
-                                        isActive ? "drop-shadow-sm" : ""
-                                      }`}
-                                    />
-                                  </span>
-                                  <span
-                                    className={isActive ? "font-semibold" : ""}
-                                  >
-                                    {tab.label}
-                                  </span>
-                                </div>
-
-                                {/* Show chevron only for Application tab */}
-                                {tab.id === "application" && (
-                                  <span className="text-gray-500 transition-transform duration-200">
-                                    {isApplicationExpanded ? (
-                                      <ChevronDown className="h-4 w-4" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4" />
-                                    )}
-                                  </span>
-                                )}
-
-                                {/* Active indicator with enhanced styling */}
-                                {isActive && (
-                                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
-                                )}
-                              </button>
-
-                              {/* Display sub-tabs when Application is expanded */}
-                              {tab.id === "application" && (
-                                <div
-                                  className={`
-                                  pl-4 mt-2 space-y-1.5 overflow-hidden
-                                  transition-[max-height,opacity,transform] duration-300 ease-in-out
-                                  ${
-                                    isApplicationExpanded
-                                      ? "max-h-96 opacity-100"
-                                      : "max-h-0 opacity-0"
-                                  }
-                                `}
-                                >
-                                  {applicationSubTabs.map((subTab) => {
-                                    const isSubActive = activeTab === subTab.id;
-                                    return (
-                                      <button
-                                        key={subTab.id}
-                                        onClick={() => {
-                                          router.push(
-                                            `/lender/loans/${id}?tab=${subTab.id}`,
-                                            undefined,
-                                            { shallow: true }
-                                          );
-                                          setActiveTab(subTab.id);
-                                        }}
-                                        className={`
-                                          relative w-full flex items-center py-2.5 px-4 rounded-lg text-sm font-medium
-                                          transform transition-all duration-300 ease-in-out
-                                          ${
-                                            isSubActive
-                                              ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm"
-                                              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
-                                          }
-                                        `}
-                                      >
-                                        <span
-                                          className={`
-                                            mr-3 transition-all duration-300 ease-in-out
-                                            ${
-                                              isSubActive
-                                                ? "text-blue-700 opacity-100 scale-110"
-                                                : "opacity-70"
-                                            }
-                                          `}
-                                        >
-                                          <subTab.icon className="h-4 w-4" />
-                                        </span>
-                                        <span
-                                          className={`text-xs transition-colors duration-300 ${
-                                            isSubActive
-                                              ? "font-medium text-gray-900 "
-                                              : ""
-                                          }`}
-                                        >
-                                          {subTab.label}
-                                        </span>
-                                        {isSubActive && (
-                                          <span className="absolute right-2 w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </nav>
-                    </div>
+                <div className="flex">
+                  {/* Desktop Vertical Tabs Navigation - Hidden on mobile/tablet */}
+                  <div className="hidden lg:block">
+                    <VerticalTabNavigation
+                      mainTabs={mainTabs}
+                      applicationSubTabs={applicationSubTabs}
+                      activeTab={activeTab}
+                      isApplicationExpanded={isApplicationExpanded}
+                      handleTabClick={handleTabClick}
+                      setActiveTab={setActiveTab}
+                      router={router}
+                      id={id}
+                    />
                   </div>
 
-                  <div className="flex-1 space-y-6 overflow-hidden min-w-[750px]">
+
+                  {/* Content Area - Now responsive without min-width constraint on mobile */}
+                  <div className="flex-1 space-y-6 overflow-hidden lg:min-w-[750px]">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -4014,7 +3752,19 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
               </button>
             </div>
           </div>
-        </Modal>  
+        </Modal>
+        
+        {/* Mobile Expandable Navigation */}
+        <MobileExpandableNavigation
+          isOpen={isMobileNavOpen}
+          onToggle={() => setIsMobileNavOpen(!isMobileNavOpen)}
+          onClose={() => setIsMobileNavOpen(false)}
+          mainTabs={mainTabs}
+          applicationSubTabs={applicationSubTabs}
+          activeTab={activeTab}
+          handleTabClick={handleTabClick}
+        />
+        
         {/* Existing unsaved changes bar */}
         {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
           <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
