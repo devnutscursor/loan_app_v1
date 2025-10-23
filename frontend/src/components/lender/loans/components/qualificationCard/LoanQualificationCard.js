@@ -895,15 +895,15 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             <div className="space-y-3">
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Monthly Payment</div>
-                <div className="font-medium text-gray-900">{formatCurrency(calculations.monthlyPayment)}</div>
+                <div className=" font-medium text-xs sm:text-base text-gray-900">{formatCurrency(calculations.monthlyPayment)}</div>
               </div>
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Interest Rate</div>
-                <div className="font-medium text-gray-900">{calculations.interestRate}%</div>
+                <div className="font-medium text-gray-900 text-xs sm:text-base">{calculations.interestRate}%</div>
               </div>
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Loan Term</div>
-                <div className="font-medium text-gray-900">{calculations.loanTerm} years</div>
+                <div className="font-medium text-gray-900 text-xs sm:text-base">{calculations.loanTerm} years</div>
               </div>
             </div>
           </div>
@@ -912,17 +912,17 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             <div className="space-y-3">
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Loan Amount</div>
-                <div className="font-medium text-gray-900">{formatCurrency(calculations.loanAmount)}</div>
+                <div className="font-medium text-gray-900 text-xs sm:text-base">{formatCurrency(calculations.loanAmount)}</div>
               </div>
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Down Payment</div>
-                <div className="font-medium text-gray-900">
+                <div className="font-medium text-gray-900 text-xs sm:text-base">
                   {formatCurrency(calculations.downPayment)} <span className="text-xs text-gray-400">({calculations.downPaymentPercent}%)</span>
                 </div>
               </div>
               <div className="group">
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Program</div>
-                <div className="font-medium text-gray-900">{calculations.programName || "Conventional"}</div>
+                <div className="font-medium text-gray-900 text-xs sm:text-base">{calculations.programName || "Conventional"}</div>
               </div>
             </div>
           </div>
@@ -933,13 +933,13 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center space-x-4">
             <div>
-              <span className="text-gray-500">P&I:</span> <span className="font-medium">{formatCurrency(calculations.principalAndInterest)}</span>
+              <span className="text-gray-500">P&I:</span> <span className="font-medium text-xs sm:text-base">{formatCurrency(calculations.principalAndInterest)}</span>
             </div>
             <div>
-              <span className="text-gray-500">Taxes:</span> <span className="font-medium">{formatCurrency(calculations.taxes)}</span>
+              <span className="text-gray-500">Taxes:</span> <span className="font-medium text-xs sm:text-base">{formatCurrency(calculations.taxes)}</span>
             </div>
             <div>
-              <span className="text-gray-500">Insurance:</span> <span className="font-medium">{formatCurrency(calculations.insurance)}</span>
+              <span className="text-gray-500">Insurance:</span> <span className="font-medium text-xs sm:text-base">{formatCurrency(calculations.insurance)}</span>
             </div>
           </div>
           <div className="text-blue-600 cursor-pointer hover:underline" onClick={handleOpenModal}>

@@ -242,30 +242,30 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500 text-xs">Loan Number</span>
-                    <span className="font-medium text-xs">
+                    <span className="text-gray-500 text-[10px] sm:text-xs">Loan Number</span>
+                    <span className="font-medium text-[10px] sm:text-xs">
                       {loan?.loanNumber}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 text-xs">Loan Type</span>
-                    <span className="font-medium text-xs">
+                    <span className="text-gray-500 sm:text-xs text-[10px]">Loan Type</span>
+                    <span className="font-medium text-[10px] sm:text-xs">
                       {loan?.loanDetails?.loanType || "Not specified"}
                     </span>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500 text-xs">Approval Type</span>
-                    <span className="font-medium text-xs">
+                    <span className="text-gray-500 text-[10px] sm:text-xs">Approval Type</span>
+                    <span className="font-medium text-[10px] sm:text-xs">
                       {loan?.approvalType || "Not specified"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 text-xs">
+                    <span className="text-gray-500 text-[10px] sm:text-xs">
                       Application Date
                     </span>
-                    <span className="font-medium text-xs">
+                    <span className="font-medium text-[10px] sm:text-xs">
                       {loan?.createdAt
                         ? new Date(loan.createdAt).toLocaleDateString()
                         : "Unknown"}
@@ -293,20 +293,20 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Property Type
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.property?.propertyType || "Not specified"}
                       </span>
                     </div>
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Property Value
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.property?.propertyValue
                           ? currencyFormatter.format(
                               loan.property.propertyValue
@@ -317,16 +317,16 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">Occupancy</span>
-                      <span className="font-medium text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">Occupancy</span>
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.property?.occupancyType || "Not specified"}
                       </span>
                     </div>
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">Year Built</span>
-                      <span className="font-medium text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">Year Built</span>
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.property?.yearBuilt || "Not specified"}
                       </span>
                     </div>
@@ -385,10 +385,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
               {/* Borrower Header with Avatar */}
               <div className="flex items-center mb-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center mr-3">
-                  <UserIcon className="h-5 w-5" />
+                  <UserIcon className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="font-medium">
+                  <p className="font-medium text-xs sm:text-base">
                     {loan?.borrowerDetails?.firstName
                       ? `${loan.borrowerDetails.firstName} ${
                           loan.borrowerDetails.middleName || ""
@@ -414,10 +414,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Date of Birth
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.dateOfBirth
                           ? new Date(
                               loan.borrowerDetails.dateOfBirth
@@ -428,10 +428,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Marital Status
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.maritalStatus ||
                           "Not specified"}
                       </span>
@@ -439,34 +439,34 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">Phone</span>
-                      <span className="font-medium text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">Phone</span>
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.phone || "Not provided"}
                       </span>
                     </div>
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">SSN</span>
-                      <span className="font-medium text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">SSN</span>
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.ssn || "Not available"}
                       </span>
                     </div>
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">Citizenship</span>
-                      <span className="font-medium text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">Citizenship</span>
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.citizenship || "Not specified"}
                       </span>
                     </div>
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         First-Time Buyer
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.declarations?.firstTimeBuyer ? "Yes" : "No"}
                       </span>
                     </div>
@@ -484,14 +484,14 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 </div>
                 <div className="grid grid-cols-1 gap-y-1.5 mb-2">
                   <div className="text-sm">
-                    <div className="text-xs">
+                    <div className="text-[10px] sm:text-xs">
                       <span className="font-medium text-gray-900">
                         {loan?.borrowerDetails?.currentAddress?.streetAddress ||
                           ""}{" "}
                         {loan?.borrowerDetails?.currentAddress?.aptSteNum || ""}
                       </span>
                     </div>
-                    <div className="text-xs">
+                    <div className="text-[10px] sm:text-xs">
                       <span className="text-gray-700">
                         {loan?.borrowerDetails?.currentAddress?.city || ""},{" "}
                         {loan?.borrowerDetails?.currentAddress?.state || ""}{" "}
@@ -501,10 +501,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Time at Address
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.currentAddress
                           ?.yearsAtAddress || 0}{" "}
                         years,{" "}
@@ -530,13 +530,11 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 {loan?.borrowerDetails?.employers &&
                   loan.borrowerDetails.employers.length > 0 && (
                     <div className="mb-2">
-                      <div className="text-xs font-medium">
+                      <div className="text-[10px] sm:text-xs font-medium">
                         {loan.borrowerDetails.employers[0].companyName || ""}
                       </div>
-                      <div className="text-xs text-gray-500 mb-2">
-                        {loan.borrowerDetails.employers[0].jobTitle || ""} •{" "}
-                        {loan.borrowerDetails.employers[0].employmentStatus ||
-                          ""}
+                      <div className="text-[10px] sm:text-xs text-gray-500 mb-2">
+                        {loan.borrowerDetails.employers[0].jobTitle || ""}
                       </div>
                     </div>
                   )}
@@ -544,10 +542,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Monthly Income
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.income?.baseIncome
                           ? currencyFormatter.format(loan.income.baseIncome)
                           : "Not specified"}
@@ -556,10 +554,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Total Monthly Income
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.financialCalculations?.totalIncome
                           ? currencyFormatter.format(
                               loan.financialCalculations.totalIncome
@@ -570,10 +568,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   </div>
                   <div className="text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 text-xs">
+                      <span className="text-gray-500 text-[10px] sm:text-xs">
                         Total Monthly Debts
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.financialCalculations?.totalDebts
                           ? currencyFormatter.format(
                               loan.financialCalculations.totalDebts
@@ -587,7 +585,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                       <span className="text-gray-500 text-xs">
                         Years in Profession
                       </span>
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {loan?.borrowerDetails?.employers &&
                         loan.borrowerDetails.employers.length > 0
                           ? `${
@@ -614,7 +612,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                         Dependents: {loan.borrowerDetails.dependents.length}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-[10px] sm:text-xs text-gray-600">
                       {loan.borrowerDetails.dependents.map((dep, idx) => (
                         <span key={dep._id} className="inline-block mr-3">
                           {dep.name} ({dep.age})
@@ -734,13 +732,13 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                       <div className="text-xl font-bold text-blue-600 mr-2">
                         {milestoneStats.completed}/{milestoneStats.total}
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-[10px] sm:text-xs text-gray-500">
                         Milestones Completed
                       </p>
                     </div>
                     <div className="flex items-center">
                       <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                      <span className="text-xs font-medium">
+                      <span className="text-[10px] sm:text-xs font-medium">
                         {Math.round(milestoneStats.percent)}% Complete
                       </span>
                     </div>
@@ -788,7 +786,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
 
                         if (!latestCompleted && !latestInProgress) {
                           return (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-[10px] sm:text-xs text-gray-500">
                               No milestones in progress
                             </div>
                           );
@@ -800,10 +798,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                               <div className="flex flex-grow basis-0 min-w-[45%] bg-green-50 rounded-md p-2">
                                 <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                                 <div className="overflow-hidden">
-                                  <div className="text-green-700 text-xs font-medium">
+                                  <div className="text-green-700 text-[10px] sm:text-xs font-medium">
                                     Last completed:
                                   </div>
-                                  <div className="text-green-700 text-xs truncate">
+                                  <div className="text-green-700 text-[10px] sm:text-xs truncate">
                                     {latestCompleted.name}
                                   </div>
                                 </div>
@@ -814,10 +812,10 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                               <div className="flex flex-grow basis-0 min-w-[45%] bg-blue-50 rounded-md p-2">
                                 <Calendar className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
                                 <div className="overflow-hidden">
-                                  <div className="text-blue-700 text-xs font-medium">
+                                  <div className="text-blue-700 text-[10px] sm:text-xs font-medium">
                                     In progress:
                                   </div>
-                                  <div className="text-blue-700 text-xs truncate">
+                                  <div className="text-blue-700 text-[10px] sm:text-xs truncate">
                                     {latestInProgress.name}
                                   </div>
                                 </div>
@@ -840,7 +838,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                 Documents Status
               </h3>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
+                className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${
                   documentStats.completionRate >= 100
                     ? "bg-green-100 text-green-800"
                     : "bg-blue-50 text-blue-700"
@@ -894,19 +892,19 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                     {/* Stats grid */}
                     <div className="flex-1 grid grid-cols-2 gap-2">
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
-                        <div className="text-xs text-gray-500">Required</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500">Required</div>
                         <div className="text-xs font-semibold">
                           {documentStats.required}
                         </div>
                       </div>
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
-                        <div className="text-xs text-gray-500">Submitted</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500">Submitted</div>
                         <div className="text-xs font-semibold">
                           {documentStats.submitted}
                         </div>
                       </div>
                       <div className="bg-gray-50 rounded p-2 transition-all hover:bg-gray-100">
-                        <div className="text-xs text-gray-500">Approved</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500">Approved</div>
                         <div className="text-xs font-semibold">
                           {documentStats.approved}
                         </div>
@@ -920,7 +918,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                             : "bg-green-50"
                         }`}
                       >
-                        <div className="text-xs text-gray-500">Progress</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500">Progress</div>
                         <div className="text-xs font-semibold flex items-center">
                           <span>
                             {documentStats.submitted}/{documentStats.required}

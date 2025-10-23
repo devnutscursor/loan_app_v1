@@ -232,20 +232,20 @@ if (loading && milestones.length === 0) {
                   <MilestoneStatusIcon status={milestone.status} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div className="flex justify-between sm:items-center gap-2">
                     <h4 className="text-base font-medium text-gray-900 truncate">{milestone.name}</h4>
                     <div className="flex-shrink-0">
                       {milestone.status === 'completed' ? (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                          Mark Completed
+                          Completed
                         </span>
                       ) : milestone.status === 'in_progress' ? (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          Mark In Progress
+                          In Progress
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                          Mark Pending
+                          Pending
                         </span>
                       )}
                     </div>
