@@ -120,7 +120,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
           <button
             type="button"
             onClick={() => handleServiceChange('hasServed', true)}
-            className={`flex items-center justify-center px-16 py-4 border ${
+            className={`flex items-center justify-center sm:px-16 px-10 py-4 border ${
               hasServed
                 ? `border-${theme.colors.primary} bg-${theme.colors.primary}10`
                 : 'border-gray-300 bg-white'
@@ -137,7 +137,7 @@ const MilitaryService = ({ militaryService = {}, onChange, borrower = {}, errors
           <button
             type="button"
             onClick={() => handleServiceChange('hasServed', false)}
-            className={`flex items-center justify-center px-16 py-4 border ${
+            className={`flex items-center justify-center sm:px-16 px-10 py-4 border ${
               hasServed === false
                 ? `border-${theme.colors.primary} bg-${theme.colors.primary}10`
                 : 'border-gray-300 bg-white'
