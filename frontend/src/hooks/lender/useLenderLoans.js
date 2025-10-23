@@ -23,6 +23,10 @@ const useLenderLoans = () => {
 
   // Fetch loans data
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+    
     if (user.role === "company") {
       router.push('/company/dashboard');
     } else if (user.role !== 'lender') {
