@@ -65,7 +65,7 @@ const BorrowersTable = ({
             <div className="col-span-3">
               <div className="flex items-center text-sm text-gray-500 mb-1">
                 <Mail className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                <span>{borrower.user?.email || 'N/A'}</span>
+                <span title={borrower.user?.email} className="max-w-40 truncate">{borrower.user?.email || 'N/A'}</span>
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <Phone className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />

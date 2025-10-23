@@ -72,7 +72,7 @@ const LoansTable = ({
                 <div className="font-medium text-gray-900">
                   {loan.borrowerDetails?.firstName} {loan.borrowerDetails?.lastName}
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 max-w-36 truncate" title={loan.borrowerDetails?.email}>
                   {loan.borrowerDetails?.email}
                 </div>
               </div>

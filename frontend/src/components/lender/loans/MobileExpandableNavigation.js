@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 const MobileExpandableNavigation = ({
   isOpen,
@@ -14,8 +14,30 @@ const MobileExpandableNavigation = ({
   const currentTab = allTabs.find(tab => tab.id === activeTab);
   const ActiveIcon = currentTab?.icon;
 
+  // Ref for the navigation container
+  const navigationRef = useRef(null);
+
+  // Handle click outside to close navigation
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && navigationRef.current && !navigationRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   return (
-    <div className="lg:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30">
+    <div className="lg:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30" ref={navigationRef}>
       {/* The button that transforms into navigation */}
       <div
         className={`relative rounded-full shadow-lg transition-all duration-600 ease-out overflow-hidden ${
