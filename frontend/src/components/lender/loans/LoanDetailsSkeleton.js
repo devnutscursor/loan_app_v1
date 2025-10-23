@@ -43,9 +43,9 @@ const LoanDetailsSkeleton = () => {
         </div>
       </div>
 
-      <div className="flex">
-        {/* Tabs skeleton */}
-        <div className="w-60 flex-shrink-0 mr-6">
+      <div className="flex flex-col lg:flex-row">
+        {/* Tabs skeleton - Hidden on mobile, visible on desktop */}
+        <div className="hidden lg:block w-60 flex-shrink-0 mr-6">
           <div className="rounded-xl bg-white p-2 shadow-md border border-gray-100">
             <div className="flex flex-col space-y-2">
               {[1, 2, 3, 4].map((tab) => (
@@ -61,20 +61,20 @@ const LoanDetailsSkeleton = () => {
         </div>
 
         {/* Content area skeleton */}
-        <div className="flex-1">
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="flex justify-between mb-4">
+        <div className="flex-1 w-full">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
               <div className="h-7 bg-gray-200 rounded w-48"></div>
               <div className="h-7 bg-gray-200 rounded w-24"></div>
             </div>
 
             {/* Dashboard-like content skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4">
               <div className="space-y-4">
                 {/* Card 1 */}
-                <div className="bg-gray-100 p-4 rounded-lg">
+                <div className="bg-gray-100 p-3 sm:p-4 rounded-lg">
                   <div className="h-5 bg-gray-200 rounded w-32 mb-3"></div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-full"></div>
                       <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -87,18 +87,18 @@ const LoanDetailsSkeleton = () => {
                 </div>
 
                 {/* Card 2 */}
-                <div className="bg-gray-100 p-4 rounded-lg">
+                <div className="bg-gray-100 p-3 sm:p-4 rounded-lg">
                   <div className="h-5 bg-gray-200 rounded w-40 mb-3"></div>
-                  <div className="flex items-center mb-3">
-                    <div className="h-10 w-10 bg-gray-200 rounded-full mr-3"></div>
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center mb-3 gap-3">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full mr-0 sm:mr-3 flex-shrink-0"></div>
+                    <div className="flex-1">
                       <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
                       <div className="h-3 bg-gray-200 rounded w-24"></div>
                     </div>
                   </div>
                   <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
                     <div className="h-4 bg-gray-200 rounded w-36 mb-2"></div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-2">
                         <div className="h-4 bg-gray-200 rounded w-full"></div>
                         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -114,9 +114,9 @@ const LoanDetailsSkeleton = () => {
 
               <div className="space-y-4">
                 {/* Card 3 */}
-                <div className="bg-gray-100 p-4 rounded-lg">
+                <div className="bg-gray-100 p-3 sm:p-4 rounded-lg">
                   <div className="h-5 bg-gray-200 rounded w-48 mb-3"></div>
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-2">
                     <div className="flex items-center">
                       <div className="h-6 w-10 bg-gray-200 rounded mr-2"></div>
                       <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -124,17 +124,17 @@ const LoanDetailsSkeleton = () => {
                     <div className="h-4 bg-gray-200 rounded w-16"></div>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-4"></div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 p-3 bg-gray-200 rounded"></div>
                     <div className="flex-1 p-3 bg-gray-200 rounded"></div>
                   </div>
                 </div>
 
                 {/* Card 4 */}
-                <div className="bg-gray-100 p-4 rounded-lg">
+                <div className="bg-gray-100 p-3 sm:p-4 rounded-lg">
                   <div className="h-5 bg-gray-200 rounded w-36 mb-3"></div>
-                  <div className="flex items-center mb-3">
-                    <div className="h-16 w-16 rounded-full bg-gray-200 mr-3"></div>
+                  <div className="flex flex-col sm:flex-row sm:items-center mb-3 gap-3">
+                    <div className="h-16 w-16 rounded-full bg-gray-200 mr-0 sm:mr-3 flex-shrink-0"></div>
                     <div className="grid grid-cols-2 gap-2 flex-1">
                       <div className="h-10 bg-gray-200 rounded"></div>
                       <div className="h-10 bg-gray-200 rounded"></div>

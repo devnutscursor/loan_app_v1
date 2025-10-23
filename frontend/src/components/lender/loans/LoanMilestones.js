@@ -151,7 +151,7 @@ if (loading && milestones.length === 0) {
       {/* Skeleton Milestones */}
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="border rounded-lg overflow-hidden shadow-sm border-gray-200 border-l-4 border-l-gray-200">
+          <div key={i} className="border rounded-lg overflow-hidden shadow-sm border-gray-200 sm:border-l-4 sm:border-l-gray-200 sm:border-t-0 border-t-4 border-t-gray-200">
             <div className="flex items-center justify-between py-2 px-3">
               <div className="flex items-center flex-1">
                 <div className="mr-2">
@@ -198,7 +198,7 @@ if (loading && milestones.length === 0) {
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white shadow rounded-lg py-6 px-3 sm:px-6">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-medium text-gray-900">Loan Milestones</h3>
         <div className="flex space-x-2">
@@ -221,10 +221,10 @@ if (loading && milestones.length === 0) {
           <div
             key={milestone._id}
             className={`w-full border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 ${milestone.status === 'completed' 
-              ? 'border-l-4 border-l-green-500' 
+              ? 'sm:border-l-4 sm:border-l-green-500 sm:border-t-0 border-t-4 border-t-green-500' 
               : milestone.status === 'in_progress' 
-                ? 'border-l-4 border-l-blue-500 bg-blue-100' 
-                : 'border-l-4 border-l-gray-300'}`}
+                ? 'sm:border-l-4 sm:border-l-blue-500 sm:border-t-0 border-t-4 border-t-blue-500 bg-blue-100' 
+                : 'sm:border-l-4 sm:border-l-gray-300 sm:border-t-0 border-t-4 border-t-gray-300'}`}
           >
             <div className="flex items-center justify-between py-2 px-3">
               <div className="flex items-center flex-1 min-w-0">
@@ -237,15 +237,15 @@ if (loading && milestones.length === 0) {
                     <div className="flex-shrink-0">
                       {milestone.status === 'completed' ? (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                          Completed
+                          Mark Completed
                         </span>
                       ) : milestone.status === 'in_progress' ? (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          In Progress
+                          Mark In Progress
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                          Pending
+                          Mark Pending
                         </span>
                       )}
                     </div>
@@ -359,21 +359,21 @@ if (loading && milestones.length === 0) {
                       onClick={() => handleStatusChange(milestone._id, 'completed')}
                       className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-green-300 rounded-md text-green-700 hover:bg-green-100 transition-colors duration-200"
                     >
-                      <CheckCircle className="h-3 w-3 mr-1" /> Complete
+                      <CheckCircle className="h-3 w-3 mr-1" /> Mark Complete
                     </button>
                   ) : milestone.status !== 'in_progress' ? (
                     <button
                       onClick={() => handleStatusChange(milestone._id, 'in_progress')}
                       className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-blue-300 rounded-md text-blue-700 hover:bg-blue-100 transition-colors duration-200"
                     >
-                      <Edit className="h-3 w-3 mr-1" /> In Progress
+                      <Edit className="h-3 w-3 mr-1" /> Mark In Progress
                     </button>
                   ) : (
                     <button
                       onClick={() => handleStatusChange(milestone._id, 'pending')}
                       className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                     >
-                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Pending
+                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div>Mark Pending
                     </button>
                   )}
 
@@ -383,14 +383,14 @@ if (loading && milestones.length === 0) {
                       onClick={() => handleStatusChange(milestone._id, 'in_progress')}
                       className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-blue-300 rounded-md text-blue-700 hover:bg-blue-100 transition-colors duration-200"
                     >
-                      <Edit className="h-3 w-3 mr-1" /> In Progress
+                      <Edit className="h-3 w-3 mr-1" />Mark In Progress
                     </button>
                   ) : (
                     <button
                       onClick={() => handleStatusChange(milestone._id, 'pending')}
                       className="inline-flex items-center justify-center px-2 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
                     >
-                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Pending
+                      <div className="h-3 w-3 mr-1 rounded-full border-2 border-gray-400"></div> Mark Pending
                     </button>
                   )}
 
@@ -435,8 +435,8 @@ if (loading && milestones.length === 0) {
 
       {/* Create/Edit form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50 ">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-3 sm:mx-0">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">
                 {editingMilestone ? 'Edit Milestone' : 'Add New Milestone'}
@@ -456,8 +456,8 @@ if (loading && milestones.length === 0) {
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50 ">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-3 sm:mx-0">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-sm text-gray-500 mb-4">
               Are you sure you want to delete this milestone? This action cannot be undone.
