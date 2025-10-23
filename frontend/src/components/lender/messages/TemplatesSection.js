@@ -97,7 +97,7 @@ const TemplatesSection = ({
                         </span>
                       )}
                     </span>
-                    <span className="block text-xs text-gray-500 truncate mt-1">
+                    <span className="block text-xs text-gray-500 mt-1">
                       {selectedBorrower 
                         ? template.content.substring(0, 60) + '...'
                         : template.preview

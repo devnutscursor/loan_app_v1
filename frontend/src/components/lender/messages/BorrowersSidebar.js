@@ -5,15 +5,32 @@ const BorrowersSidebar = ({
   selectedBorrower,
   loadingConversations,
   onSelectBorrower,
-  getTotalUnreadCount
+  getTotalUnreadCount,
+  isMobileSidebarOpen,
+  onCloseMobileSidebar
 }) => {
   return (
-    <div className="w-80 border-r overflow-y-auto">
-      <div className="p-4 border-b">
+    <div className={`w-80 border-r overflow-y-auto bg-white z-50 lg:static lg:block lg:opacity-100 lg:transform-none transition-all duration-500 ease-in-out ${
+      isMobileSidebarOpen 
+        ? 'fixed inset-y-0 left-0 shadow-lg opacity-100 transform translate-x-0' 
+        : 'fixed inset-y-0 left-0 shadow-lg opacity-0 transform -translate-x-full pointer-events-none'
+    } lg:pointer-events-auto`}>
+      {/* Mobile header */}
+      <div className="p-4 border-b flex items-center justify-between lg:justify-start">
         <h2 className="font-medium text-lg">Borrowers</h2>
-        <p className="text-sm text-gray-500">
+        <p className="hidden lg:block text-sm text-gray-500 ml-3">
           {getTotalUnreadCount()} unread messages
         </p>
+        <button
+          type="button"
+          onClick={onCloseMobileSidebar}
+          className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+          aria-label="Close borrower list"
+        >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
       
       {loadingConversations ? (
@@ -29,7 +46,10 @@ const BorrowersSidebar = ({
           {conversations.map((conversation) => (
             <div 
               key={conversation.borrower._id}
-              onClick={() => onSelectBorrower(conversation.borrower)}
+              onClick={() => {
+                onSelectBorrower(conversation.borrower);
+                onCloseMobileSidebar();
+              }}
               className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
                 selectedBorrower?._id === conversation.borrower._id ? 'bg-blue-50' : ''
               }`}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import BorrowersSidebar from '../../components/lender/messages/BorrowersSidebar';
@@ -16,6 +16,7 @@ import useLenderMessages from '../../hooks/lender/useLenderMessages';
  * Provides conversation management, messaging capabilities, and integration with loan information.
  */
 const LenderMessages = () => {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const {
     // Data
     userData,
@@ -67,14 +68,14 @@ const LenderMessages = () => {
     <ProtectedRoute allowedRoles={['lender', 'admin']}>
       <MainLayout>
         <div className="py-6 h-full flex flex-col">
-          <div className="px-4 sm:px-6 md:px-8">
+          <div className="px-0 sm:px-6 md:px-8">
             <h1 className="text-2xl font-semibold text-gray-900">Borrower Communications</h1>
             <p className="mt-1 text-sm text-gray-500">
               Manage communications with loan applicants and borrowers
             </p>
           </div>
           
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6 flex-grow flex flex-col">
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 md:px-8 mt-6 flex-grow flex flex-col">
             {/* Loading state */}
             {isLoading ? (
               <div className="w-full h-full flex justify-center items-center">
@@ -82,19 +83,56 @@ const LenderMessages = () => {
               </div>
             ) : (
               <div className="bg-white shadow rounded-lg overflow-hidden h-[calc(100vh-10px)] flex">
+                {/* Mobile overlay for sidebar */}
+                <div
+                  className={`lg:hidden fixed inset-0 bg-black z-40 transition-all duration-300 ease-in-out ${
+                    isMobileSidebarOpen 
+                      ? 'opacity-50 pointer-events-auto' 
+                      : 'opacity-0 pointer-events-none'
+                  }`}
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                />
                 <BorrowersSidebar
                   conversations={conversations}
                   selectedBorrower={selectedBorrower}
                   loadingConversations={loadingConversations}
                   onSelectBorrower={selectBorrower}
                   getTotalUnreadCount={getTotalUnreadCount}
+                  isMobileSidebarOpen={isMobileSidebarOpen}
+                  onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
                 />
                 
                 {/* Chat area */}
                 <div className="flex-grow flex flex-col">
+                  {/* Mobile header with sidebar toggle and selected borrower */}
+                  <div className="lg:hidden border-b p-4 flex items-center transition-all duration-300 ease-in-out">
+                    <button
+                      onClick={() => setIsMobileSidebarOpen(true)}
+                      className="mr-3 p-2 hover:bg-gray-100 rounded-lg"
+                      aria-label="Open borrower list"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </button>
+                    {selectedBorrower && (
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                          {selectedBorrower.user?.firstName?.[0] || 'B'}
+                        </div>
+                        <div className="ml-3">
+                          <p className="font-medium text-gray-900 text-sm">
+                            {selectedBorrower.user?.firstName} {selectedBorrower.user?.lastName}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {selectedBorrower ? (
                     <>
-                      <ChatHeader selectedBorrower={selectedBorrower} />
+                      <div className="hidden lg:block">
+                        <ChatHeader selectedBorrower={selectedBorrower} />
+                      </div>
                       
                       <MessagesContainer
                         messageContainerRef={messageContainerRef}
@@ -132,9 +170,12 @@ const LenderMessages = () => {
             
             {/* Quick actions */}
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <GuidelinesSection />
+              <div className="lg:col-span-1">
+                <GuidelinesSection />
+              </div>
               
-              <TemplatesSection
+              <div className="lg:col-span-2">
+                <TemplatesSection
                 selectedBorrower={selectedBorrower}
                 showCustomTemplateForm={showCustomTemplateForm}
                 setShowCustomTemplateForm={setShowCustomTemplateForm}
@@ -147,7 +188,8 @@ const LenderMessages = () => {
                 handleCustomTemplateCancel={handleCustomTemplateCancel}
                 handleCustomTemplateEdit={handleCustomTemplateEdit}
                 handleCustomTemplateDelete={handleCustomTemplateDelete}
-              />
+                />
+              </div>
             </div>
           </div>
         </div>

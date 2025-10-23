@@ -13,18 +13,18 @@ const MessageInput = ({
   onRemoveAttachment
 }) => {
   return (
-    <div className="border-t p-4 bg-gray-50">
+    <div className="border-t p-3 lg:p-4 bg-gray-50">
       <div className="flex flex-col">
         {/* Selected attachments preview */}
         {attachments.length > 0 && (
           <div className="mb-3 bg-white rounded-lg p-2 shadow-sm">
-            <div className="flex overflow-x-auto space-x-3 pb-2">
+            <div className="flex overflow-x-auto space-x-2 lg:space-x-3 pb-2">
               {attachments.map((attachment, index) => (
                 <div key={index} className="relative flex-shrink-0">
-                  <img 
-                    src={attachment.preview} 
-                    alt="Selected" 
-                    className="h-16 w-16 object-cover rounded-md border border-gray-200"
+                  <img
+                    src={attachment.preview}
+                    alt="Selected"
+                    className="h-12 w-12 lg:h-16 lg:w-16 object-cover rounded-md border border-gray-200"
                   />
                   <button 
                     onClick={() => onRemoveAttachment(index)}
@@ -43,7 +43,7 @@ const MessageInput = ({
             value={messageInput}
             onChange={(e) => setMessageInput(e.target.value)}
             placeholder="Type your message..."
-            className="flex-grow p-3 focus:outline-none resize-none min-h-[60px] max-h-[120px]"
+            className="flex-grow p-2 lg:p-3 focus:outline-none resize-none min-h-[56px] max-h-[120px] text-sm lg:text-base"
             style={{ minHeight: '60px', maxHeight: '120px' }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && selectedBorrower) {

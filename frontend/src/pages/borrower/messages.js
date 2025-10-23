@@ -47,15 +47,15 @@ const BorrowerMessages = () => {
   return (
     <ProtectedRoute allowedRoles={['borrower']}>
       <MainLayout>
-        <div className="py-6 h-full flex flex-col">
-          <div className="px-4 sm:px-6 md:px-8">
+        <div className="py-6 h-full flex flex-col items-center">
+          <div className="px-0 sm:px-6 md:px-8">
             <h1 className="text-2xl font-semibold text-gray-900">Messages</h1>
             <p className="mt-1 text-sm text-gray-500">
               Communicate with your loan officer and other lending team members
             </p>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-6 flex-grow flex flex-col">
+          <div className="max-w-6xl px-0 sm:px-6 md:px-8 mt-6 flex-grow flex flex-col">
             {/* Loading state */}
             {isLoading ? (
               <div className="w-full h-full flex justify-center items-center">
