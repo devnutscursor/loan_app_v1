@@ -38,9 +38,9 @@ export default function CompanyManageRates() {
   return (
     <ProtectedRoute allowedRoles={["company"]}>
       <MainLayout>
-        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           {/* Header Section */}
-          <div className="flex items-center justify-between mb-3 min-h-[2.5rem]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 min-h-[2.5rem] gap-3">
             {/* Left content area with back button and title */}
             <div className="flex items-center space-x-3">
               <Link
@@ -83,7 +83,7 @@ export default function CompanyManageRates() {
 
             {/* Save button aligned to the right */}
             <button
-              className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200`}
+              className={`flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200`}
               onClick={handleSaveRates}
               disabled={saving || loading}
             >
