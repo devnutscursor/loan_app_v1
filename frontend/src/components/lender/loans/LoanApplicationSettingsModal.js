@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Modal from '../../common/Modal';
+import api from '../../../services/api';
 
 const LoanApplicationSettingsModal = ({
   isOpen,
@@ -87,27 +88,6 @@ const LoanApplicationSettingsModal = ({
   // Handle both edit permission toggle and status change
   const handleSaveSettings = async () => {
     try {
-      // Get the token from localStorage
-      const token = localStorage.getItem('token');
-      let userInfo = { role: 'unknown' };
-      
-      if (token) {
-        try {
-          // Basic JWT decoding to check the payload
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const payload = JSON.parse(window.atob(base64));
-          userInfo = payload;
-        } catch (e) {
-          console.error('Error decoding token:', e);
-        }
-      }
-      
-      if (!token) {
-        toast.error('Authentication required. Please log in again.');
-        return;
-      }
-      
       setSaving(true);
       
       // Get the current backend status from the loan
@@ -129,69 +109,51 @@ const LoanApplicationSettingsModal = ({
       
       // Update edit permission if changed
       if (newEditingState) {
-        const editPermissionResponse = await fetch(`http://localhost:5000/api/v1/loans/${loanId}/toggle-editing`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ editingEnabled: editingEnabled })
-        });
-        
-        if (!editPermissionResponse.ok) {
-          const errorData = await editPermissionResponse.json();
-          console.error('Edit permission API call failed:', editPermissionResponse.status, errorData);
-          throw new Error(`Edit permission API call failed: ${editPermissionResponse.status} ${errorData.message || 'Unknown error'}`);
-        }
-        
-        const editPermissionData = await editPermissionResponse.json();
-        console.log('Edit permission response:', editPermissionData);
-        
-        if (editPermissionData.status === 'success') {
-          toast.success(`Edit permission ${editingEnabled ? 'enabled' : 'disabled'} successfully`);
+        try {
+          // Use direct API call for toggle-editing endpoint
+          const editPermissionResponse = await api.patch(`/loans/${loanId}/toggle-editing`, { editingEnabled: editingEnabled });
+          console.log('Edit permission response:', editPermissionResponse);
           
-          // Update frontend state directly
-          if (onUpdateLoan) {
-            onUpdateLoan(prev => ({
-              ...prev,
-              editingEnabled: editingEnabled
-            }));
+          if (editPermissionResponse.data?.status === 'success') {
+            toast.success(`Edit permission ${editingEnabled ? 'enabled' : 'disabled'} successfully`);
+            
+            // Update frontend state directly
+            if (onUpdateLoan) {
+              onUpdateLoan(prev => ({
+                ...prev,
+                editingEnabled: editingEnabled
+              }));
+            }
           }
+        } catch (error) {
+          console.error('Edit permission API call failed:', error);
+          throw new Error(`Edit permission API call failed: ${error.response?.status || 'Unknown error'} ${error.response?.data?.message || error.message || 'Unknown error'}`);
         }
       }
       
       // Update status if changed
       if (statusChanged) {
-        const statusResponse = await fetch(`http://localhost:5000/api/v1/loans/${loanId}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ status: newBackendStatus })
-        });
-        
-        if (!statusResponse.ok) {
-          const errorData = await statusResponse.json();
-          console.error('Status update API call failed:', statusResponse.status, errorData);
-          throw new Error(`Status update API call failed: ${statusResponse.status} ${errorData.message || 'Unknown error'}`);
-        }
-        
-        const statusResponseData = await statusResponse.json();
-        console.log('Status update response:', statusResponseData);
-        
-        if (statusResponseData.status === 'success') {
-          // Show the user-friendly status name in the toast message
-          const displayStatus = mapBackendToDisplayStatus(statusResponseData.data.status);
-          toast.success(`Loan status updated to ${displayStatus} successfully`);
+        try {
+          // Use direct API call for status endpoint
+          const statusResponse = await api.patch(`/loans/${loanId}/status`, { status: newBackendStatus });
+          console.log('Status update response:', statusResponse);
           
-          // Update frontend state directly
-          if (onUpdateLoan) {
-            onUpdateLoan(prev => ({
-              ...prev,
-              status: newBackendStatus
-            }));
+          if (statusResponse.data?.status === 'success') {
+            // Show the user-friendly status name in the toast message
+            const displayStatus = mapBackendToDisplayStatus(statusResponse.data.data?.status || newBackendStatus);
+            toast.success(`Loan status updated to ${displayStatus} successfully`);
+            
+            // Update frontend state directly
+            if (onUpdateLoan) {
+              onUpdateLoan(prev => ({
+                ...prev,
+                status: newBackendStatus
+              }));
+            }
           }
+        } catch (error) {
+          console.error('Status update API call failed:', error);
+          throw new Error(`Status update API call failed: ${error.response?.status || 'Unknown error'} ${error.response?.data?.message || error.message || 'Unknown error'}`);
         }
       }
       

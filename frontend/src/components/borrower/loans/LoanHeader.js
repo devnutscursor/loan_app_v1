@@ -32,9 +32,11 @@ const LoanHeader = ({
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
               <span className="truncate">Loan Application</span>
             </h1>
+          </div>
+          <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             {loan && loan.status && (
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusBadgeColor(
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium w-fit ${getStatusBadgeColor(
                   loan.status
                 )}`}
               >
@@ -65,8 +67,6 @@ const LoanHeader = ({
                 </span>
               </span>
             )}
-          </div>
-          <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             
           </div>
         </div>
