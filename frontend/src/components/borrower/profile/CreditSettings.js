@@ -67,10 +67,10 @@ const CreditSettings = () => {
           {/* Current Status */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-medium text-gray-900">
+              <h3 className="text-xs sm:text-sm md:text-base font-medium text-gray-900">
                 Credit Report Consent Status
               </h3>
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusInfo.color} ${statusInfo.bgColor} ${statusInfo.borderColor}`}>
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${statusInfo.color} ${statusInfo.bgColor} ${statusInfo.borderColor}`}>
                 {consentData.hasConsent && !consentData.isRevoked ? (
                   <Shield className="h-4 w-4 mr-1" />
                 ) : (

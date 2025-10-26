@@ -31,7 +31,7 @@ const RatesHeader = ({ saving, loading, onSaveRates }) => {
         <span className="block w-px h-5 bg-gray-200"></span>
 
         <div className="flex flex-row justify-center">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-none">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight leading-none">
             Program Loan Rates
           </h1>
         </div>

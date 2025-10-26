@@ -593,7 +593,7 @@ export default function EditLoanProgram() {
   return (
     <ProtectedRoute allowedRoles={["lender"]}>
       <MainLayout>
-        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-8 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3 min-h-[2.5rem]">
             {/* Left content area with back button and title */}
             <div className="flex items-center space-x-3">

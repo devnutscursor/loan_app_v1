@@ -189,7 +189,7 @@ const CompanyLenders = () => {
 
   return (
     <CompanyLayout title="Company Loan Officers">
-      <div className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
+      <div className="space-y-6 px-0 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>

@@ -99,7 +99,7 @@ export default function AddCredentialModal({ isOpen, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-md shadow w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-white rounded-md shadow w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 mx-4">
         <div className="text-lg font-semibold mb-4">Create New Credential</div>
         
         <form onSubmit={handleSubmit} className="space-y-6">

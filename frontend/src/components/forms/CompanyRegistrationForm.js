@@ -7,18 +7,53 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
   const prev = () => setStep((s) => Math.max(1, s - 1));
 
   const Stepper = () => (
-    <div className="flex items-center gap-2 mb-4 text-sm">
-      {['Company Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
-        const n = idx + 1;
-        const active = step === n;
-        return (
-          <div key={label} className={`flex items-center ${n < 4 ? 'flex-1' : ''}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${active ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>{n}</div>
-            <div className={`ml-2 mr-4 ${active ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>{label}</div>
-            {n < 4 && <div className="flex-1 h-px bg-gray-200" />}
-          </div>
-        );
-      })}
+    <div className="mb-6">
+      {/* Mobile Stepper - Vertical */}
+      <div className="block sm:hidden">
+        <div className="space-y-3">
+          {['Company Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
+            const n = idx + 1;
+            const active = step === n;
+            const completed = step > n;
+            return (
+              <div key={label} className="flex items-center space-x-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  active ? 'bg-blue-600 text-white' : 
+                  'bg-gray-200 text-gray-800'
+                }`}>
+                  {n}
+                </div>
+                <div className={`text-sm ${active ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>
+                  {label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop Stepper - Horizontal */}
+      <div className="hidden sm:flex items-center gap-2 text-sm">
+        {['Company Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
+          const n = idx + 1;
+          const active = step === n;
+          const completed = step > n;
+          return (
+            <div key={label} className={`flex items-center ${n < 4 ? 'flex-1' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                active ? 'bg-blue-600 text-white' : 
+                'bg-gray-200 text-gray-800'
+              }`}>
+                { n}
+              </div>
+              <div className={`ml-2 mr-4 ${active ? 'text-blue-700 font-medium' :  'text-gray-600'}`}>
+                {label}
+              </div>
+              {n < 4 && <div className="flex-1 h-px bg-gray-200" />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 
