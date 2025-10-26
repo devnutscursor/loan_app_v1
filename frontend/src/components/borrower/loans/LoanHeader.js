@@ -7,13 +7,13 @@ const LoanHeader = ({
   formatDate 
 }) => {
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="mb-6 px-4 sm:px-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
             <Link
               href="/borrower/loans"
-              className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors duration-200 flex-shrink-0"
             >
               <svg
                 className="h-5 w-5 text-blue-600"
@@ -29,21 +29,12 @@ const LoanHeader = ({
                 />
               </svg>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              Loan Application
-              {loan && loan.loanNumber && (
-                <div className="ml-3 px-2.5 py-1 bg-blue-50 rounded-md flex items-center justify-center">
-                  <span className="text-sm font-semibold text-blue-800">
-                    {loan.loanNumber}
-                  </span>
-                </div>
-              )}
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+              <span className="truncate">Loan Application</span>
             </h1>
-          </div>
-          <div className="mt-2 flex items-center">
             {loan && loan.status && (
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusBadgeColor(
                   loan.status
                 )}`}
               >
@@ -54,9 +45,9 @@ const LoanHeader = ({
               </span>
             )}
             {loan && loan.applicationDate && (
-              <span className="ml-4 text-sm text-gray-500 flex items-center">
+              <span className="text-sm text-gray-500 flex items-center">
                 <svg
-                  className="mr-1 h-4 w-4 text-gray-400"
+                  className="mr-1 h-4 w-4 text-gray-400 flex-shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -68,16 +59,21 @@ const LoanHeader = ({
                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                Submitted{" "}
-                {formatDate(loan.applicationDate || loan.createdAt)}
+                <span className="truncate">
+                  Submitted{" "}
+                  {formatDate(loan.applicationDate || loan.createdAt)}
+                </span>
               </span>
             )}
           </div>
+          <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            
+          </div>
         </div>
         {loan && (
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
             {/* Management buttons in a more compact design */}
-            <div className="flex space-x-3 mr-1">
+            <div className="flex justify-center sm:justify-start space-x-3">
               <Link
                 href={`/borrower/documents?loanId=${loan._id}`}
                 className="relative inline-flex items-center p-2 border border-blue-200 rounded-full text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 group"
@@ -129,7 +125,7 @@ const LoanHeader = ({
             {loan.editingEnabled !== false ? (
               <Link
                 href={`/borrower/apply?draft=${loan.loanNumber}`}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full sm:w-auto"
               >
                 <svg
                   className="-ml-1 mr-2 h-4 w-4"
@@ -144,12 +140,13 @@ const LoanHeader = ({
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   />
                 </svg>
-                Edit this Application
+                <span className="hidden sm:inline">Edit this Application</span>
+                <span className="sm:hidden">Edit Application</span>
               </Link>
             ) : (
               <button
                 disabled
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-gray-400 bg-gray-200 cursor-not-allowed transition-colors duration-200"
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-gray-400 bg-gray-200 cursor-not-allowed transition-colors duration-200 w-full sm:w-auto"
                 title="Editing has been disabled by the lender"
               >
                 <svg
@@ -165,7 +162,8 @@ const LoanHeader = ({
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   />
                 </svg>
-                Edit this Application
+                <span className="hidden sm:inline">Edit this Application</span>
+                <span className="sm:hidden">Edit Application</span>
               </button>
             )}
           </div>

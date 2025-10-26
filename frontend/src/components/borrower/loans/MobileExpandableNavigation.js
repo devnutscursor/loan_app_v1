@@ -1,0 +1,149 @@
+import React, { useEffect, useRef } from "react";
+
+const MobileExpandableNavigation = ({
+  isOpen,
+  onToggle,
+  onClose,
+  mainTabs,
+  activeTab,
+  handleTabClick,
+  loan
+}) => {
+  // Find the active tab to get its icon
+  const currentTab = mainTabs.find(tab => tab.id === activeTab);
+  const ActiveIcon = currentTab?.icon;
+
+  // Ref for the navigation container
+  const navigationRef = useRef(null);
+
+  // Handle click outside to close navigation
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && navigationRef.current && !navigationRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <div className="lg:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30" ref={navigationRef}>
+      {/* The button that transforms into navigation */}
+      <div
+        className={`relative rounded-full shadow-lg transition-all duration-600 ease-out overflow-hidden ${
+          isOpen 
+            ? "bg-white rounded-xl min-h-[400px] w-[280px] border-t-[3px] border-blue-700" 
+            : "bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 rounded-lg h-12 w-[280px]"
+        }`}
+      >
+        
+        {/* Button Content - Only visible when collapsed */}
+        {!isOpen && (
+          <button
+            onClick={onToggle}
+            className="w-full flex items-center justify-start gap-4 px-8 py-3 text-white transition-all duration-300"
+            aria-label="Open Navigation"
+          >
+            {ActiveIcon && <ActiveIcon className="h-5 w-5" />}
+            <span className="text-base font-semibold">
+              {activeTab === "overview" && "Loan Overview"}
+              {activeTab === "borrower" && "Borrower Info"}
+              {activeTab === "property" && "Property"}
+              {activeTab === "financial" && "Financial Info"}
+              {activeTab === "declarations" && "Declarations"}
+              {activeTab === "demographics" && "Demographics"}
+              {activeTab === "military" && "Military Service"}
+            </span>
+            <span className="absolute right-6 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-full shadow-sm"></span>
+          </button>
+        )}
+
+        {/* Navigation Items - Expand from button */}
+        <div
+          className={`transition-all duration-500 ease-out overflow-hidden ${
+            isOpen 
+              ? "max-h-[650px] opacity-100" 
+              : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="px-3 py-4 space-y-2">
+            {/* Main tabs */}
+            {mainTabs.map((tab) => {
+              const isActive = tab.id === activeTab;
+
+              // Skip Military tab if no military service data
+              if (tab.id === "military" && !loan?.militaryService) {
+                return null;
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    handleTabClick(tab.id);
+                    onClose();
+                  }}
+                  className={`relative w-full flex items-center justify-start py-2 px-4 text-base font-medium transition-all duration-300 ease-in-out rounded-lg ${
+                    isActive 
+                      ? "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-900 shadow-sm" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-xs hover:scale-[1.015]"
+                  }`}
+                >
+                  <div className="flex items-center justify-center">
+                    <span
+                      className={`mr-3 transition-all duration-300 ${
+                        isActive
+                          ? "text-blue-700 opacity-100 scale-110"
+                          : "opacity-70 group-hover:opacity-90"
+                      }`}
+                    >
+                      <tab.icon
+                        className={`h-5 w-5 ${
+                          isActive ? "drop-shadow-sm" : ""
+                        }`}
+                      />
+                    </span>
+                    <span
+                      className={isActive ? "font-semibold" : ""}
+                    >
+                      {tab.label}
+                    </span>
+                  </div>
+                  
+                  {/* Active indicator */}
+                  {isActive && (
+                    <span className="absolute right-2 w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full shadow-sm"></span>
+                  )}
+                </button>
+              );
+            })}
+            
+            {/* Close Button at Bottom */}
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={onClose}
+                className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all duration-200"
+                aria-label="Close Navigation"
+              >
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MobileExpandableNavigation;

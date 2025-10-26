@@ -7,7 +7,7 @@ const TabNavigation = ({
   loan 
 }) => {
   return (
-    <div className="w-60 flex-shrink-0 mr-6">
+    <div className="hidden lg:block w-60 flex-shrink-0 mr-6">
       <div className="rounded-xl bg-white p-3 shadow-lg border border-gray-100 sticky top-4">
         <nav className="flex flex-col space-y-2" aria-label="Tabs">
           {mainTabs.map((tab) => {
