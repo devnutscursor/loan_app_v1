@@ -145,14 +145,18 @@ const LoanDetailsSection = ({
             <button
               type="button"
               onClick={() => handleToggleChange('propertyTaxes', 'isPercent')}
-              className={`px-3 w-12 ${!toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 w-12 ${toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
             <button
               type="button"
-              onClick={() => handleToggleChange('propertyTaxes', 'isPercent')}
-              className={`px-3 w-12 ${toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => {
+                if (toggleStates.propertyTaxes?.isPercent) {
+                  handleToggleChange('propertyTaxes', 'isPercent');
+                }
+              }}
+              className={`px-3 w-12 ${!toggleStates.propertyTaxes?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               $
             </button>
@@ -197,14 +201,18 @@ const LoanDetailsSection = ({
             <button
               type="button"
               onClick={() => handleToggleChange('homeownersInsurance', 'isPercent')}
-              className={`px-3 w-12 ${!toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 w-12 ${toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
             <button
               type="button"
-              onClick={() => handleToggleChange('homeownersInsurance', 'isPercent')}
-              className={`px-3 w-12 ${toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => {
+                if (toggleStates.homeownersInsurance?.isPercent) {
+                  handleToggleChange('homeownersInsurance', 'isPercent');
+                }
+              }}
+              className={`px-3 w-12 ${!toggleStates.homeownersInsurance?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               $
             </button>
@@ -249,14 +257,18 @@ const LoanDetailsSection = ({
             <button
               type="button"
               onClick={() => handleToggleChange('hoaFees', 'isPercent')}
-              className={`px-3 w-12 ${!toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 w-12 ${toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               %
             </button>
             <button
               type="button"
-              onClick={() => handleToggleChange('hoaFees', 'isPercent')}
-              className={`px-3 w-12 ${toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => {
+                if (toggleStates.hoaFees?.isPercent) {
+                  handleToggleChange('hoaFees', 'isPercent');
+                }
+              }}
+              className={`px-3 w-12 ${!toggleStates.hoaFees?.isPercent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               $
             </button>
