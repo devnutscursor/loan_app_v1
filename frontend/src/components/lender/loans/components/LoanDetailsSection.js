@@ -167,6 +167,8 @@ const LoanDetailsSection = ({
             name="propertyTaxes"
             value={localParams.propertyTaxes}
             onChange={handleInputChange}
+            min={0}
+            max={toggleStates.propertyTaxes?.isPercent ? 100 : localParams.loanAmount}
             className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
           // style={{ width: '120px' }}
           />
@@ -223,6 +225,8 @@ const LoanDetailsSection = ({
             name="homeownersInsurance"
             value={localParams.homeownersInsurance}
             onChange={handleInputChange}
+            min={0}
+            max={toggleStates.homeownersInsurance?.isPercent ? 100 : localParams.loanAmount}
             className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
           // style={{ width: '80px' }}
           />
@@ -279,6 +283,8 @@ const LoanDetailsSection = ({
             name="hoaFees"
             value={localParams.hoaFees}
             onChange={handleInputChange}
+            min={0}
+            max={toggleStates.hoaFees?.isPercent ? 100 : localParams.loanAmount}
             className="focus:ring-primary focus:border-primary block py-2 px-3 sm:text-sm border-gray-300 rounded-md bg-gray-50 h-10 mx-1"
           // style={{ width: '80px' }}
           />

@@ -378,6 +378,27 @@ const ParametersProvider = ({
         };
       });
     }
+    // Validation for Property Taxes, Homeowners Insurance, and HOA Dues
+    else if (name === 'propertyTaxes' || name === 'homeownersInsurance' || name === 'hoaFees') {
+      updateParamsAndCalculate(prev => {
+        const fieldToggleState = toggleStates[name];
+        let clampedValue = numValue;
+        
+        // Apply validation based on the field's toggle state
+        if (fieldToggleState?.isPercent) {
+          // In percentage mode: clamp to 0-100%
+          clampedValue = Math.max(0, Math.min(numValue, 100));
+        } else {
+          // In dollar mode: clamp to 0-loanAmount
+          clampedValue = Math.max(0, Math.min(numValue, prev.loanAmount));
+        }
+        
+        return {
+          ...prev,
+          [name]: clampedValue
+        };
+      });
+    }
     // For all other fields, just update the value directly
     else {
       updateParamsAndCalculate(prev => ({
