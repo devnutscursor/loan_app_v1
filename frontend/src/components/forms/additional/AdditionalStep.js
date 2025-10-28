@@ -178,7 +178,7 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
           onClick={() => handleTabChange('propertiesOwned')}
         >
           <div className="flex items-center">
-            <span>Property Owned</span>
+            <span className='text-[10.5px] sm:text-sm'>Property Owned</span>
             {getTabIcon('propertiesOwned') && <span className="ml-2">{getTabIcon('propertiesOwned')}</span>}
           </div>
         </button>
@@ -193,7 +193,7 @@ const AdditionalStep = ({ formData, handleChange, validateStep, nextStep, prevSt
           }
         >
           <div className="flex items-center">
-            <span>Military Service</span>
+            <span className='text-[10.5px] sm:text-sm'>Military Service</span>
             {getTabIcon('militaryService') && <span className="ml-2">{getTabIcon('militaryService')}</span>}
           </div>
         </button>

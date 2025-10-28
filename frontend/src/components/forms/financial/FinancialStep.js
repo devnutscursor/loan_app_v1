@@ -182,7 +182,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex space-x-2 mb-6">
+      <div className="flex flex-wrap gap-2 space-x-2 mb-6">
         <button
           type="button"
           className={getTabClass('assets')}
@@ -190,7 +190,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           onClick={() => handleTabChange('assets')}
         >
           <div className="flex items-center">
-            <span>Assets</span>
+            <span className='text-[10.5px] sm:text-sm'>Assets</span>
             {getTabIcon('assets') && <span className="ml-2">{getTabIcon('assets')}</span>}
           </div>
         </button>
@@ -201,7 +201,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           onClick={() => handleTabChange('income')}
         >
           <div className="flex items-center">
-            <span>Income</span>
+            <span className='text-[10.5px] sm:text-sm'>Income</span>
             {getTabIcon('income') && <span className="ml-2">{getTabIcon('income')}</span>}
           </div>
         </button>
@@ -212,7 +212,7 @@ const FinancialStep = ({ formData, handleChange, validateStep, nextStep, prevSte
           onClick={() => handleTabChange('debts')}
         >
           <div className="flex items-center">
-            <span>Debts & Expenses</span>
+            <span className='text-[10.5px] sm:text-sm'>Debts & Expenses</span>
             {getTabIcon('debts') && <span className="ml-2">{getTabIcon('debts')}</span>}
           </div>
         </button>

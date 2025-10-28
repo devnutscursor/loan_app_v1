@@ -163,7 +163,7 @@ const DeclarationsStep = ({
           }
         >
           <div className="flex items-center">
-            <span>Declarations</span>
+            <span className='text-[10.5px] sm:text-sm'>Declarations</span>
             {getTabIcon("declarations") && (
               <span className="ml-2">{getTabIcon("declarations")}</span>
             )}
@@ -180,7 +180,7 @@ const DeclarationsStep = ({
           }
         >
           <div className="flex items-center">
-            <span>Demographics</span>
+            <span className='text-[10.5px] sm:text-sm'>Demographics</span>
             {getTabIcon("demographics") && (
               <span className="ml-2">{getTabIcon("demographics")}</span>
             )}

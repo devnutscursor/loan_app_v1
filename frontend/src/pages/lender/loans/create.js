@@ -1449,7 +1449,7 @@ const LenderManualLoanCreation = () => {
       <MainLayout title="Create Loan Application - Lender Portal">
         <div className="py-6">
           <div className="mx-auto sm:px-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
                   Create Loan Application
@@ -2005,7 +2005,7 @@ const LenderManualLoanCreation = () => {
             </div>
 
             {/* Form */}
-            <div className="mt-6 bg-white shadow rounded-lg p-6">
+            <div className="mt-6 bg-white shadow rounded-lg p-4 sm:p-6">
               <form
                 onSubmit={
                   currentStep === 6 ? handleSubmit : (e) => e.preventDefault()

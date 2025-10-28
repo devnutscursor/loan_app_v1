@@ -188,7 +188,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
           }
         >
           <div className="flex items-center">
-            <span>Property Information</span>
+            <span className='text-[10.5px] sm:text-sm'>Property Information</span>
             {getTabIcon('propertyInformation') && <span className="ml-2">{getTabIcon('propertyInformation')}</span>}
           </div>
         </button>
@@ -204,7 +204,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
           }
         >
           <div className="flex items-center">
-            <span>Loan Details</span>
+            <span className='text-[10.5px] sm:text-sm'>Loan Details</span>
             {getTabIcon('loanDetails') && <span className="ml-2">{getTabIcon('loanDetails')}</span>}
           </div>
         </button>

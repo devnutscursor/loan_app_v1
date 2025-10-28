@@ -359,7 +359,7 @@ const BorrowerStep = ({
           onClick={() => handleTabChange("personalDetails")}
         >
           <div className="flex items-center">
-            <span>Personal Details</span>
+            <span className='text-[10.5px] sm:text-sm'>Personal Details</span>
             {getTabIcon("personalDetails") && (
               <span className="ml-2">{getTabIcon("personalDetails")}</span>
             )}
@@ -377,7 +377,7 @@ const BorrowerStep = ({
           onClick={() => handleTabChange("residenceHistory")}
         >
           <div className="flex items-center">
-            <span>Residence History</span>
+            <span className='text-[10.5px] sm:text-sm'>Residence History</span>
             {getTabIcon("residenceHistory") && (
               <span className="ml-2">{getTabIcon("residenceHistory")}</span>
             )}
@@ -395,7 +395,7 @@ const BorrowerStep = ({
           onClick={() => handleTabChange("employmentHistory")}
         >
           <div className="flex items-center">
-            <span>Employment History</span>
+            <span className='text-[10.5px] sm:text-sm'>Employment History</span>
             {getTabIcon("employmentHistory") && (
               <span className="ml-2">{getTabIcon("employmentHistory")}</span>
             )}
