@@ -90,7 +90,7 @@ const LoansTable = ({
               <div className="col-span-3">
                 <div className="flex items-center text-sm text-gray-500">
                   <DollarSign className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                  <span>${loan.loanDetails?.loanAmount?.toLocaleString() || '0'}</span>
+                  <span>{loan.loanDetails?.loanAmount?.toLocaleString() || '0'}</span>
                 </div>
               </div>
 
