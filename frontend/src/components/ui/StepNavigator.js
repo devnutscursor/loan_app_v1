@@ -63,16 +63,14 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
   };
 
   return (
-    <div className="py-4" style={{ padding: theme.stepNavigator.padding }}>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="py-2 px-2 lg:py-4 lg:px-4" style={{ padding: theme.stepNavigator.padding }}>
+      <div className="flex overflow-x-auto lg:overflow-x-scroll gap-2 lg:gap-4 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-w-[300px]">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const status = getStepStatus(stepNumber);
           
           // Set styles based on status
           const circleStyles = {
-            width: theme.stepNavigator.circleSize,
-            height: theme.stepNavigator.circleSize,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -108,7 +106,6 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
           
           // Title text styles
           const titleStyles = {
-            fontSize: '0.875rem',
             fontWeight: 500
           };
           
@@ -134,27 +131,27 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
           return (
             <React.Fragment key={stepNumber}>
               {/* Step circle with connector line */}
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center min-w-[42px] lg:min-w-[120px] flex-shrink-0">
                 {/* Circle */}
                 <button
-                  className=""
+                  className="w-8 h-8 lg:w-12 lg:h-12"
                   onClick={() => handleStepClick(stepNumber)}
                   disabled={stepNumber > currentStep + 1}
                   style={circleStyles}
                   aria-current={status === 'active' ? 'step' : undefined}
                 >
                   {status === 'completed' ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <span style={{ fontSize: '0.75rem' }}>{stepNumber}</span>
+                    <span className="text-xs lg:text-sm">{stepNumber}</span>
                   )}
                 </button>
                 
                 {/* Step title */}
-                <div className="mt-2 text-center">
-                  <span style={titleStyles}>
+                <div className="mt-1 lg:mt-2 text-center">
+                  <span className="text-xs lg:text-sm" style={titleStyles}>
                     {step.title}
                   </span>
                 </div>
