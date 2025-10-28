@@ -114,7 +114,7 @@ const CreditReportPage = () => {
             />
 
             <ProviderSelectionForm
-              showForm={showProviderForm}
+              showForm={showProviderForm && !loading}
               selectedProviders={selectedProviders}
               loading={loading}
               currentOperation={currentOperation}
