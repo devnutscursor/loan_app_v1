@@ -4,8 +4,8 @@ export const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass,
   <div className={`${bgClass} rounded-xl p-6 shadow-lg`}>
     <div className="flex items-center justify-between">
       <div>
-        <p className={`text-sm font-medium ${textClass} opacity-90`}>{title}</p>
-        <p className={`text-2xl font-bold ${textClass} mt-1`}>{value}</p>
+        <p className={`sm:text-sm text-[10px] font-medium ${textClass} opacity-90`}>{title}</p>
+        <p className={`sm:text-2xl text-lg font-bold ${textClass} mt-1`}>{value}</p>
         {trend && (
           <div className="flex items-center mt-2">
             {/* Consumers pass the appropriate trend icon; keep API same as original */}
@@ -13,7 +13,7 @@ export const StatCard = ({ title, value, icon: Icon, trend, trendValue, bgClass,
           </div>
         )}
       </div>
-      <Icon className={`h-8 w-8 ${textClass} opacity-80`} />
+      <Icon className={`sm:h-8 sm:w-8 h-6 w-6 ${textClass} opacity-80`} />
     </div>
   </div>
 );
