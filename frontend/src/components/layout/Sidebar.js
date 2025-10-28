@@ -190,14 +190,12 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         className={`
           fixed inset-y-0 left-0 z-50 overflow-y-auto overflow-x-hidden transition-all duration-300 transform 
           bg-gradient-to-b from-blue-800 to-blue-600 text-white shadow-lg
-          md:translate-x-0 md:static md:inset-0
           pb-10
-          ${isOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}
-          ${isCollapsed ? 'w-16 md:w-16 group hover:w-64' : 'w-64'}
+          ${isOpen ? 'translate-x-0 ease-out md:translate-x-0' : '-translate-x-full ease-in md:translate-x-0'}
+          ${isCollapsed ? 'w-64 md:w-16 md:hover:w-64 group' : 'w-64'}
           no-scrollbar
         `}
         style={{ 
-          minWidth: isCollapsed ? '4rem' : '16rem',
           scrollbarWidth: 'none',  
           msOverflowStyle: 'none'  
         }}
@@ -213,9 +211,22 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
               
             </div>
           )}
+          
+          {/* Mobile close button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="md:hidden p-1.5 rounded-md text-blue-200 hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-blue-700 focus:ring-white"
+            aria-label="Close sidebar"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          {/* Desktop collapse toggle */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-md text-blue-200 hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-blue-700 focus:ring-white"
+            className="hidden md:block p-1.5 rounded-md text-blue-200 hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-blue-700 focus:ring-white"
             aria-label="Toggle sidebar width"
           >
             {isCollapsed ? (
@@ -249,10 +260,10 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
                 </div>
               )}
             </div>
-            <h4 className={`mt-2 font-semibold text-white whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
+            <h4 className={`mt-2 font-semibold text-white whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden md:hidden md:group-hover:block' : 'block'}`}>
               {user.firstName} {user.lastName}
             </h4>
-            <p className={`text-sm tracking-wider text-white-500 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:block' : 'block'}`}>
+            <p className={`text-sm tracking-wider text-blue-200 capitalize whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden md:hidden md:group-hover:block' : 'block'}`}>
               {user.role === 'lender'? "Loan Officer" : user.role}
             </p>
           </div>
@@ -260,13 +271,13 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
 
 
         {/* Navigation */}
-        <nav className={`mt-10 ${isCollapsed ? 'px-2' : 'px-6'}`}>
+        <nav className={`mt-10 ${isCollapsed ? 'px-2 md:px-2' : 'px-6'}`}>
           {navItems.map((item, index) => (
             <Link
               key={index}
               href={item.href}
               className={`
-                flex items-center ${isCollapsed ? 'justify-center group-hover:justify-start' : ''} px-4 py-3 mt-2 text-sm transition-colors duration-200 transform rounded-lg 
+                flex items-center ${isCollapsed ? 'md:justify-center md:group-hover:justify-start' : ''} px-4 py-3 mt-2 text-sm transition-colors duration-200 transform rounded-lg 
                 ${router.pathname === item.href || (router.pathname.startsWith(item.href + '/') && item.href !== '/')
                   ? 'bg-blue-600 text-white'
                   : 'text-blue-200 hover:bg-blue-600 hover:text-white'
@@ -274,16 +285,16 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
                 relative
               `}
             >
-              <span className={`${isCollapsed ? 'text-center' : 'text-blue-200'}`}>
+              <span className={`${isCollapsed ? 'md:text-center' : 'text-blue-200'}`}>
                 {renderIcon(item.icon)}
               </span>
-              <span className={`mx-4 font-medium whitespace-nowrap overflow-hidden ${isCollapsed ? 'hidden group-hover:inline' : 'inline'}`}>
+              <span className={`mx-4 font-medium whitespace-nowrap overflow-hidden ${isCollapsed ? 'md:hidden md:group-hover:inline' : 'inline'}`}>
                 {item.name}
               </span>
 
-              {/* Tooltip for collapsed mode */}
+              {/* Tooltip for collapsed mode - desktop only - hide when sidebar is hovered */}
               {isCollapsed && (
-                <div className="absolute left-full ml-6 px-2 py-1 bg-blue-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="hidden md:block md:group-hover:hidden absolute left-full ml-6 px-2 py-1 bg-blue-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   {item.name}
                 </div>
               )}

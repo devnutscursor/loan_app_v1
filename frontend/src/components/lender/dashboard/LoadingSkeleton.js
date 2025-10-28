@@ -4,9 +4,9 @@ const LoadingSkeleton = () => {
   return (
     <>
       {/* Stats Cards Loading Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-36 bg-gradient-to-br from-gray-200 to-gray-100 rounded-xl animate-pulse"></div>
+          <div key={i} className="h-24 sm:h-36 bg-gradient-to-br from-gray-200 to-gray-100 rounded-xl animate-pulse"></div>
         ))}
       </div>
 

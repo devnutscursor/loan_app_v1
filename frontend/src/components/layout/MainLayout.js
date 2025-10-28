@@ -126,19 +126,19 @@ const handleToggleSidebar = () => {
       
       <Toaster position="top-right" />
       
-      <div className="flex min-h-screen overflow-y-auto">
+      <div className="flex min-h-screen">
         {showSidebar() && (
           <Sidebar 
-  isOpen={sidebarOpen} 
-  setIsOpen={setSidebarOpen} 
-  isCollapsed={isSidebarCollapsed}
-  setIsCollapsed={handleToggleSidebar} // Use custom handler
-  user={user} 
-/>
+            isOpen={sidebarOpen} 
+            setIsOpen={setSidebarOpen} 
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={handleToggleSidebar} // Use custom handler
+            user={user} 
+          />
         )}
         
         {/* Main content area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`flex-1 flex flex-col min-h-screen ${showSidebar() ? (isSidebarCollapsed ? 'md:ml-16' : 'md:ml-64') : ''}`}>
           <Navbar user={user} setSidebarOpen={setSidebarOpen} />
           
           {/* Main content */}

@@ -11,7 +11,7 @@ const DashboardHeader = ({ onNewLoanClick }) => {
         </p>
       </div>
       
-      <div className="flex space-x-3 justify-around">
+      <div className="flex space-x-3 justify-start">
         <button
           onClick={onNewLoanClick}
           className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
