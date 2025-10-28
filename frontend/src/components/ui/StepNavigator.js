@@ -63,7 +63,7 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
   };
 
   return (
-    <div className="py-2 px-2 lg:py-4 lg:px-4" style={{ padding: theme.stepNavigator.padding }}>
+    <div className="p-0 sm:px-2 lg:py-4 lg:px-4">
       <div className="flex overflow-x-auto lg:overflow-x-scroll gap-2 lg:gap-4 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-w-[300px]">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
@@ -131,7 +131,7 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
           return (
             <React.Fragment key={stepNumber}>
               {/* Step circle with connector line */}
-              <div className="flex flex-col items-center min-w-[42px] lg:min-w-[120px] flex-shrink-0">
+              <div className="flex flex-col items-center min-w-[35px] lg:min-w-[120px] flex-shrink-0">
                 {/* Circle */}
                 <button
                   className="w-8 h-8 lg:w-12 lg:h-12"
@@ -145,13 +145,13 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <span className="text-xs lg:text-sm">{stepNumber}</span>
+                    <span className="text-[10px] lg:text-sm">{stepNumber}</span>
                   )}
                 </button>
                 
                 {/* Step title */}
                 <div className="mt-1 lg:mt-2 text-center">
-                  <span className="text-xs lg:text-sm" style={titleStyles}>
+                  <span className="text-[10px] lg:text-sm" style={titleStyles}>
                     {step.title}
                   </span>
                 </div>
