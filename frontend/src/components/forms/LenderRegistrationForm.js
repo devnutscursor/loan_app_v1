@@ -271,9 +271,9 @@ const LenderRegistrationForm = ({ formData, errors, handleChange, currentRole })
                     errors.companyId ? 'border-red-300' : 'border-gray-300'
                   } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 >
-                  <option value="">Select a company</option>
+                  <option value="">Select a Lender</option>
                   {loadingCompanies ? (
-                    <option disabled>Loading companies...</option>
+                    <option disabled>Loading lenders...</option>
                   ) : (
                     companies.map((company) => (
                       <option key={company._id} value={company._id}>

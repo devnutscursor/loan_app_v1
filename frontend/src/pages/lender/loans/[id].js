@@ -2699,7 +2699,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
 
                     <Link
-                      href={user.role === "lender" ? "/lender/loans" : "/company/lenders"}
+                      href={user?.role === "lender" ? "/lender/loans" : "/company/lenders"}
                       className="group flex items-center px-2 py-1 rounded hover:bg-gray-100 transition"
                     >
                       <svg
@@ -2753,7 +2753,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                     <div>
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                         <div className="flex items-center gap-1">
-                          {user.role === "lender" && (
+                          {user?.role === "lender" && (
                             <>
                               <button
                                 title="Add Note"
@@ -2774,7 +2774,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                             </>
                           )}
 
-                          {user.role !== "admin" && (
+                          {user?.role !== "admin" && (
                             <button
                               title="Credit Report"
                               onClick={() => {

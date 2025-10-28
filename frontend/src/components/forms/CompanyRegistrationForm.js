@@ -11,7 +11,7 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
       {/* Mobile Stepper - Vertical */}
       <div className="block sm:hidden">
         <div className="space-y-3">
-          {['Company Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
+          {['Lender Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
             const n = idx + 1;
             const active = step === n;
             const completed = step > n;
@@ -34,7 +34,7 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
 
       {/* Desktop Stepper - Horizontal */}
       <div className="hidden sm:flex items-center gap-2 text-sm">
-        {['Company Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
+        {['Lender Info', 'Address', 'Primary User', 'Other Info'].map((label, idx) => {
           const n = idx + 1;
           const active = step === n;
           const completed = step > n;
@@ -63,11 +63,11 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
 
       {step === 1 && (
         <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Company Information</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Lender Information</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
+              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Lender Name</label>
               <div className="mt-1">
                 <input id="companyName" name="companyName" type="text" required={currentRole === 'company'} value={formData.companyName} onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border ${errors.companyName ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
@@ -77,7 +77,7 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
             </div>
 
             <div>
-              <label htmlFor="maxLenders" className="block text-sm font-medium text-gray-700">Max Lenders</label>
+              <label htmlFor="maxLenders" className="block text-sm font-medium text-gray-700">Max Loan Officers</label>
               <div className="mt-1">
                 <input id="maxLenders" name="maxLenders" type="number" min="1" max="100" required={currentRole === 'company'} value={formData.maxLenders} onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border ${errors.maxLenders ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
@@ -89,7 +89,7 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <div>
-              <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700">Company Email</label>
+              <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700">Lender Email</label>
               <div className="mt-1">
                 <input id="companyEmail" name="companyEmail" type="email" required={currentRole === 'company'} value={formData.companyEmail} onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border ${errors.companyEmail ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
@@ -99,7 +99,7 @@ const CompanyRegistrationForm = ({ formData, errors, handleChange, currentRole }
             </div>
 
             <div>
-              <label htmlFor="companyPhone" className="block text-sm font-medium text-gray-700">Company Phone</label>
+              <label htmlFor="companyPhone" className="block text-sm font-medium text-gray-700">Lender Phone</label>
               <div className="mt-1">
                 <input id="companyPhone" name="companyPhone" type="tel" value={formData.companyPhone} onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border ${errors.companyPhone ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}

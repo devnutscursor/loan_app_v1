@@ -21,6 +21,7 @@ const BorrowerRegister = () => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const [lenderDetails, setLenderDetails] = useState(null);
   const [lenderNotFound, setLenderNotFound] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -59,6 +60,9 @@ const BorrowerRegister = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
+    // Mark field as touched
+    setTouchedFields(prev => ({ ...prev, [name]: true }));
+    
     // Clear error for this field immediately
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -69,48 +73,48 @@ const BorrowerRegister = () => {
   }, [errors]);
 
   // Memoized validation function
-  const validateForm = useCallback(() => {
+  const validateForm = useCallback((showAllErrors = false) => {
     const newErrors = {};
     
-    if (!formData.firstName.trim()) {
+    if (!formData.firstName.trim() && (touchedFields.firstName || showAllErrors)) {
       newErrors.firstName = 'First name is required';
     }
     
-    if (!formData.lastName.trim()) {
+    if (!formData.lastName.trim() && (touchedFields.lastName || showAllErrors)) {
       newErrors.lastName = 'Last name is required';
     }
     
-    if (!formData.email) {
+    if (!formData.email && (touchedFields.email || showAllErrors)) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (formData.email && !/\S+@\S+\.\S+/.test(formData.email) && (touchedFields.email || showAllErrors)) {
       newErrors.email = 'Invalid email format';
     }
     
-    if (formData.phone && !/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+    if (formData.phone && !/^\d{10}$/.test(formData.phone.replace(/\D/g, '')) && (touchedFields.phone || showAllErrors)) {
       newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
     
-    if (!formData.password) {
+    if (!formData.password && (touchedFields.password || showAllErrors)) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
+    } else if (formData.password && formData.password.length < 8 && (touchedFields.password || showAllErrors)) {
       newErrors.password = 'Password must be at least 8 characters';
     }
     
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.confirmPassword && (touchedFields.confirmPassword || showAllErrors)) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     
-    if (!formData.termsAccepted) {
+    if (!formData.termsAccepted && (touchedFields.termsAccepted || showAllErrors)) {
       newErrors.termsAccepted = 'You must accept the terms and conditions';
     }
     
-    if (!lenderId) {
+    if (!lenderId && showAllErrors) {
       newErrors.lenderId = 'Invalid registration link. Please use a valid referral link from your lender.';
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, lenderId]);
+  }, [formData, lenderId, touchedFields]);
 
   // Debounced validation effect
   useEffect(() => {
@@ -126,7 +130,7 @@ const BorrowerRegister = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm(true)) return;
     
     setLoading(true);
     
