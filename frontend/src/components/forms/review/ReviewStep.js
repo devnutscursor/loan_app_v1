@@ -101,12 +101,16 @@ const ReviewStep = ({
   // Helper to render a summary section
   const renderSection = (title, content, step) => (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-md font-semibold text-gray-700">{title}</h3>
+      <div className="flex items-center justify-between mb-2 min-w-0">
+        <h3 className="text-md font-semibold text-gray-700 flex-1 min-w-0">
+          <span className="break-words break-all">{title}</span>
+        </h3>
         {renderEditButton(step)}
       </div>
-      <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-        {content}
+      <div className="border border-gray-200 rounded-md p-4 bg-gray-50 overflow-x-auto">
+        <div className="min-w-0 break-words">
+          {content}
+        </div>
       </div>
     </div>
   );
@@ -119,7 +123,7 @@ const ReviewStep = ({
       <p className="mb-2"><strong>SSN:</strong> XXX-XX-{borrower.ssn ? borrower.ssn.slice(-4) : 'XXXX'}</p>
       <p className="mb-2"><strong>Marital Status:</strong> {borrower.maritalStatus || 'Not provided'}</p>
       <p className="mb-2"><strong>Phone:</strong> {formatPhoneNumber(borrower.phone) || 'Not provided'}</p>
-      <p className="mb-2"><strong>Email:</strong> {borrower.email || 'Not provided'}</p>
+      <p className="mb-2"><strong>Email:</strong> <span className="break-words break-all">{borrower.email || 'Not provided'}</span></p>
       <p className="mb-2"><strong>Citizenship:</strong> {borrower.citizenship || 'Not provided'}</p>
     </div>
   );
@@ -127,13 +131,13 @@ const ReviewStep = ({
   // Render borrower address information
   const renderAddressInfo = () => (
     <div>
-      <p className="mb-2"><strong>Current Address:</strong> {formatAddress(borrower.currentAddress)}</p>
+      <p className="mb-2"><strong>Current Address:</strong> <span className="break-words break-all">{formatAddress(borrower.currentAddress)}</span></p>
       <p className="mb-2"><strong>Years at Address:</strong> {borrower.currentAddress?.yearsAtAddress || 'Not provided'}</p>
       <p className="mb-2"><strong>Months at Address:</strong> {borrower.currentAddress?.monthsAtAddress || 'Not provided'}</p>
       <p className="mb-2"><strong>Housing Status:</strong> {borrower.currentAddress?.housingStatus || 'Not provided'}</p>
       
       {borrower.mailingAddress && !borrower.mailingAddress.sameAsCurrentAddress && (
-        <p className="mb-2"><strong>Mailing Address:</strong> {formatAddress(borrower.mailingAddress)}</p>
+        <p className="mb-2"><strong>Mailing Address:</strong> <span className="break-words break-all">{formatAddress(borrower.mailingAddress)}</span></p>
       )}
     </div>
   );
@@ -147,12 +151,12 @@ const ReviewStep = ({
             <p className="mb-2"><strong>Employer:</strong> {employer.companyName || 'Not provided'}</p>
             <p className="mb-2"><strong>Job Title:</strong> {employer.jobTitle || 'Not provided'}</p>
             <p className="mb-2"><strong>Employment Status:</strong> {employer.employmentStatus || 'Not provided'}</p>
-            <p className="mb-2"><strong>Address:</strong> {formatAddress({
+            <p className="mb-2"><strong>Address:</strong> <span className="break-words break-all">{formatAddress({
               streetAddress: employer.streetAddress,
               city: employer.city,
               state: employer.state,
               zipCode: employer.zipCode
-            })}</p>
+            })}</span></p>
             <p className="mb-2"><strong>Start Date:</strong> {formatDate(employer.startDate) || 'Not provided'}</p>
             <p className="mb-2"><strong>Time in Profession:</strong> {employer.yearsInProfession || '0'} years, {employer.monthsInProfession || '0'} months</p>
           </div>
@@ -381,7 +385,7 @@ const ReviewStep = ({
                 
                 return (
                   <div key={index} className={index > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
-                    <p className="mb-2"><strong>Address:</strong> {formatAddress(propertyAddress)}</p>
+                    <p className="mb-2"><strong>Address:</strong> <span className="break-words break-all">{formatAddress(propertyAddress)}</span></p>
                     <p className="mb-2"><strong>Property Type:</strong> {property.propertyType || 'Not specified'}</p>
                     <p className="mb-2"><strong>Market Value:</strong> {formatCurrency(property.presentMarketValue) || 'Not provided'}</p>
                     <p className="mb-2"><strong>Status:</strong> {property.statusOfProperty || 'Not specified'}</p>

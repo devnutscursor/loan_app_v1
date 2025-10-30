@@ -243,7 +243,7 @@ const LoanApplication = () => {
             </div>
             
             {/* Form */}
-            <div className="mt-6 bg-white shadow rounded-lg p-6">
+            <div className="mt-6 bg-white shadow rounded-lg p-4 sm:p-6">
               <form onSubmit={currentStep === 6 ? handleSubmit : (e) => e.preventDefault()}>
                 {renderStep()}
                 

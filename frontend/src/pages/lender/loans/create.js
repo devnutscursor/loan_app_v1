@@ -1447,7 +1447,7 @@ const LenderManualLoanCreation = () => {
   return (
     <ProtectedRoute roles={["lender"]}>
       <MainLayout title="Create Loan Application - Lender Portal">
-        <div className="py-6">
+        <div className="py-6 overflow-hidden">
           <div className="mx-auto sm:px-6">
             <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
               <div>
@@ -1460,7 +1460,7 @@ const LenderManualLoanCreation = () => {
               </div>
 
               {/* Development Tools and Back Button */}
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {process.env.NODE_ENV === "development" && (
                   <>
                     <button

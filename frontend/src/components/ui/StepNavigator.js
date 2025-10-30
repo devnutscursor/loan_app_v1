@@ -63,105 +63,102 @@ const StepNavigator = ({ currentStep, setCurrentStep, steps, formData, validateS
   };
 
   return (
-    <div className="p-0 sm:px-2 lg:py-4 lg:px-4">
-      <div className="flex overflow-x-auto lg:overflow-x-scroll gap-2 lg:gap-4 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-w-[300px]">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          const status = getStepStatus(stepNumber);
-          
-          // Set styles based on status
-          const circleStyles = {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: '2px',
-            borderRadius: '9999px',
-            transition: 'all 0.2s ease-in-out',
-            outline: 'none'
-          };
-          
-          // Add status-specific styles
-          if (status === 'completed') {
-            circleStyles.background = theme.gradients.primary;
-            circleStyles.borderColor = theme.colors.white;
-            circleStyles.color = theme.colors.white;
-            circleStyles.cursor = 'pointer';
-          } else if (status === 'active') {
-            circleStyles.backgroundColor = theme.colors.white;
-            circleStyles.borderColor = theme.colors.primary;
-            circleStyles.color = theme.colors.primary;
-            circleStyles.cursor = 'default';
-          } else if (status === 'upcoming' && stepNumber === currentStep + 1) {
-            circleStyles.backgroundColor = theme.colors.white;
-            circleStyles.borderColor = theme.colors.gray300;
-            circleStyles.color = theme.colors.gray500;
-            circleStyles.cursor = 'pointer';
-          } else {
-            circleStyles.backgroundColor = theme.colors.white;
-            circleStyles.borderColor = theme.colors.gray300;
-            circleStyles.color = theme.colors.gray400;
-            circleStyles.cursor = 'not-allowed';
-            circleStyles.opacity = 0.5;
-          }
-          
-          // Title text styles
-          const titleStyles = {
-            fontWeight: 500
-          };
-          
-          if (status === 'active') {
-            titleStyles.color = theme.colors.primary;
-          } else if (status === 'completed') {
-            titleStyles.color = theme.colors.gray900;
-          } else {
-            titleStyles.color = theme.colors.gray500;
-          }
-          
-          // Connector line styles
-          const connectorStyles = {
-            flex: 1,
-            height: '2px',
-            marginLeft: '0.5rem',
-            marginRight: '0.5rem',
-            backgroundColor: stepNumber < currentStep ? theme.colors.primary : theme.colors.gray300,
-            maxWidth: '21px',
-            minWidth: '21px',
-          };
-          
-          return (
-            <React.Fragment key={stepNumber}>
-              {/* Step circle with connector line */}
-              <div className="flex flex-col items-center min-w-[35px] lg:min-w-[120px] flex-shrink-0">
-                {/* Circle */}
-                <button
-                  className="w-8 h-8 lg:w-12 lg:h-12"
-                  onClick={() => handleStepClick(stepNumber)}
-                  disabled={stepNumber > currentStep + 1}
-                  style={circleStyles}
-                  aria-current={status === 'active' ? 'step' : undefined}
-                >
-                  {status === 'completed' ? (
-                    <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <span className="text-[10px] lg:text-sm">{stepNumber}</span>
-                  )}
-                </button>
-                
-                {/* Step title */}
-                <div className="mt-1 lg:mt-2 text-center">
-                  <span className="text-[10px] lg:text-sm" style={titleStyles}>
-                    {step.title}
-                  </span>
+    // <div className="p-0 sm:px-2 lg:py-4 lg:px-4">
+      <div className="w-full overflow-x-auto mt-5 sm:mt-0">
+        <div className='flex justify-between px-0 sm:px-4 lg:px-8 pb-2 space-x-4'>
+          {steps.map((step, index) => {
+            const stepNumber = index + 1;
+            const status = getStepStatus(stepNumber);
+            
+            // Set styles based on status
+            const circleStyles = {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: '2px',
+              borderRadius: '9999px',
+              transition: 'all 0.2s ease-in-out',
+              outline: 'none'
+            };
+            
+            // Add status-specific styles
+            if (status === 'completed') {
+              circleStyles.background = theme.gradients.primary;
+              circleStyles.borderColor = theme.colors.white;
+              circleStyles.color = theme.colors.white;
+              circleStyles.cursor = 'pointer';
+            } else if (status === 'active') {
+              circleStyles.backgroundColor = theme.colors.white;
+              circleStyles.borderColor = theme.colors.primary;
+              circleStyles.color = theme.colors.primary;
+              circleStyles.cursor = 'default';
+            } else if (status === 'upcoming' && stepNumber === currentStep + 1) {
+              circleStyles.backgroundColor = theme.colors.white;
+              circleStyles.borderColor = theme.colors.gray300;
+              circleStyles.color = theme.colors.gray500;
+              circleStyles.cursor = 'pointer';
+            } else {
+              circleStyles.backgroundColor = theme.colors.white;
+              circleStyles.borderColor = theme.colors.gray300;
+              circleStyles.color = theme.colors.gray400;
+              circleStyles.cursor = 'not-allowed';
+              circleStyles.opacity = 0.5;
+            }
+            
+            // Title text styles
+            const titleStyles = {
+              fontWeight: 500
+            };
+            
+            if (status === 'active') {
+              titleStyles.color = theme.colors.primary;
+            } else if (status === 'completed') {
+              titleStyles.color = theme.colors.gray900;
+            } else {
+              titleStyles.color = theme.colors.gray500;
+            }
+            
+            // Connector line styles
+            const connectorStyles = {
+              flex: 1,
+              height: '2px',
+              marginLeft: '0.5rem',
+              marginRight: '0.5rem',
+              backgroundColor: stepNumber < currentStep ? theme.colors.primary : theme.colors.gray300,
+              maxWidth: '21px',
+              minWidth: '21px',
+            };
+            
+            return (
+              <React.Fragment key={stepNumber}>
+                <div className="flex flex-col items-center flex-shrink-0 min-w-[30px]">
+                  <button
+                    className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12"
+                    onClick={() => handleStepClick(stepNumber)}
+                    disabled={stepNumber > currentStep + 1}
+                    style={circleStyles}
+                    aria-current={status === 'active' ? 'step' : undefined}
+                  >
+                    {status === 'completed' ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <span className="text-[10px] lg:text-sm">{stepNumber}</span>
+                    )}
+                  </button>
+                  <div className="mt-1 lg:mt-2 text-center">
+                    <span className="text-[10px] lg:text-sm" style={titleStyles}>
+                      {step.title}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              
-            </React.Fragment>
-          );
-        })}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    // </div>
   );
 };
 
