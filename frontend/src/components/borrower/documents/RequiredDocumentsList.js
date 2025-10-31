@@ -13,6 +13,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
   const [loading, setLoading] = useState(true);
   const [uploadingDocId, setUploadingDocId] = useState(null);
   const [existingDocuments, setExistingDocuments] = useState([]);
+  const [docFilter, setDocFilter] = useState('all'); // all | id | wage | self | home
 
   // Define the standard required documents for loan approval
   const standardRequirements = [
@@ -360,6 +361,20 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
     });
   };
   
+  // Grouping map for single dropdown filtering
+  const groupMap = {
+    id: new Set(['identification']),
+    wage: new Set(['proofOfIncome', 'employmentVerification']),
+    self: new Set(['selfEmployedPL', 'scheduleC']),
+    home: new Set(['mortgageStatement', 'propertyTax', 'homeownersInsurance'])
+  };
+
+  const filterRequirementsByGroup = (reqs) => {
+    if (docFilter === 'all') return reqs;
+    const wanted = groupMap[docFilter] || new Set();
+    return reqs.filter(r => wanted.has(r.id));
+  };
+
   // Handle file selection and upload
   const handleFileUpload = async (event, requirement) => {
     const file = event.target.files[0];
@@ -556,9 +571,25 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         </div>
       </div>
       
+      {/* Filter Control */}
+      <div className="px-5 pt-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Show documents for</label>
+        <select
+          value={docFilter}
+          onChange={(e) => setDocFilter(e.target.value)}
+          className="text-sm border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="all">All</option>
+          <option value="id">Identification</option>
+          <option value="wage">Wage Earner</option>
+          <option value="self">Self-Employed</option>
+          <option value="home">Homeowner</option>
+        </select>
+      </div>
+
       {/* Pending Tasks */}
       <div className="p-5">
-        {requirements.filter(req => !req.isSubmitted).length > 0 ? (
+        {filterRequirementsByGroup(requirements).filter(req => !req.isSubmitted).length > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center">
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -572,7 +603,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
             <div className="mt-2 border rounded-lg overflow-hidden">
               <ul role="list" className="divide-y divide-gray-200">
                 {/* If there's a selected request, show it first and filter the rest */}
-                {requirements.filter(req => !req.isSubmitted)
+                {filterRequirementsByGroup(requirements).filter(req => !req.isSubmitted)
                   .sort((a, b) => {
                     // Sort highlighted items to the top
                     if (a.isHighlighted && !b.isHighlighted) return -1;
@@ -643,7 +674,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       </div>
       
       {/* Completed Tasks */}
-      {requirements.some(req => req.isSubmitted) && (
+      {filterRequirementsByGroup(requirements).some(req => req.isSubmitted) && (
         <div className="px-5 py-4 bg-gray-50 border-t">
           <div className="flex items-center mb-3">
             <div className="flex-shrink-0 h-7 w-7 rounded-full bg-green-100 flex items-center justify-center">
@@ -655,7 +686,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
           </div>
           
           <div className="space-y-2">
-            {requirements.filter(req => req.isSubmitted).map((req) => (
+            {filterRequirementsByGroup(requirements).filter(req => req.isSubmitted).map((req) => (
               <div key={req.id} className="flex items-start p-2 rounded-md bg-white border border-gray-100">
                 <div className="flex-shrink-0 pt-0.5">
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
