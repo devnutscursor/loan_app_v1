@@ -32,6 +32,12 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
       updatedEmployers[index] = {};
     }
     
+    // Clamp months to [0, 12]
+    if (field === 'monthsInProfession') {
+      const n = parseInt(value, 10);
+      value = isNaN(n) ? '' : Math.max(0, Math.min(12, n));
+    }
+
     // Update the specific field for the employer at the given index
     updatedEmployers[index][field] = value;
     
@@ -283,7 +289,7 @@ const EmploymentHistory = ({ borrower, onChange, errors = {}, userType = 'borrow
               <input
                 type="number"
                 min="0"
-                max="11"
+                max="12"
                 value={employer.monthsInProfession || ''}
                 onChange={(e) => handleEmployerChange(index, 'monthsInProfession', e.target.value)}
                 className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"

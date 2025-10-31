@@ -325,7 +325,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
               >
                 <option value="">Select</option>
                 <option value="Primary Residence">Primary Residence</option>
-                <option value="Vacation Home">Vacation Home</option>
+                <option value="Vacation Home">2nd Home</option>
                 <option value="Investment">Investment</option>
                 <option value="Other">Other</option>
               </select>

@@ -48,6 +48,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
   // Handle form field changes for current address
   const handleCurrentAddressChange = (e) => {
     const { name, value } = e.target;
+    let outValue = value;
     
     // Update local state for immediate feedback
     switch (name) {
@@ -72,9 +73,13 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
       case 'yearsAtAddress':
         setYearsAtAddress(value);
         break;
-      case 'monthsAtAddress':
-        setMonthsAtAddress(value);
+      case 'monthsAtAddress': {
+        const n = parseInt(value, 10);
+        const clamped = isNaN(n) ? '' : Math.max(0, Math.min(12, n));
+        setMonthsAtAddress(clamped);
+        outValue = clamped;
         break;
+      }
       default:
         break;
     }
@@ -83,7 +88,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
     onChange({
       target: {
         name: `currentAddress.${name}`,
-        value
+        value: outValue
       }
     });
   };
@@ -356,7 +361,7 @@ const ResidenceHistory = ({ borrower, onChange, errors = {}, userType = 'borrowe
               className={`text-xs w-full border ${errors['currentAddress.monthsAtAddress'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
               placeholder="6"
               min="0"
-              max="11"
+              max="12"
             />
             {errors['currentAddress.monthsAtAddress'] && (
               <p className="text-red-500 text-xs mt-1">{errors['currentAddress.monthsAtAddress']}</p>

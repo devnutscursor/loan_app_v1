@@ -487,7 +487,7 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                     >
                       <option value="">Select Occupancy</option>
                       <option value="primaryResidence">Primary Residence</option>
-                      <option value="vacationHome">Vacation Home</option>
+                      <option value="vacationHome">2nd Home</option>
                       <option value="investment">Investment</option>
                     <option value="other">Other</option>
                   </select>

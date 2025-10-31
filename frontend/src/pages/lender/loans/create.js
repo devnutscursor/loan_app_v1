@@ -471,6 +471,11 @@ const LenderManualLoanCreation = () => {
           if (primaryBorrower.currentAddress?.yearsAtAddress === undefined || primaryBorrower.currentAddress?.yearsAtAddress === '')
             newErrors["borrowers[0].currentAddress.yearsAtAddress"] =
               "Years at address is required";
+          // Enforce minimum of 2 years at current address
+          const yearsAtAddressNum = Number(primaryBorrower.currentAddress?.yearsAtAddress) || 0;
+          if (yearsAtAddressNum < 2) {
+            newErrors["borrowers[0].currentAddress.yearsAtAddress"] = "Years at address must be at least 2";
+          }
           if (primaryBorrower.currentAddress?.monthsAtAddress === undefined || primaryBorrower.currentAddress?.monthsAtAddress === '')
             newErrors["borrowers[0].currentAddress.monthsAtAddress"] =
               "Months at address is required";
@@ -509,6 +514,13 @@ const LenderManualLoanCreation = () => {
             if (!primaryBorrower.employers[0].zipCode)
               newErrors["borrowers[0].employers[0].zipCode"] =
                 "Company ZIP code is required";
+            // Enforce minimum of 2 years in profession for each employer
+            primaryBorrower.employers.forEach((emp, idx) => {
+              const yipNum = Number(emp?.yearsInProfession) || 0;
+              if (yipNum < 2) {
+                newErrors[`borrowers[0].employers[${idx}].yearsInProfession`] = "Years in profession must be at least 2";
+              }
+            });
           } else {
             newErrors["borrowers[0].employers[0].companyName"] =
               "At least one employer is required";
