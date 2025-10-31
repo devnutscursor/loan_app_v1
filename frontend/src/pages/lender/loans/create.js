@@ -12,6 +12,56 @@ import DeclarationsStep from "../../../components/forms/declarations/Declaration
 import ReviewStep from "../../../components/forms/review/ReviewStep";
 import StepNavigator from "../../../components/ui/StepNavigator";
 
+// Helpers to sanitize currency/amount fields before sending to backend
+const stripToDigits = (val) => (val ?? "").toString().replace(/[^\d-]/g, "");
+
+const MONEY_KEYS = new Set([
+  // propertyInfo
+  "contractPurchasePrice", "proposedRentalIncome", "propertyValue",
+  "numberOfUnits", "yearBuilt",
+  // loanInfo
+  "loanAmount", "purchasePrice", "downPayment", "currentLoanBalance",
+  "requestedLoanAmount", "originalCost", "existingLoans",
+  "presentValueOfLot", "costOfImprovements", "yearAcquired", "yearLotAcquired",
+  // assets
+  "value", "earnestMoney", "lifeInsurance", "vestedInterestInRetirement", "otherAssets",
+  // income
+  "baseIncome", "overtime", "commissions", "bonuses", "militaryEntitlements", "amount",
+  // debts/expenses
+  "monthlyPayment", "unpaidBalance", "balance", "expenseAmount",
+  // propertiesOwned (top-level and nested)
+  "rent", "firstMortgage", "otherFinancing", "hazardInsurance", "realEstateTaxes",
+  "mortgageInsurance", "hoaDues", "otherHousingExpenses",
+  "presentMarketValue", "monthlyCosts", "grossRentalIncome", "netRentalIncome",
+]);
+
+const sanitizeMoneyFields = (node) => {
+  if (Array.isArray(node)) {
+    return node.map(sanitizeMoneyFields);
+  }
+  if (node && typeof node === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (v == null) {
+        out[k] = v;
+        continue;
+      }
+      if (MONEY_KEYS.has(k)) {
+        if (typeof v === "string") {
+          const d = stripToDigits(v);
+          out[k] = d === "" ? 0 : Number(d);
+        } else {
+          out[k] = v;
+        }
+      } else {
+        out[k] = sanitizeMoneyFields(v);
+      }
+    }
+    return out;
+  }
+  return node;
+};
+
 const LenderManualLoanCreation = () => {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
@@ -477,6 +527,26 @@ const LenderManualLoanCreation = () => {
         
         if (!propertyData.propertyType) {
           newErrors["propertyInfo.propertyType"] = "Property type is required";
+        }
+
+        // Additional property validations when accepted offer is yes/true
+        const hasAcceptedOfferNormalized = propertyData.hasAcceptedOffer === true || propertyData.hasAcceptedOffer === 'Yes';
+        if (hasAcceptedOfferNormalized) {
+          if (!propertyData.contractPurchasePrice) {
+            newErrors["propertyInfo.contractPurchasePrice"] = "Contract purchase price is required";
+          }
+          if (!propertyData.isMixedUse) {
+            newErrors["propertyInfo.isMixedUse"] = "Mixed-use selection is required";
+          }
+          if (!propertyData.isManufactured) {
+            newErrors["propertyInfo.isManufactured"] = "Manufactured home selection is required";
+          }
+          if (!propertyData.numberOfUnits) {
+            newErrors["propertyInfo.numberOfUnits"] = "Number of units is required";
+          }
+          if (!propertyData.yearBuilt) {
+            newErrors["propertyInfo.yearBuilt"] = "Year built is required";
+          }
         }
 
         // Loan information validation
@@ -1186,17 +1256,20 @@ const LenderManualLoanCreation = () => {
     // Debug: log the current form data structure to help identify issues
     console.log("Current form data:", formData);
 
-    // If validation bypass is enabled or the step validates successfully
-    if (window._tempValidateOverride || validateStep(currentStep)) {
+    // Validate current step
+    const stepErrors = validateStep(currentStep);
+
+    // If validation bypass is enabled or there are no errors, advance; otherwise block and notify
+    if (window._tempValidateOverride || Object.keys(stepErrors).length === 0) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
       // Immediately save the new step
       saveFormToStorage(formData, newStep, currentSubStep);
     } else {
       // More detailed error message for lender context
-      toast.error(
-        "Please complete all required fields for the borrower application"
-      );
+      const messages = Object.values(stepErrors);
+      const summary = messages.slice(0, 4).join("; ") + (messages.length > 4 ? "; ..." : "");
+      toast.error(summary || "Please complete all required fields for the borrower application");
       console.log("Validation errors:", errors);
     }
   };
@@ -1252,11 +1325,14 @@ const LenderManualLoanCreation = () => {
         },
       };
 
-      console.log("LENDER LOAN CREATION - Submitting data:", submissionData);
+      // Sanitize currency and numeric fields to remove any commas/formatting
+      const sanitizedData = sanitizeMoneyFields(submissionData);
+
+      console.log("LENDER LOAN CREATION - Submitting data:", sanitizedData);
 
       // For lender manual creation, we need to create the borrower first
       // then submit the loan with the borrower ID
-      const response = await LoanService.submitLoanForLender(submissionData);
+      const response = await LoanService.submitLoanForLender(sanitizedData);
 
       if (response.success) {
         // Clear saved form data since submission was successful

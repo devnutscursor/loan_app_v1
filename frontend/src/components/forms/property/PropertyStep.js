@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropertyInformation from './PropertyInformation';
 import LoanDetails from './LoanDetails';
+import { toast } from 'react-hot-toast';
 
 import theme from "../../../styles/theme";
 /**
@@ -154,23 +155,20 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
 
   // Validate property information based on whether they have an accepted offer
   const validatePropertyInfo = () => {
-    const basicFieldsComplete = propertyInfo && propertyInfo.propertyType && propertyInfo.occupancyType;
+    const missing = [];
+    if (!propertyInfo?.propertyType) missing.push('Property Type');
+    if (!propertyInfo?.occupancyType) missing.push('Occupancy Type');
 
-    let isComplete;
-    // Additional validation if they have an accepted offer
-    if (propertyInfo.hasAcceptedOffer === true) {
-      isComplete = basicFieldsComplete &&
-      propertyInfo.contractPurchasePrice &&
-      propertyInfo.isMixedUse &&
-      propertyInfo.isManufactured &&
-      propertyInfo.numberOfUnits &&
-      propertyInfo.yearBuilt;
-
-    } else {
-      isComplete = basicFieldsComplete;
+    const hasAcceptedOfferNormalized = propertyInfo?.hasAcceptedOffer === true || propertyInfo?.hasAcceptedOffer === 'Yes';
+    if (hasAcceptedOfferNormalized) {
+      if (!propertyInfo?.contractPurchasePrice) missing.push('Contract Purchase Price');
+      if (!propertyInfo?.isMixedUse) missing.push('Mixed-Use Property');
+      if (!propertyInfo?.isManufactured) missing.push('Manufactured Home');
+      if (!propertyInfo?.numberOfUnits) missing.push('Number Of Units');
+      if (!propertyInfo?.yearBuilt) missing.push('Year Built');
     }
 
-    return isComplete;
+    return { valid: missing.length === 0, missing };
   };
   
   return (
@@ -241,8 +239,10 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => {
               // Validate property info before proceeding
-              if (!validatePropertyInfo()) {
-                alert('Please complete all required fields before proceeding');
+              const result = validatePropertyInfo();
+              if (!result.valid) {
+                const msg = `Missing: ${result.missing.join(', ')}`;
+                toast.error(msg);
                 return;
               }
               setActiveTab('loanDetails');
@@ -257,47 +257,47 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
             onClick={() => {
               // Ensure loanInfo exists and has required fields before proceeding to next step
               if (!loanInfo?.loanType) {
-                alert('Please select a loan type before proceeding');
+                toast.error('Missing: Loan Type');
                 return;
               }
               
               if (loanInfo.loanType === 'Purchase') {
                 if (!loanInfo.purchasePrice) {
-                  alert('Please enter the purchase price before proceeding');
+                  toast.error('Missing: Purchase Price');
                   return;
                 }
                 if (!loanInfo.downPayment) {
-                  alert('Please enter the down payment before proceeding');
+                  toast.error('Missing: Down Payment');
                   return;
                 }
               }
               
               if (loanInfo.loanType === 'Refinance') {
                 if (!loanInfo.requestedLoanAmount) {
-                  alert('Please enter the requested loan amount before proceeding');
+                  toast.error('Missing: Requested Loan Amount');
                   return;
                 }
                 if (!loanInfo.currentLoanBalance) {
-                  alert('Please enter the current loan balance before proceeding');
+                  toast.error('Missing: Current Loan Balance');
                   return;
                 }
                 if (!loanInfo.refinanceType) {
-                  alert('Please enter the refinance type before proceeding');
+                  toast.error('Missing: Refinance Type');
                   return;
                 }
                 if (!loanInfo.yearAcquired) {
-                  alert('Please enter the year acquired before proceeding');
+                  toast.error('Missing: Year Acquired');
                   return;
                 }
               }
               
               if (loanInfo.loanType === 'Construction') {
                 if (!loanInfo.loanAmount) {
-                  alert('Please enter the loan amount before proceeding');
+                  toast.error('Missing: Loan Amount');
                   return;
                 }
                 if (!loanInfo.yearLotAcquired) {
-                  alert('Please enter the year lot acquired before proceeding');
+                  toast.error('Missing: Year Lot Acquired');
                   return;
                 }
               }

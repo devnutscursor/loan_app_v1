@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
+import { useMemo } from 'react';
 
 /**
  * Assets Form Component
@@ -57,6 +58,14 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
       }
     });
   }, [assets]);
+
+  // Format currency for display and return digits for storage
+  const formatCurrencyInput = (val) => {
+    const digits = (val || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return { digits: '', display: '' };
+    const display = new Intl.NumberFormat('en-US').format(Number(digits));
+    return { digits, display };
+  };
 
   // Get borrower's full name for display
   const getBorrowerName = () => {
@@ -185,6 +194,10 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
   const handleAccountChange = (id, field, value) => {
     const updatedAccounts = localAssets.checkingAndSavings.map(account => {
       if (account.id === id) {
+        if (field === 'value') {
+          const { digits } = formatCurrencyInput(value);
+          return { ...account, [field]: digits };
+        }
         return { ...account, [field]: value };
       }
       return account;
@@ -207,6 +220,10 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
   const handleStockChange = (id, field, value) => {
     const updatedStocks = localAssets.stocksAndBonds.map(stock => {
       if (stock.id === id) {
+        if (field === 'value') {
+          const { digits } = formatCurrencyInput(value);
+          return { ...stock, [field]: digits };
+        }
         return { ...stock, [field]: value };
       }
       return stock;
@@ -229,6 +246,10 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
   const handleGiftChange = (id, field, value) => {
     const updatedGifts = localAssets.giftsAndGrants.map(gift => {
       if (gift.id === id) {
+        if (field === 'value') {
+          const { digits } = formatCurrencyInput(value);
+          return { ...gift, [field]: digits };
+        }
         return { ...gift, [field]: value };
       }
       return gift;
@@ -251,7 +272,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
   const handleMiscChange = (field, value) => {
     const updatedMisc = {
       ...localAssets.miscellaneous,
-      [field]: value
+      [field]: field ? formatCurrencyInput(value).digits : value
     };
     
     // Update local state
@@ -415,7 +436,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={account.value || ''}
+                    value={formatCurrencyInput(account.value || '').display}
                     onChange={(e) => handleAccountChange(account.id, 'value', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -546,7 +567,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={stock.value || ''}
+                    value={formatCurrencyInput(stock.value || '').display}
                     onChange={(e) => handleStockChange(stock.id, 'value', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -698,7 +719,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={gift.value || ''}
+                    value={formatCurrencyInput(gift.value || '').display}
                     onChange={(e) => handleGiftChange(gift.id, 'value', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -759,7 +780,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={localAssets.miscellaneous.earnestMoney || ''}
+                    value={formatCurrencyInput(localAssets.miscellaneous.earnestMoney || '').display}
                     onChange={(e) => handleMiscChange('earnestMoney', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -778,7 +799,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={localAssets.miscellaneous.lifeInsurance || ''}
+                    value={formatCurrencyInput(localAssets.miscellaneous.lifeInsurance || '').display}
                     onChange={(e) => handleMiscChange('lifeInsurance', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -799,7 +820,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={localAssets.miscellaneous.vestedInterestInRetirement || ''}
+                    value={formatCurrencyInput(localAssets.miscellaneous.vestedInterestInRetirement || '').display}
                     onChange={(e) => handleMiscChange('vestedInterestInRetirement', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}
@@ -818,7 +839,7 @@ const Assets = ({ assets = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={localAssets.miscellaneous.otherAssets || ''}
+                    value={formatCurrencyInput(localAssets.miscellaneous.otherAssets || '').display}
                     onChange={(e) => handleMiscChange('otherAssets', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ focusRing: theme.colors.primary }}

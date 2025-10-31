@@ -135,7 +135,9 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
   // Format currency input
   const formatCurrency = (value) => {
     if (!value) return '';
-    return value;
+    const digits = String(value).replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('en-US').format(Number(digits));
   };
 
   // Handle currency field changes (loan amount, down payment, etc.)

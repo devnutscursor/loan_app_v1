@@ -41,10 +41,24 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
     setOtherHousingExpenses(propertiesOwned.otherHousingExpenses || 0);
     setProperties(propertiesOwned.properties || []);
   }, [propertiesOwned]);
+
+  // Currency helpers
+  const formatCurrencyInput = (val) => {
+    const digits = (val || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return { digits: '', display: '' };
+    const display = new Intl.NumberFormat('en-US').format(Number(digits));
+    return { digits, display };
+  };
+  const formatCurrencyDisplay = (val) => {
+    const digits = (val === 0 ? '0' : (val || '').toString()).replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('en-US').format(Number(digits));
+  };
   
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const numValue = name.includes('Amount') || name.includes('Payment') || name.includes('Cost') || name.includes('Tax') || name.includes('Insurance') || name.includes('Dues') || name.includes('Rent') || name.includes('Financing') ? parseFloat(value) || 0 : value;
+    const isMoneyField = name.includes('Amount') || name.includes('Payment') || name.includes('Cost') || name.includes('Tax') || name.includes('Insurance') || name.includes('Dues') || name.includes('Rent') || name.includes('Financing');
+    const numValue = isMoneyField ? Number(formatCurrencyInput(value).digits || 0) : value;
     
     // Update local state
     switch (name) {
@@ -190,7 +204,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
   
   const updateProperty = (index, field, value) => {
     const updatedProperties = [...properties];
-    const numValue = field.includes('Value') || field.includes('Balance') || field.includes('Payment') || field.includes('Cost') || field.includes('Income') ? parseFloat(value) || 0 : value;
+    const isMoneyField = field.includes('Value') || field.includes('Balance') || field.includes('Payment') || field.includes('Cost') || field.includes('Income');
+    const numValue = isMoneyField ? Number(formatCurrencyInput(value).digits || 0) : value;
     
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -401,8 +416,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                         <span className="text-gray-500 text-xs">$</span>
                       </div>
                       <input
-                        type="number"
-                        value={property.presentMarketValue || ''}
+                        type="text"
+                        value={formatCurrencyDisplay(property.presentMarketValue)}
                         onChange={(e) => updateProperty(index, 'presentMarketValue', e.target.value)}
                         className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -415,8 +430,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                         <span className="text-gray-500 text-xs">$</span>
                       </div>
                       <input
-                        type="number"
-                        value={property.monthlyCosts || ''}
+                        type="text"
+                        value={formatCurrencyDisplay(property.monthlyCosts)}
                         onChange={(e) => updateProperty(index, 'monthlyCosts', e.target.value)}
                         className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -429,8 +444,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                         <span className="text-gray-500 text-xs">$</span>
                       </div>
                       <input
-                        type="number"
-                        value={property.grossRentalIncome || ''}
+                        type="text"
+                        value={formatCurrencyDisplay(property.grossRentalIncome)}
                         onChange={(e) => updateProperty(index, 'grossRentalIncome', e.target.value)}
                         className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -443,8 +458,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                         <span className="text-gray-500 text-xs">$</span>
                       </div>
                       <input
-                        type="number"
-                        value={property.netRentalIncome || ''}
+                        type="text"
+                        value={formatCurrencyDisplay(property.netRentalIncome)}
                         onChange={(e) => updateProperty(index, 'netRentalIncome', e.target.value)}
                         className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -538,8 +553,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                           <span className="text-gray-500 text-xs">$</span>
                         </div>
                         <input
-                          type="number"
-                          value={property.monthlyPayment || ''}
+                          type="text"
+                          value={formatCurrencyDisplay(property.monthlyPayment)}
                           onChange={(e) => updateProperty(index, 'monthlyPayment', e.target.value)}
                           className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -552,8 +567,8 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                           <span className="text-gray-500 text-xs">$</span>
                         </div>
                         <input
-                          type="number"
-                          value={property.unpaidBalance || ''}
+                          type="text"
+                          value={formatCurrencyDisplay(property.unpaidBalance)}
                           onChange={(e) => updateProperty(index, 'unpaidBalance', e.target.value)}
                           className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -590,9 +605,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="rent"
-                value={rent || ''}
+                value={formatCurrencyDisplay(rent)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -606,9 +621,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="firstMortgage"
-                value={firstMortgage || ''}
+                value={formatCurrencyDisplay(firstMortgage)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -622,9 +637,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="otherFinancing"
-                value={otherFinancing || ''}
+                value={formatCurrencyDisplay(otherFinancing)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -638,9 +653,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="hazardInsurance"
-                value={hazardInsurance || ''}
+                value={formatCurrencyDisplay(hazardInsurance)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -654,9 +669,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="realEstateTaxes"
-                value={realEstateTaxes || ''}
+                value={formatCurrencyDisplay(realEstateTaxes)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -670,9 +685,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
                 </div>
                 <input
-                type="number"
+                type="text"
                 name="mortgageInsurance"
-                value={mortgageInsurance || ''}
+                value={formatCurrencyDisplay(mortgageInsurance)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -686,9 +701,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="hoaDues"
-                value={hoaDues || ''}
+                value={formatCurrencyDisplay(hoaDues)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -702,9 +717,9 @@ const PropertyOwned = ({ propertiesOwned = {}, onChange, errors = {}, userType =
                 <span className="text-gray-500 text-xs">$</span>
               </div>
               <input
-                type="number"
+                type="text"
                 name="otherHousingExpenses"
-                value={otherHousingExpenses || ''}
+                value={formatCurrencyDisplay(otherHousingExpenses)}
                 onChange={handleChange}
                 className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

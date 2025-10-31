@@ -27,18 +27,29 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
     return borrower.firstName || 'the borrower';
   };
 
+  // Display formatter with commas and normalized digits for storage
+  const formatCurrencyInput = (val) => {
+    const digits = (val || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return { digits: '', display: '' };
+    const display = new Intl.NumberFormat('en-US').format(Number(digits));
+    return { digits, display };
+  };
+
   // Handle change for a specific income field
   const handleIncomeChange = (field, value) => {
+    const digits = ['baseIncome','overtime','commissions','bonuses','militaryEntitlements'].includes(field)
+      ? formatCurrencyInput(value).digits
+      : value;
     // Update local state for immediate feedback
     setLocalIncome({
       ...localIncome,
-      [field]: value
+      [field]: digits
     });
 
     // Update parent component - use original income prop as base
     onChange({
       ...income,
-      [field]: value
+      [field]: digits
     });
   };
 
@@ -78,7 +89,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
     
     localOtherIncome[index] = {
       ...localOtherIncome[index],
-      [dbField]: value
+      [dbField]: dbField === 'amount' ? formatCurrencyInput(value).digits : value
     };
     
     setLocalIncome({
@@ -91,7 +102,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
     
     otherIncome[index] = {
       ...otherIncome[index],
-      [dbField]: value
+      [dbField]: dbField === 'amount' ? formatCurrencyInput(value).digits : value
     };
     
     onChange({
@@ -119,10 +130,11 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
     });
   };
 
-  // Format currency input (remove non-numeric characters)
-  const formatCurrency = (value) => {
-    if (!value) return '';
-    return value.toString().replace(/[^0-9.]/g, '');
+  // Display-only formatter
+  const formatCurrencyDisplay = (value) => {
+    const digits = (value || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('en-US').format(Number(digits));
   };
 
   return (
@@ -156,8 +168,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
             </div>
             <input
               type="text"
-              value={localIncome.baseIncome || ''}
-              onChange={(e) => handleIncomeChange('baseIncome', formatCurrency(e.target.value))}
+              value={formatCurrencyDisplay(localIncome.baseIncome)}
+              onChange={(e) => handleIncomeChange('baseIncome', e.target.value)}
               className={`text-xs pl-7 w-full border ${errors['income.baseIncome'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
               placeholder="0.00"
@@ -179,8 +191,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
               </div>
               <input
                 type="text"
-                value={localIncome.overtime || ''}
-                onChange={(e) => handleIncomeChange('overtime', formatCurrency(e.target.value))}
+                value={formatCurrencyDisplay(localIncome.overtime)}
+                onChange={(e) => handleIncomeChange('overtime', e.target.value)}
                 className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
@@ -198,8 +210,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
               </div>
               <input
                 type="text"
-                value={localIncome.commissions || ''}
-                onChange={(e) => handleIncomeChange('commissions', formatCurrency(e.target.value))}
+                value={formatCurrencyDisplay(localIncome.commissions)}
+                onChange={(e) => handleIncomeChange('commissions', e.target.value)}
                 className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
@@ -217,8 +229,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
               </div>
               <input
                 type="text"
-                value={localIncome.bonuses || ''}
-                onChange={(e) => handleIncomeChange('bonuses', formatCurrency(e.target.value))}
+                value={formatCurrencyDisplay(localIncome.bonuses)}
+                onChange={(e) => handleIncomeChange('bonuses', e.target.value)}
                 className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
@@ -236,8 +248,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
               </div>
               <input
                 type="text"
-                value={income.militaryEntitlements || ''}
-                onChange={(e) => handleIncomeChange('militaryEntitlements', formatCurrency(e.target.value))}
+                value={formatCurrencyDisplay(localIncome.militaryEntitlements)}
+                onChange={(e) => handleIncomeChange('militaryEntitlements', e.target.value)}
                 className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 style={{ '--focus-ring-color': theme.colors.primary }}
                 placeholder="0.00"
@@ -308,8 +320,8 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
                   </div>
                   <input
                     type="text"
-                    value={item.amount || ''}
-                    onChange={(e) => handleOtherIncomeChange(index, 'amount', formatCurrency(e.target.value))}
+                    value={formatCurrencyDisplay(item.amount)}
+                    onChange={(e) => handleOtherIncomeChange(index, 'amount', e.target.value)}
                     className={`text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import theme from '../../../styles/theme';
+import { useMemo } from 'react';
 
 /**
  * Debts Form Component
@@ -50,10 +51,13 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
 
   // Handle change for a specific debt field
   const handleDebtChange = (id, field, value) => {
+    const normalized = (field === 'monthlyPayment' || field === 'balance')
+      ? value.toString().replace(/[^\d]/g, '')
+      : value;
     // Update local state for immediate feedback
     const updatedLocalDebts = localDebts.map(debt => {
       if (debt.id === id) {
-        return { ...debt, [field]: value };
+        return { ...debt, [field]: normalized };
       }
       return debt;
     });
@@ -62,7 +66,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     // Update parent component - use original debts as base
     const updatedDebts = debts.map(debt => {
       if (debt.id === id) {
-        return { ...debt, [field]: value };
+        return { ...debt, [field]: normalized };
       }
       return debt;
     });
@@ -97,11 +101,12 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
   const handleExpenseChange = (id, field, value) => {
     // Map 'type' field to 'expenseType' for database compatibility
     const dbField = field === 'type' ? 'expenseType' : field;
+    const normalized = (dbField === 'amount') ? value.toString().replace(/[^\d]/g, '') : value;
     
     // Update local state for immediate feedback
     const updatedLocalExpenses = localExpenses.map(expense => {
       if (expense.id === id) {
-        return { ...expense, [dbField]: value };
+        return { ...expense, [dbField]: normalized };
       }
       return expense;
     });
@@ -110,7 +115,7 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     // Update parent component - use original expenses as base
     const updatedExpenses = expenses.map(expense => {
       if (expense.id === id) {
-        return { ...expense, [dbField]: value };
+        return { ...expense, [dbField]: normalized };
       }
       return expense;
     });
@@ -128,10 +133,11 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
     onChange('expenses', updatedExpenses);
   };
 
-  // Format currency input (remove non-numeric characters)
-  const formatCurrency = (value) => {
-    if (!value) return '';
-    return value.toString().replace(/[^0-9.]/g, '');
+  // Display formatter with commas
+  const formatCurrencyDisplay = (value) => {
+    const digits = (value || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('en-US').format(Number(digits));
   };
 
   return (
@@ -193,8 +199,8 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                   </div>
                   <input
                     type="text"
-                    value={debt.monthlyPayment || ''}
-                    onChange={(e) => handleDebtChange(debt.id, 'monthlyPayment', formatCurrency(e.target.value))}
+                    value={formatCurrencyDisplay(debt.monthlyPayment)}
+                    onChange={(e) => handleDebtChange(debt.id, 'monthlyPayment', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
@@ -214,8 +220,8 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                   </div>
                   <input
                     type="text"
-                    value={debt.balance || ''}
-                    onChange={(e) => handleDebtChange(debt.id, 'balance', formatCurrency(e.target.value))}
+                    value={formatCurrencyDisplay(debt.balance)}
+                    onChange={(e) => handleDebtChange(debt.id, 'balance', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"
@@ -331,8 +337,8 @@ const Debts = ({ debts = [], expenses = [], onChange, borrower = {}, errors = {}
                   </div>
                   <input
                     type="text"
-                    value={expense.amount || ''}
-                    onChange={(e) => handleExpenseChange(expense.id, 'amount', formatCurrency(e.target.value))}
+                    value={formatCurrencyDisplay(expense.amount)}
+                    onChange={(e) => handleExpenseChange(expense.id, 'amount', e.target.value)}
                     className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ '--focus-ring-color': theme.colors.primary }}
                     placeholder="0.00"

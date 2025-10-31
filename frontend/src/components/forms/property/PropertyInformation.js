@@ -28,31 +28,47 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
   const [yearBuilt, setYearBuilt] = useState(propertyInfo.yearBuilt || '');
   const [proposedRentalIncome, setProposedRentalIncome] = useState(propertyInfo.proposedRentalIncome || '');
   
+  // Format a currency-like text input into "en-US" with commas for display,
+  // and return both the raw digits and the formatted display value
+  const formatCurrencyInput = (val) => {
+    const digits = (val || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return { digits: '', display: '' };
+    const display = new Intl.NumberFormat('en-US').format(Number(digits));
+    return { digits, display };
+  };
+
   // Update local state when propertyInfo changes from parent
   useEffect(() => {
-    setContractPurchasePrice(propertyInfo.contractPurchasePrice || '');
+    setContractPurchasePrice(formatCurrencyInput(propertyInfo.contractPurchasePrice || '').display);
     setOccupancyType(propertyInfo.occupancyType || '');
     setPropertyType(propertyInfo.propertyType || '');
     setPropertyValue(propertyInfo.propertyValue || '');
+    // Normalize hasAcceptedOffer to boolean if provided as 'Yes'/'No'
+    const normalizedOffer = propertyInfo.hasAcceptedOffer === 'Yes' ? true : propertyInfo.hasAcceptedOffer === 'No' ? false : propertyInfo.hasAcceptedOffer;
     setHasAcceptedOffer(
-    propertyInfo.hasAcceptedOffer !== undefined ? propertyInfo.hasAcceptedOffer : ''
+    normalizedOffer !== undefined ? normalizedOffer : ''
   );
     setIsMixedUse(propertyInfo.isMixedUse || '');
     setIsManufactured(propertyInfo.isManufactured || '');
     setNumberOfUnits(propertyInfo.numberOfUnits || '');
     setYearBuilt(propertyInfo.yearBuilt || '');
-    setProposedRentalIncome(propertyInfo.proposedRentalIncome || '');
+    setProposedRentalIncome(formatCurrencyInput(propertyInfo.proposedRentalIncome || '').display);
   }, [propertyInfo]);
 
   // Handle form field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
+    let outValue = value;
+
     // Update local state immediately for responsive typing
     switch(name) {
-      case 'contractPurchasePrice':
-        setContractPurchasePrice(value);
+      case 'contractPurchasePrice': {
+        const { digits, display } = formatCurrencyInput(value);
+        setContractPurchasePrice(display);
+        outValue = digits;
         break;
+      }
       case 'occupancyType':
         setOccupancyType(value);
         break;
@@ -74,23 +90,26 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
       case 'yearBuilt':
         setYearBuilt(value);
         break;
-      case 'proposedRentalIncome':
-        setProposedRentalIncome(value);
+      case 'proposedRentalIncome': {
+        const { digits, display } = formatCurrencyInput(value);
+        setProposedRentalIncome(display);
+        outValue = digits;
         break;
+      }
       default:
         break;
     }
-    
+
     // Log the property information change for debugging
-    console.log(`PropertyInformation update: ${name} = ${value}`);
-    
+    console.log(`PropertyInformation update: ${name} = ${outValue}`);
+
     // Forward the change to parent component with proper field mapping
     let fieldName = `propertyInfo.${name}`;
-    
+
     onChange({
       target: {
         name: fieldName,
-        value: value
+        value: outValue
       }
     });
   };
