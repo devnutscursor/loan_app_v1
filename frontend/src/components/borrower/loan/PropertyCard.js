@@ -109,7 +109,7 @@ const PropertyCard = ({ property, formatCurrency }) => {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Occupancy</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">{property.occupancyType || 'N/A'}</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">{property.occupancyType === 'Vacation Home'? "2nd Home" : property.occupancyType || 'N/A'}</p>
                 </div>
               </div>
             </div>
