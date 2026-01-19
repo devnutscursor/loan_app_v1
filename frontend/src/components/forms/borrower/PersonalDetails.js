@@ -279,7 +279,7 @@ const PersonalDetails = ({
               onChange={handleChange}
               className={`text-xs w-full border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{ '--focus-ring-color': theme.colors.primary }}
-              placeholder="+3 (020) 020-3201"
+              placeholder="(020) 020-3201"
             />
             {errors.phone && (
               <p className="text-red-500 text-xs mt-1">{errors.phone}</p>

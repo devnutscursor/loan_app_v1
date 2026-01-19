@@ -82,7 +82,6 @@ export const conditionalFields = {
     'propertyInfo.isManufactured': 'Manufactured home status is required when you have an accepted offer',
     'propertyInfo.numberOfUnits': 'Number of units is required when you have an accepted offer',
     'propertyInfo.yearBuilt': 'Year built is required when you have an accepted offer',
-    'propertyInfo.propertyValue': 'Property value is required when you have an accepted offer',
   },
   
   // Properties owned (only when ownsProperty is true)
@@ -334,5 +333,32 @@ export const validateStep = (step, formData, tabName = null) => {
     }
   }
   
+  // Additional borrower-side validations for minimum years requirements
+  if (step === 1) {
+    const primaryBorrower = formData.borrowers?.[0] || {};
+
+    if (!tabName || tabName === 'residenceHistory') {
+      const yearsAtAddress = Number(primaryBorrower.currentAddress?.yearsAtAddress);
+      if (!Number.isNaN(yearsAtAddress) && yearsAtAddress < 2) {
+        errors['borrowers[0].currentAddress.yearsAtAddress'] =
+          'Years at address must be at least 2';
+      }
+    }
+
+    if (!tabName || tabName === 'employmentHistory') {
+      const employers = Array.isArray(primaryBorrower.employers)
+        ? primaryBorrower.employers
+        : [];
+
+      employers.forEach((employer, index) => {
+        const yearsInProfession = Number(employer?.yearsInProfession);
+        if (!Number.isNaN(yearsInProfession) && yearsInProfession < 2) {
+          errors[`borrowers[0].employers[${index}].yearsInProfession`] =
+            'Years in profession must be at least 2';
+        }
+      });
+    }
+  }
+
   return errors;
 }; 

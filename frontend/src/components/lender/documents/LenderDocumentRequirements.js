@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { lenderService } from "../../../services/api";
 import { standardDocumentRequirements } from "../../../data/documentRequirements";
@@ -62,9 +62,132 @@ const hasDocumentCondition = (
   });
 };
 
+const createRequirement = ({
+  id,
+  title,
+  description,
+  category,
+  documentType,
+  allowedDocumentTypes,
+  required = true,
+}) => ({
+  id,
+  title,
+  description,
+  category,
+  documentType,
+  allowedDocumentTypes,
+  required,
+});
+
+const buildRequirements = (employmentType, ownsHome) => {
+  const requirements = [
+    createRequirement({
+      id: 'governmentId',
+      title: 'Government Issued ID',
+      description: "State issued ID, Driver's License or Passport",
+      category: 'Identity',
+      documentType: 'Driver License',
+      allowedDocumentTypes: ['Driver License', 'Passport'],
+    }),
+    createRequirement({
+      id: 'ssnCard',
+      title: 'Social Security Card (or Passport)',
+      description: 'Provide your Social Security Card or Passport.',
+      category: 'Identity',
+      documentType: 'Social Security Card',
+      allowedDocumentTypes: ['Social Security Card', 'Passport'],
+    }),
+  ];
+
+  const normalizedEmployment = employmentType === 'self-employed' ? 'self-employed' : 'employee';
+
+  if (normalizedEmployment === 'self-employed') {
+    requirements.push(
+      createRequirement({
+        id: 'businessLicense',
+        title: 'Business License / Articles of Incorporation',
+        description: 'Upload your business license, articles of incorporation, or other proof of business ownership.',
+        category: 'Financial',
+        documentType: 'Other',
+        allowedDocumentTypes: ['Other', 'Business Tax Return'],
+      }),
+      createRequirement({
+        id: 'personalTaxReturns',
+        title: 'Two Most Recent Personal Tax Returns (1040) with All Schedules',
+        description: 'Provide signed copies of the last two personal tax returns including all schedules.',
+        category: 'Income',
+        documentType: 'Schedule C',
+        allowedDocumentTypes: ['Schedule C', 'Business Tax Return'],
+      }),
+      createRequirement({
+        id: 'businessTaxReturns',
+        title: 'Two Most Recent Business Tax Returns with All Schedules',
+        description: 'Upload the last two years of business tax returns with all schedules.',
+        category: 'Income',
+        documentType: 'Business Tax Return',
+      }),
+    );
+  } else {
+    requirements.push(
+      createRequirement({
+        id: 'w2s',
+        title: 'Two Most Recent W-2s',
+        description: 'Upload your two most recent W-2 forms.',
+        category: 'Income',
+        documentType: 'W2',
+      }),
+      createRequirement({
+        id: 'recentPaystubs',
+        title: 'Two Most Recent Paystubs',
+        description: 'Provide your two most recent consecutive paystubs.',
+        category: 'Income',
+        documentType: 'Pay Stub',
+      }),
+      createRequirement({
+        id: 'priorYearPaystub',
+        title: 'Last Paystub for the Prior Year',
+        description: 'Upload your final paystub from the previous year.',
+        category: 'Income',
+        documentType: 'Pay Stub',
+      }),
+    );
+  }
+
+  if (ownsHome) {
+    requirements.push(
+      createRequirement({
+        id: 'homeInsurance',
+        title: 'Most Recent Home Insurance (with declarations and replacement cost estimator - RCE)',
+        description: "Upload the latest homeowner's insurance policy including declarations and RCE.",
+        category: 'Insurance',
+        documentType: 'Homeowners Insurance',
+      }),
+      createRequirement({
+        id: 'mortgageStatement',
+        title: 'Most Recent Mortgage Statement',
+        description: 'Provide the most recent mortgage statement for your property.',
+        category: 'Property',
+        documentType: 'Mortgage Statement',
+      }),
+      createRequirement({
+        id: 'propertyTaxBill',
+        title: 'Most Recent Tax Bill',
+        description: 'Upload the most recent property tax bill.',
+        category: 'Property',
+        documentType: 'Property Tax Bill',
+      }),
+    );
+  }
+
+  return requirements;
+};
+
 const LenderDocumentRequirements = ({
   loanId,
   documents,
+  employmentType = 'employee',
+  ownsHome = false,
   refreshDocuments,
 }) => {
   const [requirements, setRequirements] = useState([]);
@@ -101,7 +224,7 @@ const LenderDocumentRequirements = ({
   };
 
   // Process documents and map them to requirements
-  const processDocuments = (docsList) => {
+const processDocuments = (docsList, requirementDefs) => {
     console.log('Process Documents called with:', docsList?.length, 'documents');
     console.log("Current loan conditions:", loanConditions);
     console.log("Current requirements:", requirements);
@@ -122,7 +245,7 @@ const LenderDocumentRequirements = ({
       console.log('No documents found, setting default requirements');
 
       // Set default requirements without document mappings
-      const updatedReqs = standardDocumentRequirements.map((req, index) => {
+      const updatedReqs = requirementDefs.map((req, index) => {
         const reqId = `req-${index}`;
         // Check if there's a pending document condition for this requirement
         const hasCondition = hasDocumentCondition(
@@ -153,12 +276,12 @@ const LenderDocumentRequirements = ({
 
     // Assign documents to requirements
     const documentAssignments = assignDocumentsToRequirements(
-      standardDocumentRequirements,
+      requirementDefs,
       docsList
     );
     console.log('Document assignments:', documentAssignments);
 
-    const updatedReqs = standardDocumentRequirements.map((req) => {
+    const updatedReqs = requirementDefs.map((req) => {
       const assignedDoc = documentAssignments[req.id];
 
       if (assignedDoc) {
@@ -386,8 +509,9 @@ const LenderDocumentRequirements = ({
     console.log("Process Documents triggered with loan ID:", loanId);
 
     setLoading(true);
-    processDocuments(documents);
-  }, [loanId, documents]);
+    const relevantRequirements = buildRequirements(employmentType, ownsHome);
+    processDocuments(documents, relevantRequirements);
+  }, [loanId, documents, employmentType, ownsHome]);
 
   // Separate effect for fetching loan conditions (including when refreshCounter changes)
   useEffect(() => {

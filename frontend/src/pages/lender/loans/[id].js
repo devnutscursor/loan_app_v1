@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
@@ -2047,6 +2047,70 @@ const debug = (message, data) => {
   console.log(`[LoanDetails] ${message}`, data);
 };
 
+const normalizeEmploymentType = (loan) => {
+  if (!loan) return "employee";
+
+  const extractType = (value) => {
+    if (value === undefined || value === null) return null;
+    const str = String(value).toLowerCase();
+
+    if (["yes", "true", "self", "self-employed", "self_employed"].some((token) => str.includes(token))) {
+      return "self-employed";
+    }
+
+    if (["1099", "contractor"].some((token) => str.includes(token))) {
+      return "self-employed";
+    }
+
+    if (["no", "false", "w2", "w-2", "employee"].some((token) => str.includes(token))) {
+      return "employee";
+    }
+
+    return null;
+  };
+
+  const candidateValues = [
+    loan?.borrower?.employment?.employmentType,
+    loan?.borrowerDetails?.employmentType,
+    loan?.employmentType,
+    loan?.loanDetails?.employmentType,
+    loan?.borrowerDetails?.employers?.[0]?.isSelfEmployed,
+    loan?.borrowerDetails?.employers?.[0]?.employmentStatus,
+  ];
+
+  for (const value of candidateValues) {
+    const normalized = extractType(value);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "employee";
+};
+
+const deriveOwnsHome = (loan) => {
+  if (!loan) return false;
+
+  const rawValues = [
+    loan?.propertiesOwned?.ownsProperty,
+    loan?.borrowerDetails?.propertiesOwned?.ownsProperty,
+    loan?.borrowerDetails?.ownsProperty,
+  ];
+
+  for (const value of rawValues) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string") {
+      const lower = value.toLowerCase();
+      if (["yes", "true", "y", "1"].includes(lower)) return true;
+      if (["no", "false", "n", "0"].includes(lower)) return false;
+    } else {
+      return Boolean(value);
+    }
+  }
+
+  return false;
+};
+
 const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const router = useRouter();
   const { user } = useAuth();
@@ -2115,6 +2179,9 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   
   // State for mobile navigation drawer
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const employmentType = useMemo(() => normalizeEmploymentType(loan), [loan]);
+  const ownsHome = useMemo(() => deriveOwnsHome(loan), [loan]);
 
   // Functions to handle dependents array
   const handleAddDependent = () => {
@@ -3209,6 +3276,8 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           <LenderDocumentRequirements
                             loanId={id}
                             documents={documents}
+                            employmentType={employmentType}
+                            ownsHome={ownsHome}
                             refreshDocuments={() => {
                               try {
                                 // Use the current id from props/state to fetch again

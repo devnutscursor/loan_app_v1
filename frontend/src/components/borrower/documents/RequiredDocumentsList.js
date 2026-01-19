@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { DocumentService } from '../../../services';
 
@@ -8,104 +8,216 @@ import { DocumentService } from '../../../services';
  * Displays a checklist of required documents for a loan application
  * with status indicators and upload buttons.
  */
-const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) => {
+const createRequirement = ({
+  id,
+  title,
+  description,
+  category,
+  documentType,
+  allowedDocumentTypes,
+  required = true,
+}) => ({
+  id,
+  title,
+  description,
+  category,
+  documentType,
+  allowedDocumentTypes,
+  required,
+});
+
+const buildRequirements = (employmentType, ownsHome) => {
+  const requirements = [
+    createRequirement({
+      id: 'governmentId',
+      title: 'Government Issued ID',
+      description: 'State issued ID, Driver\'s License or Passport',
+      category: 'Identity',
+      documentType: 'Driver License',
+      allowedDocumentTypes: ['Driver License', 'Passport'],
+    }),
+    createRequirement({
+      id: 'ssnCard',
+      title: 'Social Security Card (or Passport)',
+      description: 'Provide your Social Security Card or Passport.',
+      category: 'Identity',
+      documentType: 'Social Security Card',
+      allowedDocumentTypes: ['Social Security Card', 'Passport'],
+    }),
+  ];
+
+  const normalizedEmployment = employmentType === 'self-employed' ? 'self-employed' : 'employee';
+
+  if (normalizedEmployment === 'self-employed') {
+    requirements.push(
+      createRequirement({
+        id: 'businessLicense',
+        title: 'Business License / Articles of Incorporation',
+        description: 'Upload your business license, articles of incorporation, or other proof of business ownership.',
+        category: 'Financial',
+        documentType: 'Other',
+        allowedDocumentTypes: ['Other', 'Business Tax Return'],
+      }),
+      createRequirement({
+        id: 'personalTaxReturns',
+        title: 'Two Most Recent Personal Tax Returns (1040) with All Schedules',
+        description: 'Provide signed copies of the last two personal tax returns including all schedules.',
+        category: 'Income',
+        documentType: 'Schedule C',
+        allowedDocumentTypes: ['Schedule C', 'Business Tax Return'],
+      }),
+      createRequirement({
+        id: 'businessTaxReturns',
+        title: 'Two Most Recent Business Tax Returns with All Schedules',
+        description: 'Upload the last two years of business tax returns with all schedules.',
+        category: 'Income',
+        documentType: 'Business Tax Return',
+      }),
+    );
+  } else {
+    requirements.push(
+      createRequirement({
+        id: 'w2s',
+        title: 'Two Most Recent W-2s',
+        description: 'Upload your two most recent W-2 forms.',
+        category: 'Income',
+        documentType: 'W2',
+      }),
+      createRequirement({
+        id: 'recentPaystubs',
+        title: 'Two Most Recent Paystubs',
+        description: 'Provide your two most recent consecutive paystubs.',
+        category: 'Income',
+        documentType: 'Pay Stub',
+      }),
+      createRequirement({
+        id: 'priorYearPaystub',
+        title: 'Last Paystub for the Prior Year',
+        description: 'Upload your final paystub from the previous year.',
+        category: 'Income',
+        documentType: 'Pay Stub',
+      }),
+    );
+  }
+
+  if (ownsHome) {
+    requirements.push(
+      createRequirement({
+        id: 'homeInsurance',
+        title: 'Most Recent Home Insurance (with declarations and replacement cost estimator - RCE)',
+        description: 'Upload the latest homeowner\'s insurance policy including declarations and RCE.',
+        category: 'Insurance',
+        documentType: 'Homeowners Insurance',
+      }),
+      createRequirement({
+        id: 'mortgageStatement',
+        title: 'Most Recent Mortgage Statement',
+        description: 'Provide the most recent mortgage statement for your property.',
+        category: 'Property',
+        documentType: 'Mortgage Statement',
+      }),
+      createRequirement({
+        id: 'propertyTaxBill',
+        title: 'Most Recent Tax Bill',
+        description: 'Upload the most recent property tax bill.',
+        category: 'Property',
+        documentType: 'Property Tax Bill',
+      }),
+    );
+  }
+
+  return requirements;
+};
+
+const mapRequirementsWithStatus = (requirements, existingDocs = []) => {
+  const usedDocIds = new Set();
+
+  return requirements.map((req) => {
+    let matchingDoc = null;
+
+    if (Array.isArray(existingDocs) && existingDocs.length > 0) {
+      const allowedTypes = req.allowedDocumentTypes || [req.documentType];
+      const allowedCategories = req.category ? [req.category] : [];
+
+      matchingDoc = existingDocs.find((doc) => {
+        if (!doc || usedDocIds.has(doc._id)) return false;
+
+        const typeMatch = allowedTypes.includes(doc.documentType);
+        const categoryMatch = allowedCategories.length === 0 || allowedCategories.includes(doc.category);
+
+        return typeMatch && categoryMatch;
+      });
+
+      if (matchingDoc) {
+        usedDocIds.add(matchingDoc._id);
+      }
+    }
+
+    return {
+      ...req,
+      status: matchingDoc ? matchingDoc.status : 'Not Submitted',
+      documentId: matchingDoc ? matchingDoc._id : null,
+      isSubmitted: Boolean(matchingDoc),
+      uploadedDate: matchingDoc ? new Date(matchingDoc.createdAt || Date.now()).toLocaleDateString() : null,
+    };
+  });
+};
+
+const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest, employmentType = 'employee', ownsHome = false }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingDocId, setUploadingDocId] = useState(null);
   const [existingDocuments, setExistingDocuments] = useState([]);
-  const [docFilter, setDocFilter] = useState('all'); // all | id | wage | self | home
 
-  // Define the standard required documents for loan approval
-  const standardRequirements = [
-    {
-      id: 'identification',
-      title: 'Identification',
-      description: 'State issued ID, Driver\'s License or Passport',
-      category: 'Identity',
-      documentType: 'Driver License',
-      required: true
-    },
-    {
-      id: 'proofOfIncome',
-      title: 'Proof of Income',
-      description: 'Recent pay stubs, W-2, or tax returns',
-      category: 'Income',
-      documentType: 'Pay Stub',
-      required: true
-    },
-    {
-      id: 'selfEmployedPL',
-      title: 'Self Employed P&L',
-      description: 'Business tax returns, P&Ls and K-1s - Must be within past 2 years',
-      category: 'Income',
-      documentType: 'Business Tax Return',
-      required: true
-    },
-    {
-      id: 'scheduleC',
-      title: 'Schedule C or Corp/S-Corp/Partnership',
-      description: 'YTD profit and loss, and balance sheet, signed and dated',
-      category: 'Income',
-      documentType: 'Schedule C',
-      required: true
-    },
-    {
-      id: 'bankStatements',
-      title: 'Bank Statements',
-      description: 'Most recent consecutive two months (all pages). Note: Very important that you submit ALL pages of each statement, even the last page that says "this page intentionally left blank"',
-      category: 'Financial',
-      documentType: 'Bank Statement',
-      required: true
-    },
-    {
-      id: 'employmentVerification',
-      title: 'Employment Verification',
-      description: 'Letter from employer confirming employment status',
-      category: 'Employment',
-      documentType: 'Employment Letter',
-      required: false
-    },
-    {
-      id: 'addressVerification',
-      title: 'Proof of Address',
-      description: 'Utility bill, lease agreement, or bank statement',
-      category: 'Address',
-      documentType: 'Utility Bill',
-      required: false
-    },
-    {
-      id: 'retirementAccount',
-      title: 'Retirement account',
-      description: 'If applicable, please submit the following: a) Most recent quarterly statement by name b) Conditions for hardship withdrawal and loans',
-      category: 'Financial',
-      documentType: 'Retirement Statement',
-      required: true
-    },
-    {
-      id: 'mortgageStatement',
-      title: 'Mortgage Statement',
-      description: 'Please upload your most recent monthly mortgage statement for all real estate owned',
-      category: 'Property',
-      documentType: 'Mortgage Statement',
-      required: true
-    },
-    {
-      id: 'propertyTax',
-      title: 'Property Taxes (most recent full year)',
-      description: 'Please upload the most recent full year property tax bills for all real estate owned',
-      category: 'Property',
-      documentType: 'Property Tax Bill',
-      required: true
-    },
-    {
-      id: 'homeownersInsurance',
-      title: 'Homeowner\'s Insurance',
-      description: 'Please upload a copy of your homeowner\'s insurance policy for all real estate owned',
-      category: 'Insurance',
-      documentType: 'Homeowners Insurance',
-      required: true
+  const baseRequirements = useMemo(
+    () => buildRequirements(employmentType, ownsHome),
+    [employmentType, ownsHome]
+  );
+
+  const refreshRequirements = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (!loanId) {
+        setRequirements(mapRequirementsWithStatus(baseRequirements));
+        setExistingDocuments([]);
+        return;
+      }
+
+      const docsResponse = await DocumentService.getLoanDocuments(loanId);
+      console.log('Existing documents response:', docsResponse);
+
+      let docsList = [];
+
+      if (docsResponse.success) {
+        if (docsResponse.data && docsResponse.data.data) {
+          docsList = docsResponse.data.data;
+        } else if (Array.isArray(docsResponse.data)) {
+          docsList = docsResponse.data;
+        }
+
+        console.log('Found existing documents:', docsList);
+      } else {
+        console.warn('API returned unsuccessful response for documents:', docsResponse);
+      }
+
+      setExistingDocuments(docsList);
+
+      const reqResponse = await DocumentService.getDocumentRequirements(loanId);
+      if (reqResponse.success && reqResponse.data && Array.isArray(reqResponse.data)) {
+        console.log('Got document requirements from API:', reqResponse.data);
+        // TODO: Use API requirements when implemented
+      }
+
+      const updatedReqs = mapRequirementsWithStatus(baseRequirements, docsList);
+      setRequirements(updatedReqs);
+    } catch (error) {
+      console.error('Error fetching document data:', error);
+      toast.error('Failed to load documents');
+      setRequirements(mapRequirementsWithStatus(baseRequirements));
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, [loanId, baseRequirements]);
   
   // Fetch required documents and their statuses from the API
   // Effect to handle the selected document request
@@ -135,7 +247,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         });
         
         // Refresh the requirements list
-        fetchRequirements();
+        refreshRequirements();
         return;
       }
       
@@ -194,187 +306,16 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
         }
       }, 500);
     }
-  }, [selectedRequest]); // Only depend on selectedRequest
+  }, [selectedRequest, refreshRequirements]); // Only depend on selectedRequest
 
   useEffect(() => {
     console.log('Requirements updated:', requirements);
   }, [requirements]);
 
   useEffect(() => {
-    const fetchRequirements = async () => {
-      setLoading(true);
-      try {
-        if (!loanId) {
-          // No loan selected, show standard requirements
-          setRequirements(standardRequirements);
-          setExistingDocuments([]);
-          setLoading(false);
-          return;
-        }
-        
-        // First, get any existing documents for this loan
-        const docsResponse = await DocumentService.getLoanDocuments(loanId);
-        console.log('Existing documents response:', docsResponse);
-        
-        let docsList = [];
-        
-        // Extract the documents array from the response
-        if (docsResponse.success) {
-          if (docsResponse.data && docsResponse.data.data) {
-            // If the API returns a nested data structure
-            docsList = docsResponse.data.data;
-          } else if (Array.isArray(docsResponse.data)) {
-            // If the API returns an array directly
-            docsList = docsResponse.data;
-          }
-          
-          console.log('Found existing documents:', docsList);
-        } else {
-          console.warn('API returned unsuccessful response for documents:', docsResponse);
-        }
-        
-        // Save the existing documents to state for future reference
-        setExistingDocuments(docsList);
-
-        // Check for document requirements from the API (future enhancement)
-        const reqResponse = await DocumentService.getDocumentRequirements(loanId);
-        let requirements = standardRequirements;
-        
-        // If API returns requirements, use them (future enhancement)
-        if (reqResponse.success && reqResponse.data && Array.isArray(reqResponse.data)) {
-          console.log('Got document requirements from API:', reqResponse.data);
-          // TODO: Use API requirements when implemented
-        }
-        
-        // If we have a selected request, filter out matching documents
-        // if (selectedRequest) {
-        //   // Filter out documents that match the selected request - they should be re-uploaded
-        //   const filteredDocuments = docsList.filter(doc => 
-        //     !(doc.category === selectedRequest.category && 
-        //       doc.documentType === selectedRequest.documentType));
-            
-        //   console.log('Filtered out requested document for re-upload', 
-        //     docsList.length - filteredDocuments.length, 'documents removed');
-          
-        //   docsList = filteredDocuments;
-          
-        //   // Update the existing documents state with filtered list
-        //   setExistingDocuments(filteredDocuments);
-        // }
-        
-        // DEBUG - log all documents to check what's available
-        // console.log('Documents to display:', {
-        //   count: docsList.length,
-        //   documents: docsList.map(d => ({
-        //     id: d._id,
-        //     name: d.name,
-        //     category: d.category,
-        //     documentType: d.documentType,
-        //     status: d.status
-        //   }))
-        // });
-        
-        // Use the standard requirements as the base and update with document statuses
-        const updatedReqs = mapRequirementsWithStatus(requirements, docsList);
-        setRequirements(updatedReqs);
-      } catch (error) {
-        console.error('Error fetching document data:', error);
-        toast.error('Failed to load documents');
-        
-        // Fall back to standard requirements
-        setRequirements(standardRequirements);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // Initialize document list by fetching requirements and documents
-    fetchRequirements();
-  }, [loanId, selectedRequest]); // Re-fetch when loan ID or selected request changes
+    refreshRequirements();
+  }, [refreshRequirements]);
   
-  // Map requirements with status based on existing documents
-  const mapRequirementsWithStatus = (requirements, existingDocs) => {
-    // console.log('Mapping requirements with existing docs:', { requirements, existingDocs });
-    
-    return requirements.map(req => {
-      let matchingDoc = null;
-      
-      // Ensure existingDocs is an array before processing
-      if (Array.isArray(existingDocs) && existingDocs.length > 0) {
-        // First try document type + category (most specific match)
-        matchingDoc = existingDocs.find(doc => 
-          (doc.documentType === req.documentType && doc.category === req.category) 
-        );
-        
-        // if (matchingDoc) {
-        //   console.log(`Found matching document for ${req.category}/${req.documentType} by type and category:`, matchingDoc);
-        // }
-        
-        // If no match, try title match or name match
-        // if (!matchingDoc) {
-        //   matchingDoc = existingDocs.find(doc => {
-        //     // Try to match by title or document name
-        //     const docNameLower = (doc.name || '').toLowerCase();
-        //     const reqTitleLower = (req.title || '').toLowerCase();
-        //     const docOriginalFileLower = (doc.originalFilename || '').toLowerCase();
-            
-        //     return (docNameLower.includes(reqTitleLower) || 
-        //            reqTitleLower.includes(docNameLower) ||
-        //            docOriginalFileLower.includes(reqTitleLower));
-        //   });
-          
-        //   if (matchingDoc) {
-        //     console.log(`Found matching document for ${req.title} by name:`, matchingDoc);
-        //   }
-        // }
-        
-        // // Last resort - try various matching methods
-        // if (!matchingDoc) {
-        //   // Check documentType match (even if category doesn't match)
-        //   matchingDoc = existingDocs.find(doc => doc.documentType === req.documentType);
-          
-        //   if (matchingDoc) {
-        //     console.log(`Found matching document for ${req.documentType} by type only:`, matchingDoc);
-        //   } else {
-        //     // Final attempt: match by category only
-        //     matchingDoc = existingDocs.find(doc => doc.category === req.category);
-            
-        //     if (matchingDoc) {
-        //       console.log(`Found matching document for category ${req.category}:`, matchingDoc);
-        //     }
-        //   }
-        // }
-      }
-      // console.log('Matching document:', matchingDoc);
-      // Create the updated requirement with status information
-      const updatedReq = {
-        ...req,
-        status: matchingDoc ? matchingDoc.status : 'Not Submitted',
-        documentId: matchingDoc ? matchingDoc._id : null,
-        isSubmitted: !!matchingDoc,
-        uploadedDate: matchingDoc ? new Date(matchingDoc.createdAt || Date.now()).toLocaleDateString() : null
-      };
-
-      // console.log('Updated requirement:', updatedReq);
-      
-      return updatedReq;
-    });
-  };
-  
-  // Grouping map for single dropdown filtering
-  const groupMap = {
-    id: new Set(['identification']),
-    wage: new Set(['proofOfIncome', 'employmentVerification']),
-    self: new Set(['selfEmployedPL', 'scheduleC']),
-    home: new Set(['mortgageStatement', 'propertyTax', 'homeownersInsurance'])
-  };
-
-  const filterRequirementsByGroup = (reqs) => {
-    if (docFilter === 'all') return reqs;
-    const wanted = groupMap[docFilter] || new Set();
-    return reqs.filter(r => wanted.has(r.id));
-  };
-
   // Handle file selection and upload
   const handleFileUpload = async (event, requirement) => {
     const file = event.target.files[0];
@@ -572,24 +513,9 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       </div>
       
       {/* Filter Control */}
-      <div className="px-5 pt-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Show documents for</label>
-        <select
-          value={docFilter}
-          onChange={(e) => setDocFilter(e.target.value)}
-          className="text-sm border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="all">All</option>
-          <option value="id">Identification</option>
-          <option value="wage">Wage Earner</option>
-          <option value="self">Self-Employed</option>
-          <option value="home">Homeowner</option>
-        </select>
-      </div>
-
       {/* Pending Tasks */}
       <div className="p-5">
-        {filterRequirementsByGroup(requirements).filter(req => !req.isSubmitted).length > 0 ? (
+        {requirements.filter(req => !req.isSubmitted).length > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center">
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -603,7 +529,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
             <div className="mt-2 border rounded-lg overflow-hidden">
               <ul role="list" className="divide-y divide-gray-200">
                 {/* If there's a selected request, show it first and filter the rest */}
-                {filterRequirementsByGroup(requirements).filter(req => !req.isSubmitted)
+                {requirements.filter(req => !req.isSubmitted)
                   .sort((a, b) => {
                     // Sort highlighted items to the top
                     if (a.isHighlighted && !b.isHighlighted) return -1;
@@ -674,7 +600,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
       </div>
       
       {/* Completed Tasks */}
-      {filterRequirementsByGroup(requirements).some(req => req.isSubmitted) && (
+      {requirements.some(req => req.isSubmitted) && (
         <div className="px-5 py-4 bg-gray-50 border-t">
           <div className="flex items-center mb-3">
             <div className="flex-shrink-0 h-7 w-7 rounded-full bg-green-100 flex items-center justify-center">
@@ -686,7 +612,7 @@ const RequiredDocumentsList = ({ loanId, onDocumentUploaded, selectedRequest }) 
           </div>
           
           <div className="space-y-2">
-            {filterRequirementsByGroup(requirements).filter(req => req.isSubmitted).map((req) => (
+            {requirements.filter(req => req.isSubmitted).map((req) => (
               <div key={req.id} className="flex items-start p-2 rounded-md bg-white border border-gray-100">
                 <div className="flex-shrink-0 pt-0.5">
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
