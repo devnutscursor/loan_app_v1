@@ -1,0 +1,266 @@
+const { parseString } = require('xml2js');
+
+class MortechAPI {
+  constructor(config) {
+    this.baseUrl = config.baseUrl || 'https://thirdparty.mortech-inc.com/mpg/servlet/mpgThirdPartyServlet';
+    this.customerId = config.customerId;
+    this.thirdPartyName = config.thirdPartyName;
+    this.licenseKey = config.licenseKey;
+    this.emailAddress = config.emailAddress;
+  }
+
+  async getRates(request, options = {}) {
+    try {
+      const params = new URLSearchParams({
+        request_id: '1',
+        customerId: this.customerId,
+        thirdPartyName: this.thirdPartyName,
+        licenseKey: this.licenseKey,
+        emailAddress: this.emailAddress,
+        propertyZip: request.propertyZip,
+        appraisedvalue: request.appraisedvalue.toString(),
+        loan_amount: request.loan_amount.toString(),
+        fico: request.fico.toString(),
+        loanpurpose: request.loanpurpose,
+        proptype: request.proptype,
+        occupancy: request.occupancy,
+        loanProduct1: request.loanProduct1,
+        ...(request.filterId && { filterId: request.filterId }),
+        ...(request.pmiCompany && { pmiCompany: request.pmiCompany.toString() }),
+        ...(request.noMI !== undefined && { noMI: request.noMI.toString() }),
+        ...(request.financeMI !== undefined && { financeMI: request.financeMI.toString() }),
+        ...(request.vaType && { vaType: request.vaType }),
+        ...(request.subsequentUse !== undefined && { subsequentUse: request.subsequentUse.toString() }),
+        ...(request.waiveEscrow === true && { waiveEscrow: 'true' }),
+        ...(request.militaryVeteran === true && { militaryVeteran: 'true' }),
+        ...(request.lockDays && request.lockDays !== '30' && { lockDays: request.lockDays }),
+        ...(typeof request.secondMortgageAmount === 'number' && request.secondMortgageAmount > 0
+          ? { secondMortgageAmount: request.secondMortgageAmount.toString() }
+          : {}),
+      });
+
+      const response = await fetch(`${this.baseUrl}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/xml, text/xml',
+          'User-Agent': 'LoanApp/1.0',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Mortech API error: ${response.status} ${response.statusText}`);
+      }
+
+      const xmlData = await response.text();
+      const parsedResponse = await this.parseXMLResponse(xmlData);
+
+      if (options.includeRawXml) {
+        parsedResponse.rawXml = xmlData;
+      }
+
+      return parsedResponse;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  parseXMLResponse(xmlData) {
+    return new Promise((resolve) => {
+      parseString(xmlData, (err, result) => {
+        if (err) {
+          resolve({
+            success: false,
+            error: 'Failed to parse XML response',
+          });
+          return;
+        }
+
+        try {
+          const mortech = result.mortech;
+          const errorNum = parseInt(mortech.header[0].errorNum[0], 10);
+          const errorDesc = mortech.header[0].errorDesc[0];
+
+          if (errorNum !== 0) {
+            resolve({
+              success: false,
+              error: errorDesc,
+            });
+            return;
+          }
+
+          const quotes = [];
+          if (mortech.results) {
+            for (const resultItem of mortech.results) {
+              const quote = resultItem.quote[0];
+              const quoteDetail = quote.quote_detail[0];
+              const eligibility = resultItem.eligibility[0];
+
+              const fees = [];
+              let borrowerRebate = null;
+              if (quoteDetail.fees && quoteDetail.fees[0]) {
+                const feesBlock = quoteDetail.fees[0];
+                if (feesBlock.borrowerRebate && feesBlock.borrowerRebate[0] !== undefined) {
+                  const raw = feesBlock.borrowerRebate[0];
+                  const num = parseFloat(typeof raw === 'string' ? raw : raw.toString?.() ?? '');
+                  if (!Number.isNaN(num)) borrowerRebate = num;
+                }
+                if (feesBlock.fee_list) {
+                  const feeList = feesBlock.fee_list;
+                  if (Array.isArray(feeList)) {
+                    for (const feeItem of feeList) {
+                      const feeData = feeItem.$ || feeItem;
+                      if (feeData && (feeData.description || feeData.feeamount !== undefined)) {
+                        fees.push({
+                          hudline: feeData.hudline || '',
+                          description: feeData.description || '',
+                          feeamount: parseFloat(feeData.feeamount || '0'),
+                          section: feeData.section || '',
+                          paymenttype: feeData.paymenttype || '',
+                          prepaid: feeData.prepaid === 'true',
+                        });
+                      }
+                    }
+                  } else if (feeList.$) {
+                    fees.push({
+                      hudline: feeList.$.hudline || '',
+                      description: feeList.$.description || '',
+                      feeamount: parseFloat(feeList.$.feeamount || '0'),
+                      section: feeList.$.section || '',
+                      paymenttype: feeList.$.paymenttype || '',
+                      prepaid: feeList.$.prepaid === 'true',
+                    });
+                  }
+                }
+              }
+
+              const adjustments = [];
+              if (quoteDetail.adjustments && quoteDetail.adjustments[0] && quoteDetail.adjustments[0].adjustment_detail) {
+                const adjList = quoteDetail.adjustments[0].adjustment_detail;
+                const list = Array.isArray(adjList) ? adjList : [adjList];
+                for (const a of list) {
+                  const att = a.$ || a;
+                  if (att) {
+                    adjustments.push({
+                      desc: att.desc || '',
+                      price_adj: parseFloat(att.price_adj || '0'),
+                      rate_adj: parseFloat(att.rate_adj || '0'),
+                      margin_adj: parseFloat(att.margin_adj || '0'),
+                      applied: att.applied === 'true',
+                    });
+                  }
+                }
+              }
+
+              let specialBonusAdj = null;
+              if (quoteDetail.special_bonuses && quoteDetail.special_bonuses[0]) {
+                const sb = quoteDetail.special_bonuses[0];
+                const val = sb.$?.total_special_bonus_adj ?? sb.total_special_bonus_adj?.[0];
+                if (val !== undefined && val !== null) {
+                  const n = parseFloat(val);
+                  if (!Number.isNaN(n)) specialBonusAdj = n;
+                }
+              }
+
+              let costsAndProfit = null;
+              if (quoteDetail.costs_and_profit && quoteDetail.costs_and_profit[0]) {
+                const cap = quoteDetail.costs_and_profit[0];
+                const att = cap.$ || {};
+                const profitDetail = cap.profit_detail?.[0];
+                let amtFromBorrowerPercent = null;
+                let amtFromBorrowerDollar = null;
+                if (profitDetail && profitDetail.amt_from_borrower && profitDetail.amt_from_borrower[0]) {
+                  const ab = profitDetail.amt_from_borrower[0].$ || profitDetail.amt_from_borrower[0];
+                  if (ab.profit_percent != null) amtFromBorrowerPercent = parseFloat(ab.profit_percent);
+                  if (ab.profit_dollar != null) amtFromBorrowerDollar = parseFloat(ab.profit_dollar);
+                }
+                costsAndProfit = {
+                  profitTable: att.profit_table || '',
+                  totalCostProfitDollar: parseFloat(att.total_cost_profit_dollar || '0'),
+                  totalCostProfitPercent: parseFloat(att.total_cost_profit_percent || '0'),
+                  amtFromBorrowerPercent: Number.isFinite(amtFromBorrowerPercent) ? amtFromBorrowerPercent : null,
+                  amtFromBorrowerDollar: Number.isFinite(amtFromBorrowerDollar) ? amtFromBorrowerDollar : null,
+                };
+              }
+
+              const productNameResult = resultItem.$.product_name || quote.$.productDesc;
+
+              quotes.push({
+                productId: quote.$.product_id,
+                productName: productNameResult?.trim?.() || quote.$.productDesc,
+                vendorName: quote.$.vendor_name,
+                vendorProductName: quote.$.vendor_product_name,
+                vendorProductCode: quote.$.vendor_product_code,
+                productDesc: quote.$.productDesc,
+                productTerm: quote.$.productTerm,
+                rate: parseFloat(quoteDetail.$.rate),
+                apr: parseFloat(quoteDetail.$.apr),
+                monthlyPayment: parseFloat(quoteDetail.$.piti),
+                points: parseFloat(quoteDetail.$.price),
+                originationFee: parseFloat(quoteDetail.$.originationFee),
+                upfrontFee: parseFloat(quoteDetail.$.upfrontFee),
+                monthlyPremium: parseFloat(quoteDetail.$.monthlyPremium),
+                downPayment: parseFloat(quoteDetail.$.downPayment),
+                loanAmount: parseFloat(quoteDetail.$.loanAmount),
+                lockTerm: parseInt(resultItem.$.lockTerm, 10),
+                termType: resultItem.$.termType,
+                prepayType: quoteDetail.$.prepayType || '',
+                ratesheetPrice: quoteDetail.ratesheet_price?.[0] != null ? parseFloat(quoteDetail.ratesheet_price[0]) : null,
+                srp: quoteDetail.srp?.[0] != null ? parseFloat(quoteDetail.srp[0]) : null,
+                adjustments,
+                specialBonusAdj,
+                costsAndProfit,
+                borrowerRebate,
+                fees,
+                eligibility: {
+                  eligibilityCheck: eligibility.eligibilityCheck?.[0] ?? '',
+                  comments: eligibility.comments?.[0] ?? '',
+                  productSummaryLink: eligibility.productSummaryLink?.[0] ?? '',
+                  productGuidelineLink: eligibility.productGuidelineLink?.[0] ?? '',
+                },
+              });
+            }
+          }
+
+          resolve({
+            success: true,
+            quotes,
+          });
+        } catch (parseError) {
+          resolve({
+            success: false,
+            error: 'Failed to parse response data',
+          });
+        }
+      });
+    });
+  }
+}
+
+const createMortechAPI = () => {
+  const customerId = process.env.MORTECH_CUSTOMER_ID;
+  const thirdPartyName = process.env.MORTECH_THIRD_PARTY_NAME;
+  const licenseKey = process.env.MORTECH_LICENSE_KEY;
+  const emailAddress = process.env.MORTECH_EMAIL_ADDRESS;
+  const baseUrl = process.env.MORTECH_BASE_URL;
+
+  if (!customerId || !thirdPartyName || !licenseKey || !emailAddress) {
+    throw new Error(
+      'Missing required Mortech configuration. Please set MORTECH_CUSTOMER_ID, MORTECH_THIRD_PARTY_NAME, MORTECH_LICENSE_KEY, and MORTECH_EMAIL_ADDRESS.'
+    );
+  }
+
+  return new MortechAPI({
+    customerId,
+    thirdPartyName,
+    licenseKey,
+    emailAddress,
+    baseUrl,
+  });
+};
+
+module.exports = {
+  createMortechAPI,
+};

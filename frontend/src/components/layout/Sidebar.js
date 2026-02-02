@@ -31,6 +31,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         // { name: 'Loan Applications', href: '/lender/applications', icon: 'clipboard-list' },
         { name: 'Active Loans', href: '/lender/loans', icon: 'cash' },
         { name: 'Loan Programs', href: '/lender/programs', icon: 'template' },
+        { name: 'Loan Rates', href: '/lender/loan-rates', icon: 'calculator' },
         // { name: 'Conditions', href: '/lender/conditions', icon: 'check-circle' },
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
         { name: 'Messages', href: '/lender/messages', icon: 'chat' },
