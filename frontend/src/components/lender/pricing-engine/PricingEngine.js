@@ -99,6 +99,7 @@ const LoanRates = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [rateTimestamp, setRateTimestamp] = useState('Today, 9:30 AM');
+  const [totalRatesCount, setTotalRatesCount] = useState(0);
 
   const loanAmount = useMemo(() => {
     if (form.loanPurpose === 'Refinance') {
@@ -280,10 +281,12 @@ const LoanRates = () => {
 
       const response = await customAxios.post('/api/v1/mortech/search', payload);
       const rates = response.data?.rates || [];
+      const ratesCount = response.data?.ratesCount ?? rates.length;
       const groups = buildRateGroups(rates);
       setRateGroups(groups);
       setSelectedLenders(groups.map((group) => group.lenderName));
       setRateTimestamp(new Date().toLocaleString());
+      setTotalRatesCount(ratesCount);
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load rates. Please try again.');
     } finally {
@@ -798,7 +801,14 @@ const LoanRates = () => {
         <div id="rate_stack_container" className={rateGroups.length ? 'active' : ''}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '14px', color: '#64748b', alignItems: 'center' }}>
             <div style={{ fontWeight: '700', color: '#1e293b' }}>Eligible Lenders</div>
-            <div>Best Rates</div>
+            <div>
+              {totalRatesCount > 0 && (
+                <span style={{ marginRight: '12px', fontWeight: 600, color: '#1e293b' }}>
+                  {totalRatesCount} rate{totalRatesCount !== 1 ? 's' : ''} from {rateGroups.length} lender{rateGroups.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              Best Rates
+            </div>
           </div>
           <div id="rate_list">
             {activeLenderGroups.map((group) => {
@@ -859,7 +869,7 @@ const LoanRates = () => {
                       </thead>
                       <tbody>
                         {group.rateStack.map((rateItem) => {
-                          const rowKey = `${group.lenderName}-${rateItem.rate}`;
+                          const rowKey = `${group.lenderName}-${rateItem.source?.id ?? rateItem.rate}`;
                           const rowExpanded = !!expandedRows[rowKey];
                           const cStyle = rateItem.cost > 0 ? 'txt-red' : 'txt-green';
                           const cTxt = rateItem.cost > 0

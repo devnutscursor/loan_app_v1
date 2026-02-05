@@ -2,6 +2,51 @@ const ApiError = require('../utils/apiError');
 const catchAsync = require('../utils/catchAsync');
 const { createMortechAPI } = require('../services/mortech.service');
 
+const mapLoanPurposeToMortech = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value === 'number') return value;
+  const raw = value.toString().trim();
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  const normalized = raw.toLowerCase();
+  if (normalized.includes('cash')) return 2;
+  if (normalized.includes('rate') || normalized.includes('refi')) return 1;
+  return 0;
+};
+
+const mapOccupancyToMortech = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value === 'number') return value;
+  const raw = value.toString().trim();
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  const normalized = raw.toLowerCase();
+  if (normalized.includes('second')) return 2;
+  if (normalized.includes('invest') || normalized.includes('non-owner')) return 1;
+  return 0;
+};
+
+const mapPropertyTypeToMortech = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value === 'number') return value;
+  const raw = value.toString().trim();
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  const normalized = raw.toLowerCase();
+  if (normalized.includes('2 unit')) return 1;
+  if (normalized.includes('3 unit')) return 2;
+  if (normalized.includes('4 unit')) return 3;
+  if (normalized.includes('co-op')) return 4;
+  if (normalized.includes('manufactured')) return 5;
+  if (normalized.includes('condo') && normalized.includes('detached')) return 20;
+  if (normalized.includes('condo')) return 6;
+  if (normalized.includes('town')) return 15;
+  return 0;
+};
+
+const normalizeTargetPrice = (value) => {
+  if (value === undefined || value === null || value === '') return -999;
+  const num = Number(value);
+  return Number.isNaN(num) ? -999 : num;
+};
+
 const buildMortechRequest = (body) => {
   const {
     loan_amount,
@@ -24,6 +69,9 @@ const buildMortechRequest = (body) => {
     militaryVeteran = false,
     lockDays = '30',
     secondMortgageAmount = 0,
+    targetPrice,
+    targetprice,
+    view,
   } = body;
 
   const finalLoanAmount = loan_amount || loanAmount;
@@ -32,6 +80,7 @@ const buildMortechRequest = (body) => {
   const finalLoanPurpose = loanpurpose || loanPurpose || 'Purchase';
   const finalPropertyType = proptype || propertyType || 'Single Family';
   const finalLoanTerm = loanProduct1 || loanTerm || '30 year fixed';
+  const finalTargetPrice = normalizeTargetPrice(targetPrice ?? targetprice);
 
   const safeSecondMortgageAmount = (() => {
     if (secondMortgageAmount === undefined || secondMortgageAmount === null) return 0;
@@ -48,15 +97,17 @@ const buildMortechRequest = (body) => {
     appraisedvalue: finalPropertyValue,
     loan_amount: finalLoanAmount,
     fico: finalCreditScore,
-    loanpurpose: finalLoanPurpose,
-    proptype: finalPropertyType,
-    occupancy: occupancy || 'Primary',
+    loanpurpose: mapLoanPurposeToMortech(finalLoanPurpose),
+    proptype: mapPropertyTypeToMortech(finalPropertyType),
+    occupancy: mapOccupancyToMortech(occupancy || 'Primary'),
     loanProduct1: finalLoanTerm,
+    targetPrice: finalTargetPrice,
+    ...(Number.isFinite(view) && { view }),
     ...(filterId && { filterId }),
     ...(includeMI && { pmiCompany: -999, noMI: 0 }),
-    ...(waiveEscrow === true && { waiveEscrow: true }),
+    ...(waiveEscrow === true && { waiveescrow: 1 }),
     ...(militaryVeteran === true && { militaryVeteran: true }),
-    ...(lockDays && lockDays !== '30' && { lockDays }),
+    ...(lockDays && lockDays !== '30' && { lockindays: lockDays }),
     ...(safeSecondMortgageAmount > 0 && { secondMortgageAmount: safeSecondMortgageAmount }),
   };
 };
@@ -118,6 +169,7 @@ exports.searchRates = catchAsync(async (req, res, next) => {
   res.status(200).json({
     success: true,
     rates: transformedRates,
+    ratesCount: transformedRates.length,
     source: 'mortech_api',
     isMockData: false,
     searchParams: {

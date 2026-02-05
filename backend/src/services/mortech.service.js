@@ -1,4 +1,14 @@
+const fs = require('fs');
+const path = require('path');
 const { parseString } = require('xml2js');
+const jwt = require('jsonwebtoken');
+
+/** Path to private.pem in backend folder (project-specific, not env) */
+const PRIVATE_PEM_PATH = path.join(__dirname, '..', '..', 'private.pem');
+
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 55 * 60;
+let cachedAccessToken = null;
+let cachedAccessTokenExpiresAt = 0;
 
 class MortechAPI {
   constructor(config) {
@@ -7,6 +17,66 @@ class MortechAPI {
     this.thirdPartyName = config.thirdPartyName;
     this.licenseKey = config.licenseKey;
     this.emailAddress = config.emailAddress;
+    this.authorizationToken = config.authorizationToken;
+    this.xApiKey = config.xApiKey;
+    this.partnerId = config.partnerId;
+    this.privateKey = config.privateKey;
+    this.authUrl = config.authUrl || 'https://api.mortech-inc.com/auth';
+    this.accessTokenTtlSeconds =
+      typeof config.accessTokenTtlSeconds === 'number' && config.accessTokenTtlSeconds > 0
+        ? config.accessTokenTtlSeconds
+        : DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
+  }
+
+  isJwtAuthConfigured() {
+    return Boolean(this.partnerId && this.privateKey && this.xApiKey);
+  }
+
+  async getAccessToken() {
+    const now = Math.floor(Date.now() / 1000);
+    if (cachedAccessToken && cachedAccessTokenExpiresAt > now + 30) {
+      return cachedAccessToken;
+    }
+
+    if (!this.isJwtAuthConfigured()) {
+      return this.authorizationToken || null;
+    }
+
+    const jwtPayload = {
+      partnerId: this.partnerId,
+      customerId: this.customerId,
+      iat: now,
+    };
+
+    const signedJwt = jwt.sign(jwtPayload, this.privateKey, {
+      algorithm: 'RS256',
+    });
+
+    const authHeaders = {
+      authorizationtoken: `Bearer ${signedJwt}`,
+      'x-api-key': this.xApiKey,
+    };
+
+    const authResponse = await fetch(this.authUrl, {
+      method: 'GET',
+      headers: authHeaders,
+    });
+
+    if (!authResponse.ok) {
+      const errorText = await authResponse.text();
+      throw new Error(
+        `Mortech Auth API error: ${authResponse.status} ${authResponse.statusText} - ${errorText}`
+      );
+    }
+
+    const authData = await authResponse.json();
+    if (!authData?.accesstoken) {
+      throw new Error('Mortech Auth API error: missing accesstoken in response');
+    }
+
+    cachedAccessToken = authData.accesstoken;
+    cachedAccessTokenExpiresAt = now + this.accessTokenTtlSeconds;
+    return cachedAccessToken;
   }
 
   async getRates(request, options = {}) {
@@ -17,6 +87,7 @@ class MortechAPI {
         thirdPartyName: this.thirdPartyName,
         licenseKey: this.licenseKey,
         emailAddress: this.emailAddress,
+        targetPrice: (request.targetPrice !== undefined && request.targetPrice !== null ? request.targetPrice : -999).toString(),
         propertyZip: request.propertyZip,
         appraisedvalue: request.appraisedvalue.toString(),
         loan_amount: request.loan_amount.toString(),
@@ -25,27 +96,49 @@ class MortechAPI {
         proptype: request.proptype,
         occupancy: request.occupancy,
         loanProduct1: request.loanProduct1,
+        ...(request.view !== undefined && { view: request.view.toString() }),
         ...(request.filterId && { filterId: request.filterId }),
         ...(request.pmiCompany && { pmiCompany: request.pmiCompany.toString() }),
         ...(request.noMI !== undefined && { noMI: request.noMI.toString() }),
         ...(request.financeMI !== undefined && { financeMI: request.financeMI.toString() }),
         ...(request.vaType && { vaType: request.vaType }),
         ...(request.subsequentUse !== undefined && { subsequentUse: request.subsequentUse.toString() }),
-        ...(request.waiveEscrow === true && { waiveEscrow: 'true' }),
+        ...(request.waiveescrow !== undefined && { waiveescrow: request.waiveescrow.toString() }),
         ...(request.militaryVeteran === true && { militaryVeteran: 'true' }),
-        ...(request.lockDays && request.lockDays !== '30' && { lockDays: request.lockDays }),
+        ...(request.lockindays && request.lockindays !== '30' && { lockindays: request.lockindays.toString() }),
         ...(typeof request.secondMortgageAmount === 'number' && request.secondMortgageAmount > 0
           ? { secondMortgageAmount: request.secondMortgageAmount.toString() }
           : {}),
       });
 
-      const response = await fetch(`${this.baseUrl}?${params.toString()}`, {
+      const accessToken = await this.getAccessToken();
+      const headers = {
+        Accept: 'application/xml, text/xml',
+        'User-Agent': 'LoanApp/1.0',
+        ...(accessToken && { authorizationtoken: accessToken }),
+        ...(this.xApiKey && { 'x-api-key': this.xApiKey }),
+      };
+
+      let response = await fetch(`${this.baseUrl}?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          Accept: 'application/xml, text/xml',
-          'User-Agent': 'LoanApp/1.0',
-        },
+        headers,
       });
+
+      if (response.status === 401 || response.status === 403) {
+        if (this.isJwtAuthConfigured()) {
+          cachedAccessToken = null;
+          cachedAccessTokenExpiresAt = 0;
+          const refreshedToken = await this.getAccessToken();
+          const retryHeaders = {
+            ...headers,
+            authorizationtoken: refreshedToken,
+          };
+          response = await fetch(`${this.baseUrl}?${params.toString()}`, {
+            method: 'GET',
+            headers: retryHeaders,
+          });
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`Mortech API error: ${response.status} ${response.statusText}`);
@@ -94,11 +187,17 @@ class MortechAPI {
           const quotes = [];
           if (mortech.results) {
             for (const resultItem of mortech.results) {
-              const quote = resultItem.quote[0];
-              const quoteDetail = quote.quote_detail[0];
-              const eligibility = resultItem.eligibility[0];
+              const quoteList = Array.isArray(resultItem.quote) ? resultItem.quote : [resultItem.quote];
+              const eligibilityList = resultItem.eligibility
+                ? (Array.isArray(resultItem.eligibility) ? resultItem.eligibility : [resultItem.eligibility])
+                : [];
 
-              const fees = [];
+              for (let qIdx = 0; qIdx < quoteList.length; qIdx++) {
+                const quote = quoteList[qIdx];
+                const quoteDetail = quote.quote_detail[0];
+                const eligibility = eligibilityList[qIdx] || eligibilityList[0] || { eligibilityCheck: [''], comments: [''], productSummaryLink: [''], productGuidelineLink: [''] };
+
+                const fees = [];
               let borrowerRebate = null;
               if (quoteDetail.fees && quoteDetail.fees[0]) {
                 const feesBlock = quoteDetail.fees[0];
@@ -187,40 +286,43 @@ class MortechAPI {
 
               const productNameResult = resultItem.$.product_name || quote.$.productDesc;
 
-              quotes.push({
-                productId: quote.$.product_id,
-                productName: productNameResult?.trim?.() || quote.$.productDesc,
-                vendorName: quote.$.vendor_name,
-                vendorProductName: quote.$.vendor_product_name,
-                vendorProductCode: quote.$.vendor_product_code,
-                productDesc: quote.$.productDesc,
-                productTerm: quote.$.productTerm,
-                rate: parseFloat(quoteDetail.$.rate),
-                apr: parseFloat(quoteDetail.$.apr),
-                monthlyPayment: parseFloat(quoteDetail.$.piti),
-                points: parseFloat(quoteDetail.$.price),
-                originationFee: parseFloat(quoteDetail.$.originationFee),
-                upfrontFee: parseFloat(quoteDetail.$.upfrontFee),
-                monthlyPremium: parseFloat(quoteDetail.$.monthlyPremium),
-                downPayment: parseFloat(quoteDetail.$.downPayment),
-                loanAmount: parseFloat(quoteDetail.$.loanAmount),
-                lockTerm: parseInt(resultItem.$.lockTerm, 10),
-                termType: resultItem.$.termType,
-                prepayType: quoteDetail.$.prepayType || '',
-                ratesheetPrice: quoteDetail.ratesheet_price?.[0] != null ? parseFloat(quoteDetail.ratesheet_price[0]) : null,
-                srp: quoteDetail.srp?.[0] != null ? parseFloat(quoteDetail.srp[0]) : null,
-                adjustments,
-                specialBonusAdj,
-                costsAndProfit,
-                borrowerRebate,
-                fees,
-                eligibility: {
-                  eligibilityCheck: eligibility.eligibilityCheck?.[0] ?? '',
-                  comments: eligibility.comments?.[0] ?? '',
-                  productSummaryLink: eligibility.productSummaryLink?.[0] ?? '',
-                  productGuidelineLink: eligibility.productGuidelineLink?.[0] ?? '',
-                },
-              });
+                quotes.push({
+                  productId: quote.$.product_id,
+                  productName: productNameResult?.trim?.() || quote.$.productDesc,
+                  vendorName: quote.$.vendor_name,
+                  vendorProductName: quote.$.vendor_product_name,
+                  vendorProductCode: quote.$.vendor_product_code,
+                  productDesc: quote.$.productDesc,
+                  productTerm: quote.$.productTerm,
+                  rate: parseFloat(quoteDetail.$.rate),
+                  apr: parseFloat(quoteDetail.$.apr),
+                  monthlyPayment: parseFloat(quoteDetail.$.piti),
+                  points: parseFloat(quoteDetail.$.price),
+                  originationFee: parseFloat(quoteDetail.$.originationFee),
+                  upfrontFee: parseFloat(quoteDetail.$.upfrontFee),
+                  monthlyPremium: parseFloat(quoteDetail.$.monthlyPremium),
+                  downPayment: parseFloat(quoteDetail.$.downPayment),
+                  loanAmount: parseFloat(quoteDetail.$.loanAmount),
+                  lockTerm: parseInt(resultItem.$.lockTerm, 10),
+                  termType: resultItem.$.termType,
+                  prepayType: quoteDetail.$.prepayType || '',
+                  pricingStatus: quote.$.pricingStatus || '',
+                  lastUpdate: quote.$.lastUpdate || '',
+                  ratesheetPrice: quoteDetail.ratesheet_price?.[0] != null ? parseFloat(quoteDetail.ratesheet_price[0]) : null,
+                  srp: quoteDetail.srp?.[0] != null ? parseFloat(quoteDetail.srp[0]) : null,
+                  adjustments,
+                  specialBonusAdj,
+                  costsAndProfit,
+                  borrowerRebate,
+                  fees,
+                  eligibility: {
+                    eligibilityCheck: eligibility.eligibilityCheck?.[0] ?? '',
+                    comments: eligibility.comments?.[0] ?? '',
+                    productSummaryLink: eligibility.productSummaryLink?.[0] ?? '',
+                    productGuidelineLink: eligibility.productGuidelineLink?.[0] ?? '',
+                  },
+                });
+              }
             }
           }
 
@@ -245,6 +347,35 @@ const createMortechAPI = () => {
   const licenseKey = process.env.MORTECH_LICENSE_KEY;
   const emailAddress = process.env.MORTECH_EMAIL_ADDRESS;
   const baseUrl = process.env.MORTECH_BASE_URL;
+  const authorizationToken = process.env.MORTECH_AUTHORIZATION_TOKEN;
+  const xApiKey = process.env.MORTECH_X_API_KEY;
+  const partnerId = process.env.MORTECH_PARTNER_ID;
+  const rawPrivateKey = process.env.MORTECH_PRIVATE_KEY;
+  const privateKeyBase64 = process.env.MORTECH_PRIVATE_KEY_BASE64;
+  const privateKey = (() => {
+    try {
+      if (fs.existsSync(PRIVATE_PEM_PATH)) {
+        return fs.readFileSync(PRIVATE_PEM_PATH, 'utf8');
+      }
+    } catch (e) {
+      // fall through to env
+    }
+    if (privateKeyBase64) {
+      try {
+        return Buffer.from(privateKeyBase64, 'base64').toString('utf8');
+      } catch (error) {
+        throw new Error('Failed to decode MORTECH_PRIVATE_KEY_BASE64');
+      }
+    }
+    if (rawPrivateKey) {
+      return rawPrivateKey.replace(/\\n/g, '\n');
+    }
+    return undefined;
+  })();
+  const authUrl = process.env.MORTECH_AUTH_URL;
+  const accessTokenTtlSeconds = process.env.MORTECH_ACCESS_TOKEN_TTL_SECONDS
+    ? parseInt(process.env.MORTECH_ACCESS_TOKEN_TTL_SECONDS, 10)
+    : undefined;
 
   if (!customerId || !thirdPartyName || !licenseKey || !emailAddress) {
     throw new Error(
@@ -258,6 +389,12 @@ const createMortechAPI = () => {
     licenseKey,
     emailAddress,
     baseUrl,
+    authorizationToken,
+    xApiKey,
+    partnerId,
+    privateKey,
+    authUrl,
+    accessTokenTtlSeconds,
   });
 };
 
