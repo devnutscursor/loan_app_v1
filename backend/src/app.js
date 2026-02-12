@@ -58,26 +58,22 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Enable CORS
+// Enable CORS – allow FRONTEND_URL and optional CORS_ORIGINS (comma-separated)
+const corsOriginsList = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((u) => u.trim()).filter(Boolean)
+  : [];
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = process.env.NODE_ENV === 'production'
-      ? [
-          process.env.FRONTEND_URL,
-        ].filter(Boolean)
-      : [
-          'http://localhost:3000',
-          'http://localhost:3001',
-          process.env.FRONTEND_URL
-        ].filter(Boolean);
-    
-    // Normalize origin by removing trailing slash for comparison
+
+    const baseAllowed = process.env.NODE_ENV === 'production'
+      ? [process.env.FRONTEND_URL, ...corsOriginsList]
+      : ['http://localhost:3000', 'http://localhost:3001', process.env.FRONTEND_URL, ...corsOriginsList];
+    const allowedOrigins = baseAllowed.filter(Boolean);
+
     const normalizedOrigin = origin.replace(/\/$/, '');
-    const normalizedAllowed = allowedOrigins.map(url => url.replace(/\/$/, ''));
-    
+    const normalizedAllowed = allowedOrigins.map((url) => url.replace(/\/$/, ''));
+
     if (normalizedAllowed.includes(normalizedOrigin) || normalizedAllowed.includes('*')) {
       callback(null, true);
     } else {
@@ -88,7 +84,8 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Disposition']
+  exposedHeaders: ['Content-Disposition'],
+  optionsSuccessStatus: 204
 }));
 
 // Development logging with Morgan
