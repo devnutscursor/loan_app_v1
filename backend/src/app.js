@@ -58,18 +58,23 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Enable CORS – allow FRONTEND_URL and optional CORS_ORIGINS (comma-separated)
+// Enable CORS – allow FRONTEND_URL, CORS_ORIGINS, and known frontend hosts
 const corsOriginsList = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((u) => u.trim()).filter(Boolean)
   : [];
+const knownFrontendOrigins = [
+  'https://loan-app-v1.vercel.app',
+  'https://www.loanapp360.com',
+  'https://loanapp360.com'
+];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
 
     const baseAllowed = process.env.NODE_ENV === 'production'
-      ? [process.env.FRONTEND_URL, ...corsOriginsList]
-      : ['http://localhost:3000', 'http://localhost:3001', process.env.FRONTEND_URL, ...corsOriginsList];
-    const allowedOrigins = baseAllowed.filter(Boolean);
+      ? [process.env.FRONTEND_URL, ...corsOriginsList, ...knownFrontendOrigins]
+      : ['http://localhost:3000', 'http://localhost:3001', process.env.FRONTEND_URL, ...corsOriginsList, ...knownFrontendOrigins];
+    const allowedOrigins = [...new Set(baseAllowed.filter(Boolean))];
 
     const normalizedOrigin = origin.replace(/\/$/, '');
     const normalizedAllowed = allowedOrigins.map((url) => url.replace(/\/$/, ''));
