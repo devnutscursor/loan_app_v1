@@ -1,24 +1,13 @@
 import axios from 'axios';
 
-// Dynamically determine API URL based on environment
+// API URL from env only (no hardcoded production URLs)
 const getApiUrl = () => {
-  // In browser
-  if (typeof window !== 'undefined') {
-    // If using Vercel deployment
-    if (window.location.hostname.includes('vercel.app')) {
-      return `https://loan-app-backend-1qkk.onrender.com/api/v1`;
-    }
-  }
-  
-  // Development or explicit setting
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (envUrl) {
-    // Ensure no double slashes and proper /api/v1 ending
-    const cleanUrl = envUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    const cleanUrl = envUrl.replace(/\/+$/, '');
     return `${cleanUrl}/api/v1`;
   }
-  
-  // Fallback for development
+  // Fallback only for local development when .env is not set
   return 'http://localhost:5000/api/v1';
 };
 
