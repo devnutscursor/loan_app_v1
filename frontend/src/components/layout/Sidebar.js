@@ -36,6 +36,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
         { name: 'Messages', href: '/lender/messages', icon: 'chat' },
         { name: 'Referral Links', href: '/lender/referrals', icon: 'link' },
+        { name: 'MCR Reports', href: '/lender/mcr-reports', icon: 'chart-bar' },
         { name: 'Profile', href: '/lender/profile', icon: 'user' },
         
         // { name: 'Documents', href: '/lender/documents', icon: 'document-duplicate' },
@@ -49,6 +50,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Dashboard', href: '/company/dashboard', icon: 'home' },
         { name: 'Loan Officers', href: '/company/lenders', icon: 'users' },
         { name: 'Loan Programs', href: '/company/programs', icon: 'template' },
+        { name: 'MCR Reports', href: '/company/mcr-reports', icon: 'chart-bar' },
       ];
     }
 
@@ -57,7 +59,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         { name: 'Dashboard', href: '/admin/dashboard', icon: 'home' },
         { name: 'Create User', href: '/register', icon: 'user-plus' },
         { name: 'Users', href: '/admin/users', icon: 'users' },
-        { name: 'Loans', href: '/admin/loans', icon: 'cash' }
+        { name: 'Loans', href: '/admin/loans', icon: 'cash' },
+        { name: 'MCR Reports', href: '/admin/mcr-reports', icon: 'chart-bar' }
       ];
     }
 
@@ -171,6 +174,12 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         return (
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+        );
+      case 'chart-bar':
+        return (
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         );
       default:
