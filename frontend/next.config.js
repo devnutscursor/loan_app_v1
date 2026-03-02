@@ -2,7 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'placeholderimage.com'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'placeholderimage.com' },
+    ],
   },
   env: {
     // Backend API base URL (no trailing slash). Set in .env / Vercel env.
