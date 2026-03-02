@@ -88,6 +88,22 @@ const MCRTableHeader = () => (
   </thead>
 );
 
+/* Simple 5-column header: Data Points | Parameters | Amount | Count | Average */
+const MCRSimpleHeader = () => (
+  <thead>
+    <tr className="bg-blue-700 text-white text-xs">
+      <th className="px-3 py-2 text-left font-semibold w-24 align-bottom" rowSpan={2}>DATA<br/>POINTS</th>
+      <th className="px-3 py-2 text-left font-semibold align-bottom" rowSpan={2}>PARAMETERS</th>
+      <th className="px-3 py-1 text-center border-l border-blue-500" colSpan={3}>&nbsp;</th>
+    </tr>
+    <tr className="bg-blue-700 text-white text-xs">
+      <th className="px-3 py-1 text-right font-medium w-32 border-l border-blue-500">Amount</th>
+      <th className="px-3 py-1 text-right font-medium w-20">Count</th>
+      <th className="px-3 py-1 text-right font-medium w-24">Average</th>
+    </tr>
+  </thead>
+);
+
 /* NMLS Closed Loan Data two-channel header */
 const MCRClosedLoanHeader = () => (
   <thead>
@@ -137,9 +153,9 @@ const MCRClosedLoanFeeRow = ({ code, label, amount }) => (
   </tr>
 );
 
-const MCRSectionRow = ({ label }) => (
+const MCRSectionRow = ({ label, colSpan = 8 }) => (
   <tr className="bg-gray-100">
-    <td colSpan={8} className="px-3 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-wider">{label}</td>
+    <td colSpan={colSpan} className="px-3 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-wider">{label}</td>
   </tr>
 );
 
@@ -278,41 +294,25 @@ const ClosedLoanDataView = ({ data }) => {
 
 const RevenueDataView = ({ data }) => {
   if (!data) return <EmptyState />;
-  const rows = [
-    ["AC1010","Origination Fees"],["AC1020","SRP"],["AC1030","YSP"],["AC1040","Discount Points"],
-    ["AC1050","Broker Compensation"],["AC1060","Processing Fees"],["AC1070","Pass-Through Fees"],
-    ["AC1080","Broker Flat Fees"],["AC1090","Lender Fees Collected"],
-  ];
+  const SRow = ({ code, label, amount, count, isBold }) => (
+    <tr className={`border-b border-gray-100 ${isBold ? "bg-gray-50" : "hover:bg-blue-50/30"}`}>
+      <td className={`px-3 py-2 text-xs font-mono ${isBold ? "text-gray-900 font-bold" : "text-blue-600 font-semibold"}`}>{code}</td>
+      <td className={`px-3 py-2 text-sm ${isBold ? "text-gray-900 font-bold" : "text-gray-700"}`}>{label}</td>
+      <td className={`px-3 py-2 text-sm text-right ${isBold ? "font-bold text-gray-900" : "text-gray-900"}`}>{fc(amount)}</td>
+      <td className="px-3 py-2 text-sm text-right text-gray-500">{count != null ? count : "—"}</td>
+      <td className="px-3 py-2 text-sm text-right text-gray-500">{count != null && count > 0 ? avg(amount, count) : "—"}</td>
+    </tr>
+  );
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead><tr className="bg-blue-700 text-white text-xs">
-          <th className="px-3 py-2 text-left font-semibold w-20">Code</th>
-          <th className="px-3 py-2 text-left font-semibold">Description</th>
-          <th className="px-3 py-2 text-right font-semibold w-32">Amount</th>
-        </tr></thead>
+        <MCRSimpleHeader />
         <tbody>
-          <MCRSectionRow label="REVENUE DETAIL" />
-          {rows.map(([code, label]) => (
-            <tr key={code} className="border-b border-gray-100 hover:bg-blue-50/30">
-              <td className="px-3 py-2 text-xs font-mono text-blue-600 font-semibold">{code}</td>
-              <td className="px-3 py-2 text-sm text-gray-700">{data[code]?.label || label}</td>
-              <td className="px-3 py-2 text-sm text-right text-gray-900">{fc(data[code]?.amount)}</td>
-            </tr>
-          ))}
-          <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
-            <td className="px-3 py-2 text-xs font-mono text-gray-900 font-bold">AC1100</td>
-            <td className="px-3 py-2 text-sm text-gray-900 font-bold">{data.AC1100?.label || "Total Gross Revenue"}</td>
-            <td className="px-3 py-2 text-sm text-right font-bold text-gray-900">{fc(data.AC1100?.amount)}</td>
-          </tr>
-          <MCRSectionRow label="SERVICING DISPOSITION" />
-          {[["AC1200","Servicing Released"],["AC1210","Servicing Retained"]].map(([code, label]) => (
-            <tr key={code} className="border-b border-gray-100 hover:bg-blue-50/30">
-              <td className="px-3 py-2 text-xs font-mono text-blue-600 font-semibold">{code}</td>
-              <td className="px-3 py-2 text-sm text-gray-700">{data[code]?.label || label}</td>
-              <td className="px-3 py-2 text-sm text-right text-gray-900">{data[code]?.count || 0} / {fc(data[code]?.amount)}</td>
-            </tr>
-          ))}
+          <MCRSectionRow label="GROSS REVENUE" colSpan={5} />
+          <SRow code="AC1100" label={data.AC1100?.label || "Gross Revenue from Mortgage Origination Operations"} amount={data.AC1100?.amount} isBold />
+          <MCRSectionRow label="SERVICING DISPOSITION" colSpan={5} />
+          <SRow code="AC1200" label={data.AC1200?.label || "Servicing Released"} amount={data.AC1200?.amount} count={data.AC1200?.count} />
+          <SRow code="AC1210" label={data.AC1210?.label || "Servicing Retained"} amount={data.AC1210?.amount} count={data.AC1210?.count} />
         </tbody>
       </table>
     </div>
@@ -327,29 +327,28 @@ const MLODataView = ({ data }) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead><tr className="bg-blue-700 text-white text-xs">
-          <th className="px-4 py-2.5 text-left font-semibold">MLO Name</th>
-          <th className="px-4 py-2.5 text-right font-semibold">NMLS ID</th>
-          <th className="px-4 py-2.5 text-right font-semibold">Loans</th>
-          <th className="px-4 py-2.5 text-right font-semibold">Volume</th>
-          <th className="px-4 py-2.5 text-right font-semibold">Avg Size</th>
-        </tr></thead>
+        <MCRSimpleHeader />
         <tbody>
-          {officers.map((o, i) => (
-            <tr key={i} className="border-b border-gray-100 hover:bg-blue-50/30">
-              <td className="px-4 py-2.5 text-sm text-gray-900 font-medium">{o.firstName ? `${o.firstName} ${o.lastName || ""}`.trim() : (o.name || "—")}</td>
-              <td className="px-4 py-2.5 text-sm text-right text-gray-500 font-mono">{o.nmlsId || "—"}</td>
-              <td className="px-4 py-2.5 text-sm text-right text-gray-900">{o.loanCount || 0}</td>
-              <td className="px-4 py-2.5 text-sm text-right text-gray-900">{fc(o.totalAmount)}</td>
-              <td className="px-4 py-2.5 text-sm text-right text-gray-500">{avg(o.totalAmount, o.loanCount)}</td>
-            </tr>
-          ))}
+          <MCRSectionRow label="LOAN OFFICERS" colSpan={5} />
+          {officers.map((o, i) => {
+            const name = o.firstName ? `${o.firstName} ${o.lastName || ""}`.trim() : (o.name || "—");
+            const nmlsDisplay = o.nmlsId ? ` (NMLS: ${o.nmlsId})` : "";
+            return (
+              <tr key={i} className="border-b border-gray-100 hover:bg-blue-50/30">
+                <td className="px-3 py-2 text-xs font-mono text-blue-600 font-semibold">ACMLO{i + 1}</td>
+                <td className="px-3 py-2 text-sm text-gray-900">{name}<span className="text-gray-400 text-xs">{nmlsDisplay}</span></td>
+                <td className="px-3 py-2 text-sm text-right text-gray-900">{fc(o.totalAmount)}</td>
+                <td className="px-3 py-2 text-sm text-right text-gray-900">{o.loanCount || 0}</td>
+                <td className="px-3 py-2 text-sm text-right text-gray-500">{avg(o.totalAmount, o.loanCount)}</td>
+              </tr>
+            );
+          })}
           <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-            <td className="px-4 py-2.5 text-sm text-gray-900">Total</td>
-            <td></td>
-            <td className="px-4 py-2.5 text-sm text-right text-gray-900">{totalCnt}</td>
-            <td className="px-4 py-2.5 text-sm text-right text-gray-900">{fc(totalAmt)}</td>
-            <td className="px-4 py-2.5 text-sm text-right text-gray-500">{avg(totalAmt, totalCnt)}</td>
+            <td className="px-3 py-2 text-xs font-mono text-gray-900 font-bold">TOTAL</td>
+            <td className="px-3 py-2 text-sm text-gray-900 font-bold">All Loan Officers</td>
+            <td className="px-3 py-2 text-sm text-right text-gray-900">{fc(totalAmt)}</td>
+            <td className="px-3 py-2 text-sm text-right text-gray-900">{totalCnt}</td>
+            <td className="px-3 py-2 text-sm text-right text-gray-500">{avg(totalAmt, totalCnt)}</td>
           </tr>
         </tbody>
       </table>
@@ -359,40 +358,88 @@ const MLODataView = ({ data }) => {
 
 const RMLADataView = ({ data }) => {
   if (!data) return <EmptyState />;
-  const pt = data.productType || {}; const ch = data.channel || {};
-  const rc = data.riskCharacteristics || {}; const purpose = data.purpose || {};
-  const wa = data.weightedAverages || {}; const pull = data.pullThrough || {};
-  const RRow = ({ label, val }) => (
-    <tr className="border-b border-gray-100 hover:bg-blue-50/30">
-      <td className="px-4 py-2 text-sm text-gray-700">{label}</td>
-      <td className="px-4 py-2 text-sm text-right text-gray-900">{fc(val?.amount)}</td>
-      <td className="px-4 py-2 text-sm text-right text-gray-900">{val?.count || 0}</td>
+  const pt = data.productType || {};
+  const ch = data.channel || {};
+  const rc = data.riskCharacteristics || {};
+  const purpose = data.purpose || {};
+  const ltv = data.ltvDistribution || {};
+  const wa = data.weightedAverages || {};
+  const pull = data.pullThrough || {};
+  const i100 = {
+    count: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.count||0), 0),
+    amount: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.amount||0), 0),
+  };
+  const Row = ({ code, label, val, isBold }) => (
+    <tr className={`border-b border-gray-100 ${isBold ? "bg-gray-50" : "hover:bg-blue-50/30"}`}>
+      <td className={`px-3 py-2 text-xs font-mono ${isBold ? "text-gray-900 font-bold" : "text-blue-600 font-semibold"}`}>{code}</td>
+      <td className={`px-3 py-2 text-sm ${isBold ? "text-gray-900 font-bold" : "text-gray-700"}`}>{label}</td>
+      <td className={`px-3 py-2 text-sm text-right ${isBold ? "font-bold text-gray-900" : "text-gray-900"}`}>{fc(val?.amount)}</td>
+      <td className={`px-3 py-2 text-sm text-right ${isBold ? "font-bold text-gray-900" : "text-gray-900"}`}>{val?.count || 0}</td>
+      <td className="px-3 py-2 text-sm text-right text-gray-500">{avg(val?.amount, val?.count)}</td>
     </tr>
   );
-  const SHead = ({ label }) => (
-    <tr className="bg-gray-100"><td colSpan={3} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-wider">{label}</td></tr>
+  const WRow = ({ label, value }) => (
+    <tr className="border-b border-gray-100 hover:bg-blue-50/30">
+      <td className="px-3 py-2 text-xs font-mono text-gray-400">—</td>
+      <td className="px-3 py-2 text-sm text-gray-700">{label}</td>
+      <td className="px-3 py-2 text-sm text-right text-gray-900" colSpan={3}>{value}</td>
+    </tr>
   );
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead><tr className="bg-blue-700 text-white text-xs">
-          <th className="px-4 py-2.5 text-left font-semibold">Category</th>
-          <th className="px-4 py-2.5 text-right font-semibold w-32">Amount</th>
-          <th className="px-4 py-2.5 text-right font-semibold w-24">Count</th>
-        </tr></thead>
+        <MCRSimpleHeader />
         <tbody>
-          <SHead label="Product Type" />
-          {[["Gov Fixed","governmentFixed"],["Gov ARM","governmentARM"],["Conv Fixed","conventionalFixed"],["Conv ARM","conventionalARM"],["Jumbo Fixed","jumboFixed"],["Jumbo ARM","jumboARM"]].map(([l,k]) => <RRow key={k} label={l} val={pt[k]} />)}
-          <SHead label="Channel" />
-          {[["Brokered","brokered"],["Closed Retail","closedRetail"],["Correspondent","closedCorrespondent"],["Table Funded","tableFunded"]].map(([l,k]) => <RRow key={k} label={l} val={ch[k]} />)}
-          <SHead label="Risk Characteristics" />
-          {[["Alt Documentation","altDoc"],["Interest Only","interestOnly"],["Option ARM","optionARM"],["Prepayment Penalty","prepaymentPenalty"]].map(([l,k]) => <RRow key={k} label={l} val={rc[k]} />)}
-          <SHead label="Loan Purpose" />
-          {[["Purchase","purchase"],["Refinance","refinance"]].map(([l,k]) => <RRow key={k} label={l} val={purpose[k]} />)}
-          <SHead label="Weighted Averages &amp; Pull-Through" />
-          <tr className="border-b border-gray-100"><td className="px-4 py-2 text-sm text-gray-700">Weighted Avg LTV</td><td className="px-4 py-2 text-sm text-right">{wa.ltv || 0}%</td><td></td></tr>
-          <tr className="border-b border-gray-100"><td className="px-4 py-2 text-sm text-gray-700">Weighted Avg Coupon Rate</td><td className="px-4 py-2 text-sm text-right">{wa.couponRate || 0}%</td><td></td></tr>
-          <tr className="border-b border-gray-100"><td className="px-4 py-2 text-sm text-gray-700">Pull-Through Ratio</td><td className="px-4 py-2 text-sm text-right">{pull.ratio || 0}%</td><td className="px-4 py-2 text-sm text-right">{pull.loansFunded || 0}/{pull.appsReceived || 0}</td></tr>
+          <MCRSectionRow label="RESIDENTIAL FIRST MORTGAGES (1-4 UNIT RESIDENTIAL ONLY)" colSpan={5} />
+          <Row code="I010" label="Government (FHA/VA/RHS) Fixed" val={pt.governmentFixed} />
+          <Row code="I020" label="Government (FHA/VA/RHS) ARM" val={pt.governmentARM} />
+          <Row code="I030" label="Conventional Conforming Fixed" val={pt.conventionalFixed} />
+          <Row code="I040" label="Conventional Conforming ARM" val={pt.conventionalARM} />
+          <Row code="I050" label="Conventional Non-Conforming (Jumbo) Fixed" val={pt.jumboFixed} />
+          <Row code="I060" label="Conventional Non-Conforming (Jumbo) ARM" val={pt.jumboARM} />
+          <Row code="I070" label="Other Fixed" val={pt.otherFixed} />
+          <Row code="I080" label="Other ARM" val={pt.otherARM} />
+          <Row code="I100" label="Total Residential First Mortgages" val={i100} isBold />
+          <MCRSectionRow label="OTHER MORTGAGES" colSpan={5} />
+          <Row code="I110" label="Closed-End Second Mortgages" val={{ amount: 0, count: 0 }} />
+          <Row code="I120" label="HELOCs (include the credit line amount)" val={{ amount: 0, count: 0 }} />
+          <Row code="I130" label="Reverse Mortgages" val={{ amount: 0, count: 0 }} />
+          <Row code="I140" label="Construction, 1-4 Unit Residential" val={{ amount: 0, count: 0 }} />
+          <Row code="I150" label="Construction, 5+ Unit Residential" val={{ amount: 0, count: 0 }} />
+          <Row code="I160" label="Construction, Commercial" val={{ amount: 0, count: 0 }} />
+          <Row code="I170" label="Commercial Mortgage" val={{ amount: 0, count: 0 }} />
+          <Row code="I180" label="Land Contract" val={{ amount: 0, count: 0 }} />
+          <Row code="I200" label="Total Other Mortgages" val={{ amount: 0, count: 0 }} isBold />
+          <MCRSectionRow label="ORIGINATION CHANNEL" colSpan={5} />
+          <Row code="I210" label="Brokered" val={ch.brokered} />
+          <Row code="I220" label="Closed – Retail" val={ch.closedRetail} />
+          <Row code="I230" label="Closed – Correspondent (Non-Delegated Underwriting)" val={ch.closedCorrespondent} />
+          <Row code="I240" label="Table Funded" val={ch.tableFunded} />
+          <MCRSectionRow label="RISK CHARACTERISTICS" colSpan={5} />
+          <Row code="I270" label="Alt / Reduced Documentation" val={rc.altDoc} />
+          <Row code="I280" label="Interest Only" val={rc.interestOnly} />
+          <Row code="I290" label="Option ARM" val={rc.optionARM} />
+          <Row code="I300" label="Prepayment Penalty" val={rc.prepaymentPenalty} />
+          <Row code="I330" label="Mortgage Insurance" val={rc.mortgageInsurance} />
+          <Row code="I340" label="Piggyback Seconds" val={rc.piggybackSecond} />
+          <MCRSectionRow label="LOAN PURPOSE" colSpan={5} />
+          <Row code="I350" label="Purchase" val={purpose.purchase} />
+          <Row code="I360" label="Refinance" val={purpose.refinance} />
+          <MCRSectionRow label="LTV DISTRIBUTION" colSpan={5} />
+          <Row code="I370" label="≤ 60%" val={ltv.lt60} />
+          <Row code="I380" label="60.01% – 70%" val={ltv.lt70} />
+          <Row code="I390" label="70.01% – 80%" val={ltv.lt80} />
+          <Row code="I400" label="80.01% – 90%" val={ltv.lt90} />
+          <Row code="I410" label="90.01% – 95%" val={ltv.lt95} />
+          <Row code="I420" label="95.01% – 100%" val={ltv.lt100} />
+          <Row code="I430" label="&gt; 100%" val={ltv.gt100} />
+          <MCRSectionRow label="WEIGHTED AVERAGES &amp; PULL-THROUGH" colSpan={5} />
+          <WRow label="Weighted Average LTV" value={`${wa.ltv || 0}%`} />
+          <WRow label="Weighted Average Coupon Rate" value={`${wa.couponRate || 0}%`} />
+          <WRow label="Weighted Average Warehouse Period (days)" value={`${wa.warehousePeriod || 0} days`} />
+          <WRow label="Applications Received" value={pull.appsReceived || 0} />
+          <WRow label="Loans Funded" value={pull.loansFunded || 0} />
+          <WRow label="Pull-Through Ratio" value={`${pull.ratio || 0}%`} />
         </tbody>
       </table>
     </div>

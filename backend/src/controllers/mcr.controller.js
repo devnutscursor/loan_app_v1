@@ -56,7 +56,7 @@ exports.generateReport = async (req, res, next) => {
       // lender stays null — report not scoped to a single lender
     } else if (req.body.lenderId && req.user.role === 'admin') {
       // Admin generating on behalf of a specific lender
-      lender = await Lender.findById(req.body.lenderId).populate('user', 'firstName lastName');
+      lender = await Lender.findById(req.body.lenderId).populate('user', 'firstName lastName nmls');
       if (!lender) {
         return next(new ApiError('Specified lender not found', 404));
       }
@@ -82,6 +82,14 @@ exports.generateReport = async (req, res, next) => {
       reportCompanyId = lender.company || null;
     }
 
+    // Build fallback LO for loans without assignedLoanOfficer (single-lender reports only)
+    let fallbackLO = null;
+    if (req.user.role === 'lender') {
+      fallbackLO = { _id: req.user._id, firstName: req.user.firstName || '', lastName: req.user.lastName || '', nmls: req.user.nmls || '' };
+    } else if (req.body.lenderId && req.user.role === 'admin' && lender?.user && typeof lender.user === 'object') {
+      fallbackLO = { _id: lender.user._id, firstName: lender.user.firstName || '', lastName: lender.user.lastName || '', nmls: lender.user.nmls || '' };
+    }
+
     // Only filter by state if specific states were provided
     if (stateList) {
       loanQuery['property.state'] = { $in: stateList };
@@ -94,7 +102,7 @@ exports.generateReport = async (req, res, next) => {
 
     // Fetch all relevant loans with compensation data
     const loans = await Loan.find(loanQuery)
-      .populate('assignedLoanOfficer', 'firstName lastName nmlsId')
+      .populate('assignedLoanOfficer', 'firstName lastName nmls')
       .populate('loanParameters.selectedProgramId', 'programType programName')
       .lean();
 
@@ -145,7 +153,7 @@ exports.generateReport = async (req, res, next) => {
     const applicationData = calculateApplicationData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const closedLoanData = calculateClosedLoanData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const revenueData = calculateRevenueData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
-    const mloData = calculateMLOData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
+    const mloData = calculateMLOData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO);
     const rmlaData = calculateRMLAData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
 
     // Determine the actual states present in the data (from period loans only)
@@ -164,7 +172,7 @@ exports.generateReport = async (req, res, next) => {
         applicationData: calculateApplicationData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
         closedLoanData: calculateClosedLoanData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
         revenueData: calculateRevenueData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
-        mloData: calculateMLOData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
+        mloData: calculateMLOData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO),
         rmlaData: calculateRMLAData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate)
       };
     }
@@ -261,7 +269,7 @@ exports.getReport = async (req, res, next) => {
   try {
     const report = await MCRReport.findById(req.params.id)
       .populate('generatedBy', 'firstName lastName')
-      .populate('loanOfficer', 'firstName lastName nmlsId');
+      .populate('loanOfficer', 'firstName lastName nmls');
 
     if (!report) {
       return next(new ApiError('Report not found', 404));
@@ -866,7 +874,7 @@ function calculateRevenueData(loans, compMap, statusAtEndDate, statusDuringPerio
     AC1070: { amount: 0, label: 'Pass-Through Fees' },
     AC1080: { amount: 0, label: 'Broker Flat Fees' },
     AC1090: { amount: 0, label: 'Lender Fees Collected' },
-    AC1100: { amount: 0, label: 'Total Gross Revenue' },
+    AC1100: { amount: 0, label: 'Gross Revenue from Mortgage Origination Operations' },
     // Servicing Disposition
     AC1200: { count: 0, amount: 0, label: 'Servicing Released' },
     AC1210: { count: 0, amount: 0, label: 'Servicing Retained' }
@@ -906,13 +914,11 @@ function calculateRevenueData(loans, compMap, statusAtEndDate, statusDuringPerio
 /**
  * Tab 4: MLO Data — Per-Loan Officer attribution
  */
-function calculateMLOData(loans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate) {
-  const funded = getFundedLoansInPeriod(loans, compMap, startDate, endDate);
-
+function calculateMLOData(loans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO = null) {
   const loMap = {};  // keyed by LO user ID
 
-  for (const loan of funded) {
-    const lo = loan.assignedLoanOfficer;
+  for (const loan of loans) {
+    const lo = loan.assignedLoanOfficer || fallbackLO;
     if (!lo) continue;
 
     const loId = lo._id ? lo._id.toString() : lo.toString();
@@ -921,7 +927,7 @@ function calculateMLOData(loans, compMap, statusAtEndDate, statusDuringPeriod, s
         loanOfficerId: loId,
         firstName: lo.firstName || 'Unknown',
         lastName: lo.lastName || '',
-        nmlsId: lo.nmlsId || '',
+        nmlsId: lo.nmls || lo.nmlsId || '',
         loanCount: 0,
         totalAmount: 0
       };
