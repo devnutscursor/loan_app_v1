@@ -5,7 +5,6 @@
   "env": {
     "NEXT_PUBLIC_API_URL": "https://loan-app-backend-1qkk.onrender.com"
   },
-  "regions": ["dxb1"],
   "headers": [
     {
       "source": "/(.*)",

@@ -43,7 +43,7 @@ const REPORT_TABS = [
 ];
 
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
 
 const US_STATES = { AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming" };
 
@@ -673,13 +673,15 @@ const MCRReports = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Year</label>
-                    <select
+                    <input
+                      type="number"
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      min={2000}
+                      max={currentYear + 1}
+                      placeholder="e.g. 2026"
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Period</label>

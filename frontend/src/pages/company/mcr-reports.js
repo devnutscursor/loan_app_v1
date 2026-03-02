@@ -34,7 +34,7 @@ import {
 
 /* ── Constants ──────────────────────────────────────── */
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
 const PERIODS = [
   { value: "Q1", label: "Q1 (Jan–Mar)" },
   { value: "Q2", label: "Q2 (Apr–Jun)" },
@@ -672,13 +672,15 @@ const CompanyMCRReports = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Year</label>
-                    <select
+                    <input
+                      type="number"
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      min={2000}
+                      max={currentYear + 1}
+                      placeholder="e.g. 2026"
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">Period</label>
