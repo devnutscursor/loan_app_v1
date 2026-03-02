@@ -13,6 +13,7 @@ const { createDefaultMilestonesForLoan } = require('../utils/defaultMilestones')
 const { USE_S3, s3 } = require('../services/s3.service');
 const Document = require("../models/document.model");
 const Milestone = require("../models/milestone.model");
+const LoanCompensation = require("../models/loanCompensation.model");
 
 // Check if we should use S3 or local storage
 // const USE_S3 = process.env.USE_S3 === 'true' || false;
@@ -345,6 +346,11 @@ exports.createLoan = async (req, res, next) => {
 
     // Prepare property data
     const propertyData = {
+      streetAddress: property?.addressLine1 || property?.streetAddress || '',
+      addressLine2: property?.addressLine2 || '',
+      city: property?.city || '',
+      state: property?.state || '',
+      county: property?.county || '',
       zipCode: property?.zipCode || "00000",
       propertyType: property?.propertyType || "Single Family Home",
       occupancyType: property?.occupancyType || "Primary Residence",
@@ -1370,11 +1376,29 @@ exports.updateLoanStatus = async (req, res, next) => {
       }
     }
 
-    // Update the loan
-    const updatedLoan = await Loan.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    // Update via save() to trigger pre-save hooks (MCR status history)
+    Object.assign(loan, updateData);
+    loan._changedBy = req.user._id;
+    loan._changeReason = req.body.changeReason || 'Status updated by lender';
+    const updatedLoan = await loan.save();
+
+    // Auto-create LoanCompensation record when loan is funded
+    if (status === 'Funded' || status === 'Closed') {
+      try {
+        const existingComp = await LoanCompensation.findOne({ loan: updatedLoan._id });
+        if (!existingComp) {
+          await LoanCompensation.create({
+            loan: updatedLoan._id,
+            fundedDate: new Date(),
+            loanAmount: updatedLoan.loanAmount || 0,
+          });
+          logger.info(`Auto-created LoanCompensation for loan ${updatedLoan.loanNumber} on status change to ${status}`);
+        }
+      } catch (compError) {
+        // Don't fail the status update if compensation creation fails
+        logger.warn(`Failed to auto-create LoanCompensation for loan ${updatedLoan._id}: ${compError.message}`);
+      }
+    }
 
     // Log the status update
     logger.info(
@@ -2275,6 +2299,11 @@ exports.createLoanData = async (req, res, next) => {
 
     // Prepare property data
     const propertyData = {
+      streetAddress: property?.addressLine1 || property?.streetAddress || property?.address?.streetAddress || '',
+      addressLine2: property?.addressLine2 || property?.address?.aptSteNum || '',
+      city: property?.city || property?.address?.city || '',
+      state: property?.state || property?.address?.state || '',
+      county: property?.county || property?.address?.county || '',
       zipCode: property?.zipCode || property?.address?.zipCode || "00000",
       propertyType: property?.propertyType || "Single Family Home",
       occupancyType: property?.occupancyType || "Primary Residence",
@@ -2996,15 +3025,20 @@ exports.toggleEditingPermission = async (req, res, next) => {
 exports.updateLoanStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, adverseAction } = req.body;
 
     // Frontend status mapping to backend enum values
     const statusMapping = {
       'Application Submitted': 'Application Submitted',
       'Processing': 'Processing',
+      'Underwriting': 'Underwriting',
       'Approved': 'Conditional Approval', // Map to existing backend enum
+      'Clear to Close': 'Clear to Close',
       'Rejected': 'Declined',  // Map "Rejected" to "Declined"
-      'Closed': 'Closed'
+      'Withdrawn': 'Withdrawn',
+      'Closed': 'Closed',
+      'Funded': 'Funded',
+      'Closed-Incomplete': 'Closed-Incomplete'
     };
 
     // Validate the status value from frontend
@@ -3026,9 +3060,34 @@ exports.updateLoanStatus = async (req, res, next) => {
     // Map the frontend status to the corresponding backend enum value
     const backendStatus = statusMapping[status];
 
-    // Update the loan status
+    // Update the loan status (with MCR metadata for status history tracking)
     loan.status = backendStatus;
+    loan._changedBy = req.user._id;
+    loan._changeReason = req.body.changeReason || `Status changed to ${status}`;
+    
+    // Pass adverse action data to pre-save hook via transient field
+    if (adverseAction && (backendStatus === 'Withdrawn' || backendStatus === 'Declined')) {
+      loan._adverseAction = adverseAction;
+    }
+    
     await loan.save();
+
+    // Auto-create LoanCompensation record when loan reaches Closed status
+    if (backendStatus === 'Closed') {
+      try {
+        const existingComp = await LoanCompensation.findOne({ loan: loan._id });
+        if (!existingComp) {
+          await LoanCompensation.create({
+            loan: loan._id,
+            fundedDate: new Date(),
+            loanAmount: loan.loanAmount || 0,
+          });
+          logger.info(`Auto-created LoanCompensation for loan ${loan.loanNumber} on status change to ${backendStatus}`);
+        }
+      } catch (compError) {
+        logger.warn(`Failed to auto-create LoanCompensation for loan ${loan._id}: ${compError.message}`);
+      }
+    }
 
     // Log the status change
     logger.info(

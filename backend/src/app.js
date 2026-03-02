@@ -32,6 +32,8 @@ const consentEmailRoutes = require('./routes/consentEmail.routes');
 const noteRoutes = require('./routes/note.routes');
 const testRoutes = require('./routes/test.routes'); // Import test routes
 const mortechRoutes = require('./routes/mortech.routes');
+const mcrRoutes = require('./routes/mcr.routes');
+const loanCompensationRoutes = require('./routes/loanCompensation.routes');
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -252,6 +254,8 @@ app.use('/api/v1/consent', consentRoutes);
 app.use('/api/v1/consent-email', consentEmailRoutes);
 app.use('/api/v1/notes', noteRoutes);
 app.use('/api/v1/mortech', mortechRoutes);
+app.use('/api/v1/mcr', mcrRoutes);
+app.use('/api/v1/loan-compensation', loanCompensationRoutes);
 app.use('/api/v1/test', testRoutes); // Register test routes
 
 // Root route

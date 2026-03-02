@@ -18,12 +18,21 @@ const VerticalTabNavigation = ({
           className="flex flex-col space-y-2"
           aria-label="Tabs"
         >
-          {mainTabs.map((tab) => {
+          {mainTabs.map((tab, index) => {
             const isActive = tab.id === activeTab;
             const isExpanded =
               tab.id === "application" && isApplicationExpanded;
+            // Show MCR separator before first MCR tab
+            const isFirstMCR = tab.isMCR && (index === 0 || !mainTabs[index - 1]?.isMCR);
             return (
               <div key={tab.id} className="group">
+                {isFirstMCR && (
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                    <div className="flex-1 border-t border-gray-200"></div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">MCR</span>
+                    <div className="flex-1 border-t border-gray-200"></div>
+                  </div>
+                )}
                 <button
                   onClick={() => handleTabClick(tab.id)}
                   className={`

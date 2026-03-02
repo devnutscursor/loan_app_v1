@@ -1,0 +1,79 @@
+Based on the Master Specification we just created, here is the technical Database Schema 
+for your developer. 
+This schema is designed to solve the two biggest problems in this project: 
+1. The Snapshot Problem: Tracking what a status was on a specific date. 
+2. The Financial Source of Truth: Storing the specific MCR revenue fields. 
+You can hand this directly to your backend engineer. 
+MCR Database Schema Specification 
+1. New Table: loan_compensation (The Revenue Tab) 
+Purpose: This is the "Source of Truth" for Tab 3: Revenue Data. It stores the data entered in 
+the new "Compensation / Revenue" UI tab you are building. It links 1-to-1 with the main loans 
+table. 
+SQL 
+CREATE TABLE loan_compensation ( 
+id BIGINT PRIMARY KEY, 
+loan_id BIGINT NOT NULL, -- Foreign Key to loans table -- FINANCIALS (Maps to MCR Tab 3: Revenue Data) 
+origination_fee DECIMAL(15, 2) DEFAULT 0.00, -- Maps to FS010 (Borrower Paid) 
+processing_fee DECIMAL(15, 2) DEFAULT 0.00,  -- Maps to FS010 (Borrower Paid) 
+discount_points DECIMAL(15, 2) DEFAULT 0.00, -- Maps to FS040 (Borrower Paid) 
+srp_amount DECIMAL(15, 2) DEFAULT 0.00,      -- Maps to FS020 (Service Release Premium) 
+ysp_amount DECIMAL(15, 2) DEFAULT 0.00,      -- Maps to FS030 (Yield Spread Premium) -- CRITICAL DATES & FLAGS 
+funded_date DATE,                            
+Date. 
+rate_lock_date DATE,                         -- CRITICAL: Use this for Q1/Q2/Q3/Q4 checks, NOT the App -- Optional, good for audit. -- LOAN CLASSIFICATION (Maps to MCR Tab 2 & Section II) 
+lien_position ENUM('1st', '2nd', 'Other'),   -- Maps to AC500 / AC510 
+amortization_type ENUM('Fixed', 'ARM'),      -- Maps to Section II (Rows 1010-1060) 
+updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+); 
+2. New Table: loan_status_history (The Snapshot Engine) 
+Purpose: This solves the "Time Travel" problem. It records exactly when a loan moved from 
+one stage to another. 
+Developer Logic: To report on Q1 (Jan 1 - Mar 31), you query this table to find the status 
+MAX(created_at) where created_at <= '2026-03-31'. 
+SQL 
+CREATE TABLE loan_status_history ( 
+id BIGINT PRIMARY KEY, 
+loan_id BIGINT NOT NULL,       -- Foreign Key to loans table 
+previous_status VARCHAR(50),   -- e.g., "Processing" 
+new_status VARCHAR(50),        
+); -- e.g., "Funded" 
+changed_by_user_id BIGINT,     -- Who moved it? (Audit trail) 
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- The exact moment it changed. 
+3. Updates to Existing Table: loans 
+Purpose: You likely already have a loans table. You must add these specific columns to 
+support the mappings in MCR Tab 2 and Section II. 
+SQL 
+ALTER TABLE loans ADD COLUMN ( -- SOURCE OF BUSINESS (Maps to "Direct" vs "Third Party" Columns) 
+lead_source VARCHAR(50),  
+-- Developer Note: If lead_source = 'Wholesale', map to "Third Party" column.  -- Otherwise map to "Directly Received". -- RISK FACTORS (Maps to RMLA Section II) 
+doc_type VARCHAR(50),          -- Options: 'Full Doc', 'Bank Statement', 'DSCR' 
+interest_only_flag BOOLEAN DEFAULT FALSE, -- Maps to Row 1280 
+hoepa_flag BOOLEAN DEFAULT FALSE,         
+); -- Maps to Row AC400 -- QM STATUS (Maps to Rows AC920 - AC930) 
+qm_status VARCHAR(20)          -- Options: 'Qualified', 'Non-QM', 'Exempt' 
+4. Sample Queries for the Developer 
+Scenario A: Counting "Active Pipeline" for Q1 Report (Ending March 31) 
+Problem: Loan #101 is "Funded" today (June), but we need to know if it was "Active" on March 
+31. 
+SQL -- "Time Travel" Query 
+SELECT  
+l.id,  
+(SELECT new_status  
+FROM loan_status_history h  
+WHERE h.loan_id = l.id  
+AND h.created_at <= '2026-03-31 23:59:59' -- The Snapshot Date 
+ORDER BY h.created_at DESC  
+LIMIT 1) as status_on_date 
+FROM loans l 
+WHERE  
+status_on_date IN ('Processing', 'Underwriting', 'Approved'); -- If this returns 'Funded', exclude it from Pipeline. -- If this returns 'Processing', count it in Row AC080. 
+Scenario B: Calculating Gross Revenue (Tab 3) 
+Problem: Sum up all revenue for loans funded in Q1. 
+SQL 
+SELECT  
+SUM(c.origination_fee + c.processing_fee + c.srp_amount + c.ysp_amount + 
+c.discount_points) as Gross_Revenue 
+FROM loans l 
+JOIN loan_compensation c ON l.id = c.loan_id 
+WHERE  
+c.funded_date BETWEEN '2026-01-01' AND '2026-03-31' -

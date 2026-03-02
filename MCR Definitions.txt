@@ -1,0 +1,2016 @@
+NMLS Mortgage Call Report
+Field Definitions & Instructions
+Form Version 6 
+This document provides field definitions, instructions and data formatting requirements for completing the 
+NMLS Mortgage Call Report (MCR).  The document contains four sections:
+1. Glossary of General Terms - definitions for terminology used throughout the rest of the document
+2. Residential Mortgage Loan Activity (RMLA) - field definitions for RMLA Sections I, II and III of the MCR
+3. Supplemental State-Specific Form (SSSF) - field definitions for state-specific fields not included in the 
+RMLA
+4. Financial Condition (FC) - field definitions for the Financial Condition component of the MCR
+NOTES:- Fields described as "CALCULATED" are calculated automatically by NMLS and do not require any input.- Field instructions that are in bold italics indicate a rule that will be validated by the NMLS Completeness 
+Check.
+Item # Name Definitions and Instructions
+Absolute Value Also called numerical value. The magnitude of a quantity, without regard for it's sign; 
+the distance of a quantity from zero. For example, the absolute value of -3 is 3.
+Amount The total loan amount of applications received, closed loans 
+brokered/retailed/wholesaled.
+Application An application is an oral or written request for an extension of credit encumbering a 1
+4 unit residential property.  Exclude any commercial/business/investment purpose 
+encumbrances from reporting.  The application date used is either (1.)The date on the 
+initial 1003 with the borrower’s signature, or; (2) The date of an oral request for 
+extension of credit, with deference to the initial 1003. Examples of requests that are 
+considered an application for the NMLS MCR include, but are not limited to, purchase 
+of owner occupied 1-4 unit residential properties including 2nd homes and vacation 
+homes; construction of 1-4 unit residential properties (as described above) made 
+directly to the consumer; non-commercial liens on residential properties (Lines of 
+Credit should be reported at maximum approved credit line); reverse mortgages – 
+regardless of purpose; and refinance loans on all of the above.
+Broker Fee Any fee collected in conjunction with brokering a loan not including pass through fees 
+(e.g. appraisal, credit report, flood cert., etc.)
+Closed Closed refers to loans that have funded and have legally binding agreements 
+establishing a residential mortgage loan.
+Closed Retail Closed retail refers to loans that have legally binding agreements establishing a 
+residential mortgage loan and have been originated/funded by the institution who took 
+the application.
+Closed Wholesale Closed wholesale refers to loans that have legally binding agreements establishing a 
+residential mortgage loan with an application taken by one party but funded by 
+another.
+Count The total number of applications or closed loans.
+Directly Received from Borrower Applications that your institution has directly received from the borrower.
+Dwelling Dwelling means a residential structure that contains one to four units, whether or not 
+that structure is attached to real property. The term includes an individual 
+condominium unit, cooperative unit, mobile home, trailer, and houseboat if used as a 
+residence.
+FC or Financial Condition A component of the Mortgage Call Report containing financial information at the 
+company level.
+First Lien A mortgage loan having priority over all other liens or claims on a property in the 
+event of default.
+Forward Mortgage A loan secured by a lien on residential real estate in which the homeowner is required 
+to make regular payments on the loan.
+FV (Fair Value Option) The Fair Value Option per the provisions in the Financial Accounting Standards 
+Number 159.
+HAMP Home Affordable Modification Program
+HFI Held for Investment
+HFS Held for Sale
+Lender Fee Any fee collected in conjunction with closing and/or funding a retail or wholesale loan 
+not including pass through fees (e.g. appraisal, credit report, flood cert., etc.)
+Loan or Residential Mortgage Loan Any loan primarily for personal, family, or household use that is secured by a 
+mortgage, deed of trust, or other equivalent consensual security interest on a dwelling 
+as defined in section 103(v) of the Truth in Lending Act) or residential real estate 
+upon which is constructed or intended to be constructed a dwelling (as so defined).
+LOCOM Lower of Cost or Market
+Loan-to-Value Ratio (LTV) A lending risk assessment ratio that financial institutions and others lenders examine 
+before approving a mortgage.  For MCR purposes report the current LTV based upon 
+the most recent appraised value.  LTV= (Mortgage Loan Amount or UPB/ Most recent 
+appraised value) 
+Originated A closed/funded loan
+Pass-through Fee Fees that are not retained by your company (e.g. appraisal, credit report, flood cert., 
+etc.)
+Glossary of General Terms
+Page 2 of 35
+Item # Name Definitions and Instructions
+Pool Number In the mortgage industry a number can be assigned to a group or “pool” of loans that 
+are being serviced and/or sold in the secondary market. In most cases these pools 
+are grouped by investor type. Sometimes a number may not be given or assigned; in 
+that case an internal number should be issued by the reporting entity.  If you assigned 
+a pool number, filers should use their own in-house pool numbers and retain proper 
+work papers to provide the examiners during an examination. 
+Pre-Approval A Pre-Approval is an application for a residential real estate mortgage loan where a 
+binding credit decision is expected and will be communicated in advance of identifying 
+a specific property.
+Qualified Mortgage (QM) Under Regulation Z (12 CFR 1026), a loan that meets the product feature 
+requirements can be a QM under any of three main categories: (1) the general 
+definition - Any loan that meets the product feature requirements with a debt-to
+income ratio of 43% or less is a QM; (2) the “GSE/agency--eligible” provision - Any 
+loan that meets the product feature requirements and is eligible for purchase, 
+guarantee, or insurance by a GSE, FHA, VA, or USDA is QM regardless of the debt to
+income ratio; (3) the small creditor provision - If you have less than $2B in assets and 
+originate 500 or fewer first mortgages per year, loans you make and hold in portfolio 
+are QMs as long as you have considered and verified a borrower’s debt-to-income 
+ratio, though no specific DTI limit applies.
+Received from 3rd Party Application that your institution has received from a broker or lender.
+Repurchase Loans that you were required to buy back from an investor or securitizer during the 
+period.
+Residential First Mortgages (1-4 Unit Residential) A Residential First Mortgage (1-4 Unit Residential) is a first position lien on a 1-4 unit 
+residential dwelling.  This includes real estate and non-real estate secured property.  
+Non-real estate secured property includes, but is not limited to, those dwellings 
+considered chattel such as trailers and manufactured homes, boats or any other 
+medium used as a dwelling.
+RMLA or Residential Mortgage Loan Activity A component of the Mortgage Call Report containing application, closed loan, 
+mortgage loan originator, lines of credit, repurchase, origination, servicing and/or note 
+information reported by state.
+Reverse Mortgage A loan secured by a lien on residential real estate in which the homeowner is not 
+required to make payments on the loan until a specific event occurs.
+REO Real Estate Owned
+SRP Service Release Premium
+Subordinate Lien A mortgage loan that is junior or second to first lien loans including but not limited to 
+home equity, second mortgage, down payment or closing assistance programs.
+UPB Unpaid Principal Balance
+YSP Yield Spread Premium
+NOTES:
+Fields described as "CALCULATED" are calculated automatically by NMLS and do not require any input.
+Field instructions that are in bold italics indicate a rule that will be validated by the NMLS Completeness Check.
+Page 3 of 35
+Item # Name Definitions and Instructions
+Residential Mortgage Loan Activity (Company-Level)
+RMLA COMPANY-LEVEL INFORMATION
+LINES OF CREDIT AT PERIOD END
+LOC Warehouse Lines of Credit Enter your Warehouse Line providers, the limit on each line of credit for each provider 
+and the amount you have available on each line of credit at the end of the period. 
+This must reflect all warehouse line providers your company has a relationship with. 
+LOANS SERVICED - NATIONWIDE TOTALS
+LS010 Wholly Owned Loans Serviced Enter the UPB and Loan Count for loans that you are servicing and for which you 
+retain all ownership rights.  Report your company's nationwide totals of all loans 
+serviced regardless of whether or not your company is licensed in a particular 
+state or if your company is required to submit a state-specific RMLA for a 
+particular state.
+LS020 Loans Serviced Under MSRs Enter the UPB and Loan Count for loans that you are servicing and for which you own 
+only the Mortgage Servicing Rights.   Report your company's nationwide totals of all 
+loans serviced regardless of whether or not your company is licensed in a particular 
+state or if your company is required to submit a state-specific RMLA for a particular 
+state.
+LS030 Subservicing for Others Enter the UPB and Loan Count for loans that you are subservicing on behalf of 
+others.   Report your company's nationwide totals of all loans serviced regardless of 
+whether or not your company is licensed in a particular state or if your company is 
+required to submit a state-specific RMLA for a particular state.
+LS040 Subservicing by Others Enter the UPB and Loan Count for loans that are Wholly Owned or for which you own 
+the Mortgage Servicing Rights and have contracted with a third-party to service on 
+your behalf.   Report your company's nationwide totals of all loans serviced regardless 
+of whether or not your company is licensed in a particular state or if your company is 
+required to submit a state-specific RMLA for a particular state.
+LS090 Total Servicing Activity Equals the sum of rows LS010 to LS040 for the corresponding column.
+SERVICING TRANSFERS DURING THE QUARTER
+LS100 Loan Servicing Transferred In During the Period A mortgage servicer, among other things, collects and processes loan payments on 
+behalf of the owner of the mortgage note. Servicing transfers are common and may 
+occur in several ways. The mortgage owner may sell the rights to service the loan, 
+called the Mortgage Servicing Rights (MSR), separately from the note ownership. The 
+owner of the loan or MSR may, rather than servicing the loan itself, hire a vendor – 
+typically called a subservicer – to take on the servicing duties. MSR owners frequently 
+sell MSR outright as an asset. Servicing transfers may also occur through whole loan 
+servicing transfers or whole loan portfolio transfers, rather than through sales of MSR. 
+For MCR purposes, we are using the term “transfer” broadly to cover transfers of 
+servicing rights as well as transfers of servicing responsibilities through subservicing 
+or whole loan servicing arrangements.  For LS100, report this information as it relates 
+to transfers into the entity.
+Report all warehouse line providers for your company.
+Data Format:
+Name of Provider - Text (150 characters max)
+Credit Limit - Positive dollar amount to the nearest dollar
+Remaining Credit Available - Dollar amount to the nearest dollar
+Page 4 of 35
+Item # Name Definitions and Instructions
+LS110 Loan Servicing Transferred Out During the Period A mortgage servicer, among other things, collects and processes loan payments on 
+behalf of the owner of the mortgage note. Servicing transfers are common and may 
+occur in several ways. The mortgage owner may sell the rights to service the loan, 
+called the Mortgage Servicing Rights (MSR), separately from the note ownership. The 
+owner of the loan or MSR may, rather than servicing the loan itself, hire a vendor – 
+typically called a subservicer – to take on the servicing duties. MSR owners frequently 
+sell MSR outright as an asset. Servicing transfers may also occur through whole loan 
+servicing transfers or whole loan portfolio transfers, rather than through sales of MSR. 
+For MCR purposes, we are using the term “transfer” broadly to cover transfers of 
+servicing rights as well as transfers of servicing responsibilities through subservicing 
+or whole loan servicing arrangements.  For LS110, report this information as it relates 
+to transfers from the entity.
+LS190 Total Loans Transferred In and Out During the 
+Period 
+Equals the sum of rows LS100 to LS110 for the corresponding column.
+NATIONWIDE PAYMENT STATUS OF LOANS SERVICED AS OF END DATE (ALL LOANS)
+LS200 Less than 30 Days Delinquent (includes loans that 
+are not delinquent)
+Enter the UPB and Count of Mortgage Loans you serviced during the period that are 
+current.
+LS210 30 to 59 Days Delinquent Enter the UPB and Count of Mortgage Loans you serviced during the period that are 
+30 to 59 days delinquent.
+LS220 60 to 89 Days Delinquent Enter the UPB and Count of Mortgage Loans you serviced during the period that are 
+60 to 89 days delinquent.
+LS230 90 or more Days Delinquent Enter the UPB and Count of Mortgage Loans you serviced during the period that are 
+90 or more days delinquent.
+LS290 Total Loans Serviced Equals the sum of rows LS200 to LS230 for the corresponding column.
+NOTE Provide any necessary explanations for any company level information requiring 
+clarification submitted as part of this report. State specific explanations should be 
+added to the state RMLA component. This field is a permanent part of your Mortgage 
+Call Report filing. 
+Page 5 of 35
+Item # Name Definitions and Instructions
+RMLA SECTION I
+APPLICATION DATA
+APPLICATION PIPELINE
+AC010 Applications In Process at the Beginning of the 
+Period
+Starting number of applications that were in process at the end of the previous period. 
+Note this includes loans which are approved but not yet closed. 
+AC020 Applications Received The applications you received during the period (received from third party or directly 
+from borrower).
+AC030 Applications Approved but not Accepted The applications approved but the applicant, broker, or correspondent failed to 
+respond to notification of approval or commitment letter within the specified time.
+AC040 Applications Denied The applications denied during the period.
+AC050 Applications Withdrawn The applications expressly withdrawn by the applicant before a credit decision is 
+made. Include all applications withdrawn during this period regardless of the period 
+the application was received.
+AC060 File Closed for Incompleteness The applications where you send a written notice of incompleteness under section 
+1002.9(c)(2) of Regulation B (Equal Credit Opportunity) and the applicant did not 
+respond to your request for additional information within the period of time specified in 
+your notice.
+AC065 Net Changes in Application Amount (decreases 
+should be reflected as negative)
+Enter the net changes in application dollar amounts during the quarter. An application 
+amount may change from the amount reported in the initial application. If the 
+aggregate number of the changes is negative, input a negative number in this field.    
+AC063 Net Application Changes (decreases should be 
+reflected as negative)
+Use this line to add or remove count and amount in the application data. If the 
+aggregate amount is negative, input a negative number in this field.  Retain detailed 
+support information for use during an examination.                                                                                      
+Note: This line should include $ and Count.                            
+Required: Explanation in Commentary Section.
+AC066 Total Application Pipeline Equals the sum of rows AC010 to AC065 in the above column. This sum should equal 
+AC090.  (AC010+AC020)-(AC030+AC040+AC050+AC060)+AC065+AC063
+APPLICATION PIPELINE RESULTS
+AC070 Loans Closed and Funded The applications that were received in any period but originated in this period.   This 
+field should equal AC990 and the total in the Mortgage Loan Originator Data section.
+AC080 Applications in Process at the End of the Period Ending number of applications that were in process at the end of this period (open 
+pipeline)
+AC090 Total Application Pipeline Results Equals the sum of rows AC070 to AC080 in the above column.  This sum should 
+equal AC066.
+CLOSED LOAN DATA
+AC100 Conventional Any loan other than FHA, VA, FSA or RHS loans
+AC110 FHA-Insured Federal Housing Administration Insured
+AC120 VA-guaranteed Veterans Administration Guaranteed
+Residential Mortgage Loan Activity (State-Specific)
+Enter the type of action taken on applications during the period. Applications may not necessarily be closed and funded. 
+Data Format:
+Amount ($ US Dollars) - Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals. 
+Count (#) - Positive whole number. Do not enter any symbols.
+Enter information for applications received in any period but which closed during this period and were reported in AC070. A closed loan for this section has 
+(1) executed legally binding agreements establishing a residential mortgage loan and (2) is funded but may not necessarily be funded by your company. All 
+forward mortgage closed loans should be captured in AC100-AC520 and reported by brokered, closed-retail, closed-wholesale as well as by type, purpose, 
+HOEPA and lien status. All reverse mortgages should be captured in AC700-800. All fees collected and retained by your company should be reported for 
+forward mortgages in AC 600-610 and for reverse mortgages in AC 620-630.                                                                                                                                                                                                                                                                                                                                                                                                               
+To help determine which column your company should enter closed loans, consider the following:
+BROKERED: means a closed loan for which you have taken the application but did not fund the loan
+CLOSED-RETAIL: means a closed loan for which you have taken the application and funded the loan
+CLOSED-WHOLESALE: means a closed loan for which you have not taken the application but did fund the loan
+Data Format:
+Amount ($ US Dollars) - Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals. 
+Count (#) - Positive whole number. Do not enter any symbols. 
+Page 6 of 35
+Item # Name Definitions and Instructions
+AC130 FSA/RHS-guaranteed Farm Service Agency or Rural Housing Service Guaranteed
+AC190 Total Loan Type - Forward Mortgages CALCULATED: The sum of AC100 to AC130 for the relevant column.
+AC200 One to Four Family Dwelling Property type other than manufactured housing of 1 to 4 family dwelling
+AC210 Manufactured housing Manufactured housing property type
+AC290 Total Property Type CALCULATED: The sum of AC200 to AC210 for the relevant column.
+AC300 Home Purchase Any loan secured by and made for the purpose of purchasing a dwelling
+AC310 Home Improvement Any dwelling-secured loan to be used, at least in part, for repairing, rehabilitating, 
+remodeling, or improving a dwelling (or the real property on which the dwelling is 
+located) OR any loan not secured by a lien on a dwelling to be used, at least in part, 
+for one or more of those purposes that is classified as a home improvement loan by 
+the institution
+AC320 Refinancing Any dwelling-secured loan that replaces and satisfies another dwelling-secured loan 
+to the same borrower
+AC390 Total Purpose of Loan or Application CALCULATED: The sum of AC300 to AC320 for the relevant column.
+AC400 HOEPA For a loan that you originated or purchased that is subject to the Home Ownership 
+and Equity Protection Act of 1994 (HOEPA), as implemented in Regulation Z (12 CFR 
+1026.32), because the APR or the points and fees on the loan exceed the HOEPA 
+triggers. Include those loans you closed fitting this description as the originator in the 
+"closed-retail" column and those that someone else originated but you were the 
+wholesaler in the "closed-wholesale" column.
+AC500 First Lien Secured by a first lien on real property
+AC510 Subordinate Lien Secured by a subordinate lien on real property. The amount listed should be the full 
+exposure amount the institution may have on the loan. 
+AC520 Not Secured by a Lien Not secured by a lien on real property.  Loans fitting this definition include dwellings 
+not attached to real property such as manufactured housing, house boats, or trailers 
+that are used as dwellings. 
+AC590 Total Lien Status CALCULATED: The sum of AC500 to AC520 for the relevant column.
+AC600 Broker Fees Collected-Forward Mortgages The gross total amount of broker fees, examples include but are not limited to YSP, 
+application fee, doc prep fee, administrative fee, you collected on forward mortgages 
+during the period. Do not include pass through fees.  
+AC610 Lender Fees Collected-Forward Mortgages The gross total amount of lender fees, examples include but are not limited to 
+application fee, doc prep fee, administrative fee, you collected on forward mortgages 
+during the period. Do not include pass through fees.  
+AC700 HECM-Standard Reverse Mortgage Loans falling under the Home Equity Conversion Mortgage 
+Standard category. The amount listed should be the full exposure amount the 
+institution may have on the loan.
+AC710 HECM-Saver Reverse Mortgage Loans falling under the Home Equity Conversion Mortgage Saver 
+category. The amount listed should be the full exposure amount the institution may 
+have on the loan.
+AC720 Proprietary/Other Reverse Mortgage Loans falling under any category other than HECM Standard or 
+Saver. The amount listed should be the full exposure amount the institution may have 
+on the loan.
+AC790 Total Loan Type - Reverse Mortgages CALCULATED: The sum of AC700 to AC720 for the relevant column.
+AC800 Home Purchase For reverse mortgages reported in AC700, AC710 and AC720 whose purpose was a 
+home purchase, report the amount and count of these loans in AC800. 
+AC810 Other For reverse mortgages reported in AC700, AC710 and AC720 whose purpose was 
+not a home purchase as reported in AC800, report the amount and count of these 
+loans in AC810.
+AC890 Total Purpose of Reverse Mortgage CALCULATED: The sum of AC800 to AC810 for the relevant column.
+AC620 Broker Fees Collected-Reverse Mortgages The gross total amount of broker fees, examples include but are not limited to YSP, 
+application fee, doc prep fee, administrative fee, you collected on reverse mortgages 
+during the period. Do not include pass through fees.  
+AC630 Lender Fees Collected-Reverse Mortgages The gross total amount of lender fees, examples include but are not limited to 
+application fee, doc prep fee, administrative fee, you collected on reverse mortgages 
+during the period. Do not include pass through fees.  
+AC900 Total Loans Brokered by your Company Enter the total number of loans you brokered in the period (a mortgage loan 
+application taken by your company in any period and closed in this period)
+AC910 Total Loans Funded by your Company Enter the total number of loans you funded in the period
+AC920 Qualified Mortgage (QM) Loans Closed and Funded during this period that are QM Loans.  Under Regulation Z 
+(12 CFR 1026), a loan that meets the product feature
+requirements can be a QM under any of three main categories: (1) the general 
+definition; (2) the “GSE/agency-eligible” provision; (3) the small creditor provision.
+Page 7 of 35
+Item # Name Definitions and Instructions
+AC930 Non-Qualified Mortgage Loans Closed and Funded during this period that are Non-QM Loans.  Include all 
+loans not reported in AC920.  Under Regulation Z (12 CFR 1026), a loan that meets 
+the product feature
+requirements can be a QM under any of three main categories: (1) the general 
+definition; (2) the “GSE/agency-eligible” provision; (3) the small creditor provision. 
+AC940 Not Subject to QM Loans Closed and Funded during this period that are not subject to QM standards.
+AC990 Total Closed Loans Equals the sum of rows AC920 to AC940 in the above column.  This sum should 
+equal AC070 and the total in the Mortgage Loan Originator Data section.
+AC1000 Loans Made and Assigned but Required to 
+Repurchase in Period
+If you were required to repurchase any loans during the period regardless of when 
+that loan was made and assigned, enter the information here
+REVENUE DATA
+Enter revenue information your company received in this state during the reporting period. 
+AC1100 Gross Revenue from Mortgage Origination 
+Operations
+All revenue from mortgage origination operations received by your company on 
+mortgage loans in this state during the reporting period before any expenses are 
+deducted.
+SERVICING DISPOSITION ON CLOSED LOANS
+AC1200 Closed Loans with Servicing Retained During the 
+Quarter
+Enter the Amount and Count of closed and funded loans during the quarter on which 
+you intend to retain the Mortgage Servicing Rights, based on your intentions at the 
+time the loan is made.  Brokered loans do not belong in this section.  
+Note: Brokers who do not fund loans do not need to complete this field.
+AC1210 Closed Loans with Servicing Released During the 
+Quarter
+Enter the Amount and Count of closed and funded loans during the quarter on which 
+you intend to sell the Mortgage Servicing Rights, based on your intentions at the time 
+the loan is made.  Brokered loans do not belong in this section.  
+Note: Brokers who do not fund loans do not need to complete this field.
+AC1290 Servicing Disposition Total Equals the sum of rows AC1200 to AC1210 in the above column.  This sum should 
+equal the sum of AC990 for the retail and wholesale columns.  Brokered loans do not 
+belong in this section.  
+MORTGAGE LOAN ORIGINATOR DATA
+ACMLO1 Employee Name, MLO NMLS ID, Amount ($) and 
+Count (#) 
+Provide MLO NMLS ID, Amount ($) and Count (#) of loans originated by each of your 
+state licensed MLOs. NMLS will retrieve the legal name associated to the NMLS ID 
+provided.
+EXPLANATORY NOTES-FREE TEXT
+ACNOTE Provide any necessary state specific RMLA explanations for any information requiring 
+clarification submitted as part of this component. This field is a permanent part of your 
+Mortgage Call Report filing. 
+RMLA SECTION II 
+Enter closed loan information for MLOs you employed during the reporting period who had originations. MLO with no closed loans during the period do not 
+need to be listed. List the MLOs originating in this state. 
+Data Format:
+MLO NMLS ID - Positive whole number
+Amount ($) - Positive dollar amount to the nearest dollar
+Count (#) - Positive whole number
+Residential First Mortgages (1-4 Unit Residential ONLY)
+Data Format:
+UPB ($) – Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals. 
+Loan Count (#) – Positive whole number. Do not enter any symbols. 
+Average FICO Score – Positive whole number 
+Weighted Average – Number to the nearest hundredth (two-decimal figure) 
+Ratio – Number to the nearest hundredth (two-decimal figure) 
+Average Days – Positive whole number
+Page 8 of 35
+Item # Name Definitions and Instructions
+I010 Government (FHA/VA/RHS) Fixed The dollar amount and number of residential loans that are guaranteed or insured by 
+the government (FHA, VA, or RHS, including bond or state assisted loans) in which 
+the mortgage rate remains fixed throughout the life of the loan, for example, 15-year, 
+20-year, and 30 year loans.
+I020 Government (FHA/VA/RHS) ARM The dollar amount and number of residential loans that are guaranteed or insured by 
+the government (FHA, VA, or RHS, including bond or state assisted loans) and in 
+which the mortgage rate adjusts according to a specified price index periodically and 
+as agreed to at the inception of the loan. FHA Home Equity Conversion Mortgages 
+(reverse mortgages) are reported below in item I130—Reverse Mortgages.
+I030 Conventional Conforming Fixed The dollar amount and number of 1-to-4 unit residential first mortgage loans that are 
+eligible for sale to Fannie Mae/Freddie Mac and in which the mortgage rate remains 
+fixed throughout the life of the loan. This should not include FHA and VA loans 
+because they are reported separately on this form.
+I040 Conventional Conforming ARM The dollar amount and number of 1-to-4 unit residential first mortgage loans that are 
+eligible for sale to Fannie Mae/Freddie Mac and in which the mortgage rate adjusts 
+according to a specified price index periodically and as agreed to at the inception of 
+the loan. This should not include FHA and VA loans because they are reported 
+separately on this form.
+I050 Conventional Non-Conforming (Jumbo) Fixed The dollar amount and number of 1-to-4 unit residential first mortgage loans that are 
+not Alt-A or non-prime credit grade (see definition in I070 below), whose balances 
+exceed Fannie Mae/Freddie Mac loan limits, and in which the mortgage rate remains 
+fixed throughout the life of the loan.
+I060 Conventional Non-Conforming (Jumbo) ARM The dollar amount and number of 1-to-4 unit residential first mortgage loans that are 
+not Alt-A or non-prime credit grade (see definition in I070 below), whose balances 
+exceed Fannie Mae/Freddie Mac loan limits, and in which the mortgage rate adjusts 
+according to a specified price index periodically and as agreed to at the inception of 
+the loan.
+I070 Other Fixed The dollar amount and number of all other 1-to-4 unit residential first mortgage loans 
+not reported above, including Alt-A and non-prime credit grade loans and in which the 
+mortgage rate remains fixed throughout the life of the loan. Non-prime loans are 
+considered those to lower credit quality borrowers (generally <620 FICO) who do not 
+qualify for prime or Alt-A loans. They often contain other risky features such as high 
+loan to value (LTV) ratios and limited documentation.
+I080 Other ARM The dollar amount and number of all other 1-to-4 unit residential first mortgage loans 
+not reported above, including Alt-A and non-prime credit grade loans (see definition in 
+I070 above) and in which the mortgage rate adjusts according to a specified price 
+index periodically and as agreed to at the inception of the loan.
+I100 Total Residential First Mortgages CALCULATED: The sum of I010 to I080 for the relevant column.
+I110 Closed-End Second Mortgages The dollar amount and number of mortgages that have rights subordinate to a first 
+mortgage. Report both fixed rate and adjustable rate second mortgages here. Do not 
+include loans under lines of credit that permit borrowers the ability to obtain cash 
+advances based on approved line of credit.
+I120 HELOCs This line should include home equity loans that permit borrowers the ability to obtain 
+cash advances based on an approved credit limit. Report the maximum credit 
+amount.
+I130 Reverse Mortgages The dollar amount and number of home equity loans for homeowners 62 years of age 
+or older, advanced as a lump sum at closing, regular payments over a time period, or 
+as a line of credit that do not require any repayment as long as the home remains the 
+principal residence of the borrower. This should include FHA Home Equity 
+Conversion Mortgages (HECM).
+I140 Construction Loans, 1-4 Unit Residential The dollar amount and number of 1- to 4-unit residential construction-to permanent 
+loans to home buyers.
+I170 Other Residential Mortgage Loans The dollar amount and number of all other mortgages not reported above.
+I180 Total Other Mortgage Loans CALCULATED: The sum of I110 to I170 for the relevant column.
+I200 Total Mortgage Loans Originated CALCULATED: The total of all mortgage loans originated in the reporting period. The 
+sum of I100 and I180 for the relevant column. Must equal the retail and wholesale 
+columns of AC190 and AC790.
+Other Mortgages 
+Page 9 of 35
+Item # Name Definitions and Instructions
+Residential First Mortgages (1-4 Unit Residential ONLY) 
+I210 Retail The dollar amount and number of mortgage loans in I100—Total—that were 
+originated through your Retail channel. Retail mortgage loans are considered those 
+originated through loan officers (who are employees of your institution) within 
+standard or "net" branch network systems. Direct face-to-face contact with the 
+mortgagor is characteristic of this channel. Also include loans originated through 
+direct sales such as outbound or inbound internet or email, telemarketing, or direct 
+mail for purchase or refinance purposes.
+I220 Table Funded The dollar amount and number of loans in I100—Total—in which your institution 
+engaged in table-funding activities by providing the funds for closing.  These loans 
+are originated by another company, closed in the other company’s name using your 
+funds, assigned to your institution, and subsequently either sold in the secondary 
+market or held for investment by your institution. Please utilize the definitions for retail 
+production when filling out this section.
+I230 Wholesale Brokered The dollar amount and number of loans in I100—Total—obtained by your institution 
+from mortgage brokers. These loans are originated by a broker, funded by your 
+institution, and subsequently either sold to the secondary market or held for 
+investment by your institution. A broker is a person who generally closes a mortgage 
+loan in the name of the lender who commissioned the broker's services. A mortgage 
+broker will not service the mortgage loan. Please utilize the definitions for retail 
+production when filling out this section.
+I240 Total Residential First Mortgages CALCULATED: The sum of I210 to I230 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I250 Fixed Rate The dollar amount and number of 1- to 4-unit residential loans in which the mortgage 
+rate remains fixed throughout the life of the loan, for example, 15-year, 20-year, and 
+30-year loans. This amount is calculated automatically as the sum of 
+Government—Fixed, Prime Conforming— Fixed, Prime-Non-Conforming—Fixed, and 
+Other—Fixed.
+I251 ARM The dollar amount and number of 1- to 4-unit residential loans that have a mortgage 
+rate that adjusts according to a specified price index periodically and as agreed to at 
+the inception of the loan. Include 1 year ARMs, 6-month ARMs, fixed-period ARMs, 
+two-step mortgages, and other adjustable rate mortgages. Include interest-only 
+mortgages that are adjustable. This amount is calculated automatically as the sum of 
+Government—ARM, Prime Conforming—ARMs, Prime-Non- Conforming—ARM, and 
+Other—ARM
+I259 Total Residential First Mortgages CALCULATED: The sum of I250 and I251 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I260 Jumbo The dollar amount and number of 1- to 4-unit residential first-lien mortgage loans that 
+exceed the legislated conforming loan purchase limits of Fannie Mae and Freddie 
+Mac. Include all jumbo loans, whether agency eligible, Alt-A, or subprime. Must be 
+equal to or greater than the sum of Prime Jumbo Fixed and ARM above - i.e., the 
+sum of I050 and I060)
+I261 Non-Jumbo The dollar amount and number of 1- to 4-unit residential first-lien mortgage loans that 
+do not exceed the legislated conforming loan purchase limits of Fannie Mae and 
+Freddie Mac.
+I269 Total Residential First Mortgages CALCULATED: The sum of I260 and I261 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I270 Alt Doc The dollar amount and number of 1- to 4-unit residential reduced documentation 
+loans to all types of borrowers originated without full income and full asset 
+documentation. Examples of such loans are Stated Income, Stated Income/Stated 
+Asset, and No Income/No Asset.
+I271 Full Doc The dollar amount and number of 1- to 4-unit residential loans to all types of 
+borrowers originated with full income and full asset documentation.
+I279 Total Residential First Mortgages CALCULATED: The sum of I270 and I271 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I280 Interest Only The dollar amount and number of 1- to 4-unit residential loans that after the initial 
+period in which the borrower pays only the interest portion, the loan would convert to 
+payments of principal and interest amortized over the remaining life of the loan. The 
+interest rate can either be adjustable, or remain fixed through the life of the loan.
+Page 10 of 35
+Item # Name Definitions and Instructions
+I281 Not Interest Only The dollar amount and number of 1- to 4-unit residential loans that are not considered 
+“Interest Only” by the definition in I280 above. The interest rate remains fixed through 
+the life of the loan.
+I289 Total Residential First Mortgages CALCULATED: The sum of I280 and I281 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I290 Option ARMs The dollar amount and number of 1- to 4-unit residential loans that offer flexible 
+payment options. For example, one of the most common types of Option ARMs allows 
+for 4 payment options: minimum payment, interest only, 30 year full principal and 
+interest, and 15 year full principal and interest. Option ARM programs may vary by a 
+number of factors: initial rate, negative amortization and lifetime caps, ARM index and 
+other optional features. Option ARMs are sometimes referred to as the Pick-a
+Payment Option ARM, Pay Option ARM, 1 Month Option ARM, or Cash Flow Option 
+ARM.
+I291 Not Option ARMs The dollar amount and number of 1- to 4-unit residential loans that are not considered 
+“Option ARMs” by the definition in I290 above.
+I299 Total Residential First Mortgages CALCULATED: The sum of I290 and I291 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I300 Loans with Prepayment Penalties The dollar amount and number of 1- to 4-unit residential loans that require the 
+borrower to pay a penalty if they are paid off before a specified date in the loan 
+agreement.
+I301 Loans without Prepayment Penalties The dollar amount and number of 1- to 4-unit residential loans that do not require a 
+penalty payment if they are paid off before a specified date in the loan agreement.
+I309 Total Residential First Mortgages CALCULATED: The sum of I300 and I301 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I310 Purchase The dollar amount and number of 1- to 4-unit residential loans whose purpose is for 
+borrower purchase.
+I311 Refinance Rate-Term The dollar amount and number of 1- to 4-unit residential loans whose purpose is for 
+borrower rate-term refinance.
+I312 Refinance Cash-Out Refinances The dollar amount and number of 1- to 4-unit residential loans whose purpose is for 
+borrower cash-out refinance.
+I313 Refinance Restructure The dollar amount and number of 1- to 4-unit residential loans that have been 
+refinanced for purposes of restructuring the terms of the loan (e.g., interest rate, 
+amortization period, etc.).
+I314 Refinance Other/Unknown The dollar amount and number of 1- to 4-unit residential loans that have been 
+refinanced for other or unknown purposes than those described above.
+I319 Total Residential First Mortgages CALCULATED: The sum of I310 through I314 for the relevant column. Sum must 
+equal value in relevant column of I100.
+I330 Loans with Mortgage Insurance The dollar amount and number of single-family loans that are insured with mortgage 
+insurance (MI).
+I331 Loans without Mortgage Insurance The dollar amount and number of 1- to 4-unit residential loans that are not insured 
+with mortgage insurance (MI).
+I339 Total Residential First Mortgages CALCULATED: The sum of I330 and I331 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I340 Loans with Piggyback Seconds The dollar amount and number of residential (1- to 4-unit) loans that also have 
+piggyback second mortgages that are subordinate to them. A “piggyback” is a second 
+mortgage closed at the same time as the first mortgage for which it is subordinate, 
+usually for the purposes of avoiding mortgage insurance. Do not include HELOCs.
+I341 Loans without Piggyback Seconds The dollar amount and number of residential (1- to 4-unit) loans that do not have 
+piggyback second mortgages that are subordinate to them
+I349 Total Residential First Mortgages CALCULATED: The sum of I340 and I341 for the relevant column. Sum must equal 
+value in relevant column of I100.
+First Mortgage Loan-to-Value (LTV) Distribution 
+I370 Equals 60% or less The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios equal to or less than 60%.
+I371 Greater than 60% but less than or equal to 70% The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios greater than 60% but equal to or less than 70%.
+I372 Greater than 70% but less than or equal to 80% The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios greater than 70% but equal to or less than 80%.
+I373 Greater than 80% but less than or equal to 90% The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios greater than 80% but equal to or less than 90%.
+I374 Greater than 90% but less than or equal to 100% The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios greater than 90% but equal to or less than 100%.
+Page 11 of 35
+Item # Name Definitions and Instructions
+I375 Greater than 100% The dollar amount and number of 1- to 4-unit residential loans with loan to- value 
+ratios greater than 100%.
+I379 Total First Mortgage Volume CALCULATED: The sum of I370 to I375 for the relevant column. Sum must equal 
+value in relevant column of I100.
+I380 Weighted Average LTV on First Mortgages Only 
+(enter two-decimal figure, e.g., 87.65 for 87.645% 
+weighted LTV) 
+The weighted average loan-to-value ratio, of 1- to 4-unit residential first lien mortgage 
+loans based on dollar volume.
+I385 Weighted Average CLTV Combined First and 
+Second Mortgages (enter two-decimal figure, e.g., 
+87.65 for 87.645% weighted CLTV) 
+The weighted average combined loan-to-value ratio, of all 1-to 4-unit residential first
+lien mortgage loans and second mortgage loans, based on dollar volume.
+I390 Weighted Average Coupon at Origination on First 
+Mortgages Only (enter two-decimal figure, e.g., 
+6.78 for 6.775%) 
+The weighted average gross coupon (interest rate found on the legal document 
+known as the “Note”), in percentage terms (e.g., 6.55%), of all 1-to 4-unit residential 
+first mortgage loan originations during the reporting period, based on dollar volume.
+First Mortgage Residential Loans Sold by Investor Type 
+I400 Production Sold to Secondary Market Agencies 
+(Fannie, Freddie, Ginnie) 
+The dollar amount and number of 1 – 4 unit residential loans sold by your institution to 
+secondary market agencies (Fannie Mae, Freddie Mac, and Ginnie Mae) or to others 
+with a secondary marketing agency guarantee. This section refers to any loan which 
+your company originated and then sold during the period. These loans were not 
+necessarily originated during the reporting quarter.
+I401 Production Sold to Others (Non-Affiliate) The dollar amount and number of 1 – 4 unit residential loans sold by your institution to 
+other mortgage wholesalers, brokers, correspondents, or conduits that are not 
+affiliated with your institution. This should exclude loans servicing released that are 
+reported on row I410 below. This section refers to any loan which your company 
+originated and then sold during the period. These loans were not necessarily 
+originated during the reporting quarter.
+I402 Production Sold to Others (Affiliate) The dollar amount and number of 1 – 4 unit residential loans sold by your institution to 
+affiliated companies. This should exclude loans servicing released that are reported 
+on row I410 below. This section refers to any loan which your company originated and 
+then sold during the period. These loans were not necessarily originated during the 
+reporting quarter.
+I404 Production Sold through Non-Agency 
+Securitizations with Sale Treatment 
+The dollar amount and number of 1 – 4 unit residential loans sold by your institution 
+through non-agency securitizations where FAS 140 sale treatment was achieved.
+I405 Production Sold through Non-Agency 
+Securitizations without Sale Treatment 
+The dollar amount and number of 1 – 4 unit residential loans sold by your institution 
+through non-agency securitizations where FAS 140 sale treatment was not achieved. 
+These loans are accounted for as financings.
+I409 Total 1- 4 Unit Residential Loans Sold this Period CALCULATED: The sum of rows I400, I401, I402, I404, and I405 for the 
+corresponding column.
+Other 1-4 Unit Residential Information
+I410 Production Sold Servicing Released The dollar amount and number of 1 – 4 unit residential loans sold by your institution 
+with the servicing released. 
+I421 Production Kept in Portfolio/Held for Investment The dollar amount and number of 1-4 unit residential loans kept in your portfolio or 
+held for investment
+I430 Pull-Through Ratio (enter two-decimal figure, e.g., 
+67.55 for 67.545%) 
+The number of 1 -4 unit residential loan closings divided by the number of 
+applications during the reporting period. 
+Warehouse Period 
+I450 Average Days in Warehouse1-4 Unit Residential 
+Mortgages Only 
+The average number of days 1- to 4-unit residential mortgage loans have been in 
+warehouse before sold to an investor. Include only loans held for sale.
+I460 Production Warehoused in Excess of 90 Days as 
+of Period End 1-4 Unit Residential Mortgages 
+Only 
+The principal balance and loan count of 1- to 4-unit residential mortgage loans that 
+have been in warehouse before sold to an investor for more than 90 days as of the 
+end of the reporting period.
+RMLA SECTION III
+Modifications
+This section refers to modifications on loans you do not hold or service.
+A loan modification occurs when the interest rate or terms of the loan have been changed, but the loan is not satisfied and replaced by a new loan. Note: 
+Some transactions under Regulations Z Section 226.20 (a) will be considered a modification for purposes of the NMLS Mortgage Call Report.  
+Data Format:
+UPB ($) – Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Loan Count (#) – Positive whole number. Do not enter any symbols.  
+Page 12 of 35
+Item # Name Definitions and Instructions
+S100 Loan Modification Applications in process at 
+beginning of period
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+S150 Loan Modification applications received during 
+period
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+S130 Loan modification applications denied by 
+lender/servicer
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+S120 Loan Modification applications terminated by 
+borrower
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+S140 Loan Modification applications terminated by otherEnter the UPB and Loan Count for any loans fitting this description during this period.
+S110 Loan Modifications completed (non-HAMP) Enter the UPB and Loan Count for any loans fitting this description during this period.
+S115 Mortgage Loans Modified Under HAMP Enter the UPB and Loan Count for any loans fitting this description during this period.
+S160 Loan Modification applications in process at end 
+of period
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+Contracted for by Lienholder/Servicer
+S200 Loans to be modified at beginning of period Enter the UPB and Loan Count for any loans fitting this description during this period.
+S230 New loans received for modification Enter the UPB and Loan Count for any loans fitting this description during this period.
+S220 Loan modification attempts terminated for 
+whatever reason
+Enter the UPB and Loan Count for any loans fitting this description during this period.
+S210 Loan Modifications completed Enter the UPB and Loan Count for any loans fitting this description during this period.
+S240 Loans to be modified at the end of period. Enter the UPB and Loan Count for any loans fitting this description during this period.
+Payment Status as of End Date (All Loans)
+S300 Current Loans Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period. Include loans you service which are current. 
+S305 30 to 59 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S310 60 to 89 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S315 90+ Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S319 Totals Loans Serviced Equals the sum of all rows S300 to S315 for the corresponding column.  
+Payment Status as of End Date (Loans Modified within one (1) year)
+S320 Current Loans Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period. Include loans you service which are current. 
+S325 30 to 59 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S330 60 to 89 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S335 90+ Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S339 Totals Loans Serviced (Loans Modified within one 
+(1) year)
+Equals the sum of all rows S320 to S335 for the corresponding column.  
+Payment Status as of End Date (Loans Modified over one (1) year ago)
+S340 Current Loans Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period. Include loans you service which are current. 
+S345 30 to 59 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S350 60 to 89 Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S355 90+ Days Delinquent Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S359 Totals Loans Serviced (Loans Modified over one 
+(1) year ago)
+Equals the sum of all rows S340 to S355 for the corresponding column.  
+Foreclosure Status as of End Date
+1 year refers to the last 12 months of activity
+This section refers to modifications on loans you hold or service.
+1 year refers to the last 12 months of activity
+Page 13 of 35
+Item # Name Definitions and Instructions
+S400 In foreclosure status as of last period end date Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S410 Moved into foreclosure status in Period Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S420 Foreclosure resolved other than Sheriff sale in 
+Period 
+Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S430 Foreclosure resulting in Sheriff sale in Period Enter the UPB and Loan Count for any loans you are servicing that fit this description 
+during this period.
+S440 In foreclosure status as of End Date Equals S400 + S410 - S420 - S430 for the corresponding column.
+S450 REOs as of End Date Enter UPB and Loan Count for any real estate owned.
+S460 Loans Paid Through Short Sale Enter the UPB and Loan Count of Mortgage Loans paid through short sale during this 
+quarter.
+Servicing Activity
+S510 Wholly Owned Loans Serviced Enter the UPB and Loan Count for loans that you are servicing and for which you 
+retain all ownership rights.
+S520 Loans Serviced Under MSRs Enter the UPB and Loan Count for loans that you are servicing and for which you own 
+only the Mortgage Servicing Rights.  Report the owner of the loan not the owner of the 
+MSR.
+S530 Subservicing for Others Enter the UPB and Loan Count for loans that you are subservicing on behalf of 
+others.
+S540 Subservicing by Others Enter the UPB and Loan Count for loans that are Wholly Owned or for which you own 
+the Mortgage Servicing Rights and have contracted with a third-party to service on 
+your behalf.
+S590 Totals Loans Serviced Equals the sum of all rows S510 to S540 for the corresponding column.  
+Rate Type on Loans Serviced
+S600 Fixed Loans Serviced Enter the UPB and Loan Count of all loans you service, including those serviced for 
+others, in which the mortgage interest rate remains fixed throughout the life of the 
+loan.
+S610 ARM Loans Serviced Enter the UPB and Loan Count of all loans you service, including those serviced for 
+others, in which the mortgage interest rate changes according to a specified price 
+index periodically and as agreed to at the inception of the loan.
+S690 Total Rate Type Equals the sum of rows S600 to S610 for the corresponding column.  
+Loan Type on Loans Serviced
+S700 Government (FHA/VA/RHS) Loans Serviced Enter the UPB and Loan Count of all 1-4 unit residential first mortgage loans you 
+service, including those serviced for others, that are guaranteed or insured by the 
+government (FHA/VA/RHS and including bond or state assisted loans.
+S710 Conventional Conforming Loans Serviced Enter the UPB and Loan Count of all 1-4 unit residential first mortgage loans you 
+service, including those serviced for others, that are eligible for sale to Fannie 
+Mae/Freddie Mac.
+S720 Conventional Non-Conforming Loans Serviced Enter the UPB and Loan Count of all other 1-4 unit residential first mortgage loans 
+you service that are not reported above, including Alt-A and nonprime credit grade 
+whose balances exceed Fannie Mae/Freddie Mac loan limits.  Nonprime loans are 
+considered those to lower credit quality borrowers(generally <620 FICO) who do not 
+qualify for prime or Alt-A loans.  They often contain other risky features such as high 
+loan-to-value (LTV) ratios and limited documentation.
+S730 Other Loans Serviced Enter the UPB and Loan Count of all other 1-4 unit residential first mortgage loans 
+you service that are not reported above.
+S790 Total Residential First Mortgage Loans Serviced Equals the sum of rows S700 to S730 for the corresponding column.  
+Other Residential Mortgages
+S800 Closed-End Second Mortgages Loans Serviced Enter the UPB and Loan Count for mortgages that you service that have rights 
+subordinated to a first mortgage.  Do not include lines of credit such as HELOC 
+commitments.
+S810 HELOC Loans Serviced Enter the Loan Amount and Loan Count for HELOC mortgages that you service. 
+Report the maximum amount of the credit line.
+S820 Reverse Mortgages Loans Serviced Enter the UPB and Loan Count of home equity loans for homeowners 62 years of age 
+or older, advanced as a lump sum at closing, regular payments over a time period, or 
+as a line of credit that do not require repayment as long as the home remains the 
+principal residence of the borrower, that you service.
+Page 14 of 35
+Item # Name Definitions and Instructions
+S840 Other Loans Serviced Enter the UPB and Loan Count of all other mortgages not reported above.
+S890 Total Other Mortgage Loans Serviced Equals the sum of rows S800 to S840 for the corresponding column.  
+S900 Total Mortgages Serviced Equals the sum of rows S790 and S890 for the corresponding column.  Must equal 
+total in S590.
+Serviced Loans LTV Distribution
+S1000 Equals 60% or less The UPB and Loan Count of 1-4 unit first mortgage residential loans with current  loan
+to-value ratios ≤60% that you service. Use the most recent appraised value. LTV= 
+(Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1010 Greater than 60% but less than or equal to 70% The UPB and Loan Count of 1-4 unit first mortgage residential loans with current loan
+to-value ratios >60% and ≤70% that you service. Use the most recent appraised 
+value. LTV= (Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1020 Greater than 70% but less than or equal to 80% The UPB and Loan Count of 1-4 unit first mortgage residential loans with current loan
+to-value ratios >70% and ≤80% that you service.  Use the most recent appraised 
+value. LTV= (Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1030 Greater than 80% but less than or equal to 90% The UPB and Loan Count of 1-4 unit first mortgage residential loans with current loan
+to-value ratios >80% and ≤90% that you service.  Use the most recent appraised 
+value. LTV= (Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1040 Greater than 90% but less than or equal to 100% The UPB and Loan Count of 1-4 unit first mortgage residential loans with current loan
+to-value ratios >90% and ≤100% that you service.  Use the most recent appraised 
+value. LTV= (Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1050 Greater than 100% The UPB and Loan Count of 1-4 unit first mortgage residential loans with current loan
+to-value ratios >100% that you service.  Use the most recent appraised value. LTV= 
+(Mortgage Loan Amount or UPB/ Most recent appraised value)
+S1090 Total Residential First Mortgage Loans Serviced Equals the sum of rows S1000 to S1050 for the corresponding column.  
+S1100 Gross Revenue from Mortgage Servicing 
+Operations
+All revenue from mortgage servicing operations received by your company on 
+mortgage loans in this state during the reporting period before any expenses are 
+deducted.
+Loans Serviced Under MSRs
+S520A NMLS ID, Owner Name, Pool #, UPB, and Loan 
+Count
+Enter information into the NMLS ID, Owner Name, Pool #, UPB, and Loan Count 
+fields.  If the owner does not have an NMLS ID, this field can be left blank.
+S520TOT Total Loans Serviced Under MSRs Equals the sum of rows for the corresponding column.  
+Loans Serviced for Others (Subservicing)
+S530A NMLS ID, Owner Name, Pool #, UPB, and Loan 
+Count
+Enter information into the NMLS ID, Owner Name, Pool #, UPB, and Loan Count 
+fields.  If the owner does not have an NMLS ID, this field can be left blank.
+S530TOT Total Loans Serviced for Others (Subservicing) Equals the sum of rows for the corresponding column.  
+Loans Serviced by Others
+S540A NMLS ID, Servicer Name, Pool #, UPB, and Loan 
+Count
+Enter information into the NMLS ID, Servicer Name, Pool #, UPB, and Loan Count 
+fields.  If the servicer does not have an NMLS ID, this field can be left blank.  If the 
+Pool # is unknown, this field can also be left blank.
+S540TOT Total Loans Serviced by Others Equals the sum of rows for the corresponding column.  
+Page 15 of 35
+Item # Name Definitions and Instructions
+Commercial Loan Origination
+Commercial Real Estate
+SF010 Construction The dollar amount and number of loans for the purpose of funding commercial real 
+estate development.  This includes loans to builders for the construction of residential, 
+commercial, industrial buildings.  These are not direct loans to consumers to finance 
+the building of their home.
+SF020 Multifamily Residential Properties (5 or More) The dollar amount and number of loans secured by residential real estate with 5 or 
+more units.  This includes mixed use properties that are primarily for residential use.
+SF030 1 -4 Family Residential Investment Properties with 
+Business Ownership
+The dollar amount and number of loans secured by 1-4 family residential properties 
+that are non-owner occupied and for investment purposes (e.g. repayment based on 
+property cash flow). The borrower is a business entity.
+SF035 1-4 Family Residential Investment Properties with 
+Natural Person Ownership
+The dollar amount and number of loans secured by 1-4 family residential properties 
+that are non-owner occupied and for investment purposes. (e.g. repayment based on 
+property cash flow). The borrower is a natural person.
+SF040 Commercial Nonresidential Properties The dollar amount and number of loans secured by Commercial Real Estate 
+properties with no residential components.
+SF050 Other Secured Commercial Real Estate Loans The dollar amount and number of Commercial Real Estate loans that do not fit in 
+above categories.
+SF090 Total Commercial Real Estate Sum of line items SF010 to SF050
+Commercial and Industrial
+SF100 Secured by 1-4 Family Residential Properties The dollar amount and number of Commercial and Industrial loans to businesses that 
+are primarily secured by liens on 1-4 family residential real estate.
+SF110 Secured The dollar amount and number of Commercial and Industrial loans secured by non
+real estate liens such as UCC-1 on equipment or receivables.
+SF120 Unsecured The dollar amount and number of Commercial and Industrial loans that are not 
+secured
+SF190 Total Commercial and Industrial Sum of line items SF100 to SF120
+Consumer Loan Origination
+Consumer
+SF200 Motor Vehicle Installment Sale Contracts The dollar amount and number of transactions in which a buyer purchases a motor 
+vehicle from a retail seller pursuant to a retail installment sales contract.  
+SF210 Non-Motor Vehicle, Non-Residential Installment 
+Sale Contracts
+The dollar amount and number of transactions in which a buyer purchases goods or 
+services, not including motor vehicles or a residence, from a retail seller pursuant to a 
+retail installment sales contract. 
+SF220 Non-Mortgage Secured Direct Loans The dollar amount and number of loans provided directly to the borrower secured by a 
+lien on non-mortgage collateral.  Examples include direct automobile, watercraft, and 
+equipment financing. 
+SF230 Unsecured Direct Loans The dollar amount and number of loans provided directly to the borrower that are not 
+secured by any type of collateral. 
+SF290 Total Consumer Sum of line items SF200 to SF230
+Commercial Loan Servicing
+Commercial Real Estate
+SF300 Construction The UPB and loan count of loans you service for the purpose of funding commercial 
+real estate development.  This includes loans to builders for the construction of 
+residential, commercial, industrial buildings.  These are not direct loans to consumers 
+to finance the building of their home.
+Supplemental State-Specific Form
+Data Format:
+Loan Amount ($) – Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Loan Count (#) – Positive whole number. Do not enter any symbols.  
+Data Format:
+UPB ($) – Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Loan Count (#) – Positive whole number. Do not enter any symbols.  
+Page 16 of 35
+Item # Name Definitions and Instructions
+SF310 Multifamily Residential Properties (5 or More) The UPB and loan count of loans you service secured by residential real estate with 5 
+or more units.  This includes mixed use properties that are primarily for residential 
+use.
+SF320 1 -4 Family Residential Investment Properties with 
+Business Ownership
+The UPB and loan count of loans you service secured by 1-4 family residential 
+properties that are non-owner occupied and for investment purposes (e.g. repayment 
+based on property cash flow). The borrower is a business entity.
+SF325 1-4 Family Residential Investment Properties with 
+Natural Person Ownership
+The UPB and loan count of loans you service secured by 1-4 family residential 
+properties that are non-owner occupied and for investment purposes (e.g. repayment 
+based on property cash flow). The borrower is a natural person.
+SF330 Commercial Nonresidential Properties The UPB and loan count of loans you service secured by Commercial Real Estate 
+properties with no residential components.
+SF340 Other Secured Commercial Real Estate Loans The UPB and loan count of Commercial Real Estate loans you service that do not fit 
+in above categories.
+SF390 Total Commercial Real Estate Sum of SF300 to SF350
+Commercial and Industrial
+SF400 Secured by 1-4 Family Residential Properties The UPB and loan count of Commercial and Industrial loans to businesses you 
+service that are primarily secured by liens on 1-4 family residential real estate.
+SF410 Secured The UPB and loan count of Commercial and Industrial loans you service secured by 
+non-real estate liens such as UCC-1 on equipment or receivables.
+SF420 Unsecured The UPB and loan count of Commercial and Industrial loans you service that are not 
+secured
+SF490 Total Commercial and Industrial The sum of line items SF400 to SF420
+Consumer Loan Servicing
+Consumer
+SF500 Motor Vehicle Installment Sale Contracts The UPB and count of transactions you service in which a buyer purchases a motor 
+vehicle from a retail seller pursuant to a retail installment sales contract.  
+SF510 Non-Motor Vehicle, Non-Residential Installment 
+Sale Contracts
+The UPB and count of transactions you service in which a buyer purchases goods or 
+services, not including motor vehicles or a residence, from a retail seller pursuant to a 
+retail installment sales contract. 
+SF520 Non-Mortgage Secured Direct Loans The UPB and loan count of loans you service provided directly to the borrower 
+secured by a lien on non-mortgage collateral.  Examples include direct automobile, 
+watercraft, and equipment financing. 
+SF530 Unsecured Direct Loans The UPB and loan count of loans you service provided directly to the borrower that 
+are not secured by any type of collateral. 
+SF590 Total Consumer Sum of SF500 to SF530
+Licensed Processors and Underwriters
+SF600 Applications In Process at Beginning of Quarter Number of applications assigned by a third-party entity for processing or underwriting 
+that were outstanding at the end of the previous period.
+SF610 Applications Received for 
+Processing/Underwriting During the Quarter
+Applications you received during the period from a third-party entity for processing or 
+underwriting.  These applications are contracted to be returned to the third-party entity 
+for a lending decision. 
+SF620 Applications Returned to Creditor, Incomplete All assigned applications returned to the originating third-party entity because the 
+processor or underwriter could not complete the processing or underwriting due to a 
+non-responsive borrower. 
+SF630 Net Changes in Application Amount Any changes to the loan amount that occurred while the loan was assigned to you by 
+a third-party entity for processing or underwriting. This entry must be expressed as a 
+positive or negative adjustment. This line only allows changes to the application 
+amount.
+Enter the type of action taken on applications during the period.
+Data Format:
+Amount ($ US Dollars) - Positive dollar amount to the nearest dollar. Do not enter $, commas or decimals. 
+Count (#) - Positive whole number. Do not enter any symbols.
+Page 17 of 35
+Item #
+Name
+Definitions and Instructions
+SF640
+Other Changes to Applications
+SF650
+Any other changes, directed by the assigning third party entity not meeting the 
+definition in SF630
+Applications Processed/Underwritten, Completed All assigned  applications, which were returned to the originating third party entity as 
+complete and ready for the third party entity to render a lending decision.
+SF660
+Applications In Process at End of Quarter
+Revenue Data
+Number of applications assigned by a third-party entity for processing or underwriting 
+outstanding at the end of the period.
+SF1100
+Gross Revenue from All Mortgage Operations
+All revenue from whatever source received by your company on mortgage loans in 
+this state during the reporting period before any expenses are deducted. Include 
+gross revenue from sales of mortgages at or subsequent to closing and from any 
+other mortgage related activity.
+Page 18 of 35
+Item # Name Definitions and Instructions
+SCHEDULE A: ASSETS
+Current Assets
+Cash and Current Securities
+A010 Cash and Cash Equivalents, Unrestricted Cash and cash equivalents as defined in Paragraphs 7 and 8 of FAS 95. Includes 
+only unrestricted funds. Does not include escrow funds for payment of mortgagors' 
+taxes, insurance, and related items, or other fiduciary funds
+A034 Securities Available for Sale Securities that the lender does NOT have the positive intent and ability to hold to 
+maturity, yet does NOT intend to actively trade. Must be reported at fair market value 
+(per FAS 115 and FAS 140) with changes in values included in the other 
+comprehensive income on the balance sheet. This is the sum of certain line items on 
+schedule A-030.
+A036 Trading Account Securities Securities that are routinely traded and sold as a course of normal business 
+operations. Includes MBS intended for immediate or near-term sale, including MBS 
+held in conjunction with mortgage banking activities. Must be reported at fair market 
+value (per FAS 115 and FAS 140) with changes in value (i.e., unrealized gains/loss) 
+included in earnings. This is the sum of certain line items on schedule A-030.
+A038 Marketable Equity Securities Marketable equity securities include shares of common stock  which are traded on a 
+stock exchange and for which there are quoted market prices
+A039 Total Cash and Current Securities CALCULATED: A010 + A034 + A036 + A038
+Mortgage Loans - Held for Sale
+A060 Mortgage Loans Held for Sale (HFS), at Lower of 
+Cost or Market (LOCOM) 
+Residential (1-4 unit), multifamily, and commercial loans, including farm loans, held 
+for sale that are carried at lower of cost or market. This line should not include any 
+loans held for sale where fair value option was elected under FAS 159 (which should 
+be reported on A062) The total, which is the sum of certain line items on schedule A
+060, is net of valuation allowances and deferred fees and costs.
+A062 Mortgage Loans Held for Sale (HFS), at Fair 
+Value 
+Residential (1-4 unit), multifamily, and commercial loans, including farm loans, held 
+for single-family sale where the fair value option was elected under FAS 159. This is 
+the sum of certain line items on schedule A-060.
+A063 Total Mortgage Loans - Held for Sale CALCULATED: A060 + A062
+A230B Accrued Interest Receivable Accrued interest receivable due on loans, securities, and other investments.
+A230C Accounts Receivable Trade accounts receivable.
+A190 Receivables from Related Parties Receivables due from related parties within a year -- affiliates, officers, stockholders, 
+and employees. This should not include mortgage loan interest receivable (which is 
+reported on line A230B) or accounts receivable (which are reported on line A230C).
+A050 Receivables from Unrelated Parties Non-mortgage notes, advances and other receivables that are not due from related 
+parties (affiliates, officers, stockholders, employees), not reported on a separate line 
+on this form, and that are considered collectable in the normal course of business. 
+This should not include mortgage loan interest receivable (which is reported on line 
+A230B) or accounts receivable (which is reported on line A230C).
+A040 Reverse Repurchase Agreements Outstanding balance on repurchase agreements for which the institution serves as 
+the "buyer-lender."
+A237 Total Current Assets CALCULATED: A039 + A063 + A230B + A230C + A190 + A050 + A040
+Long-Term Assets
+A020 Cash and Cash Equivalents, Restricted Cash and cash equivalents whose use in whole or in part is restricted for specific 
+purposes under contractual agreements. Does not include escrow funds for payment 
+of mortgagors' taxes, insurance, and related items, or other fiduciary funds
+Financial Condition
+Data Format:
+$ – US Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 19 of 35
+Item # Name Definitions and Instructions
+A030 Securities Held to Maturity, at Amortized Cost Securities that the lender has the positive intent and ability to hold to maturity. Unless 
+the fair value option was elected under FAS 159, these securities are carried at 
+amortized historical cost subject to write-downs for other than temporary impairment. 
+Includes both short- and long-term held-to-maturity investments. The total, which is 
+the sum of certain line items on schedule A-030, is net of unamortized deferred fees 
+and costs.
+A032 Securities Held to Maturity, at Fair Value Securities where the fair value option was elected under FAS 159. These securities 
+are carried at fair value. This is the sum of certain line items on schedule A-030.
+A033 Total Cash and Long-Term Securities CALCULATED: A020 + A030 + A032
+A064 Mortgage Loans Held for Investment (HFI), at 
+Amortized Cost 
+The UPB of residential (1-4 unit), multifamily, and commercial loans, including farm 
+loans, held for investment, including undisbursed funds and net of premiums or 
+discounts and related amortization. The total, which is the sum of certain line items on 
+schedule A-060, is net of reserves for credit losses and unamortized deferred fees 
+and costs.
+A066 Mortgage Loans Held for Investment (HFI), at Fair 
+Value 
+The UPB of residential (1-4 unit), multifamily, and commercial loans, including farm 
+loans, held for investment where the fair value option was elected under FAS 159. 
+This is the sum of certain line items on schedule A-060.
+A067 Total Mortgage Loans - Held for Investment CALCULATED: A064 + A066
+A160 Mortgage Servicing Rights From Schedule A-160. Includes both MSRs carried at amortized cost net of any 
+valuation allowance and MSRs carried at fair value.
+A080 Non-Mortgage Long-Term Investments The UPB of investments not secured by mortgage property and not included in other 
+line items. Consumer loans and investments in certificates of deposit, annuities, 
+stocks and bonds should be included here. Do not include Other Financial 
+Instruments (which are reported in item A070).
+A070 Other Financial Instruments, at Fair Value Fair value of other financial instruments where the fair value option was elected under 
+FAS 159, and where the fair value is an asset. This should not include “loans held for 
+sale, at fair value” or “loans held for investment, at fair value” because they are 
+reported separately.
+A090 Other Real Estate Owned, at Net Realizable 
+Value 
+Sum of line items A090A and A090B from Schedule A-090. This includes only real 
+estate acquired through foreclosure, deed-in-lieu, or similar means (net of any related 
+valuation allowances).
+A100 Investment in Joint Ventures, Partnerships, and 
+Other Entities 
+Equity in unconsolidated joint ventures, partnerships, subsidiaries, affiliates or other 
+legal entities accounted for using the equity method of accounting.
+A110 Real Estate Investments The carrying value of real estate owned not included in line item A090. This includes 
+any real estate that was purchased and excludes real estate acquired through 
+foreclosure, deed-in-lieu, or similar means.
+A170 Reserve for Other Losses - Contra Reserves or allowances for assets on the balance sheet that are not reported 
+elsewhere. This line should not include “Reserves for Credit Losses On Loans Held 
+For Investment”, (which should be reported on line AO64AF), LOCOM valuation 
+allowances on loans held for sale (which should be reported on line A060AE), and the 
+“OREO Valuation Allowance” (which should be reported on line A090B). This line 
+should include things like allowances for uncollectible receivables. This must equal 
+line O250 on Schedule O and it must be less than or equal to zero.
+A180 Property, Equipment, Leasehold, Net of 
+Accumulated Depreciation 
+Total cost of fixed assets, net of accumulated depreciation and amortization. You 
+must also complete the Memo field in item A250 below to report certain types of 
+property and equipment.
+A210 Goodwill and Other Intangible Assets Unamortized cost of "goodwill" (excess of cost over fair market value of identifiable 
+net assets acquired), net of any impairment adjustments. Includes organization costs 
+and other intangible assets not included in any of the above items.
+A220 Derivative Assets This is a total from the Derivatives schedule A-220. It includes any derivative 
+investments/instruments that are required to be carried on the balance sheet as 
+derivative assets according to the provisions of FAS 133 and subsequent 
+amendments.
+A200 Deferred Tax Assets If taxes are receivable, this value will be positive. If taxes are payable, report the 
+balance on the “Deferred Tax Liability” line, item B200. Current taxes receivable 
+should be included in line item A390 and current taxes payable should be included in 
+the “Other Short-Term Liabilities” line, item B120.
+Page 20 of 35
+Item # Name Definitions and Instructions
+A230D Servicing Advances Advances made to cover principal and interest payments, taxes and insurance 
+payments, and foreclosure advances relating to loans serviced made on behalf of 
+mortgagors and mortgage investors.
+A230F Foreclosure Claims Receivable Claims receivable from Fannie Mae, Freddie Mac, VA, FHA, mortgage insurance 
+companies or other guarantors.
+A230 Other Assets Includes all other tangible assets that are not already accounted for in other areas of 
+the asset section. This is the total from Schedule A230—Other Assets schedule.
+A239 Total Long-Term Assets CALCULATED: A033 + A067 + A160 + A080 + A070 + A090 + A100 + A110 + A170 
++ A180 + A210 + A220 + A200 + A230D + A230F + A230
+A240 Total Assets CALCULATED: A237 + A239
+A250 MEMO: Escrow Funds (Held in Trust for Investors 
+or Mortgagors) 
+Funds that are held in trust for payment of principal and interest monies held, 
+mortgagors' taxes, insurance and related items, or other fiduciary funds. Includes 
+restricted cash and buy down escrow accounts. These amounts are not owned by the 
+institution so they should not be included in total assets or total liabilities. Companies 
+often report this amount on the face of the balance sheet as a memo item under total 
+assets with a corresponding memo item under total liabilities & owners equity. The 
+amount is only entered once on this form.
+A260 MEMO: Capitalized Hardware and Other 
+Telecommunications Property and Equipment 
+Report the dollar amount of assets related to capitalized hardware and other 
+telecommunications equipment that were included in item A180—Property, 
+Equipment, and Leasehold. This amount should be net of accumulated depreciation 
+and amortization.
+A262 MEMO: Capitalized Software Report the dollar amount of assets related to capitalized software that were included 
+in item A180—Property, Equipment, and Leasehold. This amount should be net of 
+accumulated depreciation and amortization.
+A264 MEMO: Watercraft Report the dollar amount of assets related to watercraft that were included in item 
+A180—Property, Equipment, and Leasehold. This amount should be net of 
+accumulated depreciation and amortization.
+A266 MEMO: Aircraft Report the dollar amount of assets related to aircraft that were included in item 
+A180—Property, Equipment, and Leasehold. This amount should be net of 
+accumulated depreciation and amortization.
+SCHEDULE A-030: MORTGAGE SECURITIES
+Investment-Grade Securities 
+A030A Agency MBS Carrying amount of mortgage-backed securities, both residential (1-to- 4 unit) and 
+multifamily, issued by the agencies (Fannie Mae, Freddie Mac, Ginnie Mae, etc.).
+A030B Non-Agency MBS Carrying amount of residential (1-to-4 unit) mortgage-backed securities issued by a 
+non-agency issuer with the equivalent of an investment grade of “AAA”, “AA”, “A”, or 
+“BBB” rating by a “nationally recognized statistical rating organization” (“NRSRO”).
+A030C Commercial MBS Investment Grade Carrying amount of commercial mortgage-backed securities rated investment grade 
+of “AAA”, “AA”, “A”, or “BBB” rating by a NSRO.
+A030D Non-Mortgage ABS Investment Grade Carrying amount of non-mortgage asset-backed securities rated investment grade of 
+“AAA”, “AA”, “A”, or “BBB” rating by a NSRO.
+A030E Obligations of Government Sponsored Enterprise Carrying amount of debt securities issued by a Government Sponsored Enterprise, 
+such as Fannie Mae, Freddie Mac, or a Federal Home Loan Bank.
+A030F U.S. Treasury Obligations Carrying amount of securities that are backed by obligations of the United States 
+Treasury.
+A030G Other Securities Investment Grade Carrying amount of all other investment grade securities not included above.
+A030H Total Investment-Grade Securities CALCULATED: The sum of A030A to A030G for the relevant column.
+Non-Investment Grade Securities 
+A030L Non-Agency MBS Non-Investment Grade Carrying amount of mortgage-backed securities issued by a non agency issuer with 
+the equivalent of a non-investment grade of “BB” or below rating by a NRSRO.
+A030M Principal Only Securities Non-Investment Grade Carrying amount of securities in which the holder is entitled to receive predominantly 
+principal payments. Include only non-investment grade securities – those with a “BB” 
+or below rating by a NRSRO.
+Data Format:
+$ – Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 21 of 35
+Item # Name Definitions and Instructions
+A030N Interest Only Strips Non-Investment Grade Carrying amount of securities in which the holder is entitled to receive only interest 
+payments. Note that any servicing fees retained in excess of a normal servicing fee 
+without a legal form as a security (also known as “excess servicing”) should be 
+included in mortgage servicing rights on Schedule A-160. Include only non-investment 
+grade securities – those with a “BB” or below rating by a NRSRO.
+A030O Commercial MBS Non-Investment Grade Carrying amount of commercial mortgage-backed securities rated noninvestment 
+grade of “BB” or below rating by a NRSRO.
+A030P Debt Securities Non-Investment Grade Carrying amount of debt securities rated non-investment grade of “BB” or below rating 
+by a NRSRO.
+A030Q Other Securities Non-Investment Grade Carrying amount of all other securities rated non-investment grade of “BB” or below 
+rating by a NRSRO.
+A030R Total Non-Investment Grade Securities CALCULATED: The sum of A030L to A030Q for the relevant column.
+A030S Non-Rated Retained Interests Carrying amount of retained interests from securitizations that are not rated by a 
+NRSRO.
+A030U Other Securities Carrying amount of other non-rated securities, and all other securities not included 
+above.
+A030V Total Securities CALCULATED: The sum of A030H, A030R, A030S and A030U for the relevant 
+column.
+A030W Unamortized Deferred Fees and Costs, if Not 
+Included Above 
+Unamortized Deferred Fees and Costs related to securities, if not included above.
+A030T Net Securities CALCULATED: The sum of A030V and A030W for the relevant column.
+SCHEDULE A-060: MORTGAGE LOANS HELD FOR SALE AND HELD FOR INVESTMENT, UPB
+Residential First Mortgages (1-4 Unit) 
+A060A Government (FHA/VA/RHS) Fixed Unpaid principal balance of 1-to-4 unit residential loans that are guaranteed or 
+insured by the government (FHA, VA, or RHS, including bond or state-assisted loans) 
+in which the mortgage rate remains fixed throughout the life of the loan, for example, 
+15-year, 20- year, and 30 year loans.
+A060B Government (FHA/VA/RHS) ARM Unpaid principal balance of 1-to-4 unit residential loans that are guaranteed or 
+insured by the government (FHA, VA, or RHS, including bond or state-assisted loans) 
+and in which the mortgage rate adjusts according to a specified price index 
+periodically and as agreed to at the inception of the loan. FHA Home Equity 
+Conversion Mortgages (reverse mortgages) is reported below in item A060N— 
+Reverse Mortgages
+A060C Conventional Conforming Fixed Unpaid principal balance of 1-to-4 unit residential first mortgage loans that are eligible 
+for sale to Fannie Mae/Freddie Mac and in which the mortgage rate remains fixed 
+throughout the life of the loan. This should not include FHA and VA loans because 
+they are reported separately on this form.
+A060D Conventional Conforming ARM Unpaid principal balance of 1-to-4 unit residential first mortgage loans that are eligible 
+for sale to Fannie Mae/Freddie Mac and in which the mortgage rate adjusts according 
+to a specified price index periodically and as agreed to at the inception of the loan. 
+This should not include FHA and VA loans because they are reported separately on 
+this form.
+A060E Conventional Non-Conforming (Jumbo) Fixed Unpaid principal balance of 1-to-4 unit residential first mortgage loans that are not Alt
+A or non-prime credit grade (see definition in A060G below), whose balances exceed 
+Fannie Mae/Freddie Mac loan limits and in which the mortgage rate remains fixed 
+throughout the life of the loan.
+A060F Conventional Non-Conforming (Jumbo) ARM Unpaid principal balance of 1-to-4 unit residential first mortgage loans that are not Alt
+A or non-prime credit grade (see definition in A060G below), whose balances exceed 
+Fannie Mae/Freddie Mac loan limits and in which the mortgage rate adjusts according 
+to a specified price index periodically and as agreed to at the inception of the loan.
+A060G Other Fixed Unpaid principal balance of al other 1-to-4 unit residential first mortgage loans not 
+reported above, including Alt-A and non-prime credit grade loans and in which the 
+mortgage rate remains fixed throughout the life of the loan. Non-prime loans are 
+considered those to lower credit quality borrowers (generally <620 FICO) who do not 
+qualify for prime or Alt-A loans. They often contain other risky features such as high 
+loan to value (LTV) ratios and limited documentation.
+Data Format:
+$ – Positive (with the exception of A060X to A060AF) dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 22 of 35
+Item # Name Definitions and Instructions
+A060H Other ARM Unpaid principal balance of all other 1-to-4 unit residential first mortgage loans not 
+reported above, including Alt-A and non-prime credit grade loans (see definition in 
+A060G above) and in which the mortgage rate adjusts according to a specified price 
+index periodically and as agreed to at the inception of the loan.
+A060I Total Residential First Mortgage Loans CALCULATED: The sum of A060A to A060H for the relevant column.
+Other Mortgages 
+A060L Closed-End Second Mortgages Unpaid principal balance of mortgages that have rights subordinate to a first 
+mortgage. Report both fixed rate and adjustable rate second mortgages here. Do not 
+include loans under lines of credit that permit borrowers the ability to obtain cash 
+advances based on approved line of credit.
+A060M HELOCs Principal balance of mortgages that have rights subordinate to a first mortgage. This 
+line should include home equity loans that permit borrowers the ability to obtain cash 
+advances based on approved line of credit. Report the full amount of the credit line.
+A060N Reverse Mortgages Unpaid principal balance of home equity loans for homeowners 62 years of age or 
+older, advanced as a lump sum at closing, regular payments over a time period, or as 
+a line of credit that do not require any repayment as long as the home remains the 
+principal residence of the borrower. This should include FHA Home Equity 
+Conversion Mortgages (HECM).
+A060O Construction and Land Development Loans Unpaid principal balance of 1- to 4-unit residential construction-to permanent loans to 
+home buyers and lot loans to consumers.
+A060P Multifamily Loans Agency Unpaid principal balance of mortgages for buildings with more than four residential 
+rental units and which are guaranteed or insured by the government (FHA, VA, or 
+RHS, including bond or state-assisted loans) or by the agencies (Fannie Mae or A060Q Commercial Mortgage Loans Unpaid principal balance of mortgages for commercial properties such as apartment 
+buildings, office towers, industrial buildings, hotels, and retail shopping malls. Do not 
+report multifamily loans that are government- or agency-guaranteed, reported above.
+A060R Other Mortgage Loans Unpaid principal balance of all other mortgages not reported above, including land 
+development loans to builders.
+A060V Total Other Loans CALCULATED: The sum of A060L to A060R for the relevant column.
+A060W Total Mortgage Loans, UPB (before adjustments) CALCULATED: The sum of A060I and A060V for the relevant column.
+Qualified and Non-Qualified Mortgages 
+A060W1 Qualified Mortgage (QM) Loans Held for Investment that are QM Loans.  Under Regulation Z (12 CFR 1026), a 
+loan that meets the product feature requirements can be a QM under any of three 
+main categories: (1) the general definition; (2) the “GSE/agency-eligible” provision; (3) 
+the small creditor provision.
+A060W2 Non-Qualified Mortgage Loans Held for Investment that are Non-QM Loans. Under Regulation Z (12 CFR 
+1026), a loan that meets the product feature requirements can be a QM under any of 
+three main categories: (1) the general definition; (2) the “GSE/agency-eligible” 
+provision; (3) the small creditor provision.
+A060W3 Not Subject to QM Loans being held in a portfolio for investment that were originated prior to the date 
+that QM standards went into effect. 
+A060W9 Total Loans Equals the sum of rows A060W1 to A060W3 for the corresponding column.  
+A060W9_3_T must equal AO60W_3_T.  A060W9_4_T must equal AO60W_4_T. 
+Adjustments 
+A060X Fair Value Adjustments for Loans Held For Sale 
+(for FAS 159) 
+Basis adjustments relating to changes in the fair value of loans held for sale. This 
+applies to loans held for sale that are carried at fair value (i.e., where the fair value 
+option was elected under FAS 159).
+A060Y (Discount)/Premium on Loans Contra Discounts or premiums on loans.
+Page 23 of 35
+Item # Name Definitions and Instructions
+A060Z Other Deferred Fees on Loans Contra Deferred fees on loans per FAS 91. This would include origination fees and 
+underwriting fees collected from borrowers. Not applicable for loans carried at fair 
+value. This amount must be less than or equal to zero.
+A060AA Deferred Costs on Loans Contra Deferred direct origination costs, per FAS 91. Not applicable for loans carried at fair 
+value. This amount must be less than or equal to zero.
+A060AB Basis Adjustments from Hedging Basis adjustments relating to the effective portion of hedges, per FAS 133 and 
+subsequent amendments. Not applicable for loans carried at fair value.
+A060AC Other Basis Adjustments Other basis adjustments not reported separately.
+A060AD Accum. Amort. of Discounts/Premiums Deferred 
+Fees & Cost, and Basis Adjustments 
+Accumulated amortization of discounts/premiums, deferred fees and costs, and basis 
+adjustments that are required to be amortized in accordance with FAS 91. Only 
+applies to loans held for investment that are carried at amortized historical cost. Not 
+applicable for loans held for sale or any loans carried at fair value.
+A060AE LOCOM Valuation Allowance Contra Lower of Cost or Market (LOCOM) valuation allowance contra amount: Net unrealized 
+loss on loans held for sale per FAS 65. This amount must be less than or equal to 
+zero.
+A060AF Reserve For Credit Losses On Loans Reserve for credit losses on loans held for investment that are recorded at amortized 
+cost. Not applicable for loans held for sale or any loans carried at fair value. This must 
+equal line O060 on Schedule O.
+A060AG Total Adjustments CALCULATED: The sum of A060X to A060AF for the relevant column.
+A060T Total Mortgage Loan, UPB (after adjustments) CALCULATED: The sum of A060W and A060AG for the relevant column.
+A060AH MEMO: UPB of Loans Included in Total Mortgage 
+Loans (before Adjustments) that are Accounted 
+for as Financings. 
+MEMO: The unpaid principal balance of loans included in the fields on line A060W 
+associated with single-family securitizations accounted for as financings rather than 
+sales under FAS 140 and subsequent accounting pronouncements. This amount 
+should not include any “adjustments” from schedule A-160. These amounts should be 
+included in the appropriate loan category above. Note that the debt associated with 
+these securitizations is reported separately on a liability line called “Collateralized 
+Mortgage Debt Relating To Financings”, item B020.
+A060AHNOTE A060AH Explanatory Note - Free Text Free Text
+A060AI MEMO: UPB of Loans Included in Total Mortgage 
+Loans (before Adjustments) that are on Non
+Accrual Status /Non Interest Earning 
+The unpaid principal balance of loans included in lines A060W for the relevant 
+column that are on non-accrual status (i.e., where interest income is no longer being 
+accrued because the loan is delinquent). This amount should not include any 
+“adjustments” from schedule A-160.
+A060AINOTE A060AI Explanatory Notes Free Text
+Schedule A-090: Other Real Estate Owned
+A090A Other Real Estate Owned, at Cost Investment in real estate acquired through foreclosure, deed-in lieu, or similar means.
+A090B Valuation Allowance Contra The net unrealized loss–the amount by which cost exceeds market value–on real 
+estate owned that is reported on line A090A. This amount must be less than or equal 
+to zero. This must equal line O130 from Schedule O.
+A090T Other Real Estate Owned at Net Realizable Value CALCULATED: Sum of line items A090A and A090B.
+SCHEDULE A-120R: ROLLFORWARD OF MORTGAGE SERVICING RIGHTS (MSRs)
+Rollforward of Amortized MSRs (excluding Valuation Allowance) 
+A120A Balance at Beginning of Period FAS 156 describes two types of servicing rights: “Amortized” (which is the method 
+promulgated by FAS 140) and “Fair Value” (which is a new way to account for MSRs if 
+the fair value option under FAS 156 is elected). This section is for Amortized servicing 
+rights. This line is the net Amortized MSR asset at the beginning of the period. This 
+balance should be equal to net Amortized MSR at the end of the last period.
+A120B Additions: from Transfers of Financial Assets Amortized MSRs capitalized during the period in conjunction with the sale or 
+securitization of loans.
+A120C Additions: From Purchases and Other 
+Assumptions 
+Amortized MSRs purchased or otherwise assumed during the period.
+Data Format:
+$ – Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Data Format:
+$ – Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 24 of 35
+Item # Name Definitions and Instructions
+A120D Disposals: Sales and Other The amount of MSRs that was “written-off” as a result of a sale of MSRs during the 
+period. Premiums received on loans sold servicing released should not be reported 
+here because they should be captured in line item C330. This amount must be less 
+than or equal to zero.
+A120E Amortization (must be negative) The amount of MSRs that were amortized during the quarter. This amount must be 
+less than or equal to zero.
+A120F Other Than Temporary Impairment (OTTI) The amount of Amortized MSRs that were written off during the period as a result of 
+other than temporary impairment. This amount must be less than or equal to zero.
+A120G Basis Adjustments from Net Hedging Activity Basis adjustments relating to the effective portion of hedges of Amortized MSRs, per 
+FAS 133 and subsequent amendments. Not applicable for loans carried at fair value.
+A120H Other Changes Other changes not reported on a separate line above.
+A120T Balance at End of Period CALCULATED: The sum of A120A through A120H.
+Rollforward of MSR Valuation Allowance 
+A130A Balance at Beginning of Period Amortized MSRs must be stratified by risk characteristics and each stratum is subject 
+to an impairment test and LOCOM accounting at the end of each reporting period. 
+Any LOCOM amount is posted to a valuation allowance, which can potentially be 
+reversed in future periods. This line is the valuation allowance for Amortized MSRs at 
+the beginning of the period. It is not applicable for Fair Value MSRs.
+A130B Change in Valuation Allowance Changes in the Amortized MSR valuation allowance during the period. This can be a 
+positive or a negative number. This is not applicable for Fair Value MSRs.
+A130T Balance at End of Period CALCULATED: The sum of A130A and A130B.
+A140T Total Amortized MSRs, Net of Valuation 
+Allowance, at End of Period 
+CALCULATED: Equals A120T minus A130T. This is the net carrying value of 
+Amortizing MSRs at the end of the period.
+A130E MEMO: Fair Value of Amortized MSRs at End Of 
+Period 
+This is a memo field only. This is the fair value of the entire Amortizing MSR portfolio 
+at the end of the period. The amount should be greater than or equal to line A140T.
+Rollforward of Fair Value MSRs 
+A150A Balance at Beginning of Period FAS 156 describes two types of servicing rights: “Amortized” (which is the method 
+promulgated by FAS 140) and “Fair Value” (which is a new way to account for MSRs if 
+the fair value option under FAS 156 is elected). This section is for Fair Value MSRs. 
+This line is the net Fair Value MSR asset at the beginning of the period. This balance 
+should be equal to net Fair Value MSR at the end of the last period or equal to zero if 
+this is the period that the fair value option was elected under FAS 156.
+A150B Remeasurement of MSRs to Fair Value upon 
+Adoption of FAS 156 
+The pretax value of the cumulative-effect adjustment to retained earnings resulting 
+from the FAS 156 election to begin recording an existing class of separately 
+recognized MSRs at fair value. This can only be done at the beginning of a fiscal 
+year.
+A150C Additions: from Transfers of Financial Assets Fair Value MSRs capitalized during the period in conjunction with the sale or 
+securitization of loans.
+A150D Additions: from Purchases and Other 
+Assumptions 
+Fair Value MSRs purchased or otherwise assumed during the period.
+A150E Reductions: from MSRs Sold The amount of Fair Value MSRs that was “written-off” as a result of a sale of MSRs 
+during the period. Premiums received on loans sold servicing released should not be 
+reported here because they should be captured in line item C330. This amount must 
+be less than or equal to zero.
+A150F Change in Value Due to Realization of Cash 
+Flows 
+Change in value of Fair Value MSRs due to realization of cash flows, per FAS 156.
+A150G Change in Value Due to Market And Model 
+Changes 
+Change in value of Fair Value MSRs due to market and model changes, per FAS 156.
+A150H Other Changes Other changes in Fair Value MSRs not reported on a separate line.
+A150T Balance at End of Period CALCULATED: The sum of A150A to A150H.
+A160T Total MSRs at End of Period CALCULATED: The sum of A140T and A150T.
+DERIVATIVE ASSETS: SCHEDULE A-220 (DERIVATIVE LIABILITIES: SCHEDULE B-180)
+Data Format:
+$ - Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 25 of 35
+Item # Name Definitions and Instructions
+A220A Interest Rate Lock Commitments (IRLCs) Interest rate lock commitments that meet the definition of a derivative in SFAS 133 
+and subsequent amendments.
+A220B Other Loan Commitments Classified as 
+Derivatives 
+Other loan commitments that meet the definition of a derivative in SFAS 133 and 
+subsequent amendments.
+A220C Derivatives Designated as Hedges of Funded 
+Loans 
+This line item only applies to institutions that utilize derivative instruments and 
+designate the derivatives as hedges of closed loans.
+A220D Derivatives Designated as Hedges of MSRs This line item applies to entities that participate in Derivative Instruments or Hedging 
+Activities. For additional questions, please refer to SFAS133 and/or your internal or 
+external consultants.
+A220E Derivatives Designated As Hedges Other Derivatives that meet the definition of a derivative and are designated as hedges, as 
+specified in SFAS 133 and subsequent amendments. This excludes derivatives 
+reported separately on this schedule.
+A220F Derivatives Not Designated as Hedges Derivatives that meet the definition of a derivative and are not designated as hedges, 
+as specified in SFAS 133 and subsequent amendments. These are often referred to 
+as “free standing” derivatives. These include economic hedges of items that are 
+reported at fair value (e.g., interest rate lock commitments and loans held for sale 
+carried at fair value).
+A220T Total Derivatives  (NMLS calculated & view only) CALCULATED: The sum of A220A to A220F for the relevant column. The total in the 
+assets column should equal the value in A220. The total in the liabilities column 
+should equal the value in B180.
+A220G MEMO: UPB of IRLCs before Fallout Adjustments Unpaid principal balance of interest rate lock commitments. This is the gross amount 
+before making adjustments for locks that are not expected to close.
+A220H MEMO: UPB of IRLCs after Fallout Adjustments Unpaid principal balance of interest rate lock commitments after making adjustments 
+for estimated fallout (i.e., excluding part of the balance because some locks are not 
+expected to close).
+SCHEDULE A-230: OTHER ASSETS
+A230A Securities Borrowed Carrying/Value of securities borrowed in connection with repurchase agreements.
+A230E Advances Other All other advances not reportable on a separate line. Note that advances to 
+employees should be reported in item A190— Receivables from Related Parties.
+A230G Current Income Taxes Receivable Current taxes receivable. Note that deferred taxes receivable should be included in 
+A200—Deferred Tax Asset.
+A230GNOTE A230G Explanatory Notes Free Text
+A230H Other Assets Other Include all other tangible assets that are not already accounted for in other areas of 
+the asset section. This would include, but is not limited to, lease/rent deposits, utility 
+deposits, tax deposits, flexible spending receivables, licenses, prepaid expenses, 
+clearing accounts, suspense accounts, commitment fees, and any other tangible 
+asset not reportable on a separate line.
+A230HNOTE A230H Explanatory Notes Free Text
+A230T Total Other Assets Sum of lines A230A through A230H (exclude A230C, A230D, A230F)
+A230I Other Assets Other as Percentage of Total Assets CALCULATED: A230H divided by A240. If this amount is greater than 5 percent, you 
+must list an explanation in item A230J.
+A230J Explanation of Amounts in 'Other Assets Other' If percentage in A230I is greater than or equal to 5%, Explanation of Amounts In 
+“Other Assets – Other” is required.
+SCHEDULE B: LIABILITIES AND EQUITY
+Current Liabilities
+B009 Outstanding Balance on Warehouse Lines of 
+Credit
+Outstanding balance of warehouse lines of credit used to fund mortgages.
+B010 Outstanding Balance on Debt Facilities Outstanding balance of lines of credit, including lines of credit to finance repurchased 
+loans and mortgage servicing rights (MSR). Also include on-balance sheet debt 
+relating to reverse repurchase facilities for which the institution serves as the 
+“seller/borrower” and asset backed commercial paper facilities. Include outstanding 
+balances on debt facilities provided by both affiliates and non-affiliates.
+B070 Commercial Paper Unsecured, short-term debt instrument issued by corporation, typically for the 
+financing of accounts receivable, inventories and meeting short-term liabilities.
+Data Format:
+$ - Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+% - Number to the nearest hundredth (two-decimal figure)
+Data Format:
+$ – US Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 26 of 35
+Item # Name Definitions and Instructions
+B080 Other Short-Term Payables to Related Parties Short-term payables due to related parties that are not included above, which are 
+maturing within the coming year. Includes accrued interest payable to related parties 
+and similar items (except for accrued payroll, included in Accrued Expenses in line 
+item B100 below).
+B090 Other Short-Term Notes Payable to Unrelated 
+Parties 
+Short-term notes payable due to unrelated parties that are not included above, which 
+are maturing within the coming year.
+B100 Accrued Expenses Total accrued liabilities such as rent, utilities, and sales taxes to unrelated parties. 
+Include all accrued payroll.
+B120 Other Current Liabilities Total of all other short-term liabilities such as unearned revenues, deferred non-loan 
+fees, and undisbursed principal on mortgages. This amount includes current tax 
+liabilities.
+B217 Total Current Liabilities CALCULATED: B009 + B010 + B070 + B080 + B090 + B100 + B120
+Long-Term Liabilities
+B020 Collateralized Mortgage Debt Relating to 
+Financings 
+Collateralized mortgage debt associated with securitizations accounted for as 
+financings rather than sales under FAS 140 and subsequent accounting 
+pronouncements. Note that the mortgage loans associated with these securitizations 
+are reported on Schedule A-060.
+B030 Collateralized Mortgage Debt Other Collateralized mortgage debt not reported separately on this form.
+B040 Trust Preferred Securities Trust Preferred Securities. Securities created by forming a trust and issuing debt to 
+the new trust. The trust issues trust preferred securities, which are counted towards 
+regulatory capital.
+B050 Deposits Deposits. Demand accounts, money market accounts and certificate of deposit 
+balances.
+B060 Advances from Federal Home Loan Banks Advances from Federal Home Loan Banks.
+B110 Estimated Future Loss Liability (Recourse) Total allowance for losses on off-balance sheet items, such as recourse obligations 
+and guarantees and litigation.
+B130 Other Long-Term Liabilities to Related Parties Total long-term liabilities to related parties.
+B140 Other Long-Term Liabilities to Unrelated Parties All other long-term liabilities not included above.
+B150 Servicing Liabilities Any servicing liability that is required to be recognized pursuant to the guidance of 
+FAS 125, FAS 140, FAS 156 and other pronouncements.
+B160 Guaranty Liabilities under FIN 45 The carrying amount of any guaranty liabilities required under FIN 45.
+B170 Other Financial Instrument Liabilities, at Fair 
+Value 
+Fair value of other financial instruments where the fair value option was elected under 
+FAS 159, and where the fair value is a liability. This should not include “loans held for 
+sale, at fair value” or “loans held for investment, at fair value” because they are 
+reported separately in item A062T and A066T, respectively.
+B180 Derivative Liabilities This is a total from the Derivatives schedule—Schedule A220. It includes any 
+derivative investments/instruments that are required to be carried on the balance 
+sheet as derivative liabilities according to the provisions of FAS 133 and subsequent 
+amendments.
+B190 Taxes Payable Current income taxes payable. Taxes due and payable based on taxable income.
+B200 Deferred Tax Liability Deferred income taxes payable. A liability that results from income that has already 
+been earned for accounting purposes but not for tax purposes.
+B210 Repurchase Reserves Liabilities for standard representations and warranties, early payment default, first 
+payment default, premium recapture and other repurchase obligations. This must 
+equal line O350 on Schedule O.
+B219 Total Long-Term Liabilities CALCULATED: B020 + B030 + B040 + B050 + B060 + B110 + B130 + B140 + B150 
++ B160 + B170 + B180 + B190 + B200 + B210
+B220 Total Liabilities CALCULATED: B217 + B219
+Equity 
+For Corporations: 
+B250 Preferred Stock, Issued and Outstanding Total par value of all preferred stock issued and outstanding, redeemable and non
+redeemable, including preferred treasury stock that has not been retired.
+B260 Common Stock, Issued and Outstanding Total par value of all common stock issued and outstanding. Includes stock set aside 
+for distribution in Employee Stock Ownership Plans (ESOPs).
+B270 Additional Paid-In Capital Total paid-in capital in excess of par from preferred and common stock and capital 
+contributions.
+B280 Retained Earnings Total retained earnings less the par value of stock set aside for distribution in ESOPs.
+B290 Treasury Stock Non-preferred treasury stock that has not been retired.
+B300 Other Comprehensive Income (OCI) Changes in equity due to non-owner sources such as after-tax unrealized gains or 
+losses on securities, foreign currency translations, etc., per FAS 130.
+Page 27 of 35
+Item # Name Definitions and Instructions
+B310 Noncontrolling Interest This line should include amounts relating to noncontrolling interests in consolidated 
+subsidiaries pursuant to FAS 160, which was issued in December, 2007 and is 
+applicable for fiscal years beginning after 12/15/08.
+B240 Subordinated Debt Debt that is subordinated to all other forms of debt.
+B319 Total Corporate Equity CALCULATED: B250 + B260 + B270 + B280 + B290 + B300 + B310 + B240
+For Partnerships and Sole Proprietorships: 
+B320 General Partners' Capital For organizations organized as partnerships or sole proprietorships, total capital of 
+general partners or sole proprietor.
+For Partnerships: 
+B330 Limited Partners' Capital For organizations organized as partnerships, total capital of limited partners.
+B340 Members' Capital Total capital of companies that are not incorporated and do not have partners.
+B349 Total Limited Partnership and Members Capital CALCULATED: B330 + B340
+For All Companies: 
+B350 Total Equity CALCULATED: B319 + B320 + B349
+B360 Total Liabilities and Equity CALCULATED: The sum of B220 and B350.
+SCHEDULE B-350R: EQUITY ROLLFORWARD
+B350A Balance at Beginning of Period Total equity at beginning of this quarter. This balance should be equal to total equity 
+at the end of the last reporting period (Line item B350 from prior reporting period).
+B350B Net Income / (Loss) Must be equal to line item D600.
+B350C Issuance of New Stock or Conversions of 
+Preferred to Common 
+The proceeds from the issuance of common and preferred stock issued during the 
+period.
+B350D Stock Repurchases The cost of non-preferred treasury stock that was repurchased during the period.
+B350E Other Capital Contributions Any contributions of capital received during the period (received from parent, 
+stockholders, partners, etc.).
+B350F OCI: Unrealized Gains/(Losses) from Assets 
+Available-for-Sale
+Any unrealized gain or loss recorded during the quarter for assets categorized as 
+available for sale under the provisions of FAS 115 and FAS 134. This line item is 
+related to the provisions of FAS 130 (other comprehensive income (OCI)).
+B350G OCI: Unrealized Gains/(Losses) from Derivatives 
+Designated as Cash Flow Hedges 
+Unrealized Gains (Losses) from derivatives designated as cash flow hedges recorded 
+to other comprehensive income (OCI) in accordance with FAS 133 and subsequent 
+amendments.
+B350H OCI: Other Changes in OCI All other changes in other comprehensive income (OCI). For example, certain 
+adjustments relating to pension plans should be reported here.
+B350I Cumulative Effect from Adoption of FAS 156 The after-tax value of the cumulative-effect adjustment to retained earnings resulting 
+from the FAS 156 election to begin recording an existing class of separately 
+recognized MSRs at fair value. This can only be done at the beginning of a fiscal 
+year.
+B350J Cumulative Effect from Adoption of FAS 159 The after-tax value of the cumulative-effect adjustment to retained earnings resulting 
+from the FAS 159 election to begin recording an existing class of financial instruments 
+at fair value. This can only be done at the beginning of a fiscal year.
+B350K Cumulative Effect Adjustments to Retained 
+Earnings Other 
+Other cumulative effect adjustments to retained earnings not reported on a separate 
+line on this form.
+B350L Dividends/Distributions Any dividends paid to stockholders/owners or distributions made to partners during 
+the period. This amount must be less than or equal to zero.
+B350M Changes in the carrying amount of Noncontrolling 
+Interest 
+This line should include changes in equity relating to noncontrolling interests pursuant 
+to FAS 160, which was issued in December 2007 and is applicable for fiscal years 
+beginning after 12/15/08.
+B350N Equity Adjustments Changes/adjustments not reported on other lines.
+B350NNOTE B350N Explanatory Notes Free Text
+B350T Balance at End of Period CALCULATED: The sum of B350A to B350N.
+SCHEDULE C: INCOME
+Interest Income 
+Data Format:
+$ – Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Data Format:
+$ – US Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 28 of 35
+Item # Name Definitions and Instructions
+C010 Residential Loans Held For Sale Total interest earned on warehousing for all 1- to 4-unit residential mortgage loans 
+and multifamily/commercial mortgage loans. Include interest income for warehouse 
+lines of credit, collateralized repurchase lines of credit, asset backed commercial 
+paper, and other debt facilities used to finance mortgage originations. Report 
+amounts in appropriate columns.
+C020 Loans Held for Investment Total interest income on loans held for investment.
+C030 Securities Held to Maturity Total interest income from securities held to maturity.
+C040 Securities Available for Sale Total interest income from securities available for sale (AFS). Interest income from 
+Multifamily and Commercial AFS securities should be recorded on the 
+Multifamily/Commercial column. Interest income from all other AFS securities should 
+be reported in the Residential Portfolio Management and All Other column.
+C050 Trading Securities Total interest income from trading securities. Interest income from Multifamily and 
+Commercial trading securities should be recorded on the Multifamily/Commercial 
+column. Interest income from all other Trading securities should be reported in the 
+Residential Portfolio Management and All Other column.
+C060 Other Interest Income Total other interest income. Include interest income not reported on one of the line 
+items above.
+C070 Recognition of Yield Adjustment Amortization of amounts deferred under FAS 91.
+C080 Servicing-Related/Escrow Interest income generated from servicing related P&I and T&I custodial accounts.
+C090 Total Interest Income CALCULATED: The sum of C010 to C080 for the relevant Column.
+NON-INTEREST INCOME 
+Origination Related Non-Interest Income 
+C200 Discounts on FV of LHS When originated loans are accounted for under the fair value option of FAS 159, 
+discounts received can be recorded as income and premiums paid can be recorded 
+as expense. This line captures the income effect of such discounts and premiums. 
+Other fees collected, such as origination fees, can also be recorded as income, but 
+those are reported on separate lines on this form.  LHS refers to "Loans Held for 
+Sale"
+C210 Origination Fees Origination fee income earned from retail and direct marketing loan production.
+C220 Fees Received from Correspondents and Brokers Fee income earned on loans acquired from correspondents and brokers.
+C230 Broker Fees Received on Loans Brokered Out Fees received for loans that your institution brokers out. The principal balance and 
+loan count associated with these fees should (a) not be included in origination volume 
+and (b) be reported in line item I420 on schedule I.
+C240 Other Origination Related Income Other loan origination income not included above, such as fees collected from 
+borrowers for credit reports, appraisals or special requirements such as photographs. 
+Offsetting expenses should be reported in line item D280.
+C250 Contra: Amounts Reclassified Fee income recorded on lines C210, C220, C230 or C240 that are reclassified as gain 
+on sale or deferred in accordance with FAS 91.
+C260 Total Origination Related Non-Interest Income CALCULATED: The sum of C200 to C250 for the relevant column.
+Secondary Marketing Gains/(Losses) On Sale 
+C300 Gain on Loans/MBS Sold with Servicing Retained The difference between the sales price and the carrying value of sales of mortgage
+backed securities classified as trading securities sold with servicing retained and 
+mortgages sold with servicing retained. Only the portion attributable to the mortgage 
+loans or mortgage-backed securities should be included in this line item. Any gain or 
+loss allocated to the capitalization of servicing rights should be captured in line item 
+C310. Origination fees that otherwise would be included here per FAS 91 should be 
+reported in line C210 for retail and direct marketing production or C220 for 
+broker/correspondent production. Direct loan origination costs that otherwise would be 
+included here per FAS 91 should be reported in the applicable expense line items. 
+Exclude any premium to buy options ("option premium") because option premiums 
+are reported on line C380.
+C310 Capitalized Servicing On Loans/MBS Sold with 
+Servicing Retained 
+The portion of any gain or loss recognized from the sale of loans and MBS with 
+servicing retained that is allocated to the capitalization of servicing rights.
+Page 29 of 35
+Item # Name Definitions and Instructions
+C320 Gain on Loans/MBS Sold with Servicing Released The difference between the sales price and the carrying value of mortgages (net of 
+any discounts or premiums that were not immediately recognized as income, if 
+applicable) sold or securitized with servicing released. Only the portion attributable to 
+the mortgage loans sold should be included in this line item. Servicing values should 
+be excluded because they are reported separately on this form. Any gain or loss 
+related to the servicing released premiums received should be captured in line item 
+C330. Origination and other fees should not be included here because they should be 
+reported in line C210 for retail production or C220 for broker/correspondent 
+production. Direct loan origination costs should also be excluded here because they 
+are reported in the applicable expense line items. Option premiums and other hedge 
+costs should also be excluded because they are reported separately on line C380.
+C330 Servicing Released Premiums on Loans/MBS 
+Sold
+The portion of any gain or loss recognized from the sale of loans that is related to the 
+servicing released premium received.
+C340 Fees Paid to Brokers Include yield spread premium and other fees paid to brokers if not reported separately 
+on this form. Companies that account for such fees as a direct adjustment to the gain 
+on sale will include the amounts paid here. Other companies may account for such 
+fees as an adjustment to the basis in the loan (thereby including the cost in the 
+gain/loss on sale line) and not report the cost on this line. The amount entered must 
+be equal to or less than zero.
+C350 Direct Fees Reclassified as Gain on Sale Fee income that is reclassified as gain on sale in accordance with FAS 91.
+C360 Direct Expenses Reclassified as Gain on Sale Direct expenses that are reclassified as gain on sale in accordance with FAS 91.
+C370 Recognition of Retained Interests The initial basis of securities and other interests (such as residuals) created be 
+included here because they are reported separately. upon securitization and retained 
+by the transferor. This is based on a relative fair value allocation under FAS 140 or 
+fair values if the fair value option was elected under FAS 159. Mortgage servicing 
+rights should not
+C380 Pair-Off Expenses and Other Hedge Costs Hedge costs, including pair-off gains and losses and option premiums.
+C390 Provision for Repurchase Reserve The provision for reserves for standard representations and warranties, early 
+payment default, first payment default, premium recapture and other repurchase 
+obligations. This must equal line O320 on Schedule O.
+C400 LOCOM Adjustments on Loans Held for Sale Income statement impact of lower of cost or market (LOCOM) adjustments recorded 
+for certain loans held for sale. This is not applicable for loans held for sale at fair 
+value.
+C410 Income Relating to Interest Rate Lock 
+Commitments (IRLCs) 
+Interest rate lock commitments (IRLC) relating to loans held for sale are derivatives in 
+accordance with FAS 133 and subsequent amendments. Any gain or loss recognized 
+at the inception of the IRLC (see guidance the SEC’s Staff Accounting Bulletin (SAB) 
+109) or afterwards should be included here. Note that gains/losses on derivatives 
+related to hedges of MSRs are reported in the “Servicing-Related Non-Interest” 
+section and gains/losses on derivatives related to Other Financial Instruments are 
+reported in the Other Non-Interest” section.
+C420 Gains on Derivatives Hedging Interest Rate Locks 
+and Loans HFS
+Gains or losses incurred on the valuation of derivative instruments recognized 
+according to the provisions of FAS 133 and subsequent amendments. This should 
+include only gains/losses relating to derivatives used to hedge inventory/pipeline 
+loans (regardless of whether the hedges qualified for hedge accounting treatment).
+C430 Gain on Changes in Fair Value of Loans HFS Gains and losses recognized due to changes in the fair value of loans held for sale 
+that are carried at fair value (i.e., where the fair value option was elected under FAS 
+159).
+C440 Other Secondary Market Gains Other gains or losses upon the sale or securitization of loans.
+C450 Net Secondary Marketing Income CALCULATED: The sum of C300 to C440 for the relevant column.
+Servicing-Related Non-Interest Income 
+C500 Servicing Fees on First Mortgages Servicing fees earned on all 1-to-4 unit first mortgage loans, commercial mortgage 
+loans, and multifamily mortgage loans before deducting amortization of capitalized 
+(PMSR and OMSR) servicing. Does NOT include subservicing fees earned. Net out 
+guarantee fees from this item.
+C510 Servicing Fees on Other Mortgages Servicing fees earned on second mortgages, reverse mortgages, and all loans not 
+included in line item C500, before deducting amortization of capitalized servicing.
+C520 Subservicing Fees (include Intercompany) Servicing fees earned on loans for which your institution does not own the servicing 
+rights. Include subservicing fees on loans subserviced for affiliates.
+Page 30 of 35
+Item # Name Definitions and Instructions
+C530 Subservicing Fees (Intracompany Only) If you have a formal arrangement within your institution to recognize income in the 
+servicing department and expense in: (a) the portfolio management department, 
+and/or (b) the origination or secondary marketing departments, enter intracompany 
+subservicing fees as a positive number in the “Servicing” column and a negative 
+number in the other columns as negative numbers. The total amount on this line must 
+be zero.
+C540 Late Fees and Other Ancillary Fees Loan administration income not included above, such as late charge penalties and 
+fees collected from borrowers for loan processing expenses.
+C550 Amortization of MSRs The dollar amount of MSRs that were amortized during the quarter. Enter as a 
+negative number.
+C560 Other Than Temporary Impairment of MSRs The dollar amount of Amortized MSRs that were written off during the period as a 
+result of other than temporary impairment. Enter as a negative number.
+C570 Changes in MSR Valuation Allowance Changes in the Amortized MSR valuation allowance during the period. This can be a 
+gain or a loss. This is not applicable for Fair Value MSRs.
+C580 Changes in MSR Value Due to Realized Cash 
+Flows
+Change in value of Fair Value MSRs due to realization of cash flows, per FAS 156.
+C590 Changes in MSR Value Due to Market/Model 
+Changes
+Change in value of Fair Value MSRs due to market and model changes, per FAS 156.
+C600 Gains(Losses) on Derivatives Used to Hedge 
+MSRs
+All gains or losses on derivative instruments related to hedging MSRs and recognized 
+according to the provisions of FAS 133 and subsequent amendments. Note that 
+gains/losses on derivatives related to hedges of IRLCs and loans held for sale are 
+reported in the “Secondary Marketing Gain (Loss) On Sale” section and gains/losses 
+on derivatives related to Other Financial Instruments are reported in the “Other Non
+Interest Income” section.
+C610 Other Changes in MSR Value Other changes in Fair Value MSRs not reported on a separate line.
+C620 Net Gain on Bulk Sale of MSRs Net gain (loss) on sale of servicing rights sold in bulk. Servicing released premiums 
+received are to be reported on line item C330.
+C630 Net Gain on Sale of REO Net gain (loss) on the sale of real estate owned.
+C640 Other Servicing-Related Income Other servicing related income not reported elsewhere on this form.
+C650 Total Servicing-Related Non-Interest Income CALCULATED: The sum of C500 to C640 for the relevant column.
+Other Non-Interest Income 
+C720 Gain from Sale of Securities Net realized and unrealized gain (loss) on sale of debt and equity securities, including 
+held-to-maturity, available-for-sale, and trading securities. Exclude the gain on 
+securities sold in conjunction with mortgage origination and secondary marketing 
+activities because those are reported on lines C300 and C320. The net unrealized 
+gain/(loss) on securities classified as trading securities is reported in line item C730. 
+The net unrealized gain (loss) on those classified as available-for-sale securities is 
+reported in line item B350F.
+C730 Unrealized Gain on Trading Securities Unrealized gains and losses recognized due to changes in the fair value of securities 
+designated as Trading Securities. Trading Securities are carried at fair value.
+C740 Gain on Other Derivatives/Financial Instruments Include all gains or losses incurred on the valuation of any derivative instruments 
+recognized according to the provisions of FAS 133 and subsequent amendments. 
+This should include derivative gains/losses on free standing derivatives and any other 
+derivatives not reported elsewhere on this form. Note that gains/losses on derivatives 
+related to hedges of IRLCs and loans held for sale are reported in the “Secondary 
+Marketing Gain(Loss) On Sale” section and gains/losses on derivatives related to 
+hedges of MSRs are reported in the “Servicing-Related Non-Interest” section. In 
+addition, include gains and losses relating to changes in the fair value of financial 
+instruments pursuant to FAS 159 which are not reported elsewhere on this form.
+C750 Gain on FV of Loans HFI Gains and losses recognized due to changes in the fair value of loans held for 
+investment that are carried at fair value (i.e., where the fair value option was elected 
+under FAS 159).
+C760 Income from JV/Partnerships/Other Entities Income from investments in unconsolidated joint ventures, partnerships, and other 
+entities that are accounted for using the equity method of accounting (i.e., those 
+operations that are not consolidated) and for which the investment in the subsidiary is 
+included on line A280. Anything reported here should be excluded from all other 
+income on this form.
+C770 Other Non-Interest Income Any other non-interest income not reported above.
+C780 Total Other Non-Interest Income CALCULATED: The sum of C720 to C770 for the relevant column.
+Page 31 of 35
+Item # Name Definitions and Instructions
+C800 Total Gross Income CALCULATED: The sum of C090,  C260, C450, C650, and C780 for the relevant 
+column.
+Interest Expense 
+C100 Warehousing Interest Expense Total interest expense on warehouse lines or other debt associated with 1-to 4- unit 
+residential mortgage loans and multifamily/commercial mortgage loans. Include 
+interest expense for warehouse lines of credit, collateralized repurchase lines of 
+credit, asset-backed commercial paper, and other debt facilities used to finance 
+mortgage originations Report amounts in appropriate columns. Enter as a positive 
+number.
+C110 Income Property Interest Expense Total interest expense on debt associated with income property loans. Enter as a 
+positive number.
+C120 Interest Expense on MBS Pools/Prepayment 
+Interest Shortfall 
+The amount of uncollected interest that is required to be passed on to the security 
+holder when a loan is not paid off on the first day of the month; the excess of interest 
+passed-through over the amount reimbursed. Should also include interest losses 
+absorbed on GNMA pools under the Service members Civil Relief Act of 2003. Enter 
+as a positive number.
+C130 Interest Expense on Residential MSR Asset Interest expense on debt used to finance residential MSR assets. Enter as a positive 
+number.
+C140 Interest Expense Debt Issuance Total interest expense relating to debt issuances such as bonds and subordinated 
+debt. Enter as a positive number.
+C150 Other Interest Expense Total interest expense not reported elsewhere, e.g., credit card debt, imputed interest 
+relating to leases, multifamily/commercial MSR interest expense, etc. Enter as a 
+positive number.
+C160 Total Interest Expense CALCULATED: The sum of C100 to C150 for the relevant column.
+SCHEDULE CF: SELECTED CASH FLOW DATA
+CF010 Net Cash (Used)/Provided by Operating Activities Total from the applicable section from the statement of cash flows prepared in 
+accordance with generally accepted accounting principals.
+CF020 Cash Flows from Investing Activities Total from the applicable section from the statement of cash flows prepared in 
+accordance with generally accepted accounting principals.
+CF030 Cash Flows from Financing Activities Total from the applicable section from the statement of cash flows prepared in 
+accordance with generally accepted accounting principals.
+CF040 Total Increase/(Decrease) in Cash CALCULATED: Total increase/(decrease) in cash. The sum of CF010, CF020 and 
+CF030.
+Schedule D: Non-Interest Expense
+Non-Corporate Personnel Compensation
+Origination, Secondary Marketing, Warehousing Personnel 
+D010 Loan Production Officers (Sales Employees) Compensation of loan production officers involved in retail residential (1-to 4- unit) 
+originations and sales account executives or personnel involved in broker/wholesale 
+residential originations.
+D020 Loan Origination (Fulfillment/Non-Sales) Compensation of loan origination employees which includes loan processors, 
+underwriters and closers, and all other employees (including clerical) involved in retail 
+residential (1-to 4-unit) loan origination. Does NOT include loan production/sales 
+officers (see line item D010) or warehousing and marketing employees (see line item 
+D030).
+D030 Warehousing/Secondary Marketing Compensation of residential (1-to 4-unit) employees (including clerical) whose 
+principal function is warehousing, secondary marketing, and selling loans.
+D040 Post-Close and Other Production Support Compensation of other residential (1-to 4-unit) personnel or production support staff 
+involved in the originations process, including post-close, shipping and delivery, 
+quality control, overall marketing, technology support, and interim servicing.
+D050 Origination-Related Management and Directors Compensation of originations-related managers, directors, executives, and related 
+personnel. These include management and administrative staff (e.g., administrative 
+assistants) who oversee the entire Originations function and who are not line 
+management. Employees who manage more than one function, but not the entire 
+operation, should be allocated to the appropriate function. Include in this line item 
+commercial, multifamily, portfolio investment, and other management personnel not 
+included above.
+Data Format:
+$ – US Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Data Format:
+$ – US Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+Page 32 of 35
+Item # Name Definitions and Instructions
+D060 Other Origination-Related Compensation of any other personnel, such as commercial, multifamily, portfolio 
+investment, and other personnel not included above, who are part of the Originations 
+function.
+D070 Total Origination Compensation CALCULATED: The sum of D010 to D060 for the relevant column.
+Servicing Personnel 
+D080 Servicing-Related Management and Directors Compensation of servicing-related managers, directors, executives, and related 
+personnel. These include management and administrative staff (e.g., administrative 
+assistants) who oversee the entire Servicing function and who are not line 
+management. Employees who manage more than one function, but not the entire 
+operation, should be allocated to the appropriate function.
+D090 Other Servicing-Related Personnel Compensation of all other employees, including REO personnel, directly involved in 
+the administration and servicing of residential (1-to 4-unit) loans, and commercial and 
+multifamily loans Excludes employees in acquisitions, originations, loan set-up, 
+personal loans, or commercial loans areas. Management and corporate support 
+personnel should be reported in item D400 below.
+D100 Total Servicing Compensation CALCULATED: The sum of D080 and D090 for the relevant column.
+Other Personnel 
+D110 Other Personnel Compensation of all other employees in the management of loans in the institution’s 
+investment portfolio. Report these in the appropriate columns. Include related 
+management and directors and support personnel for those loans. Do NOT include 
+corporate or parent allocations; these should be reported only in item D400.
+D120 Contra: Direct Personnel Expenses 
+Reclassified/Deferred
+Direct personnel expenses that are reclassified as gain on sale or deferred in 
+accordance with FAS 91. This excludes any direct operating expenses reported on a 
+separate line of this form. This amount must be less than or equal to zero.
+D129 Total Other Personnel Compensation CALCULATED: The sum of D110 and D120
+D130 Total Non-Corporate Personnel Compensation CALCULATED: The sum of D070 and D110.
+Other Personnel Expenses 
+D150 Employee Benefits (including Education and 
+Training) 
+Total employee benefits, including education and training. Includes profit-sharing plan 
+contributions, pension program, group health and life insurance, and payroll taxes.
+D160 Other Personnel Expenses All other personnel expenses.
+D170 Total Other Personnel Expenses CALCULATED: The sum of D150 and D160 for the relevant column.
+D180 Total Personnel Expenses CALCULATED: The sum of D130 and D170 for the relevant column.
+Other Non-Interest Expenses
+D200 Occupancy and Equipment Total occupancy and equipment expenses, such as rent, utilities and hazard 
+insurance, fax machines, telephone, furniture, and fixtures, including depreciation.
+D210 Technology-Related Expenses All non-personnel expenses associated with technology hardware and software. 
+Include costs of loan origination systems (LOS), servicing systems, and technology
+related service bureau fees. Do NOT include allocated corporate administration 
+technology charges for network administration, basic software, etc. as these are 
+reported in item D410.
+D220 Outsourcing Fees Expenses related to outsourcing services, i.e., those performed by a third party. 
+Examples of such expenses include those from an outside company providing 
+production fulfillment processing services, an outsourced call center, and tax & 
+escrow services. Exclude technology-specific charges, which are reported in item 
+D210 above, and business-specific per transaction fees such as those associated 
+with Automated Underwriting Systems, credit bureau requests, etc. Also exclude 
+subservicing fees paid, as these are reported in line item D240 below.
+D230 Professional Fees Professional fees for lawyers, accountants, consulting and other advisory services. 
+Audit and tax related fees should be included here.
+D240 Subservicing Fees (Including Intercompany) Servicing fees paid to a subservicer, including those paid to an affiliate for servicing 
+loans for which you own the servicing rights. Note that intracompany subservicing 
+fees paid should be reported on line C530.
+D250 Unreimbursed Servicing Expenses for 
+Foreclosure/REO 
+Unreimbursable expenses (not recoverable) incurred during the foreclosure process 
+or in connection with holding REO (such as maintenance fees, taxes, insurance, etc.) 
+that were not reported in a provision for loss account.
+D260 Change in REO Valuation Allowance Changes in the REO valuation allowance during the period. This must equal line 
+O120 on Schedule O.
+Page 33 of 35
+Item # Name Definitions and Instructions
+D270 Provision For Other Losses The current period provision for other losses. This is the income statement impact of 
+increasing the reserve. If completing the E-FC, this must equal line O220 on Schedule 
+O.
+D280 All Other Non-Interest Expenses Total non-interest expenses not included above and not included below in item 
+D540—Nonrecurring Items. Note that guarantee fees should be netted out on line 
+item C500. Brokered loan fees paid should be reported on line C340.
+D290 Contra: Direct Operating Expenses Reclassified Direct operating expenses that are reclassified as gain on sale or deferred in
+accordance with FAS 91. This excludes any personnel related expenses
+reported on a separate line of this form. This amount must be less than or
+equal to zero.
+C700 Provision for Credit Losses on Loans Held For 
+Investment 
+The current period provision for credit losses on loans held for investment. This is the 
+income statement impact of increasing the Credit Loss Reserve for Loans Held For 
+Investment. This must equal line O020 on Schedule O.  This should be reflected as 
+negative.
+C710 Permanent Impairment (non-MSR) and Other 
+Credit Related Losses
+This line should include Other Than Temporary Impairment (OTTI) charges, which 
+are permanent write-downs of assets (as opposed to accounting for using reserve 
+accounts). This line should also include other credit-related losses not reported 
+elsewhere on this form. Do not include MSR-related impairments accounted for 
+elsewhere. Enter as a negative number.
+D300 Total - Other Non-Interest Expenses CALCULATED
+Corporate Administration/Overhead Allocations 
+D400 Corporate Management/Support/Other Personnel Corporate or parent company charges for compensation, benefits, and other 
+personnel expenses for corporate management and support staff.
+D410 Corporate Technology Charges Corporate or parent company charges for all non-personnel expenses associated with 
+technology hardware and software, including related corporate support and help desk.
+D420 Goodwill Impairment Goodwill impairment. Impairment recognized in accordance with FAS 142.
+D430 Other Corporate Expenses (not Included Above) Any other Corporate or parent company charges or expenses not included in the 
+above corporate allocation items. This might include the income statement impact 
+relating to the settlement of litigation or other unusual items.
+D440 Total Corporate Administration/Allocation CALCULATED: The sum of D400 to D430.
+D310 Total Gross Expenses Must equal the sum of C160, D180, D300, and D440
+D510 Pre-Tax Net Operating Income Must equal C800 - D310
+Income Taxes, Non-recurring Items, and Minority Interest 
+D520 Income Taxes Income tax expense (benefit) on income.
+D530 Net Income before Extraordinary Items and 
+Noncontrolling Interest 
+CALCULATED: Line item D510 minus line item D520.
+D540 Extraordinary Items After-tax gain (loss) on nonrecurring items such as extraordinary items, discontinued 
+operations, and cumulative effect of changes in accounting principles.
+D550 Net Income before Noncontrolling Interest  CALCULATED: The sum of D530 and D540.
+D560 Noncontrolling Interest After tax income (loss) attributed to minority interests. Note that FAS 160, which is 
+required for fiscal years beginning after 12/15/08, will change the terminology from 
+“minority interest” to “noncontrolling interest”.
+D600 Net Income CALCULATED: Line item D550 plus line item D560.
+SCHEDULE O - RESERVES AND VALUATION ALLOWANCE ROLLFORWARDS
+Rollforward of Credit Loss Reserves on Loans Held for Investment
+O010 Beginning Balance Balance of the credit loss reserve at the beginning of the period.
+O020 Provision for Credit Losses on Loans Held for 
+Investment
+The current period provision for credit losses on loans held for investment. This is the 
+income statement impact of increasing the reserve.
+O030 Charge-offs, Net of Recoveries Charge off against the reserve, net of any recoveries during the period.
+O040 Adjustments upon Adoption of FAS 159 Any impact on the credit loss reserve due to the FAS 159 election to begin recording 
+an existing class of loans held for investment at fair value.
+O050 Other Changes Other changes not reported separately on this form.
+O060 Ending Balance Balance of the credit loss reserve at the end of the period.
+Rollforward of Valuation Allowance on REO
+Data Format:
+$ – Dollar amount to the nearest dollar. Do not enter $, commas or decimals.  
+# - Positive whole number
+Page 34 of 35
+Item # Name Definitions and Instructions
+O110 Beginning REO Valuation Allowance Balance of the REO valuation allowance at the beginning of the period.
+O120 Changes in REO Valuation Allowance Changes in the REO valuation allowance during the period.
+O130 Ending REO Valuation Allowance Balance of the REO valuation allowance at the end of the period.
+Rollforward of Reserve for Other Losses
+O210 Beginning Reserve for Other Losses Balance of the reserve for other losses (i.e., loss reserves not included elsewhere on 
+this form) at the beginning of the period.
+O220 Provision For Other Losses The current period provision for other losses. This is the income statement impact of 
+increasing the reserve for other losses.
+O230 Charge-Offs, Net of Recoveries Charge off against the reserve for other losses, net of any recoveries during the 
+period.
+O240 Other Changes Other changes to the reserve for other losses not reported separately on this form.
+O250 Ending Reserve for Other Losses Balance of the reserve for other losses at the end of the period.
+Rollforward of Repurchase Reserves
+O310 Beginning Repurchase Reserve Balance of the repurchase reserve at the beginning of the period. This should include 
+reserves for standard representations and warranties, early payment default, first 
+payment default, premium recapture and other repurchase obligations.
+O320 Provision for Repurchases (EPD, FPD, etc.) The provision for reserves for standard representations and warranties, early 
+payment default, first payment default, premium recapture and other repurchase 
+obligations.
+O330 Charge-Offs, Net of Recoveries Charge off against the repurchase reserve, net of any recoveries during the period.
+O340 Other Changes Other changes to the repurchase reserve not reported separately on this form.
+O350 Ending Repurchase Reserve Balance of the repurchase reserve at the end of the period.
+O360 MEMO: UPB of Loans Repurchased or 
+Indemnified During the Quarter
+Unpaid principal balance of loans repurchased or indemnified during the quarter.
+O370 MEMO: Number of Loans Repurchased or 
+Indemnified During the Quarter
+Number of loans repurchased or indemnified during the quarter.
+EXPLANATORY NOTES-FREE TEXT
+FCNOTE Provide any necessary explanations requiring clarification for the Financial Condition 
+component in this field. This field is a permanent part of your Mortgage Call Report 
+filing. 
+Page 35 of 35

@@ -2,6 +2,26 @@ const mongoose = require('mongoose');
 
 const propertySchema = new mongoose.Schema({
   
+  streetAddress: {
+    type: String,
+    trim: true
+  },
+  addressLine2: {
+    type: String,
+    trim: true
+  },
+  city: {
+    type: String,
+    trim: true
+  },
+  state: {
+    type: String,
+    trim: true
+  },
+  county: {
+    type: String,
+    trim: true
+  },
   zipCode: {
     type: String,
     trim: true
@@ -68,7 +88,11 @@ const loanDetailSchema = new mongoose.Schema({
     enum: [
       'Purchase',
       'Refinance',
-      'Construction'
+      'Cash-Out Refinance',
+      'Construction',
+      'Home Improvement',
+      'HELOC',
+      'Reverse Mortgage'
     ],
     required: true
   },
@@ -774,7 +798,8 @@ const loanSchema = new mongoose.Schema({
       'Closed',
       'Funded',
       'Declined',
-      'Withdrawn'
+      'Withdrawn',
+      'Closed-Incomplete'   // MCR AC060 — loan file closed without action
     ],
     default: 'Application Started'
   },
@@ -996,6 +1021,71 @@ const loanSchema = new mongoose.Schema({
       max: 100
     }
   },
+  // ===== MCR CLASSIFICATION FIELDS =====
+
+  // Source of Business / Channel (RMLA Section II: I210–I240)
+  leadSource: {
+    type: String,
+    enum: ['Retail', 'Wholesale-Brokered', 'Correspondent', 'Table-Funded', 'Other'],
+    default: 'Retail'
+  },
+
+  // Documentation Type (RMLA Section II: I270)
+  docType: {
+    type: String,
+    enum: ['Full Doc', 'Alt/Reduced Doc', 'Bank Statement', 'DSCR', 'Stated'],
+    default: 'Full Doc'
+  },
+
+  // Interest Only (RMLA Section II: I280)
+  interestOnlyFlag: {
+    type: Boolean,
+    default: false
+  },
+
+  // HOEPA (AC400 — Home Ownership and Equity Protection Act)
+  hoeparFlag: {
+    type: Boolean,
+    default: false
+  },
+
+  // QM Status (AC920–AC940 — Qualified Mortgage Classification)
+  qmStatus: {
+    type: String,
+    enum: ['QM-Safe Harbor', 'QM-Rebuttable Presumption', 'Non-QM', 'Not Subject to QM', 'Exempt'],
+    default: 'QM-Safe Harbor'
+  },
+
+  // Reverse Mortgage flag (AC700–AC890)
+  isReverseMortgage: {
+    type: Boolean,
+    default: false
+  },
+
+  // Prepayment Penalty flag (RMLA Section II: I300–I309)
+  hasPrepaymentPenalty: {
+    type: Boolean,
+    default: false
+  },
+
+  // Piggyback Second flag (RMLA Section II: I340–I349)
+  isPiggybackSecond: {
+    type: Boolean,
+    default: false
+  },
+
+  // Mortgage Insurance flag (RMLA Section II: I330–I339)
+  hasMortgageInsurance: {
+    type: Boolean,
+    default: false
+  },
+
+  // Exclude from MCR — per ARIVE screenshot, allows excluding specific loans
+  excludeFromMCR: {
+    type: Boolean,
+    default: false
+  },
+
   isActive: {
     type: Boolean,
     default: true
@@ -1020,6 +1110,143 @@ const loanSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// ===== MCR STATUS HISTORY TRACKING =====
+// Track the original status for change detection
+loanSchema.post('init', function(doc) {
+  doc._original_status = doc.status;
+});
+
+// ===== MCR AUTO-FILL: Derive classification flags from existing loan data =====
+loanSchema.pre('save', async function(next) {
+  try {
+    const loanType = this.loanDetails?.loanType;
+    const ltv = this.financialCalculations?.ltv || 0;
+    const mortgageInsCalc = this.loanCalculations?.mortgageInsurance || 0;
+
+    // Auto-derive isReverseMortgage from loanDetails.loanType
+    if (loanType === 'Reverse Mortgage' && !this.isReverseMortgage) {
+      this.isReverseMortgage = true;
+    }
+
+    // Auto-derive hasMortgageInsurance from LTV > 80 or MI calc > 0
+    // (FHA/VA always have MI, checked below via program lookup)
+    if (!this.isModified('hasMortgageInsurance')) {
+      if (mortgageInsCalc > 0 || ltv > 80) {
+        this.hasMortgageInsurance = true;
+      }
+    }
+
+    // Auto-derive qmStatus heuristics (only if still default and not manually changed)
+    if (!this.isModified('qmStatus') && this.qmStatus === 'QM-Safe Harbor') {
+      if (this.docType === 'Bank Statement' || this.docType === 'DSCR') {
+        this.qmStatus = 'Non-QM';
+      }
+      // FHA/VA loans are QM-Exempt — check via program lookup
+      if (this.loanParameters?.selectedProgramId) {
+        try {
+          const LoanProgram = mongoose.model('LoanProgram');
+          const program = await LoanProgram.findById(this.loanParameters.selectedProgramId).lean();
+          if (program) {
+            const pType = (program.programType || '').toLowerCase();
+            if (pType === 'fha' || pType === 'va' || pType === 'usda') {
+              this.qmStatus = 'Exempt';
+              // FHA always has MI
+              if (pType === 'fha') this.hasMortgageInsurance = true;
+            }
+          }
+        } catch (e) { /* program lookup failed — skip */ }
+      }
+    }
+  } catch (err) {
+    console.error('MCR auto-fill hook error:', err.message);
+  }
+  next();
+});
+
+// Pre-save hook: Record status changes in LoanStatusHistory & auto-populate audit dates
+loanSchema.pre('save', async function(next) {
+  if (this.isModified('status') && !this.isNew) {
+    try {
+      const LoanStatusHistory = mongoose.model('LoanStatusHistory');
+      const historyEntry = {
+        loan: this._id,
+        previousStatus: this._original_status || null,
+        newStatus: this.status,
+        changedBy: this._changedBy || null,
+        changeReason: this._changeReason || null
+      };
+      
+      // Attach adverse action data if present (for Withdrawn/Declined status changes)
+      if (this._adverseAction) {
+        historyEntry.adverseAction = this._adverseAction;
+      }
+      
+      await LoanStatusHistory.create(historyEntry);
+
+      // Auto-populate audit dates on LoanCompensation
+      const LoanCompensation = mongoose.model('LoanCompensation');
+      const dateMap = {
+        'Application Submitted': 'applicationDate',
+        'Conditional Approval': 'approvalDate',
+        'Clear to Close': 'clearToCloseDate',
+        'Declined': 'denialDate',
+        'Withdrawn': 'withdrawnDate',
+        'Closed-Incomplete': 'closedIncompleteDate',
+        'Closed': 'closingDate',
+        'Funded': 'fundedDate'
+      };
+      const dateField = dateMap[this.status];
+      if (dateField) {
+        // Use save() instead of findOneAndUpdate so the pre-save auto-fill hook runs
+        let comp = await LoanCompensation.findOne({ loan: this._id });
+        if (!comp) {
+          comp = new LoanCompensation({ loan: this._id });
+        }
+        if (!comp[dateField]) {
+          comp[dateField] = new Date();
+        }
+        await comp.save(); // triggers auto-derive for noteDate, firstPaymentDate etc.
+      }
+    } catch (err) {
+      console.error('MCR status history hook error:', err.message);
+      // Don't block the save — log and continue
+    }
+  }
+  next();
+});
+
+// Post-save hook: Auto-create LoanCompensation record for new loans
+loanSchema.post('save', async function(doc) {
+  if (doc._wasNew) {
+    try {
+      const LoanCompensation = mongoose.model('LoanCompensation');
+      let comp = await LoanCompensation.findOne({ loan: doc._id });
+      if (!comp) {
+        comp = new LoanCompensation({ loan: doc._id });
+        await comp.save(); // triggers LoanCompensation pre-save auto-fill
+      }
+
+      // Also create initial status history entry
+      const LoanStatusHistory = mongoose.model('LoanStatusHistory');
+      await LoanStatusHistory.create({
+        loan: doc._id,
+        previousStatus: null,
+        newStatus: doc.status,
+        changedBy: doc._changedBy || null,
+        changeReason: 'Loan created'
+      });
+    } catch (err) {
+      console.error('MCR post-save hook error:', err.message);
+    }
+  }
+});
+
+// Track isNew flag before save (post-save can't access isNew)
+loanSchema.pre('save', function(next) {
+  this._wasNew = this.isNew;
+  next();
 });
 
 // Generate unique loan number with format yyyymmdd + 3-digit sequence
@@ -1065,5 +1292,9 @@ loanSchema.index({ borrower: 1 });
 loanSchema.index({ lender: 1, status: 1 });
 loanSchema.index({ status: 1 });
 loanSchema.index({ createdAt: -1 });
+// MCR indexes
+loanSchema.index({ excludeFromMCR: 1, status: 1 });
+loanSchema.index({ 'property.state': 1, status: 1 });
+loanSchema.index({ leadSource: 1 });
 
 module.exports = mongoose.model('Loan', loanSchema);

@@ -19,7 +19,16 @@ import {
   Files, // instead of FileStack
   Trophy, // or Flag if you prefer
   FileSpreadsheet, // For Application tab icon
+  LayoutDashboard, // For Loan Hub tab
+  CalendarClock, // For Audit & Dates tab
+  DollarSign, // For Funding / Revenue tab
+  ShieldCheck, // For MCR Data Audit tab
 } from "lucide-react";
+// MCR Tab Components
+import LoanCenterTab from "../../../components/lender/loans/mcr/LoanCenterTab";
+import AuditDatesTab from "../../../components/lender/loans/mcr/AuditDatesTab";
+import FundingRevenueTab from "../../../components/lender/loans/mcr/FundingRevenueTab";
+import MCRDataAuditTab from "../../../components/lender/loans/mcr/MCRDataAuditTab";
 // Form components for editing
 import PersonalDetails from "../../../components/forms/borrower/PersonalDetails";
 import ResidenceHistory from "../../../components/forms/borrower/ResidenceHistory";
@@ -2219,12 +2228,17 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     setHasUnsavedChanges(true);
   };
 
-  // Modify tabs structure to include Application tab
+  // Modify tabs structure to include Application tab + MCR tabs
   const mainTabs = [
     { id: "dashboard", label: "Loan Dashboard", icon: BarChart2 },
     { id: "documents", label: "Documents", icon: Files },
     { id: "milestones", label: "Milestones", icon: Trophy },
-    { id: "application", label: "Application", icon: FileSpreadsheet }, // New parent tab
+    { id: "application", label: "Application", icon: FileSpreadsheet }, // Parent tab
+    // MCR Tabs (separator handled in VerticalTabNavigation)
+    { id: "loan-hub", label: "Loan Hub", icon: LayoutDashboard, isMCR: true },
+    { id: "audit-dates", label: "Audit & Dates", icon: CalendarClock, isMCR: true },
+    { id: "funding-revenue", label: "Funding / Revenue", icon: DollarSign, isMCR: true },
+    { id: "mcr-audit", label: "MCR Data Audit", icon: ShieldCheck, isMCR: true },
   ];
 
   // Define sub-tabs under Application
@@ -2982,6 +2996,87 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                               userType="lender"
                             />
                           </div>
+
+                          {/* MCR Classification Section - Lender Only */}
+                          <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                            <h4 className="text-md font-medium text-gray-900 mb-1">MCR Classification</h4>
+                            <p className="text-xs text-gray-500 mb-4">These fields determine how this loan is categorized in MCR reports.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {/* Lead Source */}
+                              <div>
+                                <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Lead Source / Channel</label>
+                                <select
+                                  value={loan?.leadSource || ""}
+                                  onChange={(e) => { setLoan(prev => ({ ...prev, leadSource: e.target.value })); setHasUnsavedChanges(true); }}
+                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">— Select —</option>
+                                  <option value="Retail">Retail</option>
+                                  <option value="Wholesale-Brokered">Wholesale / Brokered</option>
+                                  <option value="Correspondent">Correspondent</option>
+                                  <option value="Consumer Direct">Consumer Direct</option>
+                                  <option value="Table-Funded">Table-Funded</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+                              {/* Doc Type */}
+                              <div>
+                                <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Documentation Type</label>
+                                <select
+                                  value={loan?.docType || ""}
+                                  onChange={(e) => { setLoan(prev => ({ ...prev, docType: e.target.value })); setHasUnsavedChanges(true); }}
+                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">— Select —</option>
+                                  <option value="Full Doc">Full Documentation</option>
+                                  <option value="Alt Doc">Alternative Documentation</option>
+                                  <option value="Stated Income">Stated Income</option>
+                                  <option value="No Doc">No Documentation</option>
+                                  <option value="Streamline">Streamline</option>
+                                </select>
+                              </div>
+                              {/* QM Status */}
+                              <div>
+                                <label className="block text-xs uppercase font-medium text-gray-500 mb-1">QM Status</label>
+                                <select
+                                  value={loan?.qmStatus || ""}
+                                  onChange={(e) => { setLoan(prev => ({ ...prev, qmStatus: e.target.value })); setHasUnsavedChanges(true); }}
+                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">— Select —</option>
+                                  <option value="QM-Safe Harbor">QM — Safe Harbor</option>
+                                  <option value="QM-Rebuttable Presumption">QM — Rebuttable Presumption</option>
+                                  <option value="Non-QM">Non-QM</option>
+                                  <option value="Exempt">Exempt from QM</option>
+                                  <option value="Not Subject to QM">Not Subject to QM</option>
+                                </select>
+                              </div>
+                            </div>
+                            {/* Boolean toggles */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+                              {[
+                                { key: "interestOnlyFlag", label: "Interest Only" },
+                                { key: "hoeparFlag", label: "HOEPA Loan" },
+                                { key: "isReverseMortgage", label: "Reverse Mortgage" },
+                                { key: "hasPrepaymentPenalty", label: "Prepayment Penalty" },
+                                { key: "isPiggybackSecond", label: "Piggyback Second" },
+                                { key: "hasMortgageInsurance", label: "Mortgage Insurance" },
+                              ].map(({ key, label }) => (
+                                <label key={key} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={loan?.[key] || false}
+                                    onChange={(e) => {
+                                      setLoan(prev => ({ ...prev, [key]: e.target.checked }));
+                                      setHasUnsavedChanges(true);
+                                    }}
+                                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-gray-700">{label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
                       {/* Borrower Information Tab */}
@@ -3373,6 +3468,47 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                         <>
                           <LoanMilestones loanId={id} />
                         </>
+                      )}
+
+                      {/* ===== MCR TABS ===== */}
+                      {/* Loan Hub Tab */}
+                      {activeTab === "loan-hub" && (
+                        <LoanCenterTab
+                          loan={loan}
+                          setLoan={setLoan}
+                          loanId={id}
+                          documents={documents}
+                          milestones={milestones}
+                          fetchLoanDetails={fetchLoanDetails}
+                        />
+                      )}
+
+                      {/* Audit & Dates Tab */}
+                      {activeTab === "audit-dates" && (
+                        <AuditDatesTab
+                          loanId={id}
+                          loan={loan}
+                          fetchLoanDetails={fetchLoanDetails}
+                        />
+                      )}
+
+                      {/* Funding / Revenue Tab */}
+                      {activeTab === "funding-revenue" && (
+                        <FundingRevenueTab
+                          loanId={id}
+                          loan={loan}
+                        />
+                      )}
+
+                      {/* MCR Data Audit Tab */}
+                      {activeTab === "mcr-audit" && (
+                        <MCRDataAuditTab
+                          loanId={id}
+                          loan={loan}
+                          setLoan={setLoan}
+                          setActiveMainTab={setActiveTab}
+                          fetchLoanDetails={fetchLoanDetails}
+                        />
                       )}
                     </form>
                   </div>

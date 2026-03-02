@@ -1,0 +1,435 @@
+Here is the comprehensive, single-source Master Specification for the NMLS Mortgage Call 
+Report (MCR) module in LoanApp360. It aggregates all context, logic, definitions, UI 
+requirements, and mapping rules into one unified document. 
+MASTER SPECIFICATION: NMLS 
+MORTGAGE CALL REPORT (MCR) 
+MODULE 
+Product: LoanApp360 (Syncly360 CRM) 
+Project: Regulatory Compliance Engine (MCR) 
+Target User: Mortgage Brokers (Primary) & Non-Delegated Correspondents 
+Developer Persona: Backend/Frontend Engineer (No Mortgage Knowledge Required) 
+Objective: Enable users to generate a quarterly or annual NMLS Call Report (Form Version 6) 
+that is legally accurate to a specific historical point in time. 
+PART 1: MORTGAGE 101 FOR DEVELOPERS 
+Context: Before writing code, you must understand the business entities you are counting. 
+1.1 Key Terminology 
+● The "Pipeline": This refers to all loans currently "in progress." They have applied but 
+haven't finished the process. Think of this like a "Shopping Cart" that hasn't checked out 
+yet. 
+● "Closed/Funded": A loan that is finished. The borrower got the money. This is a 
+"Completed Order." 
+● "Lien Position": The priority of the debt. 
+○ 1st Lien: The primary mortgage. If the house is sold, this gets paid first. 
+○ 2nd Lien (Subordinate): A smaller loan (like a HELOC) behind the first one. 
+● "Points" vs. "Fees": 
+○ Origination Fee: A service charge the broker charges to do the work. 
+○ Discount Points: A fee the borrower pays to "buy down" their interest rate to a lower 
+%. 
+1.2 The "Snapshot" Problem (Time-Travel Logic) 
+● The Critical Challenge: Regulatory reports are based on Historical Status, not current 
+status. 
+● The Scenario: A loan is "Funded" today (e.g., April 15). However, if the user runs a report 
+for Q1 (Jan 1 – Mar 31), the loan had not funded as of March 31. 
+● The Rule: In the Q1 report, this loan must appear as "Processing" (Pipeline), NOT 
+"Funded." 
+● The Requirement: You cannot query the live current_status column in the database. You 
+must query the LoanStatusHistory log. 
+● Query Logic: "Select the status of Loan ID #X as of [Report End Date] 23:59:59." 
+PART 2: CORE ARCHITECTURE & LOGIC 
+2.1 Reporting Periods (Dynamic Variables) 
+The system must accept dynamic [Start Date] and [End Date] variables for queries. 
+● Q1: Jan 1 – Mar 31 
+● Q2: Apr 1 – Jun 30 
+● Q3: Jul 1 – Sep 30 
+● Q4: Oct 1 – Dec 31 
+● Annual (Fiscal Year): Jan 1 – Dec 31 
+PART 3: UI/UX IMPLEMENTATION GUIDE 
+3.1 Main Dashboard (Blue Menu) 
+● Location: Main blue sidebar (Left Navigation). 
+● Action: Add a module labeled "MCR Reports". 
+● Icon: Chart/Graph. 
+● Functionality: 
+○ User clicks "Generate New Report." 
+○ Modal Input: User selects Year (e.g., 2026) and Period (Q1, Q2, Q3, Q4, or Full Year). 
+○ Output: Renders the report grid in a 5-tab layout: 
+1. Application Data 
+2. Closed Loan Data 
+3. Revenue Data 
+4. MLO Data 
+5. RMLA Section II 
+3.2 The "Compensation / Revenue" Tab (CRITICAL - NEW BUILD) 
+● Context: This tab does not exist yet. You must build it. It is the "Source of Truth" for all 
+financial data in the report. 
+● Location: In the In-Loan View (White Menu), strictly at the very bottom, beneath 
+"Additional Information". 
+● Visual Reference: Modeled after the layouts provided in the design videos. 
+Required Fields to Create in Database & UI: 
+Field Label Data Type Developer Definition & 
+Mapping 
+Origination Fee Currency Money the borrower pays 
+the broker for services. 
+(Maps to AC600 / FS010). 
+Discount Points Currency Money paid to lower the 
+interest rate. (Maps to 
+FS040). 
+Processing / 
+Underwriting 
+Currency Admin/Junk fees charged 
+to the borrower. (Adds to 
+FS010). 
+SRP Amount Currency "Service Release Premium." 
+Backend profit from selling 
+loan rights. (Maps to 
+FS020). 
+YSP / Premium Currency "Yield Spread Premium." 
+Profit paid by the lender for 
+the rate. (Maps to FS030). 
+Lien Position Dropdown Options: 1st, 2nd, Other. 
+Critical for sorting loans 
+(Maps to AC500/AC660). 
+Amortization Type Dropdown Options: Fixed, ARM 
+(Adjustable Rate). Required 
+for RMLA Section II. 
+Rate Lock Date Date Picker Optional/Audit field. 
+Funded Date Date Picker The exact day the money 
+was sent. Auto-fill this 
+when Status changes to 
+"Funded," but allow edits. 
+3.3 Missing Data Fields (Loan Details Tab) 
+● Lead Source / Channel: Add Dropdown with options: [Retail, Referral, Internet, 
+Wholesale]. Required for "Third Party" logic. 
+● Amortization Type: Add Dropdown [Fixed, ARM]. Required for RMLA Section II. 
+PART 4: MASTER DATA MAPPING & LOGIC 
+TAB 1: APPLICATION DATA (RMLA Section I) 
+Goal: Track the pipeline flow (Top of Funnel). 
+Reference: Application Data Tab. 
+Row ID NMLS Line Item Definition Syncly360 Logic, 
+Query & 
+Step-by-Step 
+AC010 Beginning 
+Pipeline 
+Applications in 
+process at start of 
+period. 
+Query: App Date < 
+[Start Date] AND 
+Status was NOT 
+Final 
+(Funded/Denied/Wi
+thdrawn) as of 
+[Start Date]. 
+ 
+Step-by-Step: 
+ 
+1. Find loans 
+created before the 
+quarter started. 
+ 
+2. Check status 
+history log as of 
+[Start Date]. 
+ 
+3. Keep if status 
+was 
+Processing/Underw
+riting/Approved. 
+AC020 Apps Received New applications 
+received during 
+period. 
+Query: App Date is 
+between [Start 
+Date] and [End 
+Date]. 
+ 
+Step-by-Step: 
+Look at Application 
+Date field in Loan 
+Details. 
+AC030 Approved Not 
+Accepted 
+Approved but 
+applicant failed to 
+respond/close. 
+Query: Reached 
+"Approved" 
+Milestone in Qtr, 
+but did NOT 
+Fund/Close. 
+ 
+Step-by-Step: 
+ 
+1. Check Milestones 
+tab. 
+ 
+2. Identify loans 
+that hit "Approved" 
+during the quarter. 
+ 
+3. Verify they did 
+NOT reach 
+"Funded" or 
+"Closed" by quarter 
+end. 
+AC040 Apps Denied Applications denied 
+during period. 
+Query: Status 
+changed to 
+"Denied" during 
+Qtr. 
+ 
+Step-by-Step: 
+Check Loan Status 
+history log. 
+AC050 Apps Withdrawn Withdrawn by 
+applicant before 
+decision. 
+Query: Status 
+changed to 
+"Withdrawn" during 
+Qtr. 
+ 
+Step-by-Step: 
+Check Loan Status 
+history log. 
+AC060 Closed 
+Incomplete 
+Closed for 
+incompleteness 
+(Reg B). 
+Query: Status 
+changed to 
+"Closed-Incomplet
+e" during Qtr. 
+AC065 Net Amount 
+Change 
+Change in loan 
+amount during Qtr. 
+Math: (Final Loan 
+Amount - Initial 
+Requested Amount) 
+for active loans. 
+ 
+Step-by-Step: 
+ 
+1. Get Requested 
+Loan Amount from 
+Loan Application 
+Details. 
+ 
+2. Get final Loan 
+Amount from Loan 
+Details. 
+ 
+3. Subtract 
+Requested from 
+Final. 
+AC063 Net Count Change Adjustment for 
+split/merged loans. 
+Default: 0 (unless 
+split loan feature 
+exists). 
+AC066 Total Pipeline Formula: AC010 + 
+AC020 - 
+(AC030+AC040+A
+C050+AC060) +/- 
+AC065. 
+ 
+AC070 Closed & Funded Loans originated in 
+this period. 
+Query: Status 
+changed to 
+"Funded" during 
+Qtr. 
+ 
+Critical Source: 
+Use "Funded 
+Date" in the new 
+Revenue Tab, NOT 
+the App Date. 
+AC080 Ending Pipeline Apps in process at 
+end of period. 
+Query: Status is 
+"Active" 
+(Processing/Under
+writing) as of [End 
+Date]. 
+ 
+Step-by-Step: 
+ 
+1. Find all loans 
+created on/before 
+[End Date]. 
+ 
+2. Check status 
+history as of [End 
+Date]. 
+ 
+3. Keep if active; 
+discard if Final. 
+AC090 Total Results Checksum. Formula: AC070 + 
+AC080 (Must equal 
+AC066). 
+TAB 2: CLOSED LOAN DATA 
+Goal: Detailed breakdown of loans funded in AC070. 
+Context: This report section asks: "Did you find this customer (Direct), or did another broker 
+send them (Third Party)?" 
+Step 1: The "Direct" vs. "Third Party" Columns 
+User Type Column A: 
+Directly Received 
+(Retail) 
+Column B: Third 
+Party (Wholesale) 
+Developer Action 
+Standard Broker 100% of Loans 0% (Empty) Default Logic: 
+Map 100% of loans 
+here. Brokers are 
+Retail. 
+Non-Del Lender Most Loans Rare Conditional Logic: 
+ONLY map to "Third 
+Party" if the user 
+selected 
+"Wholesale" in the 
+Lead Source 
+dropdown. 
+Step 2: Field Mapping Rows 
+Row ID NMLS Line Item Syncly360 Logic & 
+Source 
+AC100 Conventional Program = Conventional. 
+AC110 FHA-Insured Program = FHA. 
+AC120 VA-Guaranteed Program = VA. 
+AC130 FSA/RHS Program = USDA/RHS. 
+AC190 Total Loan Type Formula: Sum AC100 + 
+AC110 + AC120 + AC130. 
+AC200 1-4 Family Property Type = Single 
+Family, Condo, Townhouse, 
+2-4 Unit. 
+AC210 Manufactured Property Type = 
+Manufactured/Mobile 
+Home. 
+AC290 Total Property Type Formula: Sum AC200 + 
+AC210. (Must match 
+AC190). 
+AC300 Purchase Purpose = Purchase. 
+AC310 Home Improvement Purpose = Home 
+Improvement. 
+AC320 Refinancing Purpose = Refinance 
+(Rate/Term & Cash-Out). 
+AC390 Total Purpose Formula: Sum AC300 + 
+AC310 + AC320. (Must 
+match AC190). 
+AC400 HOEPA HOEPA Flag = Yes. 
+AC500 First Lien Source: Revenue Tab > 
+Lien Position = 1st. 
+AC510 Subordinate Lien Source: Revenue Tab > 
+Lien Position = 2nd. 
+AC590 Total Lien Status Formula: Sum AC500 + 
+AC510. (Must match 
+AC190). 
+AC600 Broker Fees Source: Revenue Tab > 
+Sum(Origination + 
+Processing). 
+AC900 Brokered Loans Count of all Funded Loans 
+(Default for Brokers). 
+AC910 Funded Loans Count of loans where User 
+= Lender (Correspondent). 
+AC920 QM Loans QM Status = Qualified. 
+AC930 Non-QM Loans QM Status = Non-Qualified. 
+AC940 Not Subject to QM Occupancy = Investment. 
+AC990 Total Closed Loans Formula: Sum AC920 + 
+AC930 + AC940. 
+TAB 3: REVENUE DATA (Financial Condition) 
+Goal: Calculate Gross Revenue accurately. 
+Step-by-Step Logic: 
+1. Find all loans that are Funded in the selected quarter. 
+2. Go to the Compensation / Revenue Tab for each loan. 
+3. Sum the fields below. 
+Row ID Field Name Formula / Source 
+FS010 Origination Fees Origination Fee + 
+Processing/Underwriting. 
+FS020 SRP SRP Amount. 
+FS030 YSP YSP / Premium. 
+FS040 Discount Points Discount Points. 
+AC1100 Gross Revenue Formula: FS010 + FS020 + 
+FS030 + FS040. 
+TAB 4: MLO DATA (Attribution) 
+Goal: Attribution of volume to Loan Officers. 
+Row ID Field Name Syncly360 Logic 
+ACMLO1 [LO Name] Step-by-Step: 
+ 
+1. Group funded loans by 
+Loan Officer Name (from 
+Loan Dashboard). 
+ 
+2. Sum: Total Loan Amount 
+for that officer. 
+ 
+3. Count: Total number of 
+loans for that officer. 
+Validation Total Volume Sum of all MLO rows MUST 
+equal AC070 (Total Closed 
+Loans). 
+Note Splits If "Split Loans" feature 
+exists, allocate volume by 
+%. If not, assign 100% to 
+primary LO. 
+TAB 5: RMLA SECTION II (Risk Characteristics) 
+Goal: Detailed product breakdown (Risk analysis). 
+Row ID Field Name Syncly360 Logic & 
+Mapping 
+1010-1020 Gov Fixed/ARM Program (FHA/VA) + 
+Amortization Type 
+(Fixed/ARM). 
+1030-1040 Conv Fixed/ARM Program (Conv) + 
+Amortization + Loan Amt <= 
+Limit. 
+1050-1060 Jumbo Fixed/ARM Program (Conv) + 
+Amortization + Loan Amt > 
+Limit. 
+1210 Retail Channel All loans originated directly 
+(Standard). 
+1270 Alt Doc Doc Type = Bank Statement 
+/ DSCR / Stated. 
+1280 Interest Only IO Flag = Yes. 
+1370-1375 LTV Buckets Logic: Group Funded 
+Loans by LTV %. 
+ 
+Source: Loan Qualification 
+Scenario widget > "LTV" 
+field. 
+ 
+(0-60%, 60.01-70%, 
+70.01-80%, etc.) 
+1380 Weighted Avg LTV Formula: Sum(Loan Amount 
+* LTV) / Total Volume. 
+PART 5: ADVANCED LOGIC & DEFINITIONS 
+5.1 Logic: Amount, Count, Average 
+For every row in the report, calculate these three values: 
+1. Amount ($): SUM(Loan Amount) for all matching loans. 
+2. Count (#): COUNT(Unique Loan IDs) for all matching loans. 
+3. Average ($): Amount / Count. 
+○ Validation: If Count is 0, display 0 (prevent divide-by-zero errors). 
+5.2 NMLS Definitions (Glossary) 
+● Application: Oral or written request for extension of credit. 
+● Closed: Loans that have funded and have legally binding agreements. 
+● Broker Fee: Any fee collected in conjunction with brokering a loan (Origination, 
+Processing). 
+● Lender Fee: Fees collected for closing/funding (Admin, Underwriting). 
+PART 6: VALIDATION & QA CHECKLIST 
+Before releasing the module, run these mandatory checks: 
+1. Pipeline Balance Check: 
+○ Formula: (Start Pipeline) + (Received) - (Closed + Denied + Withdrawn) = (End 
+Pipeline) 
+○ Verification: Does AC066 (Calculated Pipeline Total) exactly match AC090 (Pipeline 
+Results)? 
+2. Closed Loan Vertical Check: 
+○ Verification: Does AC070 (Total Closed Count) match the total count in AC190 (Total 
+by Type)? 
+○ Verification: Does AC070 match AC290 (Total by Property)? 
+○ Verification: Does AC070 match AC390 (Total by Purpose)? 
+○ Verification: Does AC070 match AC590 (Total by Lien)? 
+3. Revenue Zero-Sum Check: 
+○ Verification: Does the sum of all MLO Volume (Tab 4) equal the Company Total (Tab 2, 
+AC070)? 
+4. Status History Check: 
+○ Test: Find a loan funded after the quarter end date. 
+○ Verification: Ensure it appears as "Active/Processing" in the report, NOT "Funded." 
