@@ -51,7 +51,10 @@ const loanRateService = {
       
       return await api.get(`/loan-rates/${type}`, { params });
     } catch (error) {
-      throw handleApiError(error);
+      const err = handleApiError(error);
+      // Missing rate for a type is not fatal; allow caller to fall back
+      console.warn('LoanRateService.getRateByType failed, falling back to defaults:', err.message);
+      return null;
     }
   },
 

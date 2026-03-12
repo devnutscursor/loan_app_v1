@@ -11,6 +11,8 @@ const DocumentRequirementCard = ({
   isSelectable = false,
   isSelected = false,
   onSelectToggle = null,
+  onDelete = null,
+  conditionId = null,
 }) => {
   // useEffect(() => {
   //   console.log("DocumentRequirementCard updated");
@@ -24,6 +26,8 @@ const DocumentRequirementCard = ({
 
   // State to track when the document viewer should be shown
   const [viewingDocument, setViewingDocument] = useState(null);
+  // State for delete confirmation dialog
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Enhanced handler for document download
   const handleDownload = (docToDownload) => {
@@ -73,7 +77,7 @@ const DocumentRequirementCard = ({
           ? '4px solid #eab308' // Yellow border for submitted/needs correction
           : 'none'
       }}
-      
+      className="group"
     >
       <div className="flex items-start space-x-3" >
         {isSelectable && !req.isSubmitted && (
@@ -163,7 +167,7 @@ const DocumentRequirementCard = ({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center min-w-0">
+            <div className="flex items-center min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-900 truncate mr-2">
                 {req.title}
               </p>
@@ -171,6 +175,25 @@ const DocumentRequirementCard = ({
                 <p className="hidden sm:inline-block text-xs text-gray-500">
                   ({formatDate(req.uploadDate)})
                 </p>
+              )}
+              {/* Delete button - right of title, visible on hover, for all documents */}
+              {onDelete && (
+                <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                    title="Remove document requirement"
+                    aria-label="Remove document requirement"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </span>
               )}
             </div>
             <div className="ml-1 flex-shrink-0">
@@ -484,6 +507,44 @@ const DocumentRequirementCard = ({
           )}
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-gray-500/75 transition-opacity"
+              onClick={() => setShowDeleteConfirm(false)}
+              aria-hidden="true"
+            />
+            <div className="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-5 text-left">
+              <h3 className="text-base font-semibold text-gray-900">Remove document requirement?</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                This will remove the requirement from the list. This action cannot be undone for saved requirements.
+              </p>
+              <div className="mt-5 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    onDelete(conditionId || req.id);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Document Viewer Modal */}
       {viewingDocument && (

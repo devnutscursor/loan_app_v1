@@ -49,6 +49,40 @@ function mapGender(xmlGender) {
   return mapping[xmlGender] || 'I do not wish to provide this information';
 }
 
+/**
+ * When loan status changes to certain values, auto-fill the corresponding
+ * date on LoanCompensation (only if not already set).
+ * Used when status is updated via findByIdAndUpdate/findOneAndUpdate (no save hooks).
+ * Same mapping as in loan.model.js pre-save hook.
+ */
+async function applyStatusDateToCompensation(loanId, newStatus) {
+  const dateMap = {
+    'Application Submitted': 'applicationDate',
+    'Conditional Approval': 'approvalDate',
+    'Clear to Close': 'clearToCloseDate',
+    'Declined': 'denialDate',
+    'Withdrawn': 'withdrawnDate',
+    'Closed-Incomplete': 'closedIncompleteDate',
+    'Closed': 'closingDate',
+    'Funded': 'fundedDate'
+  };
+  const dateField = dateMap[newStatus];
+  if (!dateField) return;
+  try {
+    let comp = await LoanCompensation.findOne({ loan: loanId });
+    if (!comp) {
+      comp = new LoanCompensation({ loan: loanId });
+    }
+    if (!comp[dateField]) {
+      comp[dateField] = new Date();
+      await comp.save();
+      logger.info(`Auto-filled ${dateField} for loan ${loanId} (status: ${newStatus})`);
+    }
+  } catch (err) {
+    logger.warn(`Failed to auto-fill compensation date for loan ${loanId}: ${err.message}`);
+  }
+}
+
 function mapMaritalStatus(xmlMaritalStatus) {
   const mapping = {
       'Married': 'Married',
@@ -1148,6 +1182,11 @@ exports.updateLoan = async (req, res, next) => {
         runValidators: true,
       });
 
+      // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
+      if (updateData.status !== undefined && updateData.status !== loan.status) {
+        await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+      }
+
       console.log("[DEBUG] Updated loan parameters:", updatedLoan.loanParameters);
 
       // Log the update
@@ -1280,6 +1319,11 @@ exports.updateLoanByNumber = async (req, res, next) => {
         }
       );
 
+      // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
+      if (updateData.status !== undefined && updateData.status !== loan.status) {
+        await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+      }
+
       // Log the update
       logger.info(
         `Loan ${updatedLoan.loanNumber} updated by ${req.user.role} ${req.user._id}`
@@ -1382,16 +1426,18 @@ exports.updateLoanStatus = async (req, res, next) => {
     loan._changeReason = req.body.changeReason || 'Status updated by lender';
     const updatedLoan = await loan.save();
 
-    // Auto-create LoanCompensation record when loan is funded
+    // Auto-create LoanCompensation record when loan is funded or closed (hook already sets date; this ensures record exists)
     if (status === 'Funded' || status === 'Closed') {
       try {
         const existingComp = await LoanCompensation.findOne({ loan: updatedLoan._id });
         if (!existingComp) {
-          await LoanCompensation.create({
+          const compData = {
             loan: updatedLoan._id,
-            fundedDate: new Date(),
-            loanAmount: updatedLoan.loanAmount || 0,
-          });
+            loanAmount: updatedLoan.loanDetails?.loanAmount || updatedLoan.loanAmount || 0,
+          };
+          if (status === 'Closed') compData.closingDate = new Date();
+          if (status === 'Funded') compData.fundedDate = new Date();
+          await LoanCompensation.create(compData);
           logger.info(`Auto-created LoanCompensation for loan ${updatedLoan.loanNumber} on status change to ${status}`);
         }
       } catch (compError) {
@@ -1504,6 +1550,44 @@ exports.updateMilestone = async (req, res, next) => {
       status: "success",
       message: `Milestone ${milestoneId ? "updated" : "added"} successfully`,
       data: loan.milestones,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get conditions for a loan
+ */
+exports.getLoanConditions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const loan = await Loan.findById(id).select('conditions borrower coBorrowers').lean();
+
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    if (req.user.role === "borrower") {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      if (!borrower) {
+        return next(new ApiError("Borrower profile not found", 404));
+      }
+      const isPrimary = loan.borrower && loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers && loan.coBorrowers.some(
+        (c) => c.toString() === borrower._id.toString()
+      );
+      if (!isPrimary && !isCoBorrower) {
+        return next(new ApiError("You are not authorized to view this loan's conditions", 403));
+      }
+    }
+
+    const conditions = loan.conditions || [];
+    res.status(200).json({
+      status: "success",
+      count: conditions.length,
+      data: conditions,
     });
   } catch (error) {
     next(error);
@@ -3072,16 +3156,18 @@ exports.updateLoanStatus = async (req, res, next) => {
     
     await loan.save();
 
-    // Auto-create LoanCompensation record when loan reaches Closed status
-    if (backendStatus === 'Closed') {
+    // Auto-create LoanCompensation when loan reaches Closed or Funded (hook already sets date; this ensures record exists)
+    if (backendStatus === 'Closed' || backendStatus === 'Funded') {
       try {
         const existingComp = await LoanCompensation.findOne({ loan: loan._id });
         if (!existingComp) {
-          await LoanCompensation.create({
+          const compData = {
             loan: loan._id,
-            fundedDate: new Date(),
-            loanAmount: loan.loanAmount || 0,
-          });
+            loanAmount: loan.loanDetails?.loanAmount || loan.loanAmount || 0,
+          };
+          if (backendStatus === 'Closed') compData.closingDate = new Date();
+          if (backendStatus === 'Funded') compData.fundedDate = new Date();
+          await LoanCompensation.create(compData);
           logger.info(`Auto-created LoanCompensation for loan ${loan.loanNumber} on status change to ${backendStatus}`);
         }
       } catch (compError) {

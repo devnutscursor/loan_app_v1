@@ -142,6 +142,7 @@ export const lenderService = {
       return { success: false, message: error.message || 'Failed to fetch loan conditions' };
     }
   },
+  removeCondition: (loanId, conditionId) => api.delete(`/loans/${loanId}/conditions/${conditionId}`),
   // Loans
   getLoans: (params) => api.get('/loans', { params: { ...params, all: 'true' } }),
   getLoan: (id) => api.get(`/loans/${id}`),

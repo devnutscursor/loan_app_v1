@@ -92,7 +92,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
       
       const response = await companyService.createLender(user.company, lenderData);
       
-      toast.success(`Lender ${formData.firstName} ${formData.lastName} created successfully!`);
+      toast.success(`Loan officer ${formData.firstName} ${formData.lastName} created successfully!`);
       
       // Reset form
       setFormData({
@@ -119,7 +119,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error('Failed to create lender. Please try again.');
+        toast.error('Failed to create loan officer. Please try again.');
       }
       
       if (error.response?.status === 400 && error.response?.data?.message?.includes('email')) {
@@ -136,7 +136,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-lg mx-2">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Add New Lender</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Add New Loan Officer</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -390,7 +390,7 @@ const NewLenderModal = ({ isOpen, onClose, onSuccess, user }) => {
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Lender'}
+              {loading ? 'Creating...' : 'Create Loan Officer'}
             </button>
           </div>
         </form>

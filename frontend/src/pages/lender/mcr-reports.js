@@ -640,24 +640,6 @@ const MCRReports = () => {
                 <ChevronLeft className="h-4 w-4" /> Back to Reports
               </button>
             )}
-            {!activeReport && (
-              <>
-                <button
-                  onClick={() => setShowStateConfig(true)}
-                  className="flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                >
-                  <Settings className="h-4 w-4 mr-1.5" />
-                  State Config
-                </button>
-                <button
-                  onClick={() => router.push("/lender/mcr-reports/financial-condition")}
-                  className="flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                >
-                  <Calculator className="h-4 w-4 mr-1.5" />
-                  Financial Condition
-                </button>
-              </>
-            )}
           </div>
         </div>
 

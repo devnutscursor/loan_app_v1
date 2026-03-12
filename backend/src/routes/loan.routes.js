@@ -31,6 +31,9 @@ router.get('/:id', authorize('lender', 'company', 'admin'), loanController.getLo
 // Get a loan with all details (documents, milestones) in a single request
 router.get('/:id/with-details', authorize('lender', 'company', 'admin'), loanController.getLoanWithDetails);
 
+// Get conditions for a loan
+router.get('/:id/conditions', authorize('lender', 'company', 'admin', 'borrower'), loanController.getLoanConditions);
+
 // Update loan details
 router.put('/:id', authorize('lender','company', 'admin'), loanController.updateLoan);
 

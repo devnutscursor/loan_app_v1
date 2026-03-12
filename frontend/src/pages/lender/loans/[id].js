@@ -19,13 +19,11 @@ import {
   Files, // instead of FileStack
   Trophy, // or Flag if you prefer
   FileSpreadsheet, // For Application tab icon
-  LayoutDashboard, // For Loan Hub tab
   CalendarClock, // For Audit & Dates tab
   DollarSign, // For Funding / Revenue tab
   ShieldCheck, // For MCR Data Audit tab
 } from "lucide-react";
 // MCR Tab Components
-import LoanCenterTab from "../../../components/lender/loans/mcr/LoanCenterTab";
 import AuditDatesTab from "../../../components/lender/loans/mcr/AuditDatesTab";
 import FundingRevenueTab from "../../../components/lender/loans/mcr/FundingRevenueTab";
 import MCRDataAuditTab from "../../../components/lender/loans/mcr/MCRDataAuditTab";
@@ -2235,7 +2233,6 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     { id: "milestones", label: "Milestones", icon: Trophy },
     { id: "application", label: "Application", icon: FileSpreadsheet }, // Parent tab
     // MCR Tabs (separator handled in VerticalTabNavigation)
-    { id: "loan-hub", label: "Loan Hub", icon: LayoutDashboard, isMCR: true },
     { id: "audit-dates", label: "Audit & Dates", icon: CalendarClock, isMCR: true },
     { id: "funding-revenue", label: "Funding / Revenue", icon: DollarSign, isMCR: true },
     { id: "mcr-audit", label: "MCR Data Audit", icon: ShieldCheck, isMCR: true },
@@ -3471,18 +3468,6 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       )}
 
                       {/* ===== MCR TABS ===== */}
-                      {/* Loan Hub Tab */}
-                      {activeTab === "loan-hub" && (
-                        <LoanCenterTab
-                          loan={loan}
-                          setLoan={setLoan}
-                          loanId={id}
-                          documents={documents}
-                          milestones={milestones}
-                          fetchLoanDetails={fetchLoanDetails}
-                        />
-                      )}
-
                       {/* Audit & Dates Tab */}
                       {activeTab === "audit-dates" && (
                         <AuditDatesTab
