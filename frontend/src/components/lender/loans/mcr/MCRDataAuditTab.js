@@ -116,8 +116,8 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
     }
 
     // MCR classification — after sync these will have defaults, so only warn if still missing
-    if (!l?.leadSource) {
-      warnings.push({ field: "Classification", message: "Lead source is not specified", severity: "warning" });
+    if (!l?.fundingMethod) {
+      warnings.push({ field: "Classification", message: "Funding method is not specified", severity: "warning" });
     }
     if (!l?.docType) {
       warnings.push({ field: "Classification", message: "Documentation type is not specified", severity: "warning" });
@@ -200,7 +200,7 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
       { label: "Loan Amount", value: formatCurrency(l?.loanDetails?.loanAmount || l?.loanDetails?.requestedLoanAmount) },
     ],
     classification: [
-      { label: "Lead Source", value: l?.leadSource || "—" },
+      { label: "Funding Method", value: l?.fundingMethod || "—" },
       { label: "Doc Type", value: l?.docType || "—" },
       { label: "Interest Only", value: l?.interestOnlyFlag ? "Yes" : "No" },
       { label: "HOEPA Flag", value: l?.hoeparFlag ? "Yes" : "No" },

@@ -180,17 +180,18 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
 
   // Status pipeline (Loan Hub timeline)
   const statusPipeline = [
-    "Pre-Qualification",
-    "Application Started",
-    "Application Submitted",
-    "Processing",
-    "Underwriting",
-    "Conditional Approval",
-    "Clear to Close",
-    "Closed",
-    "Funded",
+    { code: "Pre-Qualification", label: "Pre-Qual" },
+    { code: "Application Started", label: "App Started" },
+    { code: "Application Submitted", label: "App Submitted" },
+    { code: "Processing", label: "Processing" },
+    { code: "Underwriting", label: "Underwriting" },
+    { code: "Conditional Approval", label: "Cond. Approval" },
+    { code: "Approved-Not-Accepted", label: "Appr. Not Accepted" },
+    { code: "Clear to Close", label: "Clear to Close" },
+    { code: "Closed", label: "Closed" },
+    { code: "Funded", label: "Funded" },
   ];
-  const currentStatusIndex = statusPipeline.indexOf(loan?.status);
+  const currentStatusIndex = statusPipeline.findIndex(s => s.code === loan?.status);
   const isTerminalStatus = ["Declined", "Withdrawn", "Closed-Incomplete"].includes(loan?.status);
 
   const formatDate = (dateString) => {
@@ -234,11 +235,11 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
         {!isTerminalStatus && (
           <div className="relative">
             <div className="flex items-center justify-between">
-              {statusPipeline.map((status, index) => {
+              {statusPipeline.map((step, index) => {
                 const isCompleted = index <= currentStatusIndex;
                 const isCurrent = index === currentStatusIndex;
                 return (
-                  <div key={status} className="flex flex-col items-center flex-1">
+                  <div key={step.code} className="flex flex-col items-center flex-1">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                       isCompleted
                         ? "bg-blue-600 text-white"
@@ -249,7 +250,7 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                     <span className={`mt-1 text-[10px] text-center leading-tight ${
                       isCurrent ? "font-bold text-blue-700" : "text-gray-500"
                     }`}>
-                      {status.replace("Application ", "App ").replace("Conditional ", "Cond. ")}
+                      {step.label}
                     </span>
                   </div>
                 );

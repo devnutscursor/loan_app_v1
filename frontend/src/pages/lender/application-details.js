@@ -18,6 +18,12 @@ const LoanApplicationDetailsPage = () => {
   
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDenialModal, setShowDenialModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
+  const [denialReasons, setDenialReasons] = useState([]);
+  const [denialOtherText, setDenialOtherText] = useState('');
+  const [showMissingFieldsModal, setShowMissingFieldsModal] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   
   useEffect(() => {
@@ -40,19 +46,44 @@ const LoanApplicationDetailsPage = () => {
   };
   
   const handleStatusChange = async (newStatus) => {
+    // If moving to Declined, open denial reasons modal first
+    if (newStatus === 'Declined') {
+      setPendingStatus(newStatus);
+      setShowDenialModal(true);
+      return;
+    }
+
+    await submitStatusChange(newStatus);
+  };
+
+  const submitStatusChange = async (newStatus, extraPayload = {}) => {
     try {
-      await lenderService.updateLoanStatus(id, { status: newStatus });
-      
-      // Update loan in state
-      setLoan({
-        ...loan,
-        status: newStatus
-      });
-      
+      const payload = { status: newStatus, ...extraPayload };
+      const res = await lenderService.updateLoanStatus(id, payload);
+
+      const updatedLoan = res?.data?.data || { ...loan, status: newStatus };
+      setLoan(updatedLoan);
+
       toast.success(`Loan status updated to ${newStatus}`);
+      setShowDenialModal(false);
+      setPendingStatus(null);
+      setDenialReasons([]);
+      setDenialOtherText('');
     } catch (error) {
       console.error('Error updating loan status:', error);
-      toast.error('Failed to update loan status');
+
+      // Try to surface backend missingFields (MCR gate failures)
+      const details = error.response?.data?.details || error.response?.data || {};
+      const mf = details.missingFields || [];
+      if (Array.isArray(mf) && mf.length > 0) {
+        setMissingFields(mf);
+        setShowMissingFieldsModal(true);
+        toast.error('Cannot update status until required MCR fields are completed.');
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to update loan status');
+      }
     }
   };
   
@@ -147,6 +178,118 @@ const LoanApplicationDetailsPage = () => {
       <MainLayout title={`Loan Application - ${loan.loanNumber || loan._id.substring(0, 8)}`}>
         <div className="py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Denial Reasons Modal */}
+            {showDenialModal && (
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Select Denial Reasons</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Federal law requires you to specify why this application is being denied.
+                  </p>
+                  <div className="space-y-2 text-sm mb-4">
+                    {['Credit Score too low','Debt-to-income too high','Collateral insufficient','Income not sufficient','Other'].map((label) => {
+                      const value = label === 'Other' ? 'Other' : label;
+                      const checked = denialReasons.includes(value);
+                      return (
+                        <label key={value} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                            checked={checked}
+                            onChange={(e) => {
+                              setDenialReasons((prev) =>
+                                e.target.checked
+                                  ? [...prev, value]
+                                  : prev.filter((r) => r !== value)
+                              );
+                            }}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {denialReasons.includes('Other') && (
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Additional explanation for “Other”
+                      </label>
+                      <textarea
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows={3}
+                        value={denialOtherText}
+                        onChange={(e) => setDenialOtherText(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDenialModal(false);
+                        setPendingStatus(null);
+                      }}
+                      className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!denialReasons.length) {
+                          toast.error('Please select at least one denial reason.');
+                          return;
+                        }
+                        if (denialReasons.includes('Other') && !denialOtherText.trim()) {
+                          toast.error('Please provide an explanation for “Other”.');
+                          return;
+                        }
+                        await submitStatusChange(pendingStatus || 'Declined', {
+                          denialReasons,
+                          denialReasonOtherText: denialOtherText
+                        });
+                      }}
+                      className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Confirm Denial
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Missing MCR Fields Modal */}
+            {showMissingFieldsModal && (
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                    Complete Required MCR Fields
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    This loan cannot be marked as Funded or Closed until the following fields are completed.
+                  </p>
+                  <ul className="text-sm text-gray-800 list-disc pl-5 mb-4 max-h-56 overflow-y-auto">
+                    {missingFields.map((f, idx) => (
+                      <li key={idx}>
+                        {f.label || f.field || 'Missing field'}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Use the Loan Details, Property, and Funding / Revenue tabs to fill in these items, then try the status change again.
+                  </p>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowMissingFieldsModal(false)}
+                      className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Header */}
             <div className="bg-white shadow rounded-lg p-6 mb-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -169,12 +312,18 @@ const LoanApplicationDetailsPage = () => {
                     onChange={(e) => handleStatusChange(e.target.value)}
                     className="max-w-lg block w-full shadow-sm focus:ring-primary focus:border-primary sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
                   >
-                    <option value="pending">Pending</option>
-                    <option value="in_review">In Review</option>
-                    <option value="approved">Approved</option>
-                    <option value="denied">Denied</option>
-                    <option value="funded">Funded</option>
-                    <option value="closed">Closed</option>
+                    <option value="Application Started">Application Started</option>
+                    <option value="Application Submitted">Application Submitted</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Underwriting">Underwriting</option>
+                    <option value="Conditional Approval">Conditional Approval</option>
+                    <option value="Approved-Not-Accepted">Approved but not Accepted</option>
+                    <option value="Clear to Close">Clear to Close</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Funded">Funded</option>
+                    <option value="Declined">Declined</option>
+                    <option value="Withdrawn">Withdrawn</option>
+                    <option value="Closed-Incomplete">Closed for Incompleteness</option>
                   </select>
                 </div>
               </div>

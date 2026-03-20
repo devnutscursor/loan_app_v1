@@ -193,11 +193,13 @@ const ApplicationDataView = ({ data }) => {
   const ac010 = data.AC010 || {}; const ac020 = data.AC020 || {};
   const ac030 = data.AC030 || {}; const ac040 = data.AC040 || {};
   const ac050 = data.AC050 || {}; const ac060 = data.AC060 || {};
-  const ac090 = data.AC090 || {};
-  const ac066 = { amount: (ac010.amount||0)+(ac020.amount||0), count: (ac010.count||0)+(ac020.count||0) };
+  const ac070 = data.AC070 || {}; const ac080 = data.AC080 || {};
+  const ac065 = data.AC065 || {};
+  const ac063 = data.AC063 || {};
+  const ac066 = data.AC066 || { amount: 0, count: 0 };
   const ac090Total = {
-    amount: (ac030.amount||0)+(ac040.amount||0)+(ac050.amount||0)+(ac060.amount||0)+(ac090.amount||0),
-    count:  (ac030.count||0)+(ac040.count||0)+(ac050.count||0)+(ac060.count||0)+(ac090.count||0),
+    amount: (ac030.amount||0)+(ac040.amount||0)+(ac050.amount||0)+(ac060.amount||0)+(ac070.amount||0)+(ac080.amount||0),
+    count:  (ac030.count||0)+(ac040.count||0)+(ac050.count||0)+(ac060.count||0)+(ac070.count||0)+(ac080.count||0),
   };
   return (
     <div className="overflow-x-auto">
@@ -207,16 +209,16 @@ const ApplicationDataView = ({ data }) => {
           <MCRSectionRow label="APPLICATION PIPELINE" />
           <MCRDataRow code="AC010" label="Applications in Process at the Beginning of the Period" val={ac010} />
           <MCRDataRow code="AC020" label="Applications Received" val={ac020} />
-          <MCRDataRow code="AC030" label="Applications Approved but not Accepted" val={{ amount: 0, count: 0 }} />
-          <MCRDataRow code="AC040" label="Applications Denied" val={ac030} />
-          <MCRDataRow code="AC050" label="Applications Withdrawn" val={ac040} />
+          <MCRDataRow code="AC030" label="Applications Approved but not Accepted" val={ac030} />
+          <MCRDataRow code="AC040" label="Applications Denied" val={ac040} />
+          <MCRDataRow code="AC050" label="Applications Withdrawn" val={ac050} />
           <MCRDataRow code="AC060" label="File Closed for Incompleteness" val={ac060} />
-          <MCRAmountRow code="AC065" label="Net Changes in Application Amount" amount={0} />
-          <MCRDataRow code="AC063" label="Net Application Changes" val={{ amount: 0, count: 0 }} />
+          <MCRAmountRow code="AC065" label="Net Changes in Application Amount" amount={ac065.amount || 0} />
+          <MCRDataRow code="AC063" label="Net Application Changes" val={ac063} />
           <MCRDataRow code="AC066" label="Total Application Pipeline" val={ac066} isBold isSubtotal />
           <MCRSectionRow label="APPLICATION PIPELINE RESULTS" />
-          <MCRDataRow code="AC070" label="Loans Closed and Funded" val={ac050} />
-          <MCRDataRow code="AC080" label="Applications in Process at the End of the Period" val={ac090} />
+          <MCRDataRow code="AC070" label="Loans Closed and Funded" val={ac070} />
+          <MCRDataRow code="AC080" label="Applications in Process at the End of the Period" val={ac080} />
           <MCRDataRow code="AC090" label="Total Application Pipeline Results" val={ac090Total} isBold isSubtotal />
         </tbody>
       </table>
@@ -866,7 +868,7 @@ const AdminMCRReports = () => {
                     ["Apps Received",      activeReport.applicationData?.AC020?.count || 0, "bg-blue-50"],
                     ["Denied",             activeReport.applicationData?.AC030?.count || 0, "bg-red-50"],
                     ["Withdrawn",          activeReport.applicationData?.AC040?.count || 0, "bg-orange-50"],
-                    ["Funded",             activeReport.applicationData?.AC050?.count || 0, "bg-green-50"],
+                    ["Funded",             activeReport.applicationData?.AC070?.count || 0, "bg-green-50"],
                   ].map(([label, val, bg]) => (
                     <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
                       <p className="text-2xl font-bold text-gray-900">{val}</p>

@@ -23,6 +23,7 @@ const LoanApplicationSettingsModal = ({
     'Processing',
     'Underwriting',
     'Approved',
+    'Approved but not Accepted',
     'Clear to Close',
     'Closed',
     'Funded',
@@ -51,6 +52,7 @@ const LoanApplicationSettingsModal = ({
       'Underwriting': 'Underwriting',
       'Conditional Approval': 'Approved',
       'Approved': 'Approved',
+      'Approved-Not-Accepted': 'Approved but not Accepted',
       'Clear to Close': 'Clear to Close',
       'Closed': 'Closed',
       'Funded': 'Funded',
@@ -69,6 +71,7 @@ const LoanApplicationSettingsModal = ({
       'Processing': 'Processing',
       'Underwriting': 'Underwriting',
       'Approved': 'Approved',
+      'Approved but not Accepted': 'Approved-Not-Accepted',
       'Clear to Close': 'Clear to Close',
       'Closed': 'Closed',
       'Funded': 'Funded',
@@ -140,7 +143,8 @@ const LoanApplicationSettingsModal = ({
       if (statusChanged) {
         try {
           // Build request body — include adverse action data if present
-          const requestBody = { status: newBackendStatus };
+          // Backend expects the *display* status value (e.g. "Approved but not Accepted")
+          const requestBody = { status: currentStatus };
           if (adverseAction) {
             requestBody.adverseAction = adverseAction;
           }

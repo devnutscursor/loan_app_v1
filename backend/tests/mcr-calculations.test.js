@@ -130,11 +130,12 @@ describe('getFundedLoansInPeriod', () => {
   const start = new Date('2025-01-01T00:00:00Z');
   const end = new Date('2025-03-31T23:59:59Z');
 
-  test('includes loans funded within period', () => {
-    const loan = makeLoan();
+  test('includes loans funded within period with terminal status', () => {
+    const loan = makeLoan({ status: 'Funded' });
     const comp = makeComp(loan._id, { fundedDate: new Date('2025-02-15') });
     const compMap = makeCompMap([[loan._id, comp]]);
-    const result = getFundedLoansInPeriod([loan], compMap, start, end);
+    const statusAtEnd = { [loan._id.toString()]: 'Funded' };
+    const result = getFundedLoansInPeriod([loan], compMap, statusAtEnd, start, end);
     expect(result).toHaveLength(1);
   });
 
@@ -142,13 +143,15 @@ describe('getFundedLoansInPeriod', () => {
     const loan = makeLoan();
     const comp = makeComp(loan._id, { fundedDate: new Date('2024-12-15') });
     const compMap = makeCompMap([[loan._id, comp]]);
-    const result = getFundedLoansInPeriod([loan], compMap, start, end);
+    const statusAtEnd = { [loan._id.toString()]: 'Funded' };
+    const result = getFundedLoansInPeriod([loan], compMap, statusAtEnd, start, end);
     expect(result).toHaveLength(0);
   });
 
   test('excludes loans with no compensation record', () => {
     const loan = makeLoan();
-    const result = getFundedLoansInPeriod([loan], {}, start, end);
+    const statusAtEnd = { [loan._id.toString()]: 'Funded' };
+    const result = getFundedLoansInPeriod([loan], {}, statusAtEnd, start, end);
     expect(result).toHaveLength(0);
   });
 
@@ -156,7 +159,17 @@ describe('getFundedLoansInPeriod', () => {
     const loan = makeLoan();
     const comp = makeComp(loan._id, { fundedDate: null });
     const compMap = makeCompMap([[loan._id, comp]]);
-    const result = getFundedLoansInPeriod([loan], compMap, start, end);
+    const statusAtEnd = { [loan._id.toString()]: 'Funded' };
+    const result = getFundedLoansInPeriod([loan], compMap, statusAtEnd, start, end);
+    expect(result).toHaveLength(0);
+  });
+
+  test('excludes loans that are not Closed/Funded at period end', () => {
+    const loan = makeLoan({ status: 'Withdrawn' });
+    const comp = makeComp(loan._id, { fundedDate: new Date('2025-02-15') });
+    const compMap = makeCompMap([[loan._id, comp]]);
+    const statusAtEnd = { [loan._id.toString()]: 'Withdrawn' };
+    const result = getFundedLoansInPeriod([loan], compMap, statusAtEnd, start, end);
     expect(result).toHaveLength(0);
   });
 });
@@ -470,5 +483,57 @@ describe('calculateRMLAData', () => {
   test('handles zero apps gracefully', () => {
     const result = calculateRMLAData([], {}, {}, {}, start, end);
     expect(result.pullThrough.ratio).toBe(0);
+  });
+
+  test('uses HELOC credit line amount for 2nd-lien HELOCs', () => {
+    const helocLoan = makeLoan({
+      loanDetails: { loanAmount: 200000, loanType: 'HELOC' },
+      property: { propertyType: 'Single Family Home', occupancyType: 'Primary Residence', state: 'CA' }
+    });
+    const comp = makeComp(helocLoan._id, {
+      fundedDate: new Date('2025-02-01'),
+      lienPosition: '2nd',
+      secondLienType: 'HELOC',
+      creditLineAmount: 100000
+    });
+    const compMap = makeCompMap([[helocLoan._id, comp]]);
+
+    const result = calculateRMLAData([helocLoan], compMap, {}, {}, start, end);
+    // In channel + purpose, the amount used for this loan should be 100k (credit line) not 200k
+    expect(result.channel.brokered.amount).toBe(100000);
+    expect(result.purpose.refinance.amount + result.purpose.purchase.amount).toBe(100000);
+  });
+
+  test('falls back to computed LTV when financialCalculations.ltv is missing', () => {
+    const loan = makeLoan({
+      loanDetails: { loanAmount: 360000, loanType: 'Purchase' },
+      property: { propertyType: 'Single Family Home', occupancyType: 'Primary Residence', state: 'CA', propertyValue: 450000 },
+      financialCalculations: { ltv: 0 }
+    });
+    const comp = makeComp(loan._id, {
+      fundedDate: new Date('2025-02-01')
+    });
+    const compMap = makeCompMap([[loan._id, comp]]);
+
+    const result = calculateRMLAData([loan], compMap, {}, {}, start, end);
+    // 360k / 450k = 80% → should fall into the 70.01–80 bucket (lt80)
+    expect(result.ltvDistribution.lt80.count).toBe(1);
+    expect(result._meta.fundedWithMissingLTV).toBe(0);
+    expect(result.weightedAverages.ltv).toBeGreaterThan(0);
+  });
+
+  test('tracks funded loans missing LTV for readiness checks', () => {
+    const loan = makeLoan({
+      loanDetails: { loanAmount: 300000, loanType: 'Purchase' },
+      property: { propertyType: 'Single Family Home', occupancyType: 'Primary Residence', state: 'CA' },
+      financialCalculations: { ltv: 0 }
+    });
+    const comp = makeComp(loan._id, {
+      fundedDate: new Date('2025-02-01')
+    });
+    const compMap = makeCompMap([[loan._id, comp]]);
+
+    const result = calculateRMLAData([loan], compMap, {}, {}, start, end);
+    expect(result._meta.fundedWithMissingLTV).toBe(1);
   });
 });

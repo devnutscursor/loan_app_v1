@@ -794,6 +794,7 @@ const loanSchema = new mongoose.Schema({
       'Processing',
       'Underwriting',
       'Conditional Approval',
+      'Approved-Not-Accepted',
       'Clear to Close',
       'Closed',
       'Funded',
@@ -1030,6 +1031,14 @@ const loanSchema = new mongoose.Schema({
     default: 'Retail'
   },
 
+  // Funding Method / Warehouse Routing (drives Brokered vs Non-Delegated columns)
+  // This is distinct from leadSource, which is a marketing channel.
+  fundingMethod: {
+    type: String,
+    enum: ['Brokered', 'Non-Delegated', 'Delegated', 'Unknown'],
+    default: 'Brokered'
+  },
+
   // Documentation Type (RMLA Section II: I270)
   docType: {
     type: String,
@@ -1062,6 +1071,13 @@ const loanSchema = new mongoose.Schema({
     default: false
   },
 
+  // Reverse Mortgage subtype (AC700/AC710/AC720)
+  reverseMortgageType: {
+    type: String,
+    enum: ['HECM-Standard', 'HECM-Saver', 'Proprietary/Other'],
+    default: null
+  },
+
   // Prepayment Penalty flag (RMLA Section II: I300–I309)
   hasPrepaymentPenalty: {
     type: Boolean,
@@ -1078,6 +1094,16 @@ const loanSchema = new mongoose.Schema({
   hasMortgageInsurance: {
     type: Boolean,
     default: false
+  },
+
+  // Adverse Action / Denial reasons (Reg B)
+  denialReasons: [{
+    type: String,
+    trim: true
+  }],
+  denialReasonOtherText: {
+    type: String,
+    trim: true
   },
 
   // Exclude from MCR — per ARIVE screenshot, allows excluding specific loans

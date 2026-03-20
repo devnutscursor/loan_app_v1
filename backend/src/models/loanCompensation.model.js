@@ -109,6 +109,12 @@ const LoanCompensationSchema = new Schema({
     enum: ['1st', '2nd', 'Not Secured by Lien'],  // AC500, AC510, AC520
     default: '1st'
   },
+  // Second-lien subtype, used for RMLA and HELOC reporting
+  secondLienType: {
+    type: String,
+    enum: ['ClosedEndSecond', 'HELOC', 'N/A'],
+    default: 'N/A'
+  },
   amortizationType: {
     type: String,
     enum: ['Fixed', 'ARM', 'Option ARM'],
@@ -169,6 +175,11 @@ const LoanCompensationSchema = new Schema({
   // ===== ADDITIONAL MCR FIELDS =====
   cashOutAmount: {
     type: Number,       // Cash-out amount for refi
+    default: 0,
+    min: 0
+  },
+  creditLineAmount: {
+    type: Number,       // For HELOCs: maximum credit limit, not drawn amount
     default: 0,
     min: 0
   },

@@ -401,6 +401,20 @@ exports.createLoan = async (req, res, next) => {
     };
 
     // Prepare loan details data
+    // For Purchase: loanAmount = purchasePrice − downPayment
+    // For Refinance/Cash-Out: loanAmount = requestedLoanAmount
+    // For other types: use whatever was passed
+    {
+      const _pp = parseFloat(loanDetails?.purchasePrice) || 0;
+      const _dp = parseFloat(loanDetails?.downPayment) || 0;
+      const _rla = parseFloat(loanDetails?.requestedLoanAmount) || 0;
+      const _lt = loanDetails?.loanType || "Purchase";
+      if (_lt === "Purchase") {
+        loanDetails = { ...loanDetails, loanAmount: _pp > 0 ? _pp - _dp : (parseFloat(loanDetails?.loanAmount) || 50000) };
+      } else if (_lt === "Refinance" || _lt === "Cash-Out Refinance") {
+        loanDetails = { ...loanDetails, loanAmount: _rla || parseFloat(loanDetails?.loanAmount) || 50000 };
+      }
+    }
     const cleanLoanAmount = parseFloat(loanDetails?.loanAmount) || 50000;
 
     // Base loan details that apply to all loan types
@@ -1147,11 +1161,79 @@ exports.updateLoan = async (req, res, next) => {
       if (loanParameters) {
         console.log("Loan parameters received:", loanParameters);
         updateData.loanParameters = loanParameters;
+
+        // Keep key application-facing amounts in sync with the qualification scenario
+        const hasNumeric = (val) => typeof val === 'number' && !Number.isNaN(val);
+        const existingLoanDetails =
+          loan && loan.loanDetails ? loan.loanDetails.toObject?.() || loan.loanDetails : {};
+        const existingUpdateLoanDetails = updateData.loanDetails || {};
+
+        if (hasNumeric(loanParameters.loanAmount) || hasNumeric(loanParameters.downPayment)) {
+          updateData.loanDetails = {
+            ...existingLoanDetails,
+            ...existingUpdateLoanDetails,
+            // Mirror loan amount if provided
+            ...(hasNumeric(loanParameters.loanAmount)
+              ? { loanAmount: loanParameters.loanAmount }
+              : {}),
+            // Mirror down payment if provided
+            ...(hasNumeric(loanParameters.downPayment)
+              ? { downPayment: loanParameters.downPayment }
+              : {}),
+          };
+        }
       }
 
       // Handle loanCalculations separately
       if (loanCalculations) {
         updateData.loanCalculations = loanCalculations;
+      }
+
+      // Normalize loan amount for Purchase / Refinance loans.
+      // For Purchase:  loanAmount = purchasePrice − downPayment
+      // For Refinance: loanAmount = requestedLoanAmount
+      // Handles both numeric and string values coming from the frontend form.
+      {
+        const resolvedLoanDetails = updateData.loanDetails || loan.loanDetails;
+        if (resolvedLoanDetails) {
+          const toNum = (val) => {
+            const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+            return Number.isNaN(n) ? null : n;
+          };
+
+          const loanType =
+            resolvedLoanDetails.loanType ||
+            (resolvedLoanDetails.toObject?.() || {}).loanType ||
+            loan.loanDetails?.loanType;
+
+          let computedLoanAmount = null;
+
+          if (loanType === "Purchase") {
+            const pp = toNum(resolvedLoanDetails.purchasePrice) ??
+                       toNum(loan.loanDetails?.purchasePrice);
+            const dp = toNum(resolvedLoanDetails.downPayment) ??
+                       toNum(loan.loanDetails?.downPayment);
+            if (pp !== null && dp !== null) {
+              computedLoanAmount = pp - dp;
+            }
+          } else if (loanType === "Refinance" || loanType === "Cash-Out Refinance") {
+            const rla = toNum(resolvedLoanDetails.requestedLoanAmount) ??
+                        toNum(loan.loanDetails?.requestedLoanAmount);
+            if (rla !== null) {
+              computedLoanAmount = rla;
+            }
+          }
+
+          if (computedLoanAmount !== null) {
+            updateData.loanDetails = {
+              ...(resolvedLoanDetails.toObject?.() || resolvedLoanDetails),
+              loanAmount: computedLoanAmount,
+            };
+            if (updateData.loanParameters) {
+              updateData.loanParameters.loanAmount = computedLoanAmount;
+            }
+          }
+        }
       }
 
       // Simpler approach for programGuidelines - handle it together with loanParameters
@@ -1379,6 +1461,98 @@ exports.updateLoanStatus = async (req, res, next) => {
     if (marketingStatus) updateData.marketingStatus = marketingStatus;
     if (completionPercentage !== undefined)
       updateData.completionPercentage = completionPercentage;
+
+    // If status is changing, enforce MCR-related validation rules
+    if (status && status !== loan.status) {
+      // === Phase 2: Workflow guards ===
+      // 1) Denied / Declined must include denial reasons
+      if (status === 'Declined') {
+        const { denialReasons, denialReasonOtherText } = req.body;
+        const reasons = Array.isArray(denialReasons) ? denialReasons.filter(Boolean) : [];
+        if (!reasons.length) {
+          return next(new ApiError('Denial reasons are required when setting status to Declined', 400));
+        }
+        // If "Other" is included, require free-text explanation
+        if (reasons.includes('Other') && !denialReasonOtherText) {
+          return next(new ApiError('Additional explanation is required for denial reason "Other"', 400));
+        }
+        loan.denialReasons = reasons;
+        loan.denialReasonOtherText = denialReasonOtherText || '';
+      }
+
+      // 2) Before moving to Funded / Closed, ensure all MCR-critical fields are populated
+      if (status === 'Funded' || status === 'Closed') {
+        const missingFields = [];
+
+        // Basic loan dimensions
+        if (!loan.loanParameters?.selectedProgramId) {
+          missingFields.push({ field: 'loanParameters.selectedProgramId', label: 'Loan Program' });
+        }
+        if (!loan.loanDetails?.loanType) {
+          missingFields.push({ field: 'loanDetails.loanType', label: 'Loan Purpose/Type' });
+        }
+        if (!loan.property?.propertyType) {
+          missingFields.push({ field: 'property.propertyType', label: 'Property Type' });
+        }
+        if (!loan.property?.state) {
+          missingFields.push({ field: 'property.state', label: 'Property State' });
+        }
+        if (!loan.qmStatus) {
+          missingFields.push({ field: 'qmStatus', label: 'QM Status' });
+        }
+        if (!loan.fundingMethod || loan.fundingMethod === 'Unknown') {
+          missingFields.push({ field: 'fundingMethod', label: 'Funding Method' });
+        }
+
+        // LO + NMLS
+        if (!loan.assignedLoanOfficer) {
+          missingFields.push({ field: 'assignedLoanOfficer', label: 'Assigned Loan Officer' });
+        } else {
+          const loUser = await User.findById(loan.assignedLoanOfficer).select('nmls');
+          if (!loUser || !loUser.nmls) {
+            missingFields.push({ field: 'loanOfficer.nmls', label: 'Loan Officer NMLS ID' });
+          }
+        }
+
+        // Compensation / lien / HELOC / reverse subtype
+        const comp = await LoanCompensation.findOne({ loan: loan._id });
+        if (!comp) {
+          missingFields.push({ field: 'compensation', label: 'Loan Compensation record' });
+        } else {
+          if (!comp.lienPosition) {
+            missingFields.push({ field: 'compensation.lienPosition', label: 'Lien Position' });
+          }
+          if (comp.lienPosition === '2nd') {
+            if (!comp.secondLienType || comp.secondLienType === 'N/A') {
+              missingFields.push({ field: 'compensation.secondLienType', label: 'Second Lien Type' });
+            } else if (comp.secondLienType === 'HELOC' && (!comp.creditLineAmount || comp.creditLineAmount <= 0)) {
+              missingFields.push({ field: 'compensation.creditLineAmount', label: 'HELOC Credit Line Amount' });
+            }
+          }
+
+          // Servicing disposition is required for Non-Delegated funded loans
+          if (loan.fundingMethod === 'Non-Delegated') {
+            if (!comp.servicingDisposition || !['Retained', 'Released'].includes(comp.servicingDisposition)) {
+              missingFields.push({
+                field: 'compensation.servicingDisposition',
+                label: 'Servicing Disposition (Retained vs Released)'
+              });
+            }
+          }
+        }
+
+        // Reverse mortgage subtype
+        if (loan.isReverseMortgage && !loan.reverseMortgageType) {
+          missingFields.push({ field: 'reverseMortgageType', label: 'Reverse Mortgage Type' });
+        }
+
+        if (missingFields.length > 0) {
+          return next(new ApiError('Cannot mark loan as Funded/Closed — required MCR fields are missing', 400, {
+            missingFields
+          }));
+        }
+      }
+    }
 
     // Auto-update milestone if status changed
     if (status && status !== loan.status) {
@@ -3117,6 +3291,7 @@ exports.updateLoanStatus = async (req, res, next) => {
       'Processing': 'Processing',
       'Underwriting': 'Underwriting',
       'Approved': 'Conditional Approval', // Map to existing backend enum
+      'Approved but not Accepted': 'Approved-Not-Accepted',
       'Clear to Close': 'Clear to Close',
       'Rejected': 'Declined',  // Map "Rejected" to "Declined"
       'Withdrawn': 'Withdrawn',

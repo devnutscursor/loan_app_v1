@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../../../../contexts/AuthContext";
 import { loanCompensationService } from "../../../../services/mcr.service";
 import {
   Lock,
@@ -21,6 +22,7 @@ const CHANNEL_BADGES = {
 const COMP_PAID_OPTIONS = ["Borrower", "Lender", "Split", "N/A"];
 const LIEN_OPTIONS = ["1st", "2nd", "Not Secured by Lien"];
 const AMORT_OPTIONS = ["Fixed", "ARM", "Option ARM"];
+const SECOND_LIEN_OPTIONS = ["N/A", "ClosedEndSecond", "HELOC"];
 const INVESTOR_OPTIONS = [
   "Fannie Mae", "Freddie Mac", "Ginnie Mae", "Private Investor",
   "FHLBank", "Life Insurance", "Commercial Bank", "Other", "Not Sold",
@@ -30,7 +32,7 @@ const SERVICING_OPTIONS = ["Released", "Retained", "N/A"];
 const DATE_KEYS = ["rateLockDate", "rateLockExpiry", "fundedDate"];
 const SELECT_KEYS = [
   "brokerCompPaidBy", "lienPosition", "amortizationType",
-  "investorSoldTo", "servicingDisposition",
+  "investorSoldTo", "servicingDisposition", "secondLienType",
 ];
 const ALL_FIELDS = [
   "brokerCompensation", "brokerCompPaidBy", "originationFee", "processingFee",
@@ -38,6 +40,7 @@ const ALL_FIELDS = [
   "brokerFlatFees", "loanRevenue", "lenderFeesCollected", "rateLockPeriod",
   "rateLockDate", "rateLockExpiry", "lienPosition", "amortizationType",
   "cashOutAmount", "investorSoldTo", "warehousePeriodDays", "servicingDisposition",
+  "secondLienType", "creditLineAmount",
   "fundedDate",
 ];
 
@@ -62,6 +65,8 @@ const FundingRevenueTab = ({ loan, loanId }) => {
   const [fields, setFields] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
   const [notes, setNotes] = useState("");
+
+  const { user } = useAuth();
 
   useEffect(() => { loadCompensation(); }, [loanId]);
 
@@ -133,24 +138,27 @@ const FundingRevenueTab = ({ loan, loanId }) => {
     num(fields.yspAmount) + num(fields.discountPoints) +
     num(fields.passThruFees) - num(fields.toleranceCure);
 
-  const leadSource = loan?.leadSource || "Retail";
-  const badge = CHANNEL_BADGES[leadSource] || CHANNEL_BADGES.Retail;
+  const fundingMethod = loan?.fundingMethod || "Brokered";
+  const badge = CHANNEL_BADGES[loan?.leadSource || "Retail"] || CHANNEL_BADGES.Retail;
 
   const finalRate = compensation?.finalRate
     || loan?.loanDetails?.interestRate || loan?.loanParameters?.interestRate || null;
 
   const isLocked = !!compensation?.rateLockDate;
 
-  const loName = loan?.assignedLoanOfficer
-    ? `${loan.assignedLoanOfficer.firstName || ""} ${loan.assignedLoanOfficer.lastName || ""}`.trim() : "—";
+  const loSource = loan?.assignedLoanOfficer || user || null;
+  const loName = loSource
+    ? `${loSource.firstName || ""} ${loSource.lastName || ""}`.trim() || "—"
+    : "—";
 
   const mortgageType = loan?.loanParameters?.selectedProgramId?.programType
     || loan?.loanDetails?.loanType || "Conventional";
 
+  // Product name: prefer explicit LoanProgram name; fall back to loan type so the field is never blank
   const productName = loan?.loanParameters?.selectedProgramId?.programName
     || (loan?.loanParameters?.selectedProgramId?.programType
       ? `${loan.loanParameters.selectedProgramId.programType} ${loan?.loanParameters?.loanTerm || 30} Year ${compensation?.amortizationType || "Fixed"}`
-      : "—");
+      : loan?.loanDetails?.loanType || "—");
 
   if (loading) {
     return (
@@ -209,8 +217,16 @@ const FundingRevenueTab = ({ loan, loanId }) => {
             <Field label="Lock Period (days)">
               <input type="number" value={fields.rateLockPeriod ?? ""} onChange={(e) => set("rateLockPeriod", e.target.value)} placeholder="e.g. 30" className={INPUT_CLS} />
             </Field>
-            <Field label="Lead Source">
-              <ReadOnly value={leadSource} />
+            <Field label="Funding Method">
+              <ReadOnly value={
+                fundingMethod === "Brokered"
+                  ? "Broker"
+                  : fundingMethod === "Non-Delegated"
+                  ? "Non-Delegated"
+                  : fundingMethod === "Delegated"
+                  ? "Delegated Lender"
+                  : fundingMethod || "—"
+              } />
             </Field>
             <Field label="Rate Lock Date">
               <input type="date" value={fields.rateLockDate || ""} onChange={(e) => set("rateLockDate", e.target.value)} className={INPUT_CLS} />
@@ -319,6 +335,32 @@ const FundingRevenueTab = ({ loan, loanId }) => {
               <option value="">— Select —</option>
               {SERVICING_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+          </Field>
+          <Field label="Second Lien Type">
+            <select
+              value={fields.secondLienType || "N/A"}
+              onChange={(e) => set("secondLienType", e.target.value)}
+              className={INPUT_CLS}
+            >
+              {SECOND_LIEN_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o === "N/A" ? "N/A" : o === "ClosedEndSecond" ? "Closed-End Second" : "HELOC"}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="HELOC Credit Line Amount">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+              <input
+                type="number"
+                step="0.01"
+                value={fields.creditLineAmount ?? ""}
+                onChange={(e) => set("creditLineAmount", e.target.value)}
+                className={`${INPUT_CLS} pl-7`}
+                placeholder={fields.secondLienType === "HELOC" ? "Required for HELOC" : "0.00"}
+              />
+            </div>
           </Field>
         </div>
       </div>

@@ -150,11 +150,47 @@ exports.generateReport = async (req, res, next) => {
     }
 
     // Calculate all 5 MCR tabs (using only period-relevant loans)
-    const applicationData = calculateApplicationData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
+    let applicationData = calculateApplicationData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
+    applicationData = applyPipelinePlugs(applicationData);
     const closedLoanData = calculateClosedLoanData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const revenueData = calculateRevenueData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const mloData = calculateMLOData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO);
     const rmlaData = calculateRMLAData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
+
+    // Build validationErrors array for core AC990 + data completeness checks
+    const validationErrors = [];
+
+    // Helper to safely get total amounts from closedLoanData channel totals
+    const getTotalAmount = (code) => {
+      const row = closedLoanData?.[code];
+      if (!row) return 0;
+      const brokeredAmt = row.brokered?.amount || 0;
+      const nonDelegatedAmt = row.nonDelegated?.amount || 0;
+      return brokeredAmt + nonDelegatedAmt;
+    };
+
+    const ac990Total = getTotalAmount('AC990');
+    const dimCodes = ['AC190', 'AC290', 'AC390', 'AC590', 'AC790', 'AC1290'];
+    dimCodes.forEach(code => {
+      const dimTotal = getTotalAmount(code);
+      if (dimTotal !== ac990Total) {
+        validationErrors.push({
+          code: `AC990_MISMATCH_${code}`,
+          severity: 'error',
+          message: `Dimensional total ${code} (${dimTotal.toLocaleString()}) does not match AC990 (${ac990Total.toLocaleString()}).`
+        });
+      }
+    });
+
+    // RMLA LTV completeness: funded loans missing usable LTV
+    const fundedWithMissingLTV = rmlaData?._meta?.fundedWithMissingLTV || 0;
+    if (fundedWithMissingLTV > 0) {
+      validationErrors.push({
+        code: 'RMLA_MISSING_LTV',
+        severity: 'warning',
+        message: `${fundedWithMissingLTV} funded loans are missing LTV data for RMLA weighted-average calculations.`
+      });
+    }
 
     // Determine the actual states present in the data (from period loans only)
     const actualStates = stateList || [...new Set(periodLoans.map(l => l.property?.state).filter(Boolean))].sort();
@@ -168,8 +204,11 @@ exports.generateReport = async (req, res, next) => {
         const lid = l._id.toString();
         if (compMap[lid]) stateCompMap[lid] = compMap[lid];
       });
+      const stateApplicationData = applyPipelinePlugs(
+        calculateApplicationData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate)
+      );
       perStateData[state] = {
-        applicationData: calculateApplicationData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
+        applicationData: stateApplicationData,
         closedLoanData: calculateClosedLoanData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
         revenueData: calculateRevenueData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate),
         mloData: calculateMLOData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO),
@@ -204,7 +243,8 @@ exports.generateReport = async (req, res, next) => {
       perStateData,
       fileName: `MCR_${year}_${period}_${actualStates.length > 0 ? actualStates.join('-') : 'ALL'}_${Date.now()}`,
       totalLoansIncluded: periodLoans.length,
-      totalLoansExcluded: excludedCount
+      totalLoansExcluded: excludedCount,
+      validationErrors
     });
 
     res.status(201).json({
@@ -543,25 +583,30 @@ function getPeriodDates(year, period) {
 
 /**
  * Helper: Get closed/funded loans in period
- * Checks fundedDate first, then closingDate, then falls back to status-based detection
+ *
+ * For MCR, a loan is considered closed/funded for the quarter ONLY when:
+ * - It has an explicit fundedDate or closingDate in the compensation record
+ *   within the period, AND
+ * - Its status-as-of-end-of-period is a terminal funded/closed status
+ *   (Closed or Funded).
+ *
+ * This keeps Closed Loan Data (Tab 2), Revenue, MLO attribution, and RMLA
+ * perfectly aligned with AC070 in the Application Data tab.
  */
-function getFundedLoansInPeriod(loans, compMap, startDate, endDate) {
+function getFundedLoansInPeriod(loans, compMap, statusAtEndDate, startDate, endDate) {
   return loans.filter(loan => {
     const comp = compMap[loan._id.toString()];
-    // Check fundedDate
-    if (comp && comp.fundedDate && comp.fundedDate >= startDate && comp.fundedDate <= endDate) {
-      return true;
+    if (!comp) return false;
+
+    const currentStatus = statusAtEndDate[loan._id.toString()] || loan.status;
+    if (currentStatus !== 'Closed' && currentStatus !== 'Funded') {
+      return false;
     }
-    // Check closingDate (status "Closed" sets closingDate, not fundedDate)
-    if (comp && comp.closingDate && comp.closingDate >= startDate && comp.closingDate <= endDate) {
-      return true;
-    }
-    // Fallback: check if loan status is Closed or Funded and was created/modified in period
-    // This catches loans where dates weren't properly set
-    if ((loan.status === 'Closed' || loan.status === 'Funded') && loan.updatedAt && loan.updatedAt >= startDate && loan.updatedAt <= endDate) {
-      return true;
-    }
-    return false;
+
+    const { fundedDate, closingDate } = comp;
+    const inRange = (d) => d && d >= startDate && d <= endDate;
+
+    return inRange(fundedDate) || inRange(closingDate);
   });
 }
 
@@ -584,21 +629,21 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
     AC010: { amount: 0, count: 0 },
     // AC020: Applications Received during period
     AC020: { amount: 0, count: 0 },
-    // AC030: Applications Denied during period
+    // AC030: Approved but not Accepted
     AC030: { amount: 0, count: 0 },
-    // AC040: Applications Withdrawn during period
+    // AC040: Applications Denied during period
     AC040: { amount: 0, count: 0 },
-    // AC050: Loans Funded/Purchased during period
+    // AC050: Applications Withdrawn during period
     AC050: { amount: 0, count: 0 },
     // AC060: Closed Incomplete (file closed without action)
     AC060: { amount: 0, count: 0 },
-    // AC090: Ending Pipeline
-    AC090: { amount: 0, count: 0 }
+    // AC070: Loans Closed and Funded during period (own bucket — separate from AC050)
+    AC070: { amount: 0, count: 0 },
+    // AC080: Ending Pipeline (still active at end of period)
+    AC080: { amount: 0, count: 0 }
   };
 
-  // Terminal statuses — loans that have exited the pipeline
-  const terminalStatuses = ['Closed', 'Funded', 'Declined', 'Withdrawn', 'Closed-Incomplete'];
-
+  // --- AC020–AC090: classify activity during the period & ending pipeline ---
   for (const loan of loans) {
     const amount = getLoanAmount(loan);
     const comp = compMap[loan._id.toString()];
@@ -608,7 +653,15 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
     const currentStatus = statusAtEndDate[loanIdStr] || loan.status;
 
     // AC020: Applications received — loans whose application was received during this period
-    if (comp && comp.applicationDate && comp.applicationDate >= startDate && comp.applicationDate <= endDate) {
+    // Use compensation.applicationDate when available, otherwise fall back to the loan's own
+    // application date or createdAt so that loans without a comp record are still counted.
+    const applicationDate =
+      (comp && comp.applicationDate) ||
+      loan.loanDetails?.applicationDate ||
+      loan.applicationDate ||
+      loan.createdAt;
+
+    if (applicationDate && applicationDate >= startDate && applicationDate <= endDate) {
       result.AC020.count++;
       result.AC020.amount += amount;
     }
@@ -617,34 +670,41 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
     // A loan can only be in ONE exit category. We use the status at end-of-period
     // as the authoritative classification. This prevents double-counting when a loan
     // has multiple date fields set from testing or status cycling.
-    if (currentStatus === 'Declined') {
-      // AC030: Denied — loan's status as of period end is Declined
+    if (currentStatus === 'Approved-Not-Accepted') {
+      // AC030: Approved but not Accepted — commitment issued but not closed
+      const approvedNotAcceptedInPeriod = transitions.some(t => t.newStatus === 'Approved-Not-Accepted');
+      if (approvedNotAcceptedInPeriod) {
+        result.AC030.count++;
+        result.AC030.amount += amount;
+      }
+    } else if (currentStatus === 'Declined') {
+      // AC040: Denied — loan's status as of period end is Declined
       // Only count if the denial happened during this period
       const deniedInPeriod = transitions.some(t => t.newStatus === 'Declined')
         || (comp && comp.denialDate && comp.denialDate >= startDate && comp.denialDate <= endDate);
       if (deniedInPeriod) {
-        result.AC030.count++;
-        result.AC030.amount += amount;
+        result.AC040.count++;
+        result.AC040.amount += amount;
       } else {
         // Was denied before this period — not in pipeline, not an exit this period
         // Don't count it anywhere (it's already gone from the pipeline)
       }
     } else if (currentStatus === 'Withdrawn') {
-      // AC040: Withdrawn — loan's status as of period end is Withdrawn
+      // AC050: Withdrawn — loan's status as of period end is Withdrawn
       const withdrawnInPeriod = transitions.some(t => t.newStatus === 'Withdrawn')
         || (comp && comp.withdrawnDate && comp.withdrawnDate >= startDate && comp.withdrawnDate <= endDate);
       if (withdrawnInPeriod) {
-        result.AC040.count++;
-        result.AC040.amount += amount;
+        result.AC050.count++;
+        result.AC050.amount += amount;
       }
     } else if (currentStatus === 'Closed' || currentStatus === 'Funded') {
-      // AC050: Closed/Funded — loan's status as of period end is Closed or Funded
+      // AC070: Loans Closed and Funded — own bucket, distinct from Withdrawn (AC050)
       const closedFundedInPeriod = transitions.some(t => t.newStatus === 'Closed' || t.newStatus === 'Funded')
         || (comp && comp.fundedDate && comp.fundedDate >= startDate && comp.fundedDate <= endDate)
         || (comp && comp.closingDate && comp.closingDate >= startDate && comp.closingDate <= endDate);
       if (closedFundedInPeriod) {
-        result.AC050.count++;
-        result.AC050.amount += amount;
+        result.AC070.count++;
+        result.AC070.amount += amount;
       }
     } else if (currentStatus === 'Closed-Incomplete') {
       // AC060: File Closed for Incompleteness
@@ -655,23 +715,92 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
         result.AC060.amount += amount;
       }
     } else {
-      // AC090: Ending pipeline — loan is still active (non-terminal status)
-      result.AC090.count++;
-      result.AC090.amount += amount;
+      // AC080: Ending pipeline — loan is still active (non-terminal status)
+      result.AC080.count++;
+      result.AC080.amount += amount;
     }
   }
 
-  // AC010: Beginning Pipeline = Ending Pipeline + all exits - Applications Received
-  // This is the accounting identity: Start + Received = Exits + End
-  // Therefore: Start = End + Exits - Received
-  result.AC010.count = result.AC090.count + result.AC050.count + result.AC030.count + result.AC040.count + result.AC060.count - result.AC020.count;
-  result.AC010.amount = result.AC090.amount + result.AC050.amount + result.AC030.amount + result.AC040.amount + result.AC060.amount - result.AC020.amount;
+  // --- AC010: Beginning Pipeline snapshot (as-of startDate) ---
+  //
+  // "Beginning pipeline" is defined as loans that were active in the pipeline
+  // at the moment the period started (day before startDate through startDate).
+  // We approximate this by:
+  // - Including loans whose applicationDate is BEFORE the period, and
+  // - Whose status at the end of the PREVIOUS period was still non-terminal.
+  //
+  // Since statusAtEndDate is keyed to the current period end, we can't time-travel
+  // directly here without more granular history; instead we approximate by:
+  // - Any loan with applicationDate < startDate that is NOT in a terminal status
+  //   by the end of the period counts as beginning pipeline.
+  // This is a conservative, snapshot-style approximation that avoids negative AC010.
 
-  // Ensure beginning pipeline doesn't go negative (edge case with bad data)
-  if (result.AC010.count < 0) result.AC010.count = 0;
-  if (result.AC010.amount < 0) result.AC010.amount = 0;
+  for (const loan of loans) {
+    const comp = compMap[loan._id.toString()];
+    const appDate = comp?.applicationDate || loan.createdAt;
+    if (!appDate || appDate >= startDate) continue;
+
+    const statusAtEnd = statusAtEndDate[loan._id.toString()] || loan.status;
+    const terminalStatuses = ['Declined', 'Withdrawn', 'Closed', 'Funded', 'Closed-Incomplete', 'Approved-Not-Accepted'];
+    if (!terminalStatuses.includes(statusAtEnd)) {
+      const amount = getLoanAmount(loan);
+      result.AC010.count++;
+      result.AC010.amount += amount;
+    }
+  }
 
   return result;
+}
+
+/**
+ * Helper: Derive AC065 (net dollar changes) and AC063 (net count changes) plugs
+ * so that the NMLS pipeline identity holds:
+ *   AC080 = AC010 + AC020 - AC030 - AC040 - AC050 - AC060 + AC065 + AC063 - AC070
+ * We compute AC065.amount and AC063.count as plugs based on already-computed buckets.
+ */
+function applyPipelinePlugs(appData) {
+  if (!appData) return appData;
+
+  const num = (val) => Number(val) || 0;
+
+  const ac010 = appData.AC010 || {};
+  const ac020 = appData.AC020 || {};
+  const ac030 = appData.AC030 || {};
+  const ac040 = appData.AC040 || {};
+  const ac050 = appData.AC050 || {};
+  const ac060 = appData.AC060 || {};
+  const ac070 = appData.AC070 || {};
+  const ac080 = appData.AC080 || {};
+
+  const amt80 = num(ac080.amount);
+  const cnt80 = num(ac080.count);
+
+  const amtSum = num(ac010.amount) + num(ac020.amount)
+    - num(ac030.amount) - num(ac040.amount) - num(ac050.amount)
+    - num(ac060.amount) - num(ac070.amount);
+  const cntSum = num(ac010.count) + num(ac020.count)
+    - num(ac030.count) - num(ac040.count) - num(ac050.count)
+    - num(ac060.count) - num(ac070.count);
+
+  // AC065: net dollar changes (plug on amount side)
+  const ac065 = { amount: amt80 - amtSum };
+  // AC063: net application changes (plug on count side)
+  const ac063 = { amount: 0, count: cnt80 - cntSum };
+
+  appData.AC065 = ac065;
+  appData.AC063 = ac063;
+
+  // AC066: Total Application Pipeline (should equal AC070 + AC080)
+  const ac066Amount = num(ac010.amount) + num(ac020.amount)
+    - num(ac030.amount) - num(ac040.amount) - num(ac050.amount) - num(ac060.amount)
+    + num(ac065.amount) + num(ac063.amount);
+  const ac066Count = num(ac010.count) + num(ac020.count)
+    - num(ac030.count) - num(ac040.count) - num(ac050.count) - num(ac060.count)
+    + num(ac063.count);
+
+  appData.AC066 = { amount: ac066Amount, count: ac066Count };
+
+  return appData;
 }
 
 /**
@@ -679,7 +808,7 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
  * Breakdown of funded loans by type, property, purpose, lien, QM status
  */
 function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate) {
-  const funded = getFundedLoansInPeriod(loans, compMap, startDate, endDate);
+  const funded = getFundedLoansInPeriod(loans, compMap, statusAtEndDate, startDate, endDate);
 
   const mkEntry = (label) => ({
     label,
@@ -742,9 +871,9 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
     const amount = getLoanAmount(loan);
     const comp = compMap[loan._id.toString()] || {};
 
-    // Determine origination channel
-    const leadSource = loan.leadSource || 'Retail';
-    const isBrokered = leadSource === 'Wholesale-Brokered';
+    // Determine funding method routing: Brokered vs Non-Delegated/Delegated
+    const fundingMethod = loan.fundingMethod || 'Brokered';
+    const isBrokered = fundingMethod === 'Brokered';
 
     // Determine if reverse mortgage
     const isReverse = loan.isReverseMortgage || loan.loanDetails?.loanType === 'Reverse Mortgage';
@@ -767,11 +896,11 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
       result.AC600.amount += (comp.brokerCompensation || 0) + (comp.originationFee || 0) + (comp.brokerFlatFees || 0);
       result.AC610.amount += (comp.lenderFeesCollected || 0) + (comp.processingFee || 0);
     } else {
-      // REVERSE MORTGAGES – classify by reverseType field or loanType subtype
-      const revType = (loan.loanDetails?.reverseType || loan.loanDetails?.loanType || '').toLowerCase();
-      if (revType.includes('saver')) {
+      // REVERSE MORTGAGES – classify by explicit reverseMortgageType when available
+      const subtype = loan.reverseMortgageType || '';
+      if (subtype === 'HECM-Saver') {
         add('AC710', isBrokered, amount);
-      } else if (revType.includes('hecm') || revType.includes('standard')) {
+      } else if (subtype === 'HECM-Standard') {
         add('AC700', isBrokered, amount);
       } else {
         add('AC720', isBrokered, amount);
@@ -862,7 +991,7 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
  * Tab 3: Revenue Data (AC1010–AC1290)
  */
 function calculateRevenueData(loans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate) {
-  const funded = getFundedLoansInPeriod(loans, compMap, startDate, endDate);
+  const funded = getFundedLoansInPeriod(loans, compMap, statusAtEndDate, startDate, endDate);
 
   const result = {
     AC1010: { amount: 0, label: 'Origination Fees' },
@@ -954,7 +1083,7 @@ function calculateMLOData(loans, compMap, statusAtEndDate, statusDuringPeriod, s
  * Risk characteristics — product type, channel, LTV, doc type, rate type
  */
 function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate) {
-  const funded = getFundedLoansInPeriod(loans, compMap, startDate, endDate);
+  const funded = getFundedLoansInPeriod(loans, compMap, statusAtEndDate, startDate, endDate);
 
   const result = {
     // Product Type (I010–I080)
@@ -1018,9 +1147,16 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
   let totalWeightedWarehouse = 0;
   let totalFundedAmount = 0;
 
+  let fundedWithMissingLTV = 0;
+
   for (const loan of funded) {
-    const amount = getLoanAmount(loan);
     const comp = compMap[loan._id.toString()] || {};
+
+    // Use HELOC credit line amount for 2nd-lien HELOCs, otherwise standard loan amount
+    let amount = getLoanAmount(loan);
+    if (comp.lienPosition === '2nd' && comp.secondLienType === 'HELOC' && comp.creditLineAmount > 0) {
+      amount = comp.creditLineAmount;
+    }
     const programType = loan.loanParameters?.selectedProgramId?.programType || '';
     const isARM = comp.amortizationType === 'ARM' || comp.amortizationType === 'Option ARM';
     const isGov = ['fha', 'va', 'usda'].includes(programType);
@@ -1037,14 +1173,18 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
     else if (!isARM) result.productType.otherFixed.count++, result.productType.otherFixed.amount += amount;
     else result.productType.otherARM.count++, result.productType.otherARM.amount += amount;
 
-    // Channel
+    // Channel: use fundingMethod for high-level routing, with leadSource as secondary hint
     const channelMap = {
-      'Wholesale-Brokered': 'brokered',
-      'Retail': 'closedRetail',
-      'Correspondent': 'closedCorrespondent',
-      'Table-Funded': 'tableFunded'
+      Brokered: 'brokered',
+      'Non-Delegated': 'closedRetail',
+      Delegated: 'closedCorrespondent'
     };
-    const ch = channelMap[loan.leadSource] || 'closedRetail';
+    const fm = loan.fundingMethod || 'Brokered';
+    let ch = channelMap[fm] || 'closedRetail';
+    // For table-funded scenarios, prefer Table-Funded bucket when indicated
+    if (loan.leadSource === 'Table-Funded') {
+      ch = 'tableFunded';
+    }
     result.channel[ch].count++;
     result.channel[ch].amount += amount;
 
@@ -1084,8 +1224,16 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
       result.purpose.refinance.amount += amount;
     }
 
-    // LTV Distribution
-    const ltv = loan.financialCalculations?.ltv || 0;
+    // LTV Distribution with fallback:
+    // - Prefer stored financialCalculations.ltv
+    // - If missing/zero but we have loanAmount + property value, compute it on the fly
+    let ltv = loan.financialCalculations?.ltv || 0;
+    if ((!ltv || ltv <= 0) && loan.property?.propertyValue && amount > 0) {
+      ltv = (amount / loan.property.propertyValue) * 100;
+    }
+    if (!ltv || ltv <= 0) {
+      fundedWithMissingLTV += 1;
+    }
     if (ltv <= 60) { result.ltvDistribution.lt60.count++; result.ltvDistribution.lt60.amount += amount; }
     else if (ltv <= 70) { result.ltvDistribution.lt70.count++; result.ltvDistribution.lt70.amount += amount; }
     else if (ltv <= 80) { result.ltvDistribution.lt80.count++; result.ltvDistribution.lt80.amount += amount; }
@@ -1110,15 +1258,28 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
   }
 
   // Pull-Through Ratio
+  // Applications Received should count loans whose application was received during the period.
+  // Prefer compensation.applicationDate, but fall back to other date fields so we don't
+  // undercount loans that exist in the period but have incomplete compensation dates.
   const appsInPeriod = loans.filter(l => {
     const c = compMap[l._id.toString()];
-    return c && c.applicationDate && c.applicationDate >= startDate && c.applicationDate <= endDate;
+    const applicationDate =
+      (c && c.applicationDate) ||
+      l.loanDetails?.applicationDate ||
+      l.applicationDate ||
+      l.createdAt;
+    return applicationDate && applicationDate >= startDate && applicationDate <= endDate;
   }).length;
   result.pullThrough.appsReceived = appsInPeriod;
   result.pullThrough.loansFunded = funded.length;
   result.pullThrough.ratio = appsInPeriod > 0
     ? Math.round((funded.length / appsInPeriod) * 10000) / 100
     : 0;
+
+  // Attach simple metadata for downstream validation / readiness checks
+  result._meta = {
+    fundedWithMissingLTV
+  };
 
   return result;
 }

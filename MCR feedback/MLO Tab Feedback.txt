@@ -1,0 +1,43 @@
+MLO DATA 
+This tab is the MLO Data section. "MLO" stands for Mortgage Loan Originator. In plain terms, 
+this is the salesperson or loan officer who actually spoke to the borrower and took the 
+application. 
+For a developer, this page is essentially a GROUP BY MLO_ID query. It takes the total volume 
+of your company and breaks it down by which specific employee brought the files in. 
+Here is the breakdown of what these data points mean for your software: 
+1. The "Who": Rabi Uddin (NMLS: 123456) 
+In the mortgage industry, loan officers are heavily regulated. They cannot simply be "Sales Rep 
+#5"; they must hold a federal/state license. 
+● NMLS ID (123456): This is the ultimate Primary Key for a mortgage professional. The 
+Nationwide Multistate Licensing System (NMLS) assigns this unique 6-digit number to an 
+individual for life. 
+● Developer Logic: Your Loan_Files table must have a foreign key linking to a Users 
+table, and that Users table must require a valid NMLS ID. If a loan file doesn't have an 
+MLO's NMLS ID attached to it, the MCR export will fail. 
+2. The Math (Amount, Count, Average) 
+If you remember the very first "Application Data" screen we looked at, the company took in 
+exactly 3 applications totaling $1,080,000. 
+Because Rabi Uddin is the only MLO listed here, it means his ID was attached to 100% of the 
+company's volume for this quarter. 
+● Count (3): He originated 3 files. 
+● Amount ($1,080,000): The total dollar sum of those 3 files. 
+● Average ($360,000): $1,080,000 / 3. 
+3. Why Regulators Require This (The "Bad Apple" Rule) 
+You might wonder why the NMLS cares about individual employee performance if they are 
+already tracking the company's total volume. 
+They use this specific data block to track individuals across the entire industry. If Rabi Uddin 
+writes terrible, high-risk loans and gets fired, he takes his NMLS ID to his next company. 
+Regulators use this data to flag "bad actors" who jump from company to company originating 
+toxic or fraudulent loans. 
+Summary for your Database Architecture 
+Field 
+ACML01 
+NMLS ID 
+What it means for your Database 
+The MCR Row Code indicating an individual MLO's production. 
+A strictly required string/integer on the user profile. Must print on all 
+borrower-facing documents. 
+Count / 
+Amount 
+A sum of the Loan_Amount where Application_Date falls in the quarter 
+AND Loan.MLO_ID == User.ID. 
