@@ -106,9 +106,43 @@ describe('getPeriodDates', () => {
 });
 
 describe('getLoanAmount', () => {
-  test('returns loanDetails.loanAmount first', () => {
+  test('returns loanDetails.loanAmount when not Purchase with purchase price', () => {
     const loan = { loanDetails: { loanAmount: 500000, requestedLoanAmount: 400000 }, loanParameters: { loanAmount: 300000 } };
     expect(getLoanAmount(loan)).toBe(500000);
+  });
+
+  test('Purchase: uses purchasePrice minus downPayment (matches dashboard)', () => {
+    const loan = {
+      loanDetails: {
+        loanType: 'Purchase',
+        purchasePrice: 450000,
+        downPayment: 90000,
+        loanAmount: 450000,
+        requestedLoanAmount: 450000
+      },
+      loanParameters: { loanAmount: 450000 }
+    };
+    expect(getLoanAmount(loan)).toBe(360000);
+  });
+
+  test('Purchase: falls back to stored amounts when no purchase price', () => {
+    const loan = {
+      loanDetails: { loanType: 'Purchase', loanAmount: 275000 },
+      loanParameters: {}
+    };
+    expect(getLoanAmount(loan)).toBe(275000);
+  });
+
+  test('Refinance: prefers requestedLoanAmount over loanAmount', () => {
+    const loan = {
+      loanDetails: {
+        loanType: 'Refinance',
+        requestedLoanAmount: 320000,
+        loanAmount: 400000
+      },
+      loanParameters: {}
+    };
+    expect(getLoanAmount(loan)).toBe(320000);
   });
 
   test('falls back to requestedLoanAmount', () => {

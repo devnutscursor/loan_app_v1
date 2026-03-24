@@ -611,12 +611,47 @@ function getFundedLoansInPeriod(loans, compMap, statusAtEndDate, startDate, endD
 }
 
 /**
- * Helper: Get loan amount
+ * Helper: Parse a numeric money field (handles number or string from forms)
+ */
+function parseMoney(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  const n = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+  return Number.isNaN(n) ? 0 : n;
+}
+
+/**
+ * Helper: Loan amount for MCR / RMLA (must match lender dashboard “Amount” logic).
+ *
+ * NMLS pipeline and closed-loan dollar amounts are based on the **loan amount** (note /
+ * application amount), not property / purchase price alone.
+ *
+ * - Purchase: purchasePrice − downPayment when purchase price is present (same as dashboard).
+ * - Refinance / Cash-Out Refinance: requestedLoanAmount when present, else stored amounts.
+ * - Otherwise: loanDetails.loanAmount → requestedLoanAmount → loanParameters.loanAmount.
  */
 function getLoanAmount(loan) {
-  return loan.loanDetails?.loanAmount ||
-    loan.loanDetails?.requestedLoanAmount ||
-    loan.loanParameters?.loanAmount || 0;
+  const ld = loan?.loanDetails || {};
+  const lp = loan?.loanParameters || {};
+
+  if (ld.loanType === 'Purchase' && ld.purchasePrice != null && ld.purchasePrice !== '') {
+    const pp = parseMoney(ld.purchasePrice);
+    if (pp > 0) {
+      const dp = parseMoney(ld.downPayment);
+      return Math.max(0, pp - dp);
+    }
+  }
+
+  if (ld.loanType === 'Refinance' || ld.loanType === 'Cash-Out Refinance') {
+    const rla = parseMoney(ld.requestedLoanAmount);
+    if (rla > 0) return rla;
+  }
+
+  const a = parseMoney(ld.loanAmount);
+  if (a > 0) return a;
+  const b = parseMoney(ld.requestedLoanAmount);
+  if (b > 0) return b;
+  const c = parseMoney(lp.loanAmount);
+  return c > 0 ? c : 0;
 }
 
 /**
