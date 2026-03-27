@@ -11,6 +11,8 @@ const DocumentRequestModal = ({
 }) => {
   if (!show) return null;
 
+  const isCustomAdd = !isUpdate && requestDetails?.allowMetaEdit;
+
   return (
     <div className="fixed z-10 inset-0 overflow-y-auto">
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -29,12 +31,18 @@ const DocumentRequestModal = ({
             </div>
             <div className="mt-3 text-center sm:mt-5">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {isUpdate ? 'Request Document Update' : 'Request Document'}
+                {isUpdate
+                  ? 'Request Document Update'
+                  : isCustomAdd
+                  ? 'Add Custom Document'
+                  : 'Request Document'}
               </h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
-                  {isUpdate 
-                    ? `Specify why the ${requestDetails.title} document needs to be updated.` 
+                  {isUpdate
+                    ? `Specify why the ${requestDetails.title} document needs to be updated.`
+                    : isCustomAdd
+                    ? 'Create a new custom document requirement for this loan.'
                     : `Request the borrower to submit their ${requestDetails.title} document.`}
                 </p>
               </div>
@@ -48,7 +56,25 @@ const DocumentRequestModal = ({
             }}>
               {!isUpdate && (
                 <>
-                  {/* <div className="mb-4">
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="title">
+                      Document Name
+                    </label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={requestDetails.title || ''}
+                      onChange={(e) =>
+                        setRequestDetails({ ...requestDetails, title: e.target.value })
+                      }
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="e.g., Government Issued ID"
+                      required={requestDetails.allowMetaEdit}
+                      disabled={!requestDetails.allowMetaEdit}
+                    />
+                  </div>
+
+                  <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="documentType">
                       Document Type
                     </label>
@@ -56,15 +82,17 @@ const DocumentRequestModal = ({
                       id="documentType"
                       type="text"
                       value={requestDetails.documentType || ''}
-                      onChange={(e) => setRequestDetails({...requestDetails, documentType: e.target.value})}
+                      onChange={(e) =>
+                        setRequestDetails({ ...requestDetails, documentType: e.target.value })
+                      }
                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       placeholder="e.g., Driver's License"
-                      required
-                      disabled={isUpdate}
+                      required={requestDetails.allowMetaEdit}
+                      disabled={!requestDetails.allowMetaEdit}
                     />
-                  </div> */}
+                  </div>
                   
-                  {/* <div className="mb-4">
+                  <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="category">
                       Category
                     </label>
@@ -72,13 +100,15 @@ const DocumentRequestModal = ({
                       id="category"
                       type="text"
                       value={requestDetails.category || ''}
-                      onChange={(e) => setRequestDetails({...requestDetails, category: e.target.value})}
+                      onChange={(e) =>
+                        setRequestDetails({ ...requestDetails, category: e.target.value })
+                      }
                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       placeholder="e.g., Identity"
-                      required
-                      disabled={isUpdate}
+                      required={requestDetails.allowMetaEdit}
+                      disabled={!requestDetails.allowMetaEdit}
                     />
-                  </div> */}
+                  </div>
                 </>
               )}
 
@@ -227,17 +257,25 @@ const DocumentRequestModal = ({
                     }
                     return false;
                   }}
-                >
+                  >
                   {processing ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      {isUpdate ? 'Requesting Update...' : 'Sending Request...'}
+                      {isUpdate
+                        ? 'Requesting Update...'
+                        : isCustomAdd
+                        ? 'Adding Document...'
+                        : 'Sending Request...'}
                     </>
                   ) : (
-                    isUpdate ? 'Request Update' : 'Send Request'
+                    isUpdate
+                      ? 'Request Update'
+                      : isCustomAdd
+                      ? 'Add Document'
+                      : 'Send Request'
                   )}
                 </button>
                 <button

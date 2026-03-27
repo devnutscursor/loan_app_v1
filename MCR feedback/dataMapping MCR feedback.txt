@@ -1,0 +1,138 @@
+Developer-focused blueprint for mapping your UI to the NMLS Mortgage Cal Report (MCR). 
+Here is exactly how the data from your screens translates into the database fields required for 
+that report, with "plain English" mortgage translations. 
+1. Application Pipeline Data (AC010 - AC090) 
+Dev Translation: This is the State Machine for the loan lifecycle. Regulators want to know how 
+many people asked for money, and what the final outcome was during the 3-month reporting 
+quarter. 
+● Applications Received (AC020): 
+○ UI Source: Loan 20260227003 
+○  Dashboard > Application Date (2/27/2026). 
+○ Dev Logic: An "Application" in mortgage tech legaly triggers when the borrower 
+provides 6 specific pieces of data (Name, Income, SSN, Property Address, Est. Value, 
+Loan Amount). Once this date is stamped, the record enters the MCR pipeline. 
+● Pipeline Disposition (AC030 - AC060): 
+○ UI Source: Loan 20260227003 
+○ Dashboard > Loan Status. 
+○ Dev Logic: This tracks where the file "died" if it didn't close. Your DB needs a 
+Status_Date timestamp for when it moved to these states to ensure it fals in the 
+correct quarter. 
+■ AC030 (Approved but not Accepted): We said yes, the borrower walked away. 
+■ AC040 (Denied): We said no. (See Critical Compliance Note below). 
+■ AC050 (Withdrawn): The borrower canceled before we made a decision. 
+■ AC060 (Incomplete): The borrower ghosted us and stopped sending 
+documents. 
+● Loans Closed and Funded (AC070): 
+○ UI Source: Loan 20260227003 
+○  Dashboard > Loan Status = FUNDED. 
+○ Dev Logic: This is the "Success" state. The system sums the Loan Amount ($360,000) 
+and counts the file as a win for the quarter. 
+CRITICAL COMPLIANCE REQUIREMENT: The "Denied" State (AC040) 
+If a user changes a loan status to Denied, your software cannot simply save the 
+record. Federal law (ECOA/Regulation B) dictates that you must tel the consumer 
+exactly why they were denied (an "Adverse Action Notice"). 
+Dev Implementation: When Status changes to Denied, trigger a mandatory 
+modal/form requiring the user to select from standard Denial Reason Codes (e.g., 
+Credit Score too low, Debt-to-Income too high, Colateral insufficient, or Other - 
+and explain). These reasons must be saved to the database array and mapped to 
+the compliance documents. 
+2. Closed Loan Data (AC100 - AC1290) 
+Dev Translation: This section runs GROUP BY queries on al loans that reached the FUNDED 
+state. Regulators use this to categorize the company's "inventory." 
+● Forward Mortgages / Loan Type (AC100 - AC130): 
+○ UI Source: Loan 20260227003 
+○ Dashboard > Program (FHA Mortgage). 
+○ Dev Logic: This defines who insures the loan if the borrower goes bankrupt. 
+"Conventional" means private market; FHA/VA/USDA means government-backed. 
+Routes to AC110 (FHA-Insured). 
+● Property Type (AC200 - AC210): 
+○ UI Source: Loan 20260227003 
+○ Property Information > Manufactured Home (No) & Number of Units (1). 
+○ Dev Logic: Regulators separate standard houses (1-4 units) from 
+mobile/manufactured homes because the legal risk is different. Routes to AC200 
+(One to Four Family Dwelling). 
+● Purpose of Loan (AC300 - AC320): 
+○ UI Source: Loan 20260227003 
+○ Loan Details > Loan Type (Purchase). 
+○ Dev Logic: Why do they want the money? To buy a new house (Purchase), fix their 
+current one (Home Improvement), or replace an old loan (Refinance). Routes to 
+AC300. 
+● Lien Status (AC500 - AC520): 
+○ UI Source: Loan 20260227003 
+○ Funding/Revenue > Lien Position (1st). 
+○ Dev Logic: Who gets paid first in a foreclosure? A primary mortgage is 1st; a Home 
+Equity Line (HELOC) is usualy 2nd. Routes to AC500. 
+● Fee Information (AC600 - AC610): 
+○ UI Source: Loan 20260227003 
+○ Funding/Revenue > Broker Compensation ($150,000) & Lender Fees Collected ($0). 
+○ Dev Logic: This is your gross revenue check. It tels regulators exactly how much the 
+company profited on the file. 
+● QM and Non-QM (AC920 - AC940): 
+○ UI Source: Loan 20260227003 
+○ Loan Details > QM Status (Exempt from QM). 
+○ Dev Logic: "QM" (Qualified Mortgage) means the loan folows strict, safe government 
+rules. "Non-QM" means it's a bit outside the box (e.g., using bank statements instead 
+of W2s). Routes to AC940. 
+● Serviced Loans (AC1200 - AC1210): 
+○ UI Source: Loan 20260227003 
+○  Funding/Revenue > Servicing Disposition (Released). 
+○ Dev Logic: After closing, who colects the monthly payments? "Released" means you 
+sold that right to a big bank. "Retained" means you are sending the monthly bil 
+yourself. Routes to AC1210. 
+3. RMLA Section II (The Risk Profile) 
+Dev Translation: The Residential Mortgage Lending Act (RMLA) tab is a cross-referencing 
+matrix. It looks at the same funded loans but groups them by specific risk combinations. 
+● Residential First Mortgages (T010 - T100): 
+○ UI Source: Loan 20260227003 
+○ Lien Position (1st), Program (FHA), Amortization Type (Fixed). 
+○ Dev Logic: Your query must check three fields at once. Since it is a 1st Lien, 
+Government Backed, and a Fixed interest rate, it drops into bucket T010. 
+● Origination Channel (T210 - T240): 
+○ UI Source: Loan 20260227003 
+○ Loan Details > Lead Source / Channel (Retail). 
+○ Dev Logic: Did you act as a middleman (Broker) or deal directly with the consumer as 
+the bank (Retail)? Routes to T220. 
+● Risk Characteristics (T250 - T340): 
+○ UI Source: Loan 20260227003 
+○ Loan Details > Checkbox Group. 
+○ Dev Logic: These are boolean flags for things that caused the 2008 financial crash.  
+○ Interest Only (borrower isn't paying down the debt), Prepayment Penalty (punishing 
+the borrower for paying early), etc. In your UI, only Mortgage Insurance is checked, 
+which routes to T310. 
+● LTV Distribution (T370 - T430): 
+○ UI Source: Loan 20260227003 
+○ Loan Amount ($360,000) / Property Value ($450,000). 
+○ Dev Logic: LTV stands for Loan-To-Value. It measures the borrower's skin in the game. 
+$360k divided by $450k is exactly 80.00%. The system must automaticaly sort this 
+volume into bucket T390 (70.01% - 80%). 
+4. Critical Missing Fields (Action Items for Devs) 
+To make this mapping airtight, your database schema and UI are currently missing a few strict 
+requirements: 
+● The "Brokered" vs. "Non-Delegated" Router: 
+○ The Issue: The entire MCR report requires volume to be split into two massive 
+columns: Did you use someone else's money (Brokered), or your own warehouse line 
+of credit (Non-Delegated)? 
+○ The Fix: You must add a Funding Method dropdown (Enum: Broker, Non-Delegated, 
+Delegated Lender) to the Loan Details screen. This dictates the GROUP BY logic for 
+the entire MCR. 
+● Conforming vs. Jumbo Flag: 
+○ The Issue: The RMLA tab (T030 vs T050) needs to know if a Conventional loan is 
+"Conforming" (normal size) or "Jumbo" (massive luxury home). 
+○ The Fix: The government sets dolar limits for what is "Conforming" based on the 
+county. Your system either needs an external API cal to check the zip code limit, or a 
+manual Loan Size dropdown for the user. 
+● Reverse Mortgage Sub-types: 
+○ The Issue: The UI has a single Is Reverse Mortgage checkbox. The MCR requires this 
+to be split into three specific sub-types (AC700, AC710, AC720). 
+○ The Fix: If that checkbox equals TRUE, dynamicaly render a required dropdown to 
+specify the exact HECM/Proprietary program. 
+● HELOC vs. Closed-End Second: 
+○ The Issue: If Lien Position = 2nd, the system needs to know if it's a one-time lump sum 
+(Closed-End) or a revolving credit card style loan (HELOC). 
+○ The Fix: Add a Revolving Line of Credit boolean toggle. 
+● The MLO's NMLS ID: 
+○ The Issue: Every single loan must be tied to a licensed Loan Officer's unique federal ID 
+number (NMLS ID). 
+○ The Fix: While a user is logged in, the Loan_Files table needs a hard foreign key link to 
+that user's NMLS_ID. Add a read-only field on the Dashboard showing "Assigned Loan 
+Officer: [Name] - [NMLS ID]". 

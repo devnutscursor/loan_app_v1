@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { DocumentService } from "../../../services/";
-import { standardDocumentRequirements } from "../../../data/documentRequirements";
+import { lenderService } from "../../../services/api";
 // ...other imports
 import {
   User as UserIcon,
@@ -12,6 +12,7 @@ import {
   Copy as DocumentDuplicateIcon,
   // Add these icons
   CheckCircle,
+  CheckCircle2,
   Calendar,
   BadgePercent, // For Loan Qualification Card
   Home,
@@ -19,16 +20,20 @@ import {
   Users, // For Dependents section
   Briefcase,
   Pencil,
+  AlertCircle,
 } from "lucide-react";
 import LoanQualificationCard from "@/components/lender/loans/LoanQualificationCard";
 // Add milestone service import
 import milestoneService from "../../../services/api/milestone.service";
+import { loanCompensationService } from "../../../services/mcr.service";
 
 const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milestones: propMilestones }) => {
   // Use milestones from props instead of local state
   const [milestones, setMilestones] = useState(propMilestones || []);
   const [loadingMilestones, setLoadingMilestones] = useState(true); // Start with loading true
   const [milestoneError, setMilestoneError] = useState(null);
+  const [loanConditions, setLoanConditions] = useState([]);
+  const [compensation, setCompensation] = useState(null);
   // ...existing state
   const [documentStats, setDocumentStats] = useState({
     required: 0,
@@ -45,12 +50,8 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
 
       // console.log("Calculating document stats...");
       // console.log("Documents:", documents);
-      // console.log(
-      //   "Standard Document Requirements:",
-      //   standardDocumentRequirements
-      // );
-      // Get total required documents from standard requirements
-      const totalRequired = standardDocumentRequirements.length;
+      // Determine required documents based on active loan conditions (what lender has actually requested)
+      const totalRequired = Array.isArray(loanConditions) ? loanConditions.length : 0;
 
       // Count unique document submissions by category+type
       const uniqueDocTypes = new Set();
@@ -89,10 +90,42 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
     }
   };
 
-  // Calculate document stats when documents prop changes
+  // Load loan conditions for this loan (used to determine how many documents are actually required)
+  useEffect(() => {
+    const loadConditions = async () => {
+      if (!id) return;
+      try {
+        const res = await lenderService.getLoanConditions(id);
+        // Backend returns { status, count, data }
+        const data = res?.data || res?.conditions || [];
+        setLoanConditions(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error loading loan conditions:", err);
+        setLoanConditions([]);
+      }
+    };
+    loadConditions();
+  }, [id]);
+
+  // Calculate document stats when documents or conditions change
   useEffect(() => {
     calculateDocumentStats();
-  }, [documents]);
+  }, [documents, loanConditions]);
+
+  // Load compensation for Key Dates
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await loanCompensationService.getCompensation(id);
+        if (!cancelled) setCompensation(res.data);
+      } catch (err) {
+        if (!cancelled) console.error("Error loading compensation:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   // Update milestones when prop changes
   useEffect(() => {
@@ -145,6 +178,29 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
   // Get milestone statistics
   const milestoneStats = getMilestoneStats();
 
+  // Status pipeline (Loan Hub timeline)
+  const statusPipeline = [
+    { code: "Pre-Qualification", label: "Pre-Qual" },
+    { code: "Application Started", label: "App Started" },
+    { code: "Application Submitted", label: "App Submitted" },
+    { code: "Processing", label: "Processing" },
+    { code: "Underwriting", label: "Underwriting" },
+    { code: "Conditional Approval", label: "Cond. Approval" },
+    { code: "Approved-Not-Accepted", label: "Appr. Not Accepted" },
+    { code: "Clear to Close", label: "Clear to Close" },
+    { code: "Closed", label: "Closed" },
+    { code: "Funded", label: "Funded" },
+  ];
+  const currentStatusIndex = statusPipeline.findIndex(s => s.code === loan?.status);
+  const isTerminalStatus = ["Declined", "Withdrawn", "Closed-Incomplete"].includes(loan?.status);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric", month: "short", day: "numeric"
+    });
+  };
+
   // Helper for currency formatting
   const currencyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -174,6 +230,51 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
 
   return (
     <div className="space-y-6">
+      {/* Status pipeline */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {!isTerminalStatus && (
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              {statusPipeline.map((step, index) => {
+                const isCompleted = index <= currentStatusIndex;
+                const isCurrent = index === currentStatusIndex;
+                return (
+                  <div key={step.code} className="flex flex-col items-center flex-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                      isCompleted
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                    } ${isCurrent ? "ring-4 ring-blue-100" : ""}`}>
+                      {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                    </div>
+                    <span className={`mt-1 text-[10px] text-center leading-tight ${
+                      isCurrent ? "font-bold text-blue-700" : "text-gray-500"
+                    }`}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 -z-10">
+              <div
+                className="h-full bg-blue-600 transition-all duration-500"
+                style={{ width: `${Math.max(0, (currentStatusIndex / (statusPipeline.length - 1)) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {isTerminalStatus && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+            <span className="text-sm text-red-700">
+              This loan has been <strong>{loan?.status}</strong>.
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Left Column */}
@@ -351,6 +452,50 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
                   ></div>
                 </div>
               </div> */}
+            </div>
+          </div>
+
+          {/* Key Dates */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center">
+              <Calendar className="h-4 w-4 text-blue-500 mr-2" />
+              <h3 className="text-base font-medium text-gray-900">Key Dates</h3>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Application Date</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.applicationDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Approval Date</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.approvalDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Rate Lock Date</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.rateLockDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Clear to Close</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.clearToCloseDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Closing Date</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.closingDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Funded Date</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.fundedDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Lock Expiry</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(compensation?.rateLockExpiry)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] sm:text-xs">Created</span>
+                  <span className="font-medium text-[10px] sm:text-xs">{formatDate(loan?.createdAt)}</span>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -1,0 +1,136 @@
+RMLA stands for the Residential Mortgage Lending Act. While the previous tabs were about 
+tracking money and loan types, this tab is a Risk Profile of your entire operation. Regulators 
+use this screen to see if the software is pumping out safe, standard loans, or highly toxic, risky 
+ones. 
+For a developer, this page is a series of data matrix queries. It takes the same two funded loans 
+($720,000 total) and groups them by risk factors. Let's break it down block by block. 
+1. Residential First Mortgages (T010 - T100) 
+This section only cares about standard, primary mortgages (1st Liens on 1-4 unit houses - 
+SFR). It categorizes them using a 3-dimensional matrix: Government vs. Conventional, Fixed 
+vs. ARM, and Conforming vs. Jumbo. 
+● Government vs. Conventional: Is it backed by the feds (FHA/VA) or private money? 
+● Fixed vs. ARM: Is the rate static, or does it adjust? 
+● Conforming vs. Non-Conforming (Jumbo): "Conforming" means the loan amount is 
+small enough to fit within Fannie Mae/Freddie Mac guidelines. "Jumbo" means it's a loan 
+that exceeds federal limits. 
+● Dev Logic: Your query here would look like: WHERE Lien_Position == '1st' AND 
+Property_Type == '1-4 Unit' GROUP BY (Loan_Type, Amortization_Type, 
+Loan_Size_Limit). 
+2. Other Mortgages (T110 - T200) 
+This is the "Everything Else" bucket. If a loan didn't fit into the standard residential box above, it 
+lands here. 
+● T110/T120 (Seconds & HELOCs): Subordinate loans (2nd in line to get paid). 
+● T130 (Reverse Mortgages): Paying seniors out of their equity. 
+● T140 - T170 (Construction & Commercial): Loans to build a house from scratch, or 
+loans for businesses/apartment complexes. 
+The "Second in Line" Loans 
+These are loans where another bank has the primary claim to the house. 
+● T110 (Closed-End Second Mortgages): A one-time lump sum loan. The borrower gets 
+$50k at closing and pays it back over a set term. 
+○ Dev Logic: Lien_Position == '2nd' AND Revolving == False. 
+● T120 (HELOCs): A Home Equity Line of Credit. This is essentially a credit card tied to 
+the house. The borrower is approved for $100k, but might only take $10k at closing. 
+○ Dev Logic: Lien_Position == '2nd' (usually) AND Revolving == True. 
+○ CRITICAL COMPLIANCE BUG: Regulators explicitly note to "include the credit 
+line amount." Do not report the amount the borrower drew at closing; your SQL 
+query must pull the Maximum_Credit_Limit field. 
+The Reverse Mortgage 
+● T130 (Reverse Mortgages): A loan exclusively for seniors where the bank pays the 
+borrower out of their equity, and the loan is repaid when the borrower dies or moves. 
+○ Dev Logic: This is a checksum tie-back. The total here must perfectly match the 
+AC790 (Total Reverse Mortgages) from the "Closed Loan Data" tab. 
+The Construction Bucket (Dirt to Roof) 
+Construction loans are fundamentally different in software because they aren't fully funded on 
+day one. They are paid out in "Draws" as the builder finishes stages of the house. 
+● T140 (Construction, 1-4 Unit Residential): Building a standard house or duplex. 
+○ Dev Logic: Loan_Purpose == 'Construction' AND Property_Type == '1-4 Unit'. 
+● T150 (Construction, 5+ Unit Residential): Building an apartment complex or a massive 
+condo building. 
+○ Dev Logic: Loan_Purpose == 'Construction' AND Property_Type == 
+'Multi-Family'. 
+● T160 (Construction, Commercial): Building a strip mall, warehouse, or office building. 
+○ Dev Logic: Loan_Purpose == 'Construction' AND Property_Type == 
+'Commercial'. 
+The Commercial & Alternative Bucket 
+● T170 (Commercial Mortgage): A standard, closed loan for a business property (like 
+refinancing an existing retail plaza). 
+○ Developer Warning: Commercial loans are exempt from most standard 
+consumer protection laws (like TRID or RESPA). If the system handles these (it 
+will), the UI should likely hide the standard "Consumer Disclosure" tracking fields 
+when this property type is selected to prevent user confusion. 
+● T180 (Land Contract): Also known as a "Contract for Deed." The seller acts as the 
+bank, and the buyer doesn't get the legal title to the property until the final payment is 
+made years later. 
+○ Dev Logic: Usually tracked via a specific Financing_Type == 'Land Contract' 
+enum. 
+● T200 (Total Other Mortgages): The sum of T110 through T180. 
+Database Architecture Takeaway 
+Section 
+HELOCs (T120) 
+Construction 
+(T140-T160) 
+Unique System Requirement 
+Must report Max_Limit, not Funded_Amount. 
+Your system needs a "Draw Schedule" module to track payouts 
+over time. 
+Commercial (T160-T170) Exclude from consumer compliance validation checks. 
+3. Origination Channel (T210 - T240) 
+This tracks how the loan was generated and funded. 
+● T210 (Brokered): You were the middleman (1 loan for $360k). 
+● T220 (Closed - Retail): You dealt directly with the consumer and funded the loan under 
+your own name (1 loan for $360k). Note: In many systems, "Non-Delegated 
+Correspondent" volume rolls up into Retail for this specific section because you dealt 
+directly with the borrower. 
+4. Risk Characteristics (T250 - T340) 
+These are the "Red Flags." Regulators scrutinize this heavily to ensure another 2008 housing 
+crash doesn't happen. 
+● Alt / Reduced Documentation: Loans where you didn't verify standard W-2s or tax 
+returns (e.g., using bank statements). 
+● Interest Only / Option ARM: Risky loan types where the borrower isn't paying down the 
+actual principal balance. 
+● Prepayment Penalty: Charging the borrower a fee for paying off the loan too early. 
+● Mortgage Insurance (T310): Private Mortgage Insurance (PMI) is required when a 
+borrower puts down less than 20%.  
+● Dev Logic: These are almost entirely driven by Boolean checkboxes in your database. 
+5. LTV Distribution (T370 - T430) 
+LTV stands for Loan-to-Value. It measures how much debt the borrower has compared to the 
+actual appraised value of the house. 
+● The Math: LTV = (Loan Amount / Appraised Value) * 100 
+● The Buckets: The regulators want to see these LTVs grouped into ranges. 
+● In your screenshot: Both loans ($720k total) fell into the ≤ 60% bucket. This means the 
+borrowers put down massive down payments (40% or more), making these extremely 
+safe loans for the bank. 
+6. Weighted Averages & Pull-Through 
+This is the final analytics dashboard for the quarter. 
+● Pull-Through Ratio (66.67%): This is your conversion rate. (Loans Funded / 
+Applications Received) * 100. You took in 3 applications and funded 2, giving you 
+66.67%. 
+● Weighted Averages: Instead of a simple average, these fields average out the LTV and 
+Coupon Rate (Interest Rate), but weighted by the size of the loan. A $1 million loan 
+impacts this average much more than a $100k loan. 
+● Dev Note: The Weighted Average LTV is currently showing 0% in your UI. This looks 
+like a bug in the code! If both loans are in the ≤ 60% bucket, the weighted average 
+cannot be 0%. Your calculation script might be missing a data point. 
+Developer Summary 
+Section 
+First Mortgages 
+Risk 
+Characteristics 
+Database Operation 
+Multi-dimensional GROUP 
+BY 
+COUNT of True Booleans 
+Core Purpose 
+Prove you are writing standard, 
+sellable loans. 
+Flag highly toxic or heavily regulated 
+features. 
+LTV Distribution 
+Pull-Through 
+SORT INTO BUCKETS 
+based on math 
+(Funded / Received) * 100 
+Prove the collateral (the houses) 
+actually covers the debt. 
+Show operational efficiency and 
+drop-off rate. 

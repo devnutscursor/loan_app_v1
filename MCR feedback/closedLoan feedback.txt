@@ -1,0 +1,143 @@
+CLOSED LOAN DATA 
+The  Closed Loan Data tab of the MCR. While the previous screen tracked the pipeline (the 
+flow of apps), this one is a post-closing of everything that was actually funded. 
+This is essentially your Categorization Engine. Regulators want to see exactly what "flavors" of 
+loans you are closing to ensure you aren't being predatory or discriminatory. 
+1. Forward Mortgages – Loan Type 
+A "Forward" mortgage is a standard loan where the borrower pays the bank back over time. 
+This section categorizes the loan by who is "insuring" it if the borrower defaults. 
+● AC100 (Conventional): Standard private loans. Usually backed by Fannie Mae or 
+Freddie Mac government entities. Data Type: Enum default. 
+● AC110 (FHA-Insured): Backed by the Federal Housing Administration. Usually for lower 
+credit scores. 
+● AC120 (VA Guaranteed): Backed by Veterans Affairs. Exclusively for military members. 
+● AC130 (FSA/RHS-Guaranteed): USDA Rural Development loans. For properties in 
+eligible rural areas. 
+● AC190 (Total): Validation Check. software must ensure AC100 + AC110 + AC120 + 
+AC130 = AC190. 
+2. Property Type 
+This tracks the physical collateral securing the database record. 
+● AC200 (One to Four Family Dwelling): Standard houses, townhomes, condos, or 
+duplexes/triplexes. This is 99% of normal loan volume. 
+● AC210 (Manufactured Housing): Mobile homes or prefabricated homes. Regulators 
+track these separately because they have different risk profiles and consumer protection 
+laws. 
+● AC290 (Total): Validation Check. Must equal AC190. 
+3. Purpose of Loan or Application 
+The "Why" behind the transaction. 
+● AC300 (Home Purchase): The borrower is buying a new property. 
+● AC310 (Home Improvement): The borrower is taking out money specifically tied to 
+renovating their current home. 
+● AC320 (Refinancing): Replacing an existing mortgage with a new one (to get a lower 
+rate or pull out cash). 
+● AC390 (Total): Validation Check. Must equal AC190 and AC290. 
+4. HOEPA 
+The Home Ownership and Equity Protection Act. 
+● AC400 (HOEPA): The "High-Cost Loan" flag. If your automated compliance engine flags 
+a loan's APR or fees as exceeding federal limits, it lands here. Developer Note: As a 
+rule of thumb, companies try to keep this at 0. If numbers appear here, the company is 
+dealing in high-risk, heavily regulated lending. 
+5. Lien Status 
+Where the lender stands in line to get paid if the house goes into foreclosure. 
+● AC500 (First Lien): The primary mortgage. They get paid first. 
+● AC510 (Subordinate Lien): A "Second Mortgage" or HELOC. They only get paid if 
+there is money leftover after the First Lien is paid. 
+● AC520 (Not Secured by a Lien): Very rare in this context; a personal loan not actually 
+tied to the house. 
+● AC590 (Total): Validation Check. Must equal all previous totals. 
+6. Fee Information 
+This is the gross revenue snapshot pulling directly from the first "Revenue & Compensation" UI 
+we discussed. 
+● AC600 (Broker Fees Collected): Total dollars earned on files in the "Brokered" column 
+(e.g., the $150,000 you saw earlier). 
+● AC610 (Lender Fees Collected): Total dollars earned from underwriting/processing 
+fees on files in the "Non-Delegated" column. 
+7. Reverse Mortgages 
+A reverse mortgage is where the bank pays the borrower (usually a senior citizen) out of their 
+home's equity. 
+● AC700 (HECM-Standard): The standard government-insured reverse mortgage (Home 
+Equity Conversion Mortgage). 
+● AC710 (HECM-Saver): An older, obsolete version of the HECM with lower upfront fees 
+but less available cash. Dev Note: This will almost always be zero for new records. 
+● AC720 (Proprietary/Other): Private reverse mortgages not insured by the government 
+(usually for multi-million dollar "jumbo" homes). 
+● AC790 (Total): The sum of reverse mortgages. 
+8. QM and Non-QM 
+The "Safe Harbor" classification. This tracks how strictly the underwriter checked the borrower's 
+ability to repay. 
+● AC920 (Qualified Mortgage - QM): Loans that follow strict federal guidelines 
+(debt-to-income limits, no risky features). It gives the lender legal protection if the 
+borrower defaults. 
+● AC930 (Non-Qualified Mortgage): Loans that fall outside the standard rules (e.g., using 
+bank deposit statements instead of W-2s to prove income). 
+● AC940 (Not Subject to QM): Loans exempt from the rule entirely (like investment 
+properties/rental homes, because they are considered business loans, not consumer 
+loans). 
+● AC990 (Total Closed Loans): The Master Checksum. This sum must match AC190, 
+AC290, AC390, and AC590. 
+To understand why this acts as the "Master Checksum," you have to think about how this 
+NMLS report is generated. You are not looking at five different datasets; you are looking 
+at the exact same dataset sliced in five different ways. 
+Here is the logic breakdown of why AC990 is the anchor for the entire page: 
+1. The "Single Source of Truth" Analogy 
+Imagine you have an array of loan objects in your database representing everything that 
+funded this quarter. In your screenshot, that array contains exactly 2 loans (1 Brokered, 
+1 Non-Delegated) totaling $720,000. 
+Every section on this page is just a GROUP BY query run against that exact same array. 
+● AC190 (Total Loan Type): GROUP BY loan_type (Conventional vs. FHA) 
+● AC290 (Total Property Type): GROUP BY property_type (House vs. Mobile 
+Home) 
+● AC390 (Total Purpose): GROUP BY loan_purpose (Purchase vs. Refi) 
+● AC590 (Total Lien Status): GROUP BY lien_position (1st vs. 2nd) 
+● AC990 (Total Closed Loans): GROUP BY qm_status (QM vs. Non-QM) 
+2. The Checksum Logic (Why it must match) 
+Because you are querying the same 2 loans every time, the grand total at the bottom of 
+each of these sections must be identical. 
+If the totals do not match, it proves to the regulators that your database has "dirty data." 
+How the NMLS Validation Engine sees it: If AC190 (Loan Type) says you closed 
+$360,000, but AC290 (Property Type) says you only closed $300,000, it means one of 
+your loan records has a NULL or missing property type. The NMLS system will instantly 
+reject the entire quarterly upload because the math doesn't balance. 
+Developer Pseudo-code for your Validation API: 
+JavaScript 
+const totalAmount = AC990.amount; 
+if ( 
+AC190.amount !== totalAmount || 
+AC290.amount !== totalAmount || 
+AC390.amount !== totalAmount || 
+AC590.amount !== totalAmount 
+) { 
+throw new Error("MCR Validation Failed: Dimensional totals do not match the 
+Master Checksum (AC990). Check for NULL values in loan categories."); 
+} 
+3. The "Orphaned Record" Prevention 
+When you are building the UI for the loan origination system (LOS), this checksum 
+dictates your required fields. 
+To prevent AC990 from failing at the end of the quarter, your software cannot allow a 
+user to change a file's status to "Funded" unless loan_type, property_type, 
+purpose, lien_position, and qm_status are all completely filled out. If even one 
+enum is left blank, that loan becomes an "orphaned record" in that specific category, and 
+the MCR export will break. 
+Summary for your Architecture 
+● AC990 is your base SELECT SUM(loan_amount) for the quarter. 
+● The other totals (AC190, AC290, etc.) are validation checks ensuring that every 
+single loan was perfectly categorized with no missing metadata. 
+● AC1000 (Loans Made and Assigned but Required to Repurchase): The "Defect" 
+bucket. If you sold a loan to an investor but it had fraud or a massive error, the investor 
+forces you to buy it back. This is a critical risk metric. 
+9. Serviced Loans 
+Tracking the long-term billing rights for the loans you closed in the "Non-Delegated" column. 
+● AC1200 (Servicing Retained): You kept the rights to send the monthly bill and collect 
+the interest. 
+● AC1210 (Servicing Released): You sold the loan and the billing rights to a massive 
+aggregator immediately after closing. 
+● AC1290 (Total): The total here usually matches the Non-Delegated column totals above. 
+● Developer Validation Rule: IF (Loan.FundingMethod == "Non-Delegated") { 
+REQUIRE Loan.ServicingDisposition IN ['Retained', 'Released']; } 
+● ASSERT SUM(AC1200.Count + AC1210.Count) == 
+AC990.NonDelegated.Count 
+A Note on Database Architecture 
+Your backend should run a scheduled script at the end of the quarter that queries the 
+Loan_Files table, checks the Status == 'Funded', aggregates the respective enums 
+(Loan Type, Purpose, etc.), and populates this grid automatically. If a user manually alters one 
+number, it will break the entire checksum validation when uploaded to the NMLS portal. 

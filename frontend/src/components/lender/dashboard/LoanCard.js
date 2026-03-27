@@ -63,7 +63,26 @@ const LoanCard = ({ loan, onView }) => {
         <div className="grid grid-cols-3 gap-2 text-xs mb-3">
           <div>
             <p className="text-gray-500 mb-1">Amount</p>
-            <p className="font-semibold text-gray-900">{formatCurrency(loan.loanDetails?.loanAmount)}</p>
+            <p className="font-semibold text-gray-900">
+              {(() => {
+                const ld = loan.loanDetails || {};
+                const lp = loan.loanParameters || {};
+                // For Purchase loans, always derive from purchasePrice − downPayment
+                if (ld.loanType === 'Purchase' && ld.purchasePrice) {
+                  const pp = parseFloat(ld.purchasePrice) || 0;
+                  const dp = parseFloat(ld.downPayment) || 0;
+                  return formatCurrency(pp - dp);
+                }
+                // For Refinance, use requestedLoanAmount
+                if ((ld.loanType === 'Refinance' || ld.loanType === 'Cash-Out Refinance') && ld.requestedLoanAmount) {
+                  return formatCurrency(ld.requestedLoanAmount);
+                }
+                // Fallback to stored loanAmount fields
+                return formatCurrency(
+                  ld.loanAmount || ld.requestedLoanAmount || lp.loanAmount
+                );
+              })()}
+            </p>
           </div>
           <div>
             <p className="text-gray-500 mb-1">Program</p>

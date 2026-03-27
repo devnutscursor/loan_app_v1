@@ -128,8 +128,27 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
 
       // For PDFs and images, we need to fetch and convert to base64
       if (fileType === 'pdf' || fileType === 'image') {
-        console.log('Fetching document from URL:', finalUrl);
-        const response = await fetch(finalUrl);
+        if (!finalUrl || typeof finalUrl !== 'string') {
+          setError('Document URL is missing or invalid.');
+          setUseFallback(true);
+          setIsLoading(false);
+          return;
+        }
+        // Use same-origin proxy for backend URLs to avoid CORS / mixed content
+        const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const isBackendUrl = finalUrl.startsWith(baseApiUrl);
+        const fetchUrl = isBackendUrl
+          ? `/api/documents/proxy?url=${encodeURIComponent(finalUrl)}`
+          : finalUrl;
+        const fetchOptions = {
+          ...(isBackendUrl && {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+        };
+        console.log('Fetching document from URL:', fetchUrl);
+        const response = await fetch(fetchUrl, fetchOptions);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
@@ -469,7 +488,7 @@ const LenderDocumentViewer = ({ document, onClose, onDownload }) => {
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full bg-gray-50">
                               <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+ee                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
                               <p className="mt-2 text-sm text-gray-500">
                                 Loading image...

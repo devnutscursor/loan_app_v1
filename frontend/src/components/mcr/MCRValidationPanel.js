@@ -19,7 +19,19 @@ import {
 const MCRValidationPanel = ({ report, fcData, show }) => {
   if (!show || !report) return null;
 
-  const results = runValidation(report, fcData);
+  // Combine backend-provided validationErrors (if any) with client-side checks
+  const backendResults = Array.isArray(report.validationErrors)
+    ? report.validationErrors.map((ve) => ({
+        rule: ve.code || "Backend validation",
+        severity: ve.severity || "error",
+        message: ve.message || "Validation error"
+      }))
+    : [];
+
+  const results = [
+    ...backendResults,
+    ...runValidation(report, fcData)
+  ];
   const errors = results.filter((r) => r.severity === "error");
   const warnings = results.filter((r) => r.severity === "warning");
   const passes = results.filter((r) => r.severity === "pass");
@@ -98,23 +110,23 @@ function runValidation(report, fcData) {
   const mloOfficers = mloData.loanOfficers || (Array.isArray(mloData) ? mloData : []);
 
   // 13.1 Pipeline Balance Check
-  // AC010 (beginning) + AC020 (received) - AC030 (denied) - AC040 (withdrawn) - AC050 (funded) - AC060 (closedIncomplete) - AC090 (ending) should = 0
+  // AC010 + AC020 = AC030 + AC040 + AC050 + AC060 + AC070 + AC080
   const pipelineCheck = (app.AC010?.count || 0) + (app.AC020?.count || 0) -
     (app.AC030?.count || 0) - (app.AC040?.count || 0) -
     (app.AC050?.count || 0) - (app.AC060?.count || 0) -
-    (app.AC090?.count || 0);
+    (app.AC070?.count || 0) - (app.AC080?.count || 0);
 
   if (pipelineCheck === 0) {
     results.push({
       rule: "13.1 Pipeline Balance",
       severity: "pass",
-      message: `Pipeline balances: AC010(${app.AC010?.count || 0}) + AC020(${app.AC020?.count || 0}) - AC030 - AC040 - AC050 - AC060 - AC090 = 0`,
+      message: `Pipeline balances: AC010(${app.AC010?.count || 0}) + AC020(${app.AC020?.count || 0}) = AC030 + AC040 + AC050 + AC060 + AC070 + AC080`,
     });
   } else {
     results.push({
       rule: "13.1 Pipeline Balance",
       severity: "error",
-      message: `Pipeline does not balance: remainder = ${pipelineCheck}. Check AC010–AC090 values.`,
+      message: `Pipeline does not balance: remainder = ${pipelineCheck}. Check AC010–AC080 values.`,
     });
   }
 
@@ -157,8 +169,8 @@ function runValidation(report, fcData) {
     });
   }
 
-  // 13.3 MLO Attribution Check — sum of MLO loan counts should = AC050 funded count
-  const fundedCount = app.AC050?.count || 0;
+  // 13.3 MLO Attribution Check — sum of MLO loan counts should = AC070 funded count
+  const fundedCount = app.AC070?.count || 0;
   if (mloOfficers.length > 0) {
     const mloTotalCount = mloOfficers.reduce((s, m) => s + (m.loanCount || m.count || 0), 0);
     const mloTotalAmount = mloOfficers.reduce((s, m) => s + (m.totalAmount || m.amount || 0), 0);
@@ -167,13 +179,13 @@ function runValidation(report, fcData) {
       results.push({
         rule: "13.3 MLO Attribution (Count)",
         severity: "pass",
-        message: `MLO total count (${mloTotalCount}) = AC050 funded count (${fundedCount})`,
+        message: `MLO total count (${mloTotalCount}) = AC070 funded count (${fundedCount})`,
       });
     } else {
       results.push({
         rule: "13.3 MLO Attribution (Count)",
         severity: "warning",
-        message: `MLO sum (${mloTotalCount}) ≠ AC050 (${fundedCount}) — check MLO assignments`,
+        message: `MLO sum (${mloTotalCount}) ≠ AC070 (${fundedCount}) — check MLO assignments`,
       });
     }
   }

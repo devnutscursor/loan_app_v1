@@ -1,0 +1,33 @@
+APPLICATION DATA 
+The Application Pipeline (The Input) 
+This section tracks everything that entered the "Pending" state during this period. 
+● AC010: Applications in Process at the Beginning: These are "Carry-over" records. If 
+your report starts on April 1st, these are the files that were already open on March 31st. 
+● AC020: Applications Received: These are "New Requests." In your screenshot, you 
+had 3 new applications totaling $1,080,000. 
+● AC030: Approved but not Accepted: This is when you say "Yes" (provide a 
+commitment letter), but the borrower says "No thanks" and goes to a different bank. 
+● AC040: Denied: The lender rejected the application (usually due to credit, income, or 
+collateral issues). 
+● AC050: Withdrawn: The borrower cancelled the application before a decision was 
+made. 
+● AC060: Closed for Incompleteness: The "Timeout" state. The borrower stopped 
+responding to requests for documents, so the file was killed. 
+The Application Pipeline Results (The Output) 
+This is where those 3 applications ended up by the end of the reporting period. 
+● AC070: Loans Closed and Funded: The "Success" state. Out of your 3 apps, 2 
+actually finished the process and got their money. 
+● AC080: Applications in Process at the End: The "Active" state. 1 application is still 
+being worked on and will become the "AC010" for the next quarter's report. 
+Developer Logic: The "MCR Balance Sheet" 
+To ensure the software's data is accurate, the math must always balance. Think of it like a 
+reconciliation script: 
+$$Total\ In\ (AC010 + AC020) = Total\ Out\ (AC030\ thru\ AC080)$$ 
+In the screenshot: 
+● Total In: $0 (Start) + $1,080,000 (New) = $1,080,000 
+● Total Out: $720,000 (Closed) + $360,000 (Still Processing) = $1,080,000 
+Implementation Tip 
+If you are coding this, don't let users "Delete" a loan record once it has an application date. If 
+they made a mistake, they should change the Status (e.g., to "Withdrawn"). If records simply 
+disappear, your MCR report totals won't balance, and the NMLS system will throw a validation 
+error. 

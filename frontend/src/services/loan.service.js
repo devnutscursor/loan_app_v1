@@ -413,6 +413,69 @@ class LoanService {
       };
     }
   }
+
+  /**
+   * Get milestones for a loan (used for borrower loan details progress)
+   * @param {string} loanId - ID of the loan
+   * @returns {Promise<Object>} Response with milestones and overall progress
+   */
+  async getLoanMilestones(loanId) {
+    try {
+      const response = await ApiService.get(`/api/v1/milestones/loans/${loanId}/milestones`);
+      // Backend returns { status, data: { milestones, overallProgress, currentMilestone } }
+      return {
+        success: true,
+        data: response.data?.data || response.data
+      };
+    } catch (error) {
+      console.error('Error fetching loan milestones:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch loan milestones'
+      };
+    }
+  }
+
+  /**
+   * Calculate milestone-based progress on the client side when backend
+   * doesn't provide overallProgress explicitly.
+   * @param {Array} milestones
+   * @returns {number} percentage (0–100)
+   */
+  calculateMilestoneProgress(milestones) {
+    if (!Array.isArray(milestones) || milestones.length === 0) {
+      return 0;
+    }
+    const completedCount = milestones.filter(
+      (m) => m.status === 'completed' || m.isCompleted
+    ).length;
+    const progress = Math.round((completedCount / milestones.length) * 100);
+    return Number.isFinite(progress) ? progress : 0;
+  }
+
+  /**
+   * Remove a document from a borrower's loan
+   * @param {string} loanId
+   * @param {string} documentId
+   * @returns {Promise<Object>}
+   */
+  async removeDocument(loanId, documentId) {
+    try {
+      const response = await ApiService.delete(
+        `/api/v1/borrower/loans/${loanId}/documents/${documentId}`
+      );
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error removing loan document:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to remove document'
+      };
+    }
+  }
   
   /**
    * Update a loan application (pre-submission)

@@ -62,6 +62,36 @@ const hasDocumentCondition = (
   });
 };
 
+// Find a matching condition ID for a requirement
+const findConditionIdForRequirement = (loanConditions, category, documentType, title) => {
+  if (!loanConditions || !Array.isArray(loanConditions) || loanConditions.length === 0) {
+    return null;
+  }
+  const condition = loanConditions.find((c) => {
+    if (c.category !== category) return false;
+    const cleanTitle = (c.title || "").toLowerCase().replace(" document required", "");
+    const titleMatches =
+      cleanTitle === (title || "").toLowerCase() ||
+      (title || "").toLowerCase().includes(cleanTitle) ||
+      cleanTitle.includes((title || "").toLowerCase());
+    const typeMatches = c.documentType
+      ? (c.documentType || "").toLowerCase() === (documentType || "").toLowerCase()
+      : false;
+    return titleMatches || typeMatches;
+  });
+  return condition ? condition._id : null;
+};
+
+// Check if a condition is a custom document (not matching any standard requirement)
+const isCustomDocumentCondition = (condition, requirementDefs) => {
+  return !requirementDefs.some(
+    (req) =>
+      req.category === condition.category &&
+      ((condition.documentType && (condition.documentType || "").toLowerCase() === (req.documentType || "").toLowerCase()) ||
+        ((condition.title || "").toLowerCase().replace(" document required", "") === (req.title || "").toLowerCase()))
+  );
+};
+
 const createRequirement = ({
   id,
   title,
@@ -201,6 +231,7 @@ const LenderDocumentRequirements = ({
     reason: "",
     customReason: "",
     isUpdate: false,
+    allowMetaEdit: false, // allow editing meta for custom docs
   });
   const [modalKey, setModalKey] = useState(Date.now());
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -210,6 +241,8 @@ const LenderDocumentRequirements = ({
   const [selectedDocuments, setSelectedDocuments] = useState([]);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [processingBatch, setProcessingBatch] = useState(false);
+  // IDs of standard requirements user has dismissed (no backend condition to delete)
+  const [dismissedRequirementIds, setDismissedRequirementIds] = useState(new Set());
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -515,32 +548,42 @@ const processDocuments = (docsList, requirementDefs) => {
 
   // Separate effect for fetching loan conditions (including when refreshCounter changes)
   useEffect(() => {
-    // If we have a loanId, fetch loan conditions
-    if (loanId) {
-      lenderService
-        .getLoanConditions(loanId)
-        .then((response) => {
-          if (
-            response &&
-            response.success !== false &&
-            response.data &&
-            response.data.conditions
-          ) {
-            const conditions = response.data.conditions;
-            console.log("Loaded loan conditions:", conditions);
-            setLoanConditions(conditions);
-          } else {
-            console.warn("No loan conditions found:", response);
-            setLoanConditions([]);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching loan conditions:", error);
-          setLoanConditions([]);
-        });
-    } else {
+    if (!loanId) {
       setLoanConditions([]);
+      return;
     }
+
+    lenderService
+      .getLoanConditions(loanId)
+      .then((response) => {
+        // Backend returns: { status, count, data: [conditions] }
+        if (response && response.success === false) {
+          console.warn("Loan conditions request reported failure:", response);
+          setLoanConditions([]);
+          return;
+        }
+
+        const rawData =
+          (response && response.data) ||
+          response?.conditions ||
+          [];
+
+        const conditions = Array.isArray(rawData)
+          ? rawData
+          : rawData?.conditions || [];
+
+        if (conditions && Array.isArray(conditions) && conditions.length > 0) {
+          console.log("Loaded loan conditions:", conditions);
+          setLoanConditions(conditions);
+        } else {
+          console.warn("No loan conditions found:", response);
+          setLoanConditions([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching loan conditions:", error);
+        setLoanConditions([]);
+      });
   }, [loanId, refreshCounter]);
 
   // Generate appropriate message based on document type and reason
@@ -688,7 +731,13 @@ const processDocuments = (docsList, requirementDefs) => {
   };
 
   // Open the document request modal
-  const openRequestModal = (documentType, category, title, isUpdate = false) => {
+  const openRequestModal = (
+    documentType,
+    category,
+    title,
+    isUpdate = false,
+    allowMetaEdit = false
+  ) => {
     console.log(`Opening request modal for ${documentType} (${category})`);
 
     // Initialize request modal data
@@ -699,6 +748,7 @@ const processDocuments = (docsList, requirementDefs) => {
       reason: "",
       customReason: "",
       isUpdate,
+      allowMetaEdit,
     };
 
     setRequestDetails(initialRequestData);
@@ -722,6 +772,7 @@ const processDocuments = (docsList, requirementDefs) => {
       reason: "",
       customReason: "",
       isUpdate: false,
+      allowMetaEdit: false,
     });
   };
 
@@ -1068,6 +1119,59 @@ const processDocuments = (docsList, requirementDefs) => {
     // The dependency on requirements ensures this happens whenever a document status changes
   }, [requirements]);
 
+  // Merge requirements with condition IDs and append custom document conditions
+  const requirementDefs = useMemo(
+    () => buildRequirements(employmentType, ownsHome),
+    [employmentType, ownsHome]
+  );
+  const displayRequirements = useMemo(() => {
+    const withIds = (requirements || []).map((req) => ({
+      ...req,
+      conditionId: findConditionIdForRequirement(
+        loanConditions,
+        req.category,
+        req.documentType,
+        req.title
+      ),
+    }));
+    const customReqs = (loanConditions || [])
+      .filter((c) => c && (c.category || c.documentType || c.title) && isCustomDocumentCondition(c, requirementDefs))
+      .map((c) => ({
+        id: c._id,
+        title: (c.title || "").replace(" Document Required", "").trim() || "Custom Document",
+        description: c.description || "",
+        category: c.category || "Other",
+        documentType: c.documentType || "Other",
+        conditionId: c._id,
+        isCustom: true,
+        isSubmitted: false,
+        status: "Not Submitted",
+      }));
+    const merged = [...withIds, ...customReqs];
+    return merged.filter((req) => !dismissedRequirementIds.has(req.id));
+  }, [requirements, loanConditions, requirementDefs, dismissedRequirementIds]);
+
+  const handleDeleteRequirement = async (conditionIdOrReqId) => {
+    if (!conditionIdOrReqId || !loanId) return;
+    // If it's a condition ID (MongoDB ObjectId string, 24 hex chars), remove via API
+    const isConditionId = /^[a-fA-F0-9]{24}$/.test(conditionIdOrReqId);
+    if (isConditionId) {
+      try {
+        await lenderService.removeCondition(loanId, conditionIdOrReqId);
+        setRefreshCounter((c) => c + 1);
+        toast.success("Document requirement removed");
+        if (refreshDocuments) refreshDocuments();
+      } catch (err) {
+        console.error("Error removing document requirement:", err);
+        toast.error("Failed to remove document requirement");
+      }
+    } else {
+      // Standard requirement with no condition: dismiss from list (local only)
+      setDismissedRequirementIds((prev) => new Set([...prev, conditionIdOrReqId]));
+      toast.success("Document requirement removed from list");
+    }
+  };
+
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
       <div className="border-b border-gray-200 px-6 py-4">
@@ -1120,6 +1224,20 @@ const processDocuments = (docsList, requirementDefs) => {
                 Request Selected ({selectedDocuments.length})
               </button>
             )}
+
+            {/* Add completely custom document requirement */}
+            <button
+              type="button"
+              onClick={() =>
+                openRequestModal("", "", "", false, true)
+              }
+              className="px-3 py-1.5 inline-flex items-center border border-dashed border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Custom Document
+            </button>
           </div>
         </div>
       </div>
@@ -1140,8 +1258,8 @@ const processDocuments = (docsList, requirementDefs) => {
             <div>
               <ul role="list" className="divide-y divide-gray-200" >
                 <>
-                  {console.log("Rendering requirements:", requirements)}
-                  {requirements.map((req) => (
+                  {console.log("Rendering requirements:", displayRequirements)}
+                  {displayRequirements.map((req) => (
                     <DocumentRequirementCard
                       key={req.id}
                       req={req}
@@ -1153,6 +1271,8 @@ const processDocuments = (docsList, requirementDefs) => {
                       isSelectable={selectMode && !req.isSubmitted}
                       isSelected={selectedDocuments.some(doc => doc.id === req.id)}
                       onSelectToggle={handleToggleDocumentSelection}
+                      onDelete={handleDeleteRequirement}
+                      conditionId={req.conditionId}
                     />
                   ))}
                 </>

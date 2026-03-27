@@ -49,6 +49,40 @@ function mapGender(xmlGender) {
   return mapping[xmlGender] || 'I do not wish to provide this information';
 }
 
+/**
+ * When loan status changes to certain values, auto-fill the corresponding
+ * date on LoanCompensation (only if not already set).
+ * Used when status is updated via findByIdAndUpdate/findOneAndUpdate (no save hooks).
+ * Same mapping as in loan.model.js pre-save hook.
+ */
+async function applyStatusDateToCompensation(loanId, newStatus) {
+  const dateMap = {
+    'Application Submitted': 'applicationDate',
+    'Conditional Approval': 'approvalDate',
+    'Clear to Close': 'clearToCloseDate',
+    'Declined': 'denialDate',
+    'Withdrawn': 'withdrawnDate',
+    'Closed-Incomplete': 'closedIncompleteDate',
+    'Closed': 'closingDate',
+    'Funded': 'fundedDate'
+  };
+  const dateField = dateMap[newStatus];
+  if (!dateField) return;
+  try {
+    let comp = await LoanCompensation.findOne({ loan: loanId });
+    if (!comp) {
+      comp = new LoanCompensation({ loan: loanId });
+    }
+    if (!comp[dateField]) {
+      comp[dateField] = new Date();
+      await comp.save();
+      logger.info(`Auto-filled ${dateField} for loan ${loanId} (status: ${newStatus})`);
+    }
+  } catch (err) {
+    logger.warn(`Failed to auto-fill compensation date for loan ${loanId}: ${err.message}`);
+  }
+}
+
 function mapMaritalStatus(xmlMaritalStatus) {
   const mapping = {
       'Married': 'Married',
@@ -367,6 +401,20 @@ exports.createLoan = async (req, res, next) => {
     };
 
     // Prepare loan details data
+    // For Purchase: loanAmount = purchasePrice − downPayment
+    // For Refinance/Cash-Out: loanAmount = requestedLoanAmount
+    // For other types: use whatever was passed
+    {
+      const _pp = parseFloat(loanDetails?.purchasePrice) || 0;
+      const _dp = parseFloat(loanDetails?.downPayment) || 0;
+      const _rla = parseFloat(loanDetails?.requestedLoanAmount) || 0;
+      const _lt = loanDetails?.loanType || "Purchase";
+      if (_lt === "Purchase") {
+        loanDetails = { ...loanDetails, loanAmount: _pp > 0 ? _pp - _dp : (parseFloat(loanDetails?.loanAmount) || 50000) };
+      } else if (_lt === "Refinance" || _lt === "Cash-Out Refinance") {
+        loanDetails = { ...loanDetails, loanAmount: _rla || parseFloat(loanDetails?.loanAmount) || 50000 };
+      }
+    }
     const cleanLoanAmount = parseFloat(loanDetails?.loanAmount) || 50000;
 
     // Base loan details that apply to all loan types
@@ -1113,11 +1161,79 @@ exports.updateLoan = async (req, res, next) => {
       if (loanParameters) {
         console.log("Loan parameters received:", loanParameters);
         updateData.loanParameters = loanParameters;
+
+        // Keep key application-facing amounts in sync with the qualification scenario
+        const hasNumeric = (val) => typeof val === 'number' && !Number.isNaN(val);
+        const existingLoanDetails =
+          loan && loan.loanDetails ? loan.loanDetails.toObject?.() || loan.loanDetails : {};
+        const existingUpdateLoanDetails = updateData.loanDetails || {};
+
+        if (hasNumeric(loanParameters.loanAmount) || hasNumeric(loanParameters.downPayment)) {
+          updateData.loanDetails = {
+            ...existingLoanDetails,
+            ...existingUpdateLoanDetails,
+            // Mirror loan amount if provided
+            ...(hasNumeric(loanParameters.loanAmount)
+              ? { loanAmount: loanParameters.loanAmount }
+              : {}),
+            // Mirror down payment if provided
+            ...(hasNumeric(loanParameters.downPayment)
+              ? { downPayment: loanParameters.downPayment }
+              : {}),
+          };
+        }
       }
 
       // Handle loanCalculations separately
       if (loanCalculations) {
         updateData.loanCalculations = loanCalculations;
+      }
+
+      // Normalize loan amount for Purchase / Refinance loans.
+      // For Purchase:  loanAmount = purchasePrice − downPayment
+      // For Refinance: loanAmount = requestedLoanAmount
+      // Handles both numeric and string values coming from the frontend form.
+      {
+        const resolvedLoanDetails = updateData.loanDetails || loan.loanDetails;
+        if (resolvedLoanDetails) {
+          const toNum = (val) => {
+            const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+            return Number.isNaN(n) ? null : n;
+          };
+
+          const loanType =
+            resolvedLoanDetails.loanType ||
+            (resolvedLoanDetails.toObject?.() || {}).loanType ||
+            loan.loanDetails?.loanType;
+
+          let computedLoanAmount = null;
+
+          if (loanType === "Purchase") {
+            const pp = toNum(resolvedLoanDetails.purchasePrice) ??
+                       toNum(loan.loanDetails?.purchasePrice);
+            const dp = toNum(resolvedLoanDetails.downPayment) ??
+                       toNum(loan.loanDetails?.downPayment);
+            if (pp !== null && dp !== null) {
+              computedLoanAmount = pp - dp;
+            }
+          } else if (loanType === "Refinance" || loanType === "Cash-Out Refinance") {
+            const rla = toNum(resolvedLoanDetails.requestedLoanAmount) ??
+                        toNum(loan.loanDetails?.requestedLoanAmount);
+            if (rla !== null) {
+              computedLoanAmount = rla;
+            }
+          }
+
+          if (computedLoanAmount !== null) {
+            updateData.loanDetails = {
+              ...(resolvedLoanDetails.toObject?.() || resolvedLoanDetails),
+              loanAmount: computedLoanAmount,
+            };
+            if (updateData.loanParameters) {
+              updateData.loanParameters.loanAmount = computedLoanAmount;
+            }
+          }
+        }
       }
 
       // Simpler approach for programGuidelines - handle it together with loanParameters
@@ -1147,6 +1263,11 @@ exports.updateLoan = async (req, res, next) => {
         new: true,
         runValidators: true,
       });
+
+      // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
+      if (updateData.status !== undefined && updateData.status !== loan.status) {
+        await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+      }
 
       console.log("[DEBUG] Updated loan parameters:", updatedLoan.loanParameters);
 
@@ -1280,6 +1401,11 @@ exports.updateLoanByNumber = async (req, res, next) => {
         }
       );
 
+      // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
+      if (updateData.status !== undefined && updateData.status !== loan.status) {
+        await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+      }
+
       // Log the update
       logger.info(
         `Loan ${updatedLoan.loanNumber} updated by ${req.user.role} ${req.user._id}`
@@ -1336,6 +1462,98 @@ exports.updateLoanStatus = async (req, res, next) => {
     if (completionPercentage !== undefined)
       updateData.completionPercentage = completionPercentage;
 
+    // If status is changing, enforce MCR-related validation rules
+    if (status && status !== loan.status) {
+      // === Phase 2: Workflow guards ===
+      // 1) Denied / Declined must include denial reasons
+      if (status === 'Declined') {
+        const { denialReasons, denialReasonOtherText } = req.body;
+        const reasons = Array.isArray(denialReasons) ? denialReasons.filter(Boolean) : [];
+        if (!reasons.length) {
+          return next(new ApiError('Denial reasons are required when setting status to Declined', 400));
+        }
+        // If "Other" is included, require free-text explanation
+        if (reasons.includes('Other') && !denialReasonOtherText) {
+          return next(new ApiError('Additional explanation is required for denial reason "Other"', 400));
+        }
+        loan.denialReasons = reasons;
+        loan.denialReasonOtherText = denialReasonOtherText || '';
+      }
+
+      // 2) Before moving to Funded / Closed, ensure all MCR-critical fields are populated
+      if (status === 'Funded' || status === 'Closed') {
+        const missingFields = [];
+
+        // Basic loan dimensions
+        if (!loan.loanParameters?.selectedProgramId) {
+          missingFields.push({ field: 'loanParameters.selectedProgramId', label: 'Loan Program' });
+        }
+        if (!loan.loanDetails?.loanType) {
+          missingFields.push({ field: 'loanDetails.loanType', label: 'Loan Purpose/Type' });
+        }
+        if (!loan.property?.propertyType) {
+          missingFields.push({ field: 'property.propertyType', label: 'Property Type' });
+        }
+        if (!loan.property?.state) {
+          missingFields.push({ field: 'property.state', label: 'Property State' });
+        }
+        if (!loan.qmStatus) {
+          missingFields.push({ field: 'qmStatus', label: 'QM Status' });
+        }
+        if (!loan.fundingMethod || loan.fundingMethod === 'Unknown') {
+          missingFields.push({ field: 'fundingMethod', label: 'Funding Method' });
+        }
+
+        // LO + NMLS
+        if (!loan.assignedLoanOfficer) {
+          missingFields.push({ field: 'assignedLoanOfficer', label: 'Assigned Loan Officer' });
+        } else {
+          const loUser = await User.findById(loan.assignedLoanOfficer).select('nmls');
+          if (!loUser || !loUser.nmls) {
+            missingFields.push({ field: 'loanOfficer.nmls', label: 'Loan Officer NMLS ID' });
+          }
+        }
+
+        // Compensation / lien / HELOC / reverse subtype
+        const comp = await LoanCompensation.findOne({ loan: loan._id });
+        if (!comp) {
+          missingFields.push({ field: 'compensation', label: 'Loan Compensation record' });
+        } else {
+          if (!comp.lienPosition) {
+            missingFields.push({ field: 'compensation.lienPosition', label: 'Lien Position' });
+          }
+          if (comp.lienPosition === '2nd') {
+            if (!comp.secondLienType || comp.secondLienType === 'N/A') {
+              missingFields.push({ field: 'compensation.secondLienType', label: 'Second Lien Type' });
+            } else if (comp.secondLienType === 'HELOC' && (!comp.creditLineAmount || comp.creditLineAmount <= 0)) {
+              missingFields.push({ field: 'compensation.creditLineAmount', label: 'HELOC Credit Line Amount' });
+            }
+          }
+
+          // Servicing disposition is required for Non-Delegated funded loans
+          if (loan.fundingMethod === 'Non-Delegated') {
+            if (!comp.servicingDisposition || !['Retained', 'Released'].includes(comp.servicingDisposition)) {
+              missingFields.push({
+                field: 'compensation.servicingDisposition',
+                label: 'Servicing Disposition (Retained vs Released)'
+              });
+            }
+          }
+        }
+
+        // Reverse mortgage subtype
+        if (loan.isReverseMortgage && !loan.reverseMortgageType) {
+          missingFields.push({ field: 'reverseMortgageType', label: 'Reverse Mortgage Type' });
+        }
+
+        if (missingFields.length > 0) {
+          return next(new ApiError('Cannot mark loan as Funded/Closed — required MCR fields are missing', 400, {
+            missingFields
+          }));
+        }
+      }
+    }
+
     // Auto-update milestone if status changed
     if (status && status !== loan.status) {
       // Find the corresponding milestone
@@ -1382,16 +1600,18 @@ exports.updateLoanStatus = async (req, res, next) => {
     loan._changeReason = req.body.changeReason || 'Status updated by lender';
     const updatedLoan = await loan.save();
 
-    // Auto-create LoanCompensation record when loan is funded
+    // Auto-create LoanCompensation record when loan is funded or closed (hook already sets date; this ensures record exists)
     if (status === 'Funded' || status === 'Closed') {
       try {
         const existingComp = await LoanCompensation.findOne({ loan: updatedLoan._id });
         if (!existingComp) {
-          await LoanCompensation.create({
+          const compData = {
             loan: updatedLoan._id,
-            fundedDate: new Date(),
-            loanAmount: updatedLoan.loanAmount || 0,
-          });
+            loanAmount: updatedLoan.loanDetails?.loanAmount || updatedLoan.loanAmount || 0,
+          };
+          if (status === 'Closed') compData.closingDate = new Date();
+          if (status === 'Funded') compData.fundedDate = new Date();
+          await LoanCompensation.create(compData);
           logger.info(`Auto-created LoanCompensation for loan ${updatedLoan.loanNumber} on status change to ${status}`);
         }
       } catch (compError) {
@@ -1504,6 +1724,44 @@ exports.updateMilestone = async (req, res, next) => {
       status: "success",
       message: `Milestone ${milestoneId ? "updated" : "added"} successfully`,
       data: loan.milestones,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get conditions for a loan
+ */
+exports.getLoanConditions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const loan = await Loan.findById(id).select('conditions borrower coBorrowers').lean();
+
+    if (!loan) {
+      return next(new ApiError("Loan not found", 404));
+    }
+
+    if (req.user.role === "borrower") {
+      const borrower = await Borrower.findOne({ user: req.user._id });
+      if (!borrower) {
+        return next(new ApiError("Borrower profile not found", 404));
+      }
+      const isPrimary = loan.borrower && loan.borrower.toString() === borrower._id.toString();
+      const isCoBorrower = loan.coBorrowers && loan.coBorrowers.some(
+        (c) => c.toString() === borrower._id.toString()
+      );
+      if (!isPrimary && !isCoBorrower) {
+        return next(new ApiError("You are not authorized to view this loan's conditions", 403));
+      }
+    }
+
+    const conditions = loan.conditions || [];
+    res.status(200).json({
+      status: "success",
+      count: conditions.length,
+      data: conditions,
     });
   } catch (error) {
     next(error);
@@ -3033,6 +3291,7 @@ exports.updateLoanStatus = async (req, res, next) => {
       'Processing': 'Processing',
       'Underwriting': 'Underwriting',
       'Approved': 'Conditional Approval', // Map to existing backend enum
+      'Approved but not Accepted': 'Approved-Not-Accepted',
       'Clear to Close': 'Clear to Close',
       'Rejected': 'Declined',  // Map "Rejected" to "Declined"
       'Withdrawn': 'Withdrawn',
@@ -3072,16 +3331,18 @@ exports.updateLoanStatus = async (req, res, next) => {
     
     await loan.save();
 
-    // Auto-create LoanCompensation record when loan reaches Closed status
-    if (backendStatus === 'Closed') {
+    // Auto-create LoanCompensation when loan reaches Closed or Funded (hook already sets date; this ensures record exists)
+    if (backendStatus === 'Closed' || backendStatus === 'Funded') {
       try {
         const existingComp = await LoanCompensation.findOne({ loan: loan._id });
         if (!existingComp) {
-          await LoanCompensation.create({
+          const compData = {
             loan: loan._id,
-            fundedDate: new Date(),
-            loanAmount: loan.loanAmount || 0,
-          });
+            loanAmount: loan.loanDetails?.loanAmount || loan.loanAmount || 0,
+          };
+          if (backendStatus === 'Closed') compData.closingDate = new Date();
+          if (backendStatus === 'Funded') compData.fundedDate = new Date();
+          await LoanCompensation.create(compData);
           logger.info(`Auto-created LoanCompensation for loan ${loan.loanNumber} on status change to ${backendStatus}`);
         }
       } catch (compError) {
