@@ -8,6 +8,7 @@ const app = require('./app');
 const logger = require('./utils/logger');
 const scheduler = require('./utils/scheduler');
 const milestoneNotificationService = require('./services/milestoneNotification.service');
+const { syncMortechCatalog } = require('./services/mortechCatalog.service');
 const { connectDatabase } = require('./config/database');
 
 // Environment variables
@@ -30,9 +31,6 @@ process.on('uncaughtException', (err) => {
   logger.error(err.stack);
   process.exit(1);
 });
-
-// Connect to MongoDB
-connectDatabase();
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -128,19 +126,37 @@ io.on('connection', (socket) => {
 // Make io accessible from other modules
 app.set('io', io);
 
-// Start server
-server.listen(PORT, () => {
-  logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`);
-  
-  // Start the milestone deadline notification scheduler
-  // Check for approaching deadlines every hour
-  scheduler.startTask(
-    'milestoneDeadlineChecker',
-    () => milestoneNotificationService.checkMilestoneDeadlines(),
-    60 * 60 * 1000 // 1 hour
-  );
-  logger.info('Milestone deadline notification scheduler started');
-});
+// Start server only after database is connected.
+const startServer = async () => {
+  try {
+    await connectDatabase();
+    server.listen(PORT, () => {
+      logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+
+      // Start the milestone deadline notification scheduler
+      // Check for approaching deadlines every hour
+      scheduler.startTask(
+        'milestoneDeadlineChecker',
+        () => milestoneNotificationService.checkMilestoneDeadlines(),
+        60 * 60 * 1000 // 1 hour
+      );
+      logger.info('Milestone deadline notification scheduler started');
+
+      // Sync Mortech product catalog every 24 hours
+      scheduler.startTask(
+        'mortechCatalogSync',
+        () => syncMortechCatalog().catch((err) => logger.error(`[mortechCatalogSync] ${err.message}`)),
+        24 * 60 * 60 * 1000 // 24 hours
+      );
+      logger.info('Mortech catalog sync scheduler started (runs every 24h)');
+    });
+  } catch (error) {
+    logger.error(`Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

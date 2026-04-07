@@ -9,7 +9,10 @@ const DEFAULT_FORM = {
   creditScore: '800+',
   propertyType: 'SingleFamily',
   occupancy: 'PrimaryResidence',
+  /** Aligns with loan-officer-platform / Mortech PROGRAM_TERM_PRODUCT_IDS mapping */
+  productCategory: 'conv_30yr',
   loanTerm: '30',
+  vaFirstTimeUse: true,
   eligibleForLowerRate: false,
   loanPurpose: 'Purchase',
   mortgageBalance: '360000',
@@ -18,6 +21,16 @@ const DEFAULT_FORM = {
   lockDays: '30',
   secondMortgageAmount: '0',
 };
+
+const PRODUCT_CATEGORY_OPTIONS = [
+  { value: 'conv_30yr', label: 'Conforming' },
+  { value: 'fha_30yr', label: 'FHA' },
+  { value: 'va_30yr', label: 'VA' },
+  { value: 'jumbo_30yr', label: 'JUMBO' },
+  { value: 'second_home_30yr', label: 'Second Home' },
+  { value: 'home_ready_30yr', label: 'Home Ready Program' },
+  { value: 'home_possible_30yr', label: 'Home Possible Program' },
+];
 
 const formatCurrency = (value, digits = 0) =>
   value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -47,6 +60,29 @@ const normalizeLoanTerm = (term) => {
   if (!term) return '30 year fixed';
   if (term.includes('year fixed')) return term;
   return `${term} year fixed`;
+};
+
+/**
+ * Raw behavior: only sort by note rate (ascending).
+ * For equal rates, keep original API order (stable sort + return 0).
+ */
+const compareMortgageRateRows = (a, b) => {
+  // If rate is missing/unparseable, push that row to the bottom.
+  const rateA = Number(a.rate);
+  const rateB = Number(b.rate);
+  const ra = Number.isFinite(rateA) ? rateA : Number.POSITIVE_INFINITY;
+  const rb = Number.isFinite(rateB) ? rateB : Number.POSITIVE_INFINITY;
+  return ra - rb;
+};
+
+const matchesSelectedTerm = (rate, selectedTermYears) => {
+  const selected = Number(selectedTermYears);
+  if (!Number.isFinite(selected)) return true;
+  const termFromRate = Number(rate?.loanTerm);
+  const termMatches = Number.isFinite(termFromRate) ? termFromRate === selected : false;
+  const text = `${rate?.productName || ''} ${rate?.loanProgram || ''}`.toLowerCase();
+  const textMatches = text.includes(`${selected} yr fixed`) || text.includes(`${selected} year fixed`);
+  return termMatches || textMatches;
 };
 
 const mapCreditScore = (creditScore) => {
@@ -147,8 +183,7 @@ const LoanRates = () => {
     { value: '30', label: '30 Year Fixed' },
     { value: '25', label: '25 Year Fixed' },
     { value: '20', label: '20 Year Fixed' },
-    { value: '15', label: '15 Year Fixed' },
-    { value: '10', label: '10 Year Fixed' }
+    { value: '10', label: '10 Year Fixed' },
   ]), []);
 
   const availableLenders = useMemo(
@@ -194,28 +229,56 @@ const LoanRates = () => {
 
     return Object.entries(grouped).map(([lenderName, lenderRates]) => {
       const rateStack = lenderRates.map((rate) => {
-        const basePrice = Number.isFinite(rate.points) ? rate.points : 100;
-        const netPrice = basePrice;
-        const costVal = ((100 - netPrice) / 100) * loanAmount;
-        const pi = calculateMonthlyPI(loanAmount, rate.interestRate, termYears);
+        const rateNum = Number(rate.interestRate);
+        const aprNum = Number(rate.apr);
+        const safeRate = Number.isFinite(rateNum) ? rateNum : null;
+        const safeApr = Number.isFinite(aprNum) ? aprNum : safeRate;
+        if (!Number.isFinite(safeRate)) return null;
+        const sheetNum = Number(rate.ratesheetPrice);
+        const pointsNum = Number(rate.points);
+        const sheet =
+          rate.ratesheetPrice != null && Number.isFinite(sheetNum)
+            ? sheetNum
+            : null;
+        const pts =
+          rate.points != null && Number.isFinite(pointsNum) ? pointsNum : null;
+        // ratesheet price is 0–100 (investor); borrower cost = (100 − sheet) / 100 × loan.
+        // `points` from Mortech is borrower discount points (% of loan), not a net price ladder.
+        let basePrice;
+        let netPrice;
+        let costVal;
+        if (sheet != null) {
+          basePrice = sheet;
+          netPrice = sheet;
+          costVal = ((100 - sheet) / 100) * loanAmount;
+        } else if (pts != null) {
+          basePrice = pts;
+          netPrice = pts;
+          costVal = (pts / 100) * loanAmount;
+        } else {
+          basePrice = 100;
+          netPrice = 100;
+          costVal = 0;
+        }
+        const pi = calculateMonthlyPI(loanAmount, safeRate || 0, termYears);
         return {
           source: rate,
-          rate: rate.interestRate,
-          apr: rate.apr || rate.interestRate,
+          rate: safeRate,
+          apr: safeApr,
           pi,
           basePrice,
           netPrice,
           cost: costVal,
           totalLLPA: 0,
           adjArr: [
-            { n: 'Mortech Price', v: basePrice }
+            { n: 'Mortech Price', v: pts != null ? pts : basePrice }
           ],
           comp: 0,
         };
-      });
+      }).filter(Boolean);
 
-      const hero = [...rateStack].sort((a, b) => Math.abs(a.cost) - Math.abs(b.cost))[0];
-      const sortedStack = [...rateStack].sort((a, b) => a.rate - b.rate);
+      const sortedStack = [...rateStack].sort(compareMortgageRateRows);
+      const hero = sortedStack[0];
       return { lenderName, hero, rateStack: sortedStack };
     });
   };
@@ -260,8 +323,14 @@ const LoanRates = () => {
         loanpurpose: form.loanPurpose,
         proptype: mapPropertyTypeToMortech(form.propertyType),
         occupancy: mapOccupancyToMortech(form.occupancy),
+        productCategory: form.productCategory,
+        loanTerm: form.loanTerm,
         loanProduct1: normalizeLoanTerm(form.loanTerm),
       };
+
+      if (form.productCategory && String(form.productCategory).toLowerCase().startsWith('va_')) {
+        payload.vaFirstTimeUse = form.vaFirstTimeUse !== false;
+      }
 
       if (form.waiveEscrow === true) {
         payload.waiveEscrow = true;
@@ -281,8 +350,15 @@ const LoanRates = () => {
 
       const response = await customAxios.post('/api/v1/mortech/search', payload);
       const rates = response.data?.rates || [];
-      const ratesCount = response.data?.ratesCount ?? rates.length;
-      const groups = buildRateGroups(rates);
+      const selectedTermYears = parseInt(form.loanTerm, 10) || 30;
+      const termMatchedRates = rates.filter((rate) => matchesSelectedTerm(rate, selectedTermYears));
+      const effectiveRates = termMatchedRates.length > 0 ? termMatchedRates : rates;
+      const ratesCount = effectiveRates.length;
+      const groups = buildRateGroups(effectiveRates).sort(
+        (a, b) =>
+          compareMortgageRateRows(a.hero, b.hero) ||
+          a.lenderName.localeCompare(b.lenderName, undefined, { sensitivity: 'base' })
+      );
       setRateGroups(groups);
       setSelectedLenders(groups.map((group) => group.lenderName));
       setRateTimestamp(new Date().toLocaleString());
@@ -691,6 +767,35 @@ const LoanRates = () => {
           <div className="tpo-row">
             <div className="tpo-col">
               <div className="tpo-input-group">
+                <div className="label-row"><label>Program Category</label></div>
+                <select value={form.productCategory} onChange={handleInputChange('productCategory')}>
+                  {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {String(form.productCategory || '').toLowerCase().startsWith('va_') && (
+              <div className="tpo-col">
+                <div className="tpo-input-group">
+                  <div className="label-row"><label>VA first-time use</label></div>
+                  <select
+                    value={form.vaFirstTimeUse ? 'Yes' : 'No'}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, vaFirstTimeUse: e.target.value === 'Yes' }))
+                    }
+                  >
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="tpo-row">
+            <div className="tpo-col">
+              <div className="tpo-input-group">
                 <div className="label-row"><label>Property Type</label></div>
                 <select value={form.propertyType} onChange={handleInputChange('propertyType')}>
                   {propertyTypeOptions.map((option) => (
@@ -807,7 +912,7 @@ const LoanRates = () => {
                   {totalRatesCount} rate{totalRatesCount !== 1 ? 's' : ''} from {rateGroups.length} lender{rateGroups.length !== 1 ? 's' : ''}
                 </span>
               )}
-              Best Rates
+              <span title="Rows sorted by interest rate (low to high); APR only breaks ties when the rate matches">Sorted by rate</span>
             </div>
           </div>
           <div id="rate_list">
@@ -868,8 +973,8 @@ const LoanRates = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {group.rateStack.map((rateItem) => {
-                          const rowKey = `${group.lenderName}-${rateItem.source?.id ?? rateItem.rate}`;
+                        {group.rateStack.map((rateItem, rateIndex) => {
+                          const rowKey = `${group.lenderName}-${rateItem.source?.id ?? 'na'}-${rateItem.rate}-${rateItem.apr}-${rateIndex}`;
                           const rowExpanded = !!expandedRows[rowKey];
                           const cStyle = rateItem.cost > 0 ? 'txt-red' : 'txt-green';
                           const cTxt = rateItem.cost > 0
