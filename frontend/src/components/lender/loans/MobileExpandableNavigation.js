@@ -59,6 +59,7 @@ const MobileExpandableNavigation = ({
               {activeTab === "dashboard" && "Loan Dashboard"}
               {activeTab === "documents" && "Documents"}
               {activeTab === "milestones" && "Milestones"}
+              {activeTab === "products-pricing" && "Products & Pricing"}
               {activeTab === "borrower" && "Borrower Information"}
               {activeTab === "loan" && "Loan Details"}
               {activeTab === "property" && "Property Information"}

@@ -1,0 +1,138 @@
+Parameter Name,Description
+ltv,Loan to value (decimal value). This value is ignored if the appraisedvalue parameter is passed.
+cltv,Combined loan to value (decimal Value).
+appraisedvalue,"Appraised value of subject property. If passed, the appraisedvalue parameter is used to calculate LTV."
+downPayment,Amount of down payment.
+fico,"FICO score. For non-traditional credit, enter 0."
+annualIncome,Borrower's annual income.
+selfEmployed,Indicator that borrower is self employed.
+loanpurpose,"0 = Purchase (default)
+1 = Rate/term refinance
+2 = Cash-out refinance
+6 = Streamline without credit without appraisal
+7 = IRRRL without credit without appraisal
+12 = Streamline with credit with appraisal
+13 = IRRRL with credit with appraisal
+14 = Purchase – HUD REO
+15 = Streamline with credit without appraisal
+16 = Streamline without credit with appraisal
+17 = IRRRL with credit without appraisal
+18 = IRRRL without credit with appraisal"
+cashOutReason,"Only applies when loanpurpose = 2 (cash-out refinance)
+0 = Other (default)
+1 = Student loan repayment"
+propertyCountyFips,"5-digit code representing the State and County. Valid FIPS codes can be found on the FHFA Conforming Loan Limits Website. When included, any values sent in propertyState or propertyCounty will be ignored and overwritten."
+propertyState,"Property state abbreviation. If blank, will defer to user's default state in User Setup."
+propertyZip,Zip code of which the property resides.
+propertyCounty,County in which the property resides.
+DTIPercent,Debt to income ratio percent value. Example: 30 = 30% DTI.
+occupancy,"0 = Owner occupied (default)
+1 = Non-owner occupied
+2 = Second home"
+taxes,Estimated monthly taxes.
+insurance,Estimated monthly hazard insurance premium.
+closingDate,"Proposed closing date, yyyy-MM-dd format. Used to calculate annual taxes and insurance and provide in fee_list. Must be provided for this feature to be included."
+firstPaymentDate,"Proposed first payment date, yyyy-MM-dd format. This will be the 1st of the month. Used to calculate annual taxes and insurance and provide in fee_list. Must be provided for this feature to be included."
+HOIDueDate,"Homeowner's insurance payment due date, yyyy-MM-dd format. Used to calculate annual taxes and insurance and provide in fee_list. Must be provided for this feature to be included."
+proptype,"0 = 1 unit
+1 = 2 unit
+2 = 3 unit
+3 = 4 unit
+4 = Co-op
+5 = Manufactured home
+6 = Warrantable condo < 5 stories
+7 = Warrantable condo 5-8 stories
+8 = Warrantable condo > 8 stories
+9 = Non-warrantable condo < 5 stories
+10 = Non-warrantable condo 5-8 stories
+11 = Non-warrantable condo > 8 stories
+12 = Condotel condo < 5 stories
+13 = Condotel condo 5-8 stories
+14 = Condotel condo > 8 stories
+15 = Townhome
+20 = Detached condo"
+parent_id,"Comma-delimited list of investors to consider. If this value is not sent, then all investors configured in an account are used."
+view,"Number of investors to display per rate. Default is single best investor. If more than a single result is desired for each rate result, pass 2, 3, 4, or 5."
+pmiCompany,"-999 = Best execution
+2 = Genworth
+8 = MGIC
+9 = UG
+10 = Radian Standard
+12 = Arch MI Credit Union
+15 = MGIC C.U.
+17 = Essent
+18 = MGIC Live Pricing
+19 = MGIC C.U. Live Pricing
+20 = UG Live
+19627 = National MI Live
+19629 = Arch MI Live
+20448 = Essent C.U."
+noMI,"No mortgage insurance option.
+-1 = N/A
+0 = Standard
+2 = LPMI
+35, 30, 25, 22, 20, 18, 17, 16, 12, 6 (%)"
+financeMI,"0 = Do not finance MI in loan amount
+1 = Finance MI in loan amount"
+includeUpfrontFee,"False = (default) Do not include single premium MI, FHA MIP, or VA funding fee in fee_list.
+True = Include single premium MI, FHA MIP, or VA funding fee in fee_list."
+coverageType,"1 = Monthly premium
+16 = Single premium
+19622 = Single refundable"
+filterId,Filter identifier provided by the lead source or created within Marksman.
+leadSource,"One of the lead source identifiers listed below:
+0 = Marksman (default)
+1 = LendingTree
+(For additional lead source IDs, contact your Mortech Customer Success Manager.)"
+noclosingcost,"Check box to only display no closing cost loans.
+0 = No (default)
+1 = Yes"
+rebateAmount,Rebate amount to be given to the borrower in dollars.
+targetPrice,"If provided, the query will return only the rate this target price (par = 0pts, 1 = 1pt discount, -1 = 1pt premium). Default value is par.
+-999 will return all available rates."
+minrate,Minimum rate returned in the results set.
+maxrate,Maximum rate returned in the results set.
+interestOnly,"If provided, the query will return products that offer payments only to the interest for a short period. (0 = No (default), 1 = Yes)"
+firstTimeHomeBuyer,"0 = No
+1 = Yes"
+amiIlpaWaiver,"0 = No
+1 = Yes"
+deliveryType,"0 = Best efforts
+1 = Mandatory (if enabled in Marksman)
+-1 = Best efforts and mandatory"
+lienPosition,"1 = 1st lien
+2 = 2nd lien"
+lockindays,"15 = 15 day lock
+30 = 30 day lock
+45 = 45 day lock
+60 = 60 day lock
+75 = 75 day lock
+90 = 90 day lock
+120 = 120 day lock
+150 = 150 day lock
+180 = 180 day lock
+270 = 270 day lock
+360 = 360 day lock"
+waiveescrow,"Waive escrow
+0 = No (default)
+1 = Yes"
+vaType,"0 = Regular military
+1 = National Guard/Reserves
+2 = Exempt"
+subsequentUse,"0 = First time use
+1 = Subsequent use"
+program,"Subordinate financing
+0 = None
+1 = Subordinate financing
+2 = Sub Fin/community second"
+profitTable,"Profit table to be applied to this query, overriding the default profit table defined for the product and investor."
+includeCompliance,"Adds compliance checks for each quote in the results.
+1 = Yes
+0 = No"
+lenderPaidYSP,"1 = Yes
+0 = No"
+ignoreProductMapping,"Ignores product mapping for Freddie/Fannie products (ex. productId = 4 only returns Fannie products). Marksman user needs to have product grouping disabled in Marksman settings for this to be available.
+1 = Yes
+0 = No"
+strictEligibility,"True (default) = loan criteria, wholesale rates, and settings description displayed when product and pricing is unavailable.
+False = loan criteria, wholesale rates, and settings description removed when product and pricing unavailable."

@@ -22,6 +22,7 @@ import {
   CalendarClock, // For Audit & Dates tab
   DollarSign, // For Funding / Revenue tab
   ShieldCheck, // For MCR Data Audit tab
+  SlidersHorizontal, // For Products & Pricing tab
 } from "lucide-react";
 // MCR Tab Components
 import AuditDatesTab from "../../../components/lender/loans/mcr/AuditDatesTab";
@@ -48,6 +49,7 @@ import MobileExpandableNavigation from "../../../components/lender/loans/MobileE
 import LoanDetailsSkeleton from "../../../components/lender/loans/LoanDetailsSkeleton";
 import AdditionalInfo from "../../../components/lender/loans/AdditionalInfo";
 import LoanApplicationSettingsModal from "../../../components/lender/loans/LoanApplicationSettingsModal";
+import ProductsPricingTab from "../../../components/lender/loans/ProductsPricingTab";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
@@ -2231,6 +2233,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     { id: "dashboard", label: "Loan Dashboard", icon: BarChart2 },
     { id: "documents", label: "Documents", icon: Files },
     { id: "milestones", label: "Milestones", icon: Trophy },
+    { id: "products-pricing", label: "Products & Pricing", icon: SlidersHorizontal },
     { id: "application", label: "Application", icon: FileSpreadsheet }, // Parent tab
     // MCR Tabs (separator handled in VerticalTabNavigation)
     { id: "audit-dates", label: "Audit & Dates", icon: CalendarClock, isMCR: true },
@@ -3455,6 +3458,11 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                             }}
                           />
                         </>
+                      )}
+
+                      {/* Products & Pricing Tab */}
+                      {activeTab === "products-pricing" && (
+                        <ProductsPricingTab loan={loan} />
                       )}
 
                       {/* Milestones Tab */}

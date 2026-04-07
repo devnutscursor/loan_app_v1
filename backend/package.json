@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "migrate-to-s3": "node migrate-to-s3.js"
+    "migrate-to-s3": "node migrate-to-s3.js",
+    "sync-mortech-catalog-once": "node scripts/sync-mortech-catalog-once.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.525.0",

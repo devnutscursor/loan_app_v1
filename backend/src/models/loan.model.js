@@ -785,6 +785,24 @@ const loanSchema = new mongoose.Schema({
   loanDetails: loanDetailSchema,
   loanParameters: loanParametersSchema,
   loanCalculations: loanCalculationsSchema,
+  pricingSelection: {
+    type: new mongoose.Schema({
+      lenderName: String,
+      productName: String,
+      interestRate: Number,
+      apr: Number,
+      discountPoints: Number,
+      discountPointsDollar: Number,
+      monthlyPI: Number,
+      piti: Number,
+      lockDays: Number,
+      lastUpdate: String,
+      basePrice: Number,
+      adjustments: [{ name: String, rate: Number, points: Number, amount: Number }],
+      appliedAt: { type: Date, default: Date.now },
+    }, { _id: false }),
+    default: null,
+  },
   status: {
     type: String,
     enum: [
