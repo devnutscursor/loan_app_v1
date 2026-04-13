@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { loanCompensationService } from "../../../../services/mcr.service";
+import { formatProgramTypeLabel } from "../../../../utils/programType";
 import {
   Lock,
   Unlock,
@@ -20,7 +21,7 @@ const CHANNEL_BADGES = {
 };
 
 const COMP_PAID_OPTIONS = ["Borrower", "Lender", "Split", "N/A"];
-const LIEN_OPTIONS = ["1st", "2nd", "Not Secured by Lien"];
+const LIEN_OPTIONS = ["1st", "2nd", "Subordinate Lien", "Not Secured by Lien"];
 const AMORT_OPTIONS = ["Fixed", "ARM", "Option ARM"];
 const SECOND_LIEN_OPTIONS = ["N/A", "ClosedEndSecond", "HELOC"];
 const INVESTOR_OPTIONS = [
@@ -145,20 +146,23 @@ const FundingRevenueTab = ({ loan, loanId }) => {
     || loan?.loanDetails?.interestRate || loan?.loanParameters?.interestRate || null;
 
   const isLocked = !!compensation?.rateLockDate;
+  const isSecondLienSelected =
+    fields.lienPosition === "2nd" || fields.lienPosition === "Subordinate Lien";
 
   const loSource = loan?.assignedLoanOfficer || user || null;
   const loName = loSource
     ? `${loSource.firstName || ""} ${loSource.lastName || ""}`.trim() || "—"
     : "—";
 
-  const mortgageType = loan?.loanParameters?.selectedProgramId?.programType
-    || loan?.loanDetails?.loanType || "Conventional";
+  const selProg = loan?.loanParameters?.selectedProgramId;
+  const progDoc = selProg && typeof selProg === "object" ? selProg : null;
+  const mortgageType = progDoc?.programType
+    ? formatProgramTypeLabel(progDoc.programType)
+    : loan?.loanDetails?.loanType || "—";
 
-  // Product name: prefer explicit LoanProgram name; fall back to loan type so the field is never blank
-  const productName = loan?.loanParameters?.selectedProgramId?.programName
-    || (loan?.loanParameters?.selectedProgramId?.programType
-      ? `${loan.loanParameters.selectedProgramId.programType} ${loan?.loanParameters?.loanTerm || 30} Year ${compensation?.amortizationType || "Fixed"}`
-      : loan?.loanDetails?.loanType || "—");
+  const productName = progDoc
+    ? (progDoc.displayName || progDoc.programName || "—")
+    : (loan?.loanDetails?.loanType || "—");
 
   if (loading) {
     return (
@@ -221,6 +225,8 @@ const FundingRevenueTab = ({ loan, loanId }) => {
               <ReadOnly value={
                 fundingMethod === "Brokered"
                   ? "Broker"
+                  : fundingMethod === "Retail"
+                  ? "Retail (Direct)"
                   : fundingMethod === "Non-Delegated"
                   ? "Non-Delegated"
                   : fundingMethod === "Delegated"
@@ -249,6 +255,7 @@ const FundingRevenueTab = ({ loan, loanId }) => {
                 {AMORT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </Field>
+
           </div>
         </div>
 
@@ -271,6 +278,38 @@ const FundingRevenueTab = ({ loan, loanId }) => {
                 {LIEN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
+            {isSecondLienSelected && (
+              <>
+                <div>
+                  <p className="text-[11px] text-gray-400 font-medium uppercase">Second Lien Type</p>
+                  <select
+                    value={fields.secondLienType || "N/A"}
+                    onChange={(e) => set("secondLienType", e.target.value)}
+                    className="mt-1 w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    {SECOND_LIEN_OPTIONS.map((o) => (
+                      <option key={o} value={o}>
+                        {o === "N/A" ? "N/A" : o === "ClosedEndSecond" ? "Closed-End Second" : "HELOC"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 font-medium uppercase">HELOC Credit Line Amount</p>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={fields.creditLineAmount ?? ""}
+                      onChange={(e) => set("creditLineAmount", e.target.value)}
+                      className="w-full pl-7 pr-2.5 py-1.5 text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      placeholder={fields.secondLienType === "HELOC" ? "Required for HELOC" : "0.00"}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-[11px] text-gray-400 font-medium uppercase">Lock Status</p>
               <div className="flex items-center gap-1.5 mt-1">
@@ -335,32 +374,6 @@ const FundingRevenueTab = ({ loan, loanId }) => {
               <option value="">— Select —</option>
               {SERVICING_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
-          </Field>
-          <Field label="Second Lien Type">
-            <select
-              value={fields.secondLienType || "N/A"}
-              onChange={(e) => set("secondLienType", e.target.value)}
-              className={INPUT_CLS}
-            >
-              {SECOND_LIEN_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o === "N/A" ? "N/A" : o === "ClosedEndSecond" ? "Closed-End Second" : "HELOC"}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="HELOC Credit Line Amount">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-              <input
-                type="number"
-                step="0.01"
-                value={fields.creditLineAmount ?? ""}
-                onChange={(e) => set("creditLineAmount", e.target.value)}
-                className={`${INPUT_CLS} pl-7`}
-                placeholder={fields.secondLienType === "HELOC" ? "Required for HELOC" : "0.00"}
-              />
-            </div>
           </Field>
         </div>
       </div>

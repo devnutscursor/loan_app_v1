@@ -139,7 +139,7 @@ const LoanSelector = ({
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
                   >
                     {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' :
-                     loan.status?.toLowerCase() === 'declined' ? 'Rejected' :
+                     loan.status?.toLowerCase() === 'declined' ? 'Denied' :
                      loan.status || "Processing"}
                   </span>
                 </div>

@@ -30,7 +30,7 @@ const LoanStatistics = ({ loanStats }) => {
             <p className="mt-1 text-2xl font-semibold text-yellow-600 text-center sm:text-start">{loanStats.pending}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Rejected</p>
+            <p className="text-sm font-medium text-gray-500 text-center sm:text-start">Denied</p>
             <p className="mt-1 text-2xl font-semibold text-red-600 text-center sm:text-start">{loanStats.rejected}</p>
           </div>
         </div>

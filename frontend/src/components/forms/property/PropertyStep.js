@@ -67,6 +67,7 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
                  (
                    (loanInfo.loanType === 'Purchase' && loanInfo.purchasePrice && loanInfo.downPayment) ||
                    (loanInfo.loanType === 'Refinance' && loanInfo.requestedLoanAmount && loanInfo.currentLoanBalance && loanInfo.refinanceType && loanInfo.yearAcquired) ||
+                   (loanInfo.loanType === 'Home Improvement' && loanInfo.loanAmount) ||
                    (loanInfo.loanType === 'Construction' && loanInfo.loanAmount && loanInfo.yearLotAcquired)
                  );
     }
@@ -298,6 +299,13 @@ const PropertyStep = ({ formData, handleChange, nextStep, prevStep, loanTypes = 
                 }
                 if (!loanInfo.yearLotAcquired) {
                   toast.error('Missing: Year Lot Acquired');
+                  return;
+                }
+              }
+
+              if (loanInfo.loanType === 'Home Improvement') {
+                if (!loanInfo.loanAmount) {
+                  toast.error('Missing: Loan Amount');
                   return;
                 }
               }

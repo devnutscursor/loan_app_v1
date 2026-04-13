@@ -115,9 +115,12 @@ const DataLoader = ({
 
           // console.log('Selected program id', loanData.loanParameters?.selectedProgramId);
           // Get the selected program ID (if exists) or use the first available program
-          const savedProgramId =
-            loanData.loanParameters?.selectedProgramId ||
-            (loanPrograms.length > 0 ? loanPrograms[0]._id : "");
+          // Normalize selectedProgramId - if it's a populated object, extract the _id
+          let savedProgramId = loanData.loanParameters?.selectedProgramId;
+          if (savedProgramId && typeof savedProgramId === 'object' && savedProgramId._id) {
+            savedProgramId = savedProgramId._id;
+          }
+          savedProgramId = savedProgramId || (loanPrograms.length > 0 ? loanPrograms[0]._id : "");
           // console.log('[DEBUG] Saved program ID:', savedProgramId);
           // The selected program will be either the one saved in the loan or the first program
           const selectedProgramObj =
@@ -216,9 +219,12 @@ const DataLoader = ({
           initializedAllGuidelinesRef.current = true;
 
           // Get the program-specific guidelines for the selected program if available
-          const currentProgramId =
-            loanData.loanParameters?.selectedProgramId ||
-            selectedProgramObj?._id;
+          // Normalize the program ID if it's a populated object
+          let currentProgramId = loanData.loanParameters?.selectedProgramId;
+          if (currentProgramId && typeof currentProgramId === 'object' && currentProgramId._id) {
+            currentProgramId = currentProgramId._id;
+          }
+          currentProgramId = currentProgramId || selectedProgramObj?._id;
           const programGuidelines = allGuidelines[currentProgramId] || {};
 
           // console.log('[DEBUG] Loading parameters for loan ID:', loanId);
@@ -282,8 +288,9 @@ const DataLoader = ({
                 case 'va':
                   interestRate = 6.25; // VA typically 0.5% lower than conventional
                   break;
+                case 'fsa_rhs':
                 case 'usda':
-                  interestRate = 6.25; // USDA similar to VA rates
+                  interestRate = 6.25; // FSA/RHS-Guaranteed — similar to VA rates
                   break;
                 case 'jumbo':
                   interestRate = 7.00; // Jumbo typically 0.25% higher than conventional

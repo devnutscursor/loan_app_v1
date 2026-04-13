@@ -162,13 +162,13 @@ exports.createDefaultLoanPrograms = async (userId, lenderId = null, companyId = 
       createdBy: userId
     });
     
-    // 4. USDA Loan Program
+    // 4. FSA/RHS-Guaranteed (USDA SFH Guaranteed / RHS)
     await LoanProgram.create({
-      programName: 'USDA',
-      displayName: 'USDA Rural Development',
-      programType: 'usda',
+      programName: 'FSA/RHS-Guaranteed',
+      displayName: 'FSA/RHS-Guaranteed',
+      programType: 'fsa_rhs',
       isAvailableToBorrower: true,
-      loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
+      loanHelpText: 'FSA/RHS-Guaranteed loans (including USDA Single Family Housing Guaranteed) offer zero down payment options for eligible borrowers in qualified rural areas.',
       rateAdjustment: 0,
       loanTerm: 30,
       restrictions: {
@@ -185,8 +185,8 @@ exports.createDefaultLoanPrograms = async (userId, lenderId = null, companyId = 
         }
       },
       upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0.4, // USDA annual fee
-      fundingFee: 1.0, // USDA upfront guarantee fee
+      mortgageInsurance: 0.4, // Annual guarantee fee
+      fundingFee: 1.0, // Upfront guarantee fee
       originationFees: {
         type: 'percentage',
         value: 1,
@@ -344,7 +344,7 @@ const autoSaveLenderRates = async (userId) => {
         { programType: 'conventional', rate: 6.75 }, // Current market rates (July 2025)
         { programType: 'fha', rate: 6.50 },
         { programType: 'va', rate: 6.25 },
-        { programType: 'usda', rate: 6.25 },
+        { programType: 'fsa_rhs', rate: 6.25 },
         { programType: 'jumbo', rate: 7.00 }
       ];
       

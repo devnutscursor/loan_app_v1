@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const loanRateSchema = new mongoose.Schema({
   programType: {
     type: String,
-    enum: ['conventional', 'fha', 'va', 'usda', 'jumbo', 'other'],
+    enum: ['conventional', 'fha', 'va', 'usda', 'fsa_rhs', 'jumbo', 'other'],
     required: true
   },
   rate: {

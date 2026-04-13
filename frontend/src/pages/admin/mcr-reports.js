@@ -125,9 +125,20 @@ const MCRClosedLoanHeader = () => (
 );
 
 const MCRClosedLoanRow = ({ code, label, val, isTotal, required }) => {
-  // Support both new {brokered, nonDelegated} format and old flat {amount, count} format
-  const b  = val?.brokered     || (val?.amount !== undefined ? { amount: val.amount, count: val.count || 0 } : { amount: 0, count: 0 });
-  const nd = val?.nonDelegated || { amount: 0, count: 0 };
+  const coalesceCh = (ch) =>
+    ch && typeof ch === "object"
+      ? { amount: Number(ch.amount) || 0, count: Number(ch.count) || 0 }
+      : null;
+  const br = coalesceCh(val?.brokered);
+  const ndRaw = coalesceCh(val?.nonDelegated);
+  let b = { amount: 0, count: 0 };
+  let nd = { amount: 0, count: 0 };
+  if (br !== null || ndRaw !== null) {
+    b = br ?? { amount: 0, count: 0 };
+    nd = ndRaw ?? { amount: 0, count: 0 };
+  } else if (val?.amount !== undefined) {
+    b = { amount: val.amount, count: val.count || 0 };
+  }
   return (
     <tr className={`border-b border-gray-100 ${isTotal ? "bg-gray-50 font-semibold" : "hover:bg-blue-50/30"}`}>
       <td className={`px-3 py-2 text-xs font-mono ${isTotal ? "text-gray-900 font-bold" : "text-blue-600 font-semibold"}`}>
@@ -313,8 +324,8 @@ const RevenueDataView = ({ data }) => {
           <MCRSectionRow label="GROSS REVENUE" colSpan={5} />
           <SRow code="AC1100" label={data.AC1100?.label || "Gross Revenue from Mortgage Origination Operations"} amount={data.AC1100?.amount} isBold />
           <MCRSectionRow label="SERVICING DISPOSITION" colSpan={5} />
-          <SRow code="AC1200" label={data.AC1200?.label || "Servicing Released"} amount={data.AC1200?.amount} count={data.AC1200?.count} />
-          <SRow code="AC1210" label={data.AC1210?.label || "Servicing Retained"} amount={data.AC1210?.amount} count={data.AC1210?.count} />
+          <SRow code="AC1200" label={data.AC1200?.label || "Servicing Retained"} amount={data.AC1200?.amount} count={data.AC1200?.count} />
+          <SRow code="AC1210" label={data.AC1210?.label || "Servicing Released"} amount={data.AC1210?.amount} count={data.AC1210?.count} />
         </tbody>
       </table>
     </div>
@@ -363,6 +374,7 @@ const RMLADataView = ({ data }) => {
   const pt = data.productType || {};
   const ch = data.channel || {};
   const rc = data.riskCharacteristics || {};
+  const om = data.otherMortgages || {};
   const purpose = data.purpose || {};
   const ltv = data.ltvDistribution || {};
   const wa = data.weightedAverages || {};
@@ -370,6 +382,10 @@ const RMLADataView = ({ data }) => {
   const i100 = {
     count: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.count||0), 0),
     amount: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.amount||0), 0),
+  };
+  const i200 = {
+    count: ["closedEndSecond","heloc","reverse","construction1to4","construction5plus","constructionCommercial","commercialMortgage","landContract"].reduce((s,k) => s+(om[k]?.count||0), 0),
+    amount: ["closedEndSecond","heloc","reverse","construction1to4","construction5plus","constructionCommercial","commercialMortgage","landContract"].reduce((s,k) => s+(om[k]?.amount||0), 0),
   };
   const Row = ({ code, label, val, isBold }) => (
     <tr className={`border-b border-gray-100 ${isBold ? "bg-gray-50" : "hover:bg-blue-50/30"}`}>
@@ -403,15 +419,15 @@ const RMLADataView = ({ data }) => {
           <Row code="I080" label="Other ARM" val={pt.otherARM} />
           <Row code="I100" label="Total Residential First Mortgages" val={i100} isBold />
           <MCRSectionRow label="OTHER MORTGAGES" colSpan={5} />
-          <Row code="I110" label="Closed-End Second Mortgages" val={{ amount: 0, count: 0 }} />
-          <Row code="I120" label="HELOCs (include the credit line amount)" val={{ amount: 0, count: 0 }} />
-          <Row code="I130" label="Reverse Mortgages" val={{ amount: 0, count: 0 }} />
-          <Row code="I140" label="Construction, 1-4 Unit Residential" val={{ amount: 0, count: 0 }} />
-          <Row code="I150" label="Construction, 5+ Unit Residential" val={{ amount: 0, count: 0 }} />
-          <Row code="I160" label="Construction, Commercial" val={{ amount: 0, count: 0 }} />
-          <Row code="I170" label="Commercial Mortgage" val={{ amount: 0, count: 0 }} />
-          <Row code="I180" label="Land Contract" val={{ amount: 0, count: 0 }} />
-          <Row code="I200" label="Total Other Mortgages" val={{ amount: 0, count: 0 }} isBold />
+          <Row code="I110" label="Closed-End Second Mortgages" val={om.closedEndSecond} />
+          <Row code="I120" label="HELOCs (include the credit line amount)" val={om.heloc} />
+          <Row code="I130" label="Reverse Mortgages" val={om.reverse} />
+          <Row code="I140" label="Construction, 1-4 Unit Residential" val={om.construction1to4} />
+          <Row code="I150" label="Construction, 5+ Unit Residential" val={om.construction5plus} />
+          <Row code="I160" label="Construction, Commercial" val={om.constructionCommercial} />
+          <Row code="I170" label="Commercial Mortgage" val={om.commercialMortgage} />
+          <Row code="I180" label="Land Contract" val={om.landContract} />
+          <Row code="I200" label="Total Other Mortgages" val={i200} isBold />
           <MCRSectionRow label="ORIGINATION CHANNEL" colSpan={5} />
           <Row code="I210" label="Brokered" val={ch.brokered} />
           <Row code="I220" label="Closed – Retail" val={ch.closedRetail} />
@@ -1030,3 +1046,4 @@ const AdminMCRReports = () => {
 };
 
 export default AdminMCRReports;
+

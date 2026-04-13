@@ -290,7 +290,7 @@ const Income = ({ income = {}, onChange, borrower = {}, errors = {}, userType = 
                   <select
                     value={item.incomeType || ''}
                     onChange={(e) => handleOtherIncomeChange(index, 'type', e.target.value)}
-                    className="appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Type</option>
                     <option value="alimony">Alimony</option>

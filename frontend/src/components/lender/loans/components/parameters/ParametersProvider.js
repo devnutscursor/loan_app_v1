@@ -5,6 +5,7 @@ import {
   calculateVAFundingFee,
   calculateUSDAFees
 } from '../../utils/LoanCalculationUtils';
+import { isFsaRhsGuaranteed } from '../../../../../utils/programType';
 
 /**
  * ParametersProvider component
@@ -226,7 +227,7 @@ const ParametersProvider = ({
       } else if (selectedProgram.programType === 'fha') {
         mortgageInsurance = (selectedProgram.mortgageInsurance / 100) * 
           actualLoanAmount / 12;
-      } else if (selectedProgram.programType === 'usda') {
+      } else if (isFsaRhsGuaranteed(selectedProgram.programType)) {
         const usdaFees = calculateUSDAFees(actualLoanAmount, selectedProgram);
         mortgageInsurance = usdaFees.annualFee;
       } else if (selectedProgram.programType === 'va') {
@@ -507,8 +508,7 @@ const ParametersProvider = ({
         // For FHA loans, use the annual MIP rate
         mortgageInsurance = (selectedProgram.mortgageInsurance / 100) * 
           actualLoanAmount / 12;
-      } else if (selectedProgram.programType === 'usda') {
-        // For USDA loans, use the annual fee
+      } else if (isFsaRhsGuaranteed(selectedProgram.programType)) {
         const usdaFees = calculateUSDAFees(actualLoanAmount, selectedProgram);
         mortgageInsurance = usdaFees.annualFee;
       } else if (selectedProgram.programType === 'va') {

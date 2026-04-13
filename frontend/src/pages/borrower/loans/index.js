@@ -81,7 +81,7 @@ const Loans = () => {
                         />
 
                         <LoanCategorySection
-                          title="Rejected Applications"
+                          title="Denied Applications"
                           loans={statusGroups.rejected}
                           userRole="borrower"
                         />
@@ -106,7 +106,7 @@ const Loans = () => {
                             {filter === "Application Submitted" ? "Pending" :
                              filter === "Processing" ? "Processing" :
                              filter === "Approved" ? "Approved" :
-                             filter === "Rejected" ? "Rejected" :
+                             filter === "Declined" ? "Denied" :
                              filter === "Closed" ? "Closed" : "Filtered"} Loans
                           </h2>
                           <span className="text-sm text-gray-500 bg-gray-100 rounded-full px-3 py-1">

@@ -361,6 +361,12 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
                 <option value="Manufactured Home">Manufactured Home</option>
                 <option value="Cooperative">Cooperative</option>
                 <option value="Planned Unit Development (PUD)">Planned Unit Development (PUD)</option>
+                <option value="Mixed-Use">Mixed-Use</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Office">Office</option>
+                <option value="Retail">Retail</option>
+                <option value="Industrial">Industrial</option>
+                <option value="Land Contract">Land Contract</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -442,6 +448,7 @@ const [hasAcceptedOffer, setHasAcceptedOffer] = useState(
                   id="numberOfUnits"
                   name="numberOfUnits"
                   min="1"
+                  max="100"
                   value={numberOfUnits || ''}
                   onChange={handleChange}
                   className="text-xs w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"

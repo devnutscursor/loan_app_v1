@@ -1,6 +1,7 @@
 /**
  * Utility functions for loan qualification calculations
  */
+import { isFsaRhsGuaranteed } from '../../../../../utils/programType';
 
 /**
  * Format a number as USD currency
@@ -93,13 +94,13 @@ export const calculateVAFundingFee = (loanAmount, downPaymentPercent, selectedPr
 };
 
 /**
- * Calculate USDA fees
+ * Calculate FSA/RHS-Guaranteed (legacy: USDA) fees
  * @param {number} loanAmount - Loan amount
  * @param {Object} selectedProgram - Selected loan program
- * @returns {Object} USDA fee details including upfront fee and annual fee
+ * @returns {Object} Fee details including upfront fee and annual fee
  */
 export const calculateUSDAFees = (loanAmount, selectedProgram) => {
-  if (!selectedProgram || selectedProgram.programType !== 'usda' || !loanAmount) {
+  if (!selectedProgram || !isFsaRhsGuaranteed(selectedProgram.programType) || !loanAmount) {
     return { upfrontFee: 0, annualFee: 0 };
   }
   
@@ -203,6 +204,7 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
       case 'va':
         defaultInterestRate = 6.25;
         break;
+      case 'fsa_rhs':
       case 'usda':
         defaultInterestRate = 6.25;
         break;
@@ -284,8 +286,7 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
       mortgageInsurance = (selectedProgram.mortgageInsurance / 100 * defaultLoanAmount) / 12;
       // Plus upfront MIP (not included in monthly payment)
       upfrontFee = (selectedProgram.upfrontMortgageInsurance / 100) * defaultLoanAmount;
-    } else if (selectedProgram.programType === 'usda') {
-      // USDA loans have upfront fee and annual fee
+    } else if (isFsaRhsGuaranteed(selectedProgram.programType)) {
       const usdaFees = calculateUSDAFees(defaultLoanAmount, selectedProgram);
       upfrontFee = usdaFees.upfrontFee;
       mortgageInsurance = usdaFees.annualFee;

@@ -58,7 +58,6 @@ const LoanCenterTab = ({ loan, setLoan, loanId, documents, milestones, fetchLoan
     "Application Started",
     "Application Submitted",
     "Processing",
-    "Underwriting",
     "Conditional Approval",
     "Clear to Close",
     "Closed",

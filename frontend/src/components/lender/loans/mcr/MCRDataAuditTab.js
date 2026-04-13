@@ -100,14 +100,16 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
       warnings.push({ field: "Product", message: "Final rate is not set", severity: "warning" });
     }
 
-    // Date validation (for funded/closed)
+    // Date validation: closing date expected once the loan is closed or funded.
+    // Funded date is required only when status is Funded — "Closed" without a separate
+    // funded milestone should not block on funded date.
     if (["Funded", "Closed"].includes(l?.status)) {
-      if (!compensation?.fundedDate) {
-        warnings.push({ field: "Dates", message: "Funded date is missing for a funded loan", severity: "error" });
-      }
       if (!compensation?.closingDate) {
         warnings.push({ field: "Dates", message: "Closing date is missing for a closed/funded loan", severity: "error" });
       }
+    }
+    if (l?.status === "Funded" && !compensation?.fundedDate) {
+      warnings.push({ field: "Dates", message: "Funded date is missing for a funded loan", severity: "error" });
     }
 
     // Application date — after sync this should be backfilled
@@ -132,6 +134,13 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
     }
     if (!l?.property?.propertyType) {
       warnings.push({ field: "Loan Info", message: "Property type is missing", severity: "warning" });
+    }
+
+    // HELOC-specific validation: If lienPosition is 2nd and secondLienType is HELOC, creditLineAmount is required
+    if ((compensation?.lienPosition === '2nd' || compensation?.lienPosition === 'Subordinate Lien') && compensation?.secondLienType === 'HELOC') {
+      if (!compensation?.creditLineAmount || compensation.creditLineAmount <= 0) {
+        warnings.push({ field: "Product", message: "HELOC Credit Line Amount is required for 2nd-lien HELOCs (RMLA I120)", severity: "error" });
+      }
     }
 
     setValidationWarnings(warnings);
@@ -185,6 +194,8 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
       { label: "Final Rate", value: compensation?.finalRate ? `${compensation.finalRate}%` : "—" },
       { label: "Rate Lock Period", value: compensation?.rateLockPeriod ? `${compensation.rateLockPeriod} days` : "—" },
       { label: "Lien Position", value: compensation?.lienPosition || "—" },
+      { label: "Second Lien Type", value: compensation?.secondLienType === "ClosedEndSecond" ? "Closed-End Second" : compensation?.secondLienType || "—" },
+      { label: "HELOC Credit Line", value: compensation?.creditLineAmount > 0 ? formatCurrency(compensation.creditLineAmount) : "—" },
       { label: "Amortization", value: compensation?.amortizationType || "—" },
       { label: "Servicing", value: compensation?.servicingDisposition || "—" },
       { label: "Investor", value: compensation?.investorSoldTo || "—" },
@@ -201,6 +212,7 @@ const MCRDataAuditTab = ({ loan, setLoan, loanId, activeMainTab, setActiveMainTa
     ],
     classification: [
       { label: "Funding Method", value: l?.fundingMethod || "—" },
+      { label: "Source of Business", value: l?.leadSource || "—" },
       { label: "Doc Type", value: l?.docType || "—" },
       { label: "Interest Only", value: l?.interestOnlyFlag ? "Yes" : "No" },
       { label: "HOEPA Flag", value: l?.hoeparFlag ? "Yes" : "No" },

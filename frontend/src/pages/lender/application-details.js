@@ -315,13 +315,12 @@ const LoanApplicationDetailsPage = () => {
                     <option value="Application Started">Application Started</option>
                     <option value="Application Submitted">Application Submitted</option>
                     <option value="Processing">Processing</option>
-                    <option value="Underwriting">Underwriting</option>
                     <option value="Conditional Approval">Conditional Approval</option>
                     <option value="Approved-Not-Accepted">Approved but not Accepted</option>
                     <option value="Clear to Close">Clear to Close</option>
                     <option value="Closed">Closed</option>
                     <option value="Funded">Funded</option>
-                    <option value="Declined">Declined</option>
+                    <option value="Declined">Denied</option>
                     <option value="Withdrawn">Withdrawn</option>
                     <option value="Closed-Incomplete">Closed for Incompleteness</option>
                   </select>

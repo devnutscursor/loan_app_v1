@@ -228,6 +228,7 @@ const LenderDocumentRequirements = ({
     documentType: "",
     category: "",
     title: "",
+    description: "",
     reason: "",
     customReason: "",
     isUpdate: false,
@@ -745,6 +746,7 @@ const processDocuments = (docsList, requirementDefs) => {
       documentType,
       category,
       title,
+      description: "",
       reason: "",
       customReason: "",
       isUpdate,
@@ -769,6 +771,7 @@ const processDocuments = (docsList, requirementDefs) => {
       documentType: "",
       title: "",
       category: "",
+      description: "",
       reason: "",
       customReason: "",
       isUpdate: false,
@@ -935,13 +938,20 @@ const processDocuments = (docsList, requirementDefs) => {
       title,
       documentType,
       category,
+      description,
       reason,
       customReason,
       isUpdate,
+      allowMetaEdit,
     } = requestDetails;
 
     if (!documentType || !category) {
       toast.error("Document type or category is missing");
+      return;
+    }
+
+    if (allowMetaEdit && !isUpdate && !(description && String(description).trim())) {
+      toast.error("Please enter a description for this document requirement");
       return;
     }
 
@@ -951,7 +961,9 @@ const processDocuments = (docsList, requirementDefs) => {
     try {
       // Generate an appropriate message based on the selected reason
       let requestDescription;
-      if (isUpdate) {
+      if (allowMetaEdit && !isUpdate) {
+        requestDescription = String(description).trim();
+      } else if (isUpdate) {
         // Use our message generator function with all relevant parameters
         requestDescription = generateMessageForReason(
           documentType,
@@ -1001,6 +1013,7 @@ const processDocuments = (docsList, requirementDefs) => {
           loanId,
           borrowerId,
           description: requestDescription,
+          isCustomDocument: Boolean(allowMetaEdit && !isUpdate),
           isUpdate: isUpdate,
           reason: reason,
           customReason: customReason,

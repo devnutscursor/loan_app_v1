@@ -22,7 +22,7 @@ const DocumentRequestModal = ({
 
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6 max-h-[min(90vh,32rem)] overflow-y-auto">
           <div>
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
               <svg className="h-6 w-6 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,6 +109,30 @@ const DocumentRequestModal = ({
                       disabled={!requestDetails.allowMetaEdit}
                     />
                   </div>
+
+                  {isCustomAdd && (
+                    <div className="mb-4">
+                      <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+                        Description <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        This text is saved on the loan requirement and shown to the borrower (it replaces the generic
+                        &quot;Please upload your …&quot; message).
+                      </p>
+                      <textarea
+                        id="description"
+                        rows={4}
+                        value={requestDetails.description || ''}
+                        onChange={(e) =>
+                          setRequestDetails({ ...requestDetails, description: e.target.value })
+                        }
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        placeholder="e.g., Provide a clear copy of your most recent federal tax return (all pages)."
+                        required
+                        disabled={!requestDetails.allowMetaEdit}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 

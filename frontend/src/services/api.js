@@ -147,7 +147,15 @@ export const lenderService = {
   getLoans: (params) => api.get('/loans', { params: { ...params, all: 'true' } }),
   getLoan: (id) => api.get(`/loans/${id}`),
   getLoanWithDetails: (id) => api.get(`/loans/${id}/with-details`),
-  updateLoan: (id, loanData) => api.put(`/borrower/loans/by-number/${loanData.loanDetails?.loanNumber || loanData.loanNumber || id}`, loanData),
+  updateLoan: (id, loanData) => {
+    const loanId = id || loanData?._id;
+    const isObjectId = typeof loanId === "string" && /^[a-fA-F0-9]{24}$/.test(loanId);
+    if (isObjectId) {
+      return api.put(`/loans/${loanId}`, loanData);
+    }
+    const loanNumber = loanData?.loanNumber || loanData?.loanDetails?.loanNumber || loanId;
+    return api.put(`/borrower/loans/by-number/${loanNumber}`, loanData);
+  },
   getBorrowerLoans: async (borrowerId, params = {}) => {
     try {
       const response = await api.get(`/loans/borrower/${borrowerId}`, { params });

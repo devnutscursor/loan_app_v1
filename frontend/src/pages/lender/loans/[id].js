@@ -48,10 +48,10 @@ import MobileExpandableNavigation from "../../../components/lender/loans/MobileE
 import LoanDetailsSkeleton from "../../../components/lender/loans/LoanDetailsSkeleton";
 import AdditionalInfo from "../../../components/lender/loans/AdditionalInfo";
 import LoanApplicationSettingsModal from "../../../components/lender/loans/LoanApplicationSettingsModal";
+import LoanMessagesPanel from "../../../components/lender/messages/LoanMessagesPanel";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
-import Modal from "../../../components/common/Modal";
 import customAxios from '../../../utils/axios';
 // Settings is now properly imported above with other icons
 
@@ -2132,6 +2132,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const [activeTab, setActiveTab] = useState("dashboard"); // Change this line
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedLoan, setLastSavedLoan] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [cachedData, setCachedData] = useState(null);
 
@@ -2143,8 +2144,10 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
   // Call this to cancel changes
   const handleCancel = () => {
-    // Reset form fields to their original values
-    // You may need to refetch or reset state here
+    // Revert unsaved edits to last persisted snapshot
+    if (lastSavedLoan) {
+      setLoan(lastSavedLoan);
+    }
     setHasUnsavedChanges(false);
   };
 
@@ -2152,7 +2155,10 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const saveLoan = async () => {
     try {
       setSaving(true);
-      await lenderService.updateLoan(id, loan);
+      const response = await lenderService.updateLoan(id, loan);
+      const savedLoan = response?.data?.data || loan;
+      setLoan(savedLoan);
+      setLastSavedLoan(savedLoan);
       toast.success("Loan details saved successfully");
       setSaving(false);
       setHasUnsavedChanges(false);
@@ -2297,31 +2303,34 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     }
   }, [activeTab, isSubTabActive, isApplicationExpanded]);
 
-  // Uncomment and modify this useEffect to handle tab changes from URL
+  // Sync active tab from URL query without overriding immediate user clicks.
   useEffect(() => {
     if (!router.isReady || !id) return;
 
-    // Check if there's a tab in the URL query
-    const tabFromUrl = router.query.tab;
-
-    // Check if this is a valid tab
+    const tabFromUrl =
+      typeof router.query.tab === "string" ? router.query.tab : null;
     const isValidTab = allTabs.includes(tabFromUrl);
 
-    if (isValidTab) {
-      // Set active tab based on URL query
-      setActiveTab(tabFromUrl);
+    if (tabFromUrl && isValidTab) {
+      // Only update state when URL tab actually changed.
+      if (tabFromUrl !== activeTab) {
+        setActiveTab(tabFromUrl);
+      }
 
-      // If it's a subtab, ensure the accordion is expanded
-      if (applicationSubTabs.some((tab) => tab.id === tabFromUrl)) {
+      // If it's a sub-tab, keep accordion expanded.
+      if (
+        applicationSubTabs.some((tab) => tab.id === tabFromUrl) &&
+        !isApplicationExpanded
+      ) {
         setIsApplicationExpanded(true);
       }
-    } else if (!tabFromUrl) {
-      // If no tab is specified, use default tab and update URL
+    } else if (!tabFromUrl && activeTab !== "dashboard") {
+      // If no tab is specified, set URL default once.
       router.push(`/lender/loans/${id}?tab=dashboard`, undefined, {
         shallow: true,
       });
     }
-  }, [router.isReady, router.query, id]);
+  }, [router.isReady, router.query.tab, id, activeTab, isApplicationExpanded]);
 
   // Inside the LoanDetails component, add a new state for parameters data
   const [parametersData, setParametersData] = useState(null);
@@ -2365,6 +2374,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
       if (!forceRefresh && cachedData && cacheValid) {
         console.log("Using cached data (age:", cacheAge, "ms)");
         setLoan(cachedData.loan);
+        setLastSavedLoan(cachedData.loan);
         setDocuments(cachedData.documents);
         return;
       }
@@ -2427,6 +2437,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
         console.log("Normalized data structure:", normalizedData);
         setLoan(normalizedData);
+        setLastSavedLoan(normalizedData);
         
         // Set documents and milestones from the same response
         setDocuments(Array.isArray(docsData) ? docsData : []);
@@ -2620,6 +2631,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   };
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   // Status colors are now defined directly in the className with Tailwind
@@ -2627,6 +2639,11 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const handleNoteButtonClick = () => {
     debug('Opening note modal', { loanId: id });
     setIsNoteModalOpen(true);
+  };
+
+  const handleMessageButtonClick = () => {
+    debug('Opening message modal', { loanId: id });
+    setIsMessageModalOpen(true);
   };
   
   const handleSettingsButtonClick = () => {
@@ -2665,40 +2682,6 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     });
   };
   
-  // Monitor changes in forms for different tabs
-  useEffect(() => {
-    // Add event listener for radio button and select element changes when in specific tabs
-    const handleFormElementChange = () => {
-      // Check if we're in a tab that needs save functionality
-      if (SAVE_TABS.includes(activeTab)) {
-        debug(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
-        setHasUnsavedChanges(true);
-      }
-    };
-    
-    // Add event listeners for form elements
-    const formElements = document.querySelectorAll('input[type=radio], input[type=checkbox], select');
-    formElements.forEach(element => {
-      element.addEventListener('change', handleFormElementChange);
-    });
-    
-    // Add event listeners for buttons within forms (like Yes/No toggle buttons)
-    const formButtons = document.querySelectorAll('.border-t.border-gray-200 button');
-    formButtons.forEach(button => {
-      button.addEventListener('click', handleFormElementChange);
-    });
-    
-    // Cleanup listeners when component unmounts or tab changes
-    return () => {
-      formElements.forEach(element => {
-        element.removeEventListener('change', handleFormElementChange);
-      });
-      formButtons.forEach(button => {
-        button.removeEventListener('click', handleFormElementChange);
-      });
-    };
-  }, [activeTab]);
-
   // Monitor changes to hasUnsavedChanges
   useEffect(() => {
     console.log(`hasUnsavedChanges changed to: ${hasUnsavedChanges}`, {
@@ -2842,9 +2825,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                               </button>
                               <button
                                 title="Send Message"
-                                onClick={() => {
-                                  router.push("/lender/messages");
-                                }}
+                                onClick={handleMessageButtonClick}
                                 className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                               >
                                 <MessageCircle className="h-5 w-5" />
@@ -3002,48 +2983,70 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                               {/* Funding Method */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Funding Method</label>
-                                <select
-                                  value={loan?.fundingMethod || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, fundingMethod: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="Brokered">Broker</option>
-                                  <option value="Non-Delegated">Non-Delegated</option>
-                                  <option value="Delegated">Delegated Lender</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.fundingMethod || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, fundingMethod: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="Brokered">Broker</option>
+                                    <option value="Retail">Retail (Direct)</option>
+                                    <option value="Non-Delegated">Non-Delegated</option>
+                                    <option value="Delegated">Delegated Lender</option>
+                                    <option value="Table-Funded">Table Funded</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                               {/* Doc Type */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Documentation Type</label>
-                                <select
-                                  value={loan?.docType || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, docType: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="Full Doc">Full Documentation</option>
-                                  <option value="Alt Doc">Alternative Documentation</option>
-                                  <option value="Stated Income">Stated Income</option>
-                                  <option value="No Doc">No Documentation</option>
-                                  <option value="Streamline">Streamline</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.docType || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, docType: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="Full Doc">Full Documentation</option>
+                                    <option value="Alt/Reduced Doc">Alt / Reduced Documentation</option>
+                                    <option value="Bank Statement">Bank Statement</option>
+                                    <option value="DSCR">DSCR</option>
+                                    <option value="Stated">Stated</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                               {/* QM Status */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">QM Status</label>
-                                <select
-                                  value={loan?.qmStatus || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, qmStatus: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="QM-Safe Harbor">QM — Safe Harbor</option>
-                                  <option value="QM-Rebuttable Presumption">QM — Rebuttable Presumption</option>
-                                  <option value="Non-QM">Non-QM</option>
-                                  <option value="Exempt">Exempt from QM</option>
-                                  <option value="Not Subject to QM">Not Subject to QM</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.qmStatus || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, qmStatus: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="QM-Safe Harbor">QM — Safe Harbor</option>
+                                    <option value="QM-Rebuttable Presumption">QM — Rebuttable Presumption</option>
+                                    <option value="Non-QM">Non-QM</option>
+                                    <option value="Not Subject to QM">Not Subject to QM</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             {/* Boolean toggles */}
@@ -3061,7 +3064,16 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                                     type="checkbox"
                                     checked={loan?.[key] || false}
                                     onChange={(e) => {
-                                      setLoan(prev => ({ ...prev, [key]: e.target.checked }));
+                                      const checked = e.target.checked;
+                                      if (key === "isReverseMortgage") {
+                                        setLoan((prev) => ({
+                                          ...prev,
+                                          isReverseMortgage: checked,
+                                          ...(!checked ? { reverseMortgageType: null } : {}),
+                                        }));
+                                      } else {
+                                        setLoan((prev) => ({ ...prev, [key]: checked }));
+                                      }
                                       setHasUnsavedChanges(true);
                                     }}
                                     className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
@@ -3070,6 +3082,34 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                                 </label>
                               ))}
                             </div>
+                            {loan?.isReverseMortgage && (
+                              <div className="mt-4 max-w-md">
+                                <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                                  Reverse mortgage program (MCR AC700–AC720)
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.reverseMortgageType || ""}
+                                    onChange={(e) => {
+                                      const v = e.target.value || null;
+                                      setLoan((prev) => ({ ...prev, reverseMortgageType: v }));
+                                      setHasUnsavedChanges(true);
+                                    }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="HECM-Standard">HECM-Standard</option>
+                                    <option value="HECM-Saver">HECM-Saver</option>
+                                    <option value="Proprietary/Other">Proprietary/Other</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -3537,6 +3577,33 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
           onClose={() => setIsNoteModalOpen(false)} 
           loanId={id}
         />
+
+        {isMessageModalOpen && (
+          <>
+            <div
+              className="fixed inset-y-0 right-0 left-0 md:left-16 bg-black/30 z-40"
+              onClick={() => setIsMessageModalOpen(false)}
+            />
+            <div className="fixed inset-y-0 right-0 left-0 md:left-16 z-50 p-3 md:p-6">
+              <div className="h-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-gray-900">Borrower Communications</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsMessageModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                    aria-label="Close communications modal"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="flex-1 p-3 bg-gray-50 min-h-0">
+                  <LoanMessagesPanel />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
         
         <LoanApplicationSettingsModal
           isOpen={isSettingsModalOpen}
@@ -3557,25 +3624,26 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
           handleTabClick={handleTabClick}
         />
         
-        {/* Existing unsaved changes bar */}
-        {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
-            <button
-              type="button"
-              className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
-              onClick={handleCancel}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
-              onClick={saveLoan}
-              disabled={saving}
-            >
-              {saving ? "Saving Changes..." : "Save All Changes"}
-            </button>
+        {/* Application tabs: sticky save/discard bar (matches Funding/Revenue UX) */}
+        {hasUnsavedChanges && SAVE_TABS.includes(activeTab) && (
+          <div className="sticky bottom-0 z-50 bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 px-6 py-3.5 flex items-center justify-between">
+            <span className="text-sm text-gray-500 font-medium">Unsaved changes</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button
+                onClick={saveLoan}
+                disabled={saving}
+                className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition shadow-sm"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         )}
       </MainLayout>

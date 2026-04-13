@@ -184,7 +184,6 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
     { code: "Application Started", label: "App Started" },
     { code: "Application Submitted", label: "App Submitted" },
     { code: "Processing", label: "Processing" },
-    { code: "Underwriting", label: "Underwriting" },
     { code: "Conditional Approval", label: "Cond. Approval" },
     { code: "Approved-Not-Accepted", label: "Appr. Not Accepted" },
     { code: "Clear to Close", label: "Clear to Close" },

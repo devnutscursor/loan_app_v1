@@ -7,7 +7,7 @@ const PROGRAM_TYPES = [
   { id: 'conventional', name: 'Conventional' },
   { id: 'fha', name: 'FHA' },
   { id: 'va', name: 'VA' },
-  { id: 'usda', name: 'USDA' },
+  { id: 'fsa_rhs', name: 'FSA/RHS-Guaranteed' },
   { id: 'jumbo', name: 'Jumbo' },
 ];
 

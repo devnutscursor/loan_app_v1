@@ -1047,11 +1047,28 @@ exports.verifyDocument = async (req, res, next) => {
  */
 exports.requestDocument = async (req, res, next) => {
   try {
-    const { borrowerId, loanId, title, documentType, category, description, dueDate, isUpdate } = req.body;
-    
+    const {
+      borrowerId,
+      loanId,
+      title,
+      documentType,
+      category,
+      description,
+      dueDate,
+      isUpdate,
+      isCustomDocument,
+    } = req.body;
+
+    const trimmedDescription = description != null ? String(description).trim() : '';
+    const isCustom = isCustomDocument === true || isCustomDocument === 'true';
+
     // Validate required inputs
     if (!borrowerId || !loanId || !documentType) {
       return next(new ApiError('Borrower ID, loan ID, and document type are required', 400));
+    }
+
+    if (isCustom && !isUpdate && !trimmedDescription) {
+      return next(new ApiError('Description is required for custom document requirements', 400));
     }
     
     // Check if borrower exists
@@ -1089,7 +1106,7 @@ exports.requestDocument = async (req, res, next) => {
       if (existingDocument) {
         // Update the document status to indicate correction needed
         existingDocument.status = 'Needs Correction';
-        existingDocument.reviewNotes = description || 'Please provide an updated version of this document';
+        existingDocument.reviewNotes = trimmedDescription || 'Please provide an updated version of this document';
         existingDocument.reviewedBy = req.user._id;
         existingDocument.reviewDate = new Date();
         
@@ -1100,10 +1117,14 @@ exports.requestDocument = async (req, res, next) => {
     }
     
     console.log('title', title);
+    const resolvedDescription =
+      trimmedDescription ||
+      (title ? `Please upload your ${title} document` : `Please upload your ${documentType} document`);
+
     // Create a document request condition
     const newCondition = {
       title: `${title} Document Required`,
-      description: description || `Please upload your ${title} document`,
+      description: resolvedDescription,
       category: category,
       documentType: documentType,
       status: 'Pending',
@@ -1140,7 +1161,7 @@ exports.requestDocument = async (req, res, next) => {
           // Prepare document information for email
           const documentInfo = {
             title: title || documentType,
-            description: description || `Please upload your ${title || documentType} document`,
+            description: resolvedDescription,
             category: category
           };
           
@@ -1177,7 +1198,7 @@ exports.requestDocument = async (req, res, next) => {
           documentName: title || documentType,
           documentType: documentType,
           category: category,
-          description: description || `Please upload your ${title || documentType} document`,
+          description: resolvedDescription,
           loanId: loanId,
           loanNumber: loan.loanNumber,
           borrowerId: borrowerId,

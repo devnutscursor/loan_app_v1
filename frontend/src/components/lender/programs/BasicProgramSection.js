@@ -6,7 +6,7 @@ const PROGRAM_TYPES = [
   { value: 'conventional', label: 'Conventional' },
   { value: 'fha', label: 'FHA' },
   { value: 'va', label: 'VA' },
-  { value: 'usda', label: 'USDA' },
+  { value: 'fsa_rhs', label: 'FSA/RHS-Guaranteed' },
   { value: 'jumbo', label: 'Jumbo' },
   { value: 'other', label: 'Other' }
 ];

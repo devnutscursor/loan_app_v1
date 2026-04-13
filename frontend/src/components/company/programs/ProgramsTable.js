@@ -1,5 +1,6 @@
 import React from 'react';
 import { Edit, Trash2, XCircle, FileText, Tag, Calendar, CheckCircle } from 'lucide-react';
+import { getLoanProgramDisplayLabel } from '@/utils/programType';
 
 export const ProgramsTableSkeleton = () => (
   <>
@@ -129,7 +130,7 @@ const ProgramsTable = ({ programs, loading, error, onEdit, onDelete }) => {
                 programs.map((program) => (
                   <tr key={program._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{program.programName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{program.displayName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getLoanProgramDisplayLabel(program)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{program.programType}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{program.loanTerm} years</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center justify-center">
@@ -179,7 +180,7 @@ const ProgramsTable = ({ programs, loading, error, onEdit, onDelete }) => {
                         {program.programName}
                       </div>
                       <div className="text-sm text-gray-500 truncate">
-                        {program.displayName}
+                        {getLoanProgramDisplayLabel(program)}
                       </div>
                     </div>
                   </div>
