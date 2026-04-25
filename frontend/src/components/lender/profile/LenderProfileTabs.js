@@ -1,14 +1,16 @@
 import React from 'react';
 
-export default function LenderProfileTabs({ active, onChange }) {
-  const tabs = [
+export default function LenderProfileTabs({ active, onChange, tabs }) {
+  const defaultTabs = [
     { key: 'profile', label: 'Profile' },
     { key: 'credentials', label: 'Credentials' }
   ];
 
+  const finalTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : defaultTabs;
+
   return (
     <div className="flex gap-3 mb-6">
-      {tabs.map(t => (
+      {finalTabs.map(t => (
         <button
           key={t.key}
           onClick={() => onChange?.(t.key)}

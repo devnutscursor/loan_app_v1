@@ -8,6 +8,8 @@ const app = require('./app');
 const logger = require('./utils/logger');
 const scheduler = require('./utils/scheduler');
 const milestoneNotificationService = require('./services/milestoneNotification.service');
+const { refreshAllCompanyTokens } = require('./services/ghlToken.service');
+const { getGhlConfig } = require('./config/ghl.config');
 const { connectDatabase } = require('./config/database');
 
 // Environment variables
@@ -140,6 +142,25 @@ server.listen(PORT, () => {
     60 * 60 * 1000 // 1 hour
   );
   logger.info('Milestone deadline notification scheduler started');
+
+  // On startup, immediately refresh expired GHL tokens.
+  refreshAllCompanyTokens({ onlyExpired: true })
+    .then((summary) => {
+      logger.info(
+        `GHL startup token check complete: total=${summary.total}, refreshed=${summary.refreshed}, failed=${summary.failed}`
+      );
+    })
+    .catch((error) => {
+      logger.error(`GHL startup token check failed: ${error.message}`);
+    });
+
+  const { tokenRefreshIntervalMs } = getGhlConfig();
+  scheduler.startTask(
+    'ghlTokenRefresh',
+    () => refreshAllCompanyTokens({ force: true }),
+    tokenRefreshIntervalMs
+  );
+  logger.info('GHL 4-hour token refresh scheduler started');
 });
 
 // Handle unhandled promise rejections

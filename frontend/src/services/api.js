@@ -177,6 +177,18 @@ export const lenderService = {
   // Borrowers
   getBorrowers: (params) => api.get('/lenders/borrowers', { params }),
   getBorrower: (id) => api.get(`/lenders/borrowers/${id}`),
+  linkBorrowerContactToGhl: (borrowerId) => api.post('/ghl/link-borrower-contact', { borrowerId }),
+  // Phase 4: Opportunity manual sync
+  getGhlOpportunityPipelines: (companyId) =>
+    api.get('/ghl/opportunity/pipelines', { params: companyId ? { companyId } : {} }),
+  getGhlLoanOfficerContacts: () =>
+    api.get('/ghl/opportunity/loan-officer-contacts'),
+  syncLoanToGhlOpportunity: ({ companyId, loanId, pipelineId, pipelineStageId, opportunityStatus, assignedToGhlUserId, contactId }) =>
+    api.post(
+      '/ghl/opportunity/sync-loan',
+      { loanId, pipelineId, pipelineStageId, opportunityStatus, assignedToGhlUserId, contactId },
+      { params: companyId ? { companyId } : {} }
+    ),
   // Get loan documents
   getLoanDocuments: (loanId) => api.get(`/documents/loan/${loanId}`),
 
@@ -314,6 +326,17 @@ export const companyService = {
     });
   },
   deleteLogo: (companyId) => api.delete(`/companies/${companyId}/logo`),
+
+  // GHL Integration (Phase 1)
+  getGhlConnectUrl: (companyId) => api.get('/ghl/connect-url', { params: { companyId } }),
+  getGhlStatus: (companyId) => api.get('/ghl/status', { params: { companyId } }),
+  getGhlTokenStorageStatus: (companyId) => api.get('/ghl/token-storage-status', { params: { companyId } }),
+  createGhlAdminUser: (companyId) => api.post('/ghl/create-admin-user', {}, { params: { companyId } }),
+  linkLoanOfficerToGhl: (companyId, appUserId) =>
+    api.post('/ghl/link-loan-officer', { appUserId }, { params: { companyId } }),
+  refreshGhlToken: (companyId) => api.post('/ghl/refresh-token', {}, { params: { companyId } }),
+  disconnectGhl: (companyId) => api.post('/ghl/disconnect', { companyId }),
+  checkGhlHealth: (companyId) => api.get('/ghl/health', { params: { companyId } }),
 };
 
 // Admin Services

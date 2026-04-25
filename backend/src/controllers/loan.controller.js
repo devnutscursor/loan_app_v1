@@ -15,6 +15,99 @@ const Document = require("../models/document.model");
 const Milestone = require("../models/milestone.model");
 const LoanCompensation = require("../models/loanCompensation.model");
 const LoanProgram = require("../models/loanProgram.model");
+const GhlUserMap = require("../models/ghlUserMap.model");
+const GhlContactMap = require("../models/ghlContactMap.model");
+const { resolveOrCreateBorrowerContact } = require("../services/ghlContact.service");
+const GhlOpportunityMap = require("../models/ghlOpportunityMap.model");
+const {
+  getPipelineSlotState,
+  buildBlockMessage,
+} = require("../services/ghlPipelineEligibility.service");
+// Phase 4 opportunities are triggered manually via UI button (see `backend/src/routes/ghl.routes.js`)
+
+async function resolveCompanyIdForLoanLender(lenderRef) {
+  const lenderId = lenderRef?._id || lenderRef;
+  if (!lenderId) return null;
+  const lenderDoc = await Lender.findById(lenderId).select("company user").lean();
+  if (!lenderDoc) return null;
+  let companyId = lenderDoc.company || null;
+  if (!companyId && lenderDoc.user) {
+    const lenderUser = await User.findById(lenderDoc.user).select("company").lean();
+    companyId = lenderUser?.company || null;
+  }
+  if (!companyId && lenderDoc.user) {
+    const anyMap = await GhlUserMap.findOne({
+      appUserId: lenderDoc.user,
+      provisionStatus: "provisioned",
+    })
+      .select("companyId")
+      .lean();
+    companyId = anyMap?.companyId || null;
+  }
+  return companyId;
+}
+
+/**
+ * GHL opportunity id + pipeline slot rule (one active non-Funded mapped loan per contact).
+ */
+async function attachGhlFieldsForLoanResponse(populatedLoan) {
+  populatedLoan.ghlOpportunityId = null;
+  populatedLoan.ghlPipelineSlotBlocked = false;
+  populatedLoan.ghlPipelineSlotBlockReason = null;
+  populatedLoan.ghlPipelineBlockingLoanId = null;
+  populatedLoan.ghlPipelineBlockingLoanNumber = null;
+  populatedLoan.ghlPipelineBlockingLoanStatus = null;
+
+  try {
+    const companyId = await resolveCompanyIdForLoanLender(populatedLoan.lender);
+    if (!companyId) return;
+
+    const oppMap = await GhlOpportunityMap.findOne({
+      companyId,
+      loanId: populatedLoan._id,
+    })
+      .select("ghlOpportunityId")
+      .lean();
+    populatedLoan.ghlOpportunityId = oppMap?.ghlOpportunityId || null;
+
+    if (populatedLoan.ghlOpportunityId) return;
+
+    const borrowerId = populatedLoan.borrower?._id || populatedLoan.borrower;
+    if (!borrowerId) return;
+
+    const contactMap = await GhlContactMap.findOne({ companyId, borrowerId })
+      .select("ghlContactId")
+      .lean();
+    const ghlContactId = contactMap?.ghlContactId
+      ? String(contactMap.ghlContactId).trim()
+      : null;
+    if (!ghlContactId) return;
+
+    const slot = await getPipelineSlotState({
+      companyId,
+      ghlContactId,
+      requestingLoanId: populatedLoan._id,
+    });
+    if (!slot.allowed) {
+      populatedLoan.ghlPipelineSlotBlocked = true;
+      populatedLoan.ghlPipelineSlotBlockReason = buildBlockMessage({
+        blockingLoanNumber: slot.blockingLoanNumber,
+        blockingStatus: slot.blockingStatus,
+      });
+      populatedLoan.ghlPipelineBlockingLoanId = slot.blockingLoanId;
+      populatedLoan.ghlPipelineBlockingLoanNumber = slot.blockingLoanNumber;
+      populatedLoan.ghlPipelineBlockingLoanStatus = slot.blockingStatus;
+    }
+  } catch (e) {
+    logger.warn(`attachGhlFieldsForLoanResponse failed for loan ${populatedLoan?._id}: ${e.message}`);
+    populatedLoan.ghlOpportunityId = null;
+    populatedLoan.ghlPipelineSlotBlocked = false;
+    populatedLoan.ghlPipelineSlotBlockReason = null;
+    populatedLoan.ghlPipelineBlockingLoanId = null;
+    populatedLoan.ghlPipelineBlockingLoanNumber = null;
+    populatedLoan.ghlPipelineBlockingLoanStatus = null;
+  }
+}
 
 const DISALLOWED_LOAN_TYPES = new Set([
   "HELOC",
@@ -297,6 +390,8 @@ exports.removeDocument = async (req, res, next) => {
 
     // Save the loan
     await loan.save();
+
+    // Phase 4 opportunities are triggered manually via UI button
 
     // Log the document removal
     logger.info(
@@ -829,6 +924,51 @@ exports.createLoan = async (req, res, next) => {
     // Log the new loan creation
     logger.info(`New loan application created: ${loan.loanNumber}`);
 
+    // Phase 3: Borrower Contact Dedupe + Create (best-effort)
+    try {
+      const lender = await Lender.findById(lenderId).select("company user").lean();
+      let companyId = lender?.company;
+      if (!companyId && lender?.user) {
+        const lenderUser = await User.findById(lender.user).select("company").lean();
+        companyId = lenderUser?.company || null;
+      }
+      // Fallback: if lender/company links are missing, infer company from existing GHL user mapping
+      if (!companyId && lender?.user) {
+        const anyMap = await GhlUserMap.findOne({
+          appUserId: lender.user,
+          provisionStatus: "provisioned"
+        })
+          .select("companyId")
+          .lean();
+        companyId = anyMap?.companyId || null;
+      }
+      let assignedToGhlUserId = null;
+      if (companyId && lender?.user) {
+        const map = await GhlUserMap.findOne({
+          companyId,
+          appUserId: lender.user,
+          role: "loan_officer",
+          provisionStatus: "provisioned"
+        })
+          .select("ghlUserId")
+          .lean();
+        assignedToGhlUserId = map?.ghlUserId || null;
+      }
+      if (companyId) {
+        const existing = await GhlContactMap.findOne({ companyId, borrowerId })
+          .select("ghlContactId")
+          .lean();
+        if (!existing?.ghlContactId) {
+          await resolveOrCreateBorrowerContact({ companyId, borrowerId, assignedToGhlUserId });
+        }
+
+      }
+    } catch (ghlError) {
+      logger.warn(
+        `GHL contact resolve skipped/failed for loan ${loan._id}: ${ghlError.message}`
+      );
+    }
+
     // Add default milestones for the new loan
     try {
       await createDefaultMilestonesForLoan(loan._id);
@@ -1114,6 +1254,7 @@ exports.getLoan = async (req, res, next) => {
     }
 
     await attachSelectedProgramToLoan(populatedLoan);
+    await attachGhlFieldsForLoanResponse(populatedLoan);
 
     res.status(200).json({
       status: "success",
@@ -2836,6 +2977,51 @@ exports.createLoanData = async (req, res, next) => {
     // Save the loan application (loan number will be auto-generated by the pre-save hook)
     await newLoan.save();
     
+    // Phase 3: Borrower Contact Dedupe + Create (best-effort)
+    try {
+      const lender = await Lender.findById(lenderId).select("company user").lean();
+      let companyId = lender?.company;
+      if (!companyId && lender?.user) {
+        const lenderUser = await User.findById(lender.user).select("company").lean();
+        companyId = lenderUser?.company || null;
+      }
+      // Fallback: if lender/company links are missing, infer company from existing GHL user mapping
+      if (!companyId && lender?.user) {
+        const anyMap = await GhlUserMap.findOne({
+          appUserId: lender.user,
+          provisionStatus: "provisioned"
+        })
+          .select("companyId")
+          .lean();
+        companyId = anyMap?.companyId || null;
+      }
+      let assignedToGhlUserId = null;
+      if (companyId && lender?.user) {
+        const map = await GhlUserMap.findOne({
+          companyId,
+          appUserId: lender.user,
+          role: "loan_officer",
+          provisionStatus: "provisioned"
+        })
+          .select("ghlUserId")
+          .lean();
+        assignedToGhlUserId = map?.ghlUserId || null;
+      }
+      if (companyId) {
+        const existing = await GhlContactMap.findOne({ companyId, borrowerId })
+          .select("ghlContactId")
+          .lean();
+        if (!existing?.ghlContactId) {
+          await resolveOrCreateBorrowerContact({ companyId, borrowerId, assignedToGhlUserId });
+        }
+
+      }
+    } catch (ghlError) {
+      console.warn(
+        `GHL contact resolve skipped/failed for loan ${newLoan._id}: ${ghlError.message}`
+      );
+    }
+
     // Create default milestones for the new loan
     try {
       await createDefaultMilestonesForLoan(newLoan._id);
@@ -3730,6 +3916,7 @@ exports.getLoanWithDetails = async (req, res, next) => {
     }
 
     await attachSelectedProgramToLoan(populatedLoan);
+    await attachGhlFieldsForLoanResponse(populatedLoan);
 
     console.log("Sending response from getLoanWithDetails:", {
       loanId: id,

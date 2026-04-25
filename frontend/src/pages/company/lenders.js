@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Users } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import CompanyLayout from '../../components/layout/CompanyLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLenders } from '../../hooks/lender/useLenders';
@@ -7,6 +8,7 @@ import NewLenderModal from '../../components/company/NewLenderModal';
 import LendersTable from '../../components/company/LendersTable';
 import SearchAndFilters from '../../components/company/SearchAndFilters';
 import Pagination from '../../components/company/Pagination';
+import { companyService } from '../../services/api';
 
 const CompanyLenders = () => {
   const { user } = useAuth();
@@ -31,8 +33,28 @@ const CompanyLenders = () => {
     handleSortByChange,
     handleSortOrderChange,
     handleSearchChange,   
-    handlePageChangeClick
+    handlePageChangeClick,
+    reloadLenders
   } = useLenders(user);
+
+  const handleLinkToGhl = async (lender) => {
+    const appUserId = lender?.user?.id;
+    if (!appUserId) return;
+    try {
+      const response = await companyService.linkLoanOfficerToGhl(user.company, appUserId);
+      const result = response?.data?.data;
+      toast.success(
+        result?.action === 'created'
+          ? 'Loan officer linked to GHL (created)'
+          : 'Loan officer linked to GHL (reused existing)'
+      );
+      await reloadLenders();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to link loan officer to GHL', error);
+      toast.error(error?.response?.data?.message || 'Failed to link loan officer to GHL');
+    }
+  };
 
 
   if (loading && lenders.length === 0) {
@@ -226,6 +248,7 @@ const CompanyLenders = () => {
             onViewStats={handleViewStats}
             onViewBorrowers={handleViewBorrowers}
             onSort={handleSortClick}
+            onLinkToGhl={handleLinkToGhl}
           />
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">

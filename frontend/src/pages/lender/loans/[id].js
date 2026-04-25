@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
@@ -2633,6 +2633,20 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Phase 4: GHL opportunity manual sync (button-driven)
+  const [showGhlOpportunityModal, setShowGhlOpportunityModal] = useState(false);
+  const [ghlPipelines, setGhlPipelines] = useState([]);
+  const [ghlPipelineId, setGhlPipelineId] = useState('');
+  const [ghlPipelineStageId, setGhlPipelineStageId] = useState('');
+  const [ghlOpportunityStatus, setGhlOpportunityStatus] = useState('open');
+  const [syncingToGhl, setSyncingToGhl] = useState(false);
+  const [ghlOppError, setGhlOppError] = useState('');
+  const [linkingBorrowerToGhl, setLinkingBorrowerToGhl] = useState(false);
+  const [openGhlSelect, setOpenGhlSelect] = useState(null); // 'pipeline' | 'stage' | 'status' | null
+  const ghlModalRef = useRef(null);
+  const [ghlContacts, setGhlContacts] = useState([]);
+  const [ghlContactId, setGhlContactId] = useState('');
   
   // Status colors are now defined directly in the className with Tailwind
 
@@ -2649,6 +2663,122 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const handleSettingsButtonClick = () => {
     debug('Opening settings modal', { loanId: id });
     setIsSettingsModalOpen(true);
+  };
+
+  const openGhlOpportunityDialog = async () => {
+    try {
+      setShowGhlOpportunityModal(true);
+      setGhlOppError('');
+      const [pRes, cRes] = await Promise.all([
+        lenderService.getGhlOpportunityPipelines(),
+        lenderService.getGhlLoanOfficerContacts()
+      ]);
+      const pipelines = pRes?.data?.data?.pipelines || [];
+      const contacts = cRes?.data?.data?.contacts || [];
+      setGhlPipelines(pipelines);
+      setGhlContacts(contacts);
+      if (pipelines.length && !ghlPipelineId) {
+        setGhlPipelineId(pipelines[0]._id || pipelines[0].id || '');
+      }
+      // Default contact to the current loan's borrower contact if present in list
+      if (!ghlContactId && loan?._id) {
+        const borrowerId = loan?.borrower?._id || loan?.borrower;
+        const match = contacts.find((c) => String(c.borrowerId) === String(borrowerId));
+        if (match?.ghlContactId) setGhlContactId(match.ghlContactId);
+      }
+    } catch (e) {
+      console.error('Error loading GHL pipelines:', e);
+      const msg = e?.response?.data?.message || 'Failed to load GHL pipelines';
+      setGhlOppError(msg);
+      toast.error(msg);
+    }
+  };
+
+  const selectedPipeline = ghlPipelines.find((p) => String(p?._id || p?.id) === String(ghlPipelineId));
+  const pipelineStages =
+    selectedPipeline?.stages ||
+    selectedPipeline?.pipelineStages ||
+    selectedPipeline?.stagesList ||
+    [];
+
+  useEffect(() => {
+    if (!showGhlOpportunityModal) return;
+    const onDocMouseDown = (e) => {
+      if (!ghlModalRef.current) return;
+      if (!ghlModalRef.current.contains(e.target)) {
+        setOpenGhlSelect(null);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [showGhlOpportunityModal]);
+
+  const Dropdown = ({
+    id,
+    label,
+    value,
+    onChange,
+    options,
+    placeholder = 'Select...',
+    disabled = false
+  }) => {
+    const isOpen = openGhlSelect === id;
+    const selected = options.find((o) => String(o.value) === String(value)) || null;
+    return (
+      <div className="relative">
+        <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpenGhlSelect((prev) => (prev === id ? null : id))}
+          className="w-full text-left bg-white border border-gray-300 rounded-lg px-3 pr-9 py-2.5 text-sm text-gray-900 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:border-gray-300"
+        >
+          <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <svg
+            className="pointer-events-none absolute right-3 top-9 h-4 w-4 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+
+        {isOpen && !disabled && (
+          <div className="absolute z-50 mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <div className="max-h-56 overflow-auto py-1">
+              {options.map((opt) => {
+                const active = String(opt.value) === String(value);
+                return (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setOpenGhlSelect(null);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
+                      active ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-800'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              {!options.length && (
+                <div className="px-3 py-2 text-sm text-gray-500">No options</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
   
   
@@ -2756,6 +2886,160 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
               </div>
             ) : loan ? (
               <>
+                {/* GHL Opportunity Sync Modal */}
+                {showGhlOpportunityModal && (
+                  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                    <div ref={ghlModalRef} className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 border border-gray-100">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-2">Add Loan to GHL Pipeline</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Select a pipeline stage and opportunity status. The opportunity will be assigned to you automatically.
+                      </p>
+
+                      {ghlOppError && (
+                        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                          {ghlOppError}
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        <Dropdown
+                          id="contact"
+                          label="Contact"
+                          value={ghlContactId}
+                          onChange={(val) => setGhlContactId(val)}
+                          options={ghlContacts.map((c) => ({
+                            value: c.ghlContactId,
+                            label: `${c.name}${c.email ? ` • ${c.email}` : ''}`
+                          }))}
+                          placeholder="Select contact"
+                        />
+
+                        <Dropdown
+                          id="pipeline"
+                          label="Pipeline"
+                          value={ghlPipelineId}
+                          onChange={(val) => {
+                            setGhlPipelineId(val);
+                            setGhlPipelineStageId('');
+                          }}
+                          options={ghlPipelines.map((p) => ({ value: p._id || p.id, label: p.name || (p._id || p.id) }))}
+                          placeholder="Select pipeline"
+                        />
+
+                        <Dropdown
+                          id="stage"
+                          label="Pipeline Stage"
+                          value={ghlPipelineStageId}
+                          onChange={(val) => setGhlPipelineStageId(val)}
+                          options={pipelineStages.map((s) => ({ value: s._id || s.id, label: s.name || (s._id || s.id) }))}
+                          placeholder="Select stage"
+                          disabled={!ghlPipelineId}
+                        />
+
+                        <Dropdown
+                          id="status"
+                          label="Opportunity Status"
+                          value={ghlOpportunityStatus}
+                          onChange={(val) => setGhlOpportunityStatus(val)}
+                          options={[
+                            { value: 'open', label: 'Open' },
+                            { value: 'won', label: 'Won' },
+                            { value: 'lost', label: 'Lost' }
+                          ]}
+                          placeholder="Select status"
+                        />
+                      </div>
+
+                      <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => setShowGhlOpportunityModal(false)}
+                          className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                          disabled={syncingToGhl}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!ghlPipelineId) {
+                              toast.error('Please select a pipeline.');
+                              return;
+                            }
+                            if (!ghlPipelineStageId) {
+                              toast.error('Please select a pipeline stage.');
+                              return;
+                            }
+                            if (!ghlContactId) {
+                              toast.error('Please select a contact.');
+                              return;
+                            }
+                            try {
+                              setSyncingToGhl(true);
+                              setGhlOppError('');
+                              await lenderService.syncLoanToGhlOpportunity({
+                                loanId: loan._id,
+                                pipelineId: ghlPipelineId,
+                                pipelineStageId: ghlPipelineStageId,
+                                opportunityStatus: ghlOpportunityStatus,
+                                contactId: ghlContactId
+                              });
+                              toast.success('Loan added to GHL pipeline');
+                              setShowGhlOpportunityModal(false);
+                              await fetchLoanDetails(true);
+                            } catch (e) {
+                              console.error('Error syncing loan to GHL:', e);
+                              const msg = e?.response?.data?.message || 'Failed to sync loan to GHL';
+                              setGhlOppError(msg);
+                              toast.error(msg);
+                            } finally {
+                              setSyncingToGhl(false);
+                            }
+                          }}
+                          className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                          disabled={syncingToGhl}
+                        >
+                          {syncingToGhl ? 'Syncing…' : 'Add to Pipeline'}
+                        </button>
+                      </div>
+
+                      {ghlOppError && ghlOppError.toLowerCase().includes('linked ghl contact') && (
+                        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                          <div className="text-sm text-amber-800">
+                            Borrower isn’t linked to GHL yet. Link the borrower contact first, then try again.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setLinkingBorrowerToGhl(true);
+                                setGhlOppError('');
+                                const borrowerId = loan?.borrower?._id || loan?.borrower;
+                                if (!borrowerId) {
+                                  setGhlOppError('Unable to resolve borrowerId for this loan.');
+                                  return;
+                                }
+                                await lenderService.linkBorrowerContactToGhl(borrowerId);
+                                toast.success('Borrower linked to GHL');
+                              } catch (e) {
+                                const msg = e?.response?.data?.message || 'Failed to link borrower to GHL';
+                                setGhlOppError(msg);
+                                toast.error(msg);
+                              } finally {
+                                setLinkingBorrowerToGhl(false);
+                              }
+                            }}
+                            className="shrink-0 px-3 py-1.5 text-sm rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
+                            disabled={linkingBorrowerToGhl || syncingToGhl}
+                          >
+                            {linkingBorrowerToGhl ? 'Linking…' : 'Link Borrower'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-w-7xl mx-auto overflow-hidden">
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
 
@@ -2877,6 +3161,44 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           
                         </div>
                         <div className="w-full lg:w-auto flex items-center col-span-1 sm:col-span-2 lg:col-span-1">
+                          {loan?.ghlOpportunityId ? (
+                            <div className="inline-flex items-center gap-1.5">
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] lg:text-xs font-semibold bg-green-50 text-green-800 border border-green-200 max-w-[170px]"
+                                title={`GHL Opportunity ID: ${loan.ghlOpportunityId}`}
+                              >
+                                <span>GHL Synced</span>
+                                <span className="font-mono text-[9px] lg:text-[10px] text-green-700 truncate max-w-[78px]">
+                                  {String(loan.ghlOpportunityId).slice(0, 10)}…
+                                </span>
+                              </span>
+                              <button
+                                onClick={openGhlOpportunityDialog}
+                                className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md font-semibold border border-green-600 text-green-700 bg-white hover:bg-green-50 shadow-sm transition-all duration-200 text-[10px] lg:text-xs leading-none"
+                                title="Update this existing GHL opportunity"
+                              >
+                                Update
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={openGhlOpportunityDialog}
+                              disabled={Boolean(loan?.ghlPipelineSlotBlocked)}
+                              className={`inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-semibold border shadow-sm transition-all duration-200 text-xs lg:text-sm ${
+                                loan?.ghlPipelineSlotBlocked
+                                  ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                                  : 'border-blue-600 text-blue-700 bg-white hover:bg-blue-50'
+                              }`}
+                              title={
+                                loan?.ghlPipelineSlotBlocked
+                                  ? loan?.ghlPipelineSlotBlockReason ||
+                                    "Another loan for this borrower's GHL contact is already active in the pipeline. A new one can be added only after the previous loan is Closed, Funded, or Rejected."
+                                  : 'Sync this loan to GHL pipeline'
+                              }
+                            >
+                              Sync to GHL
+                            </button>
+                          )}
                           <button
                             onClick={handleSendPreApprovalLetter}
                             className="ml-2 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 min-w-[300px] sm:min-w-0 text-center text-xs lg:text-sm"

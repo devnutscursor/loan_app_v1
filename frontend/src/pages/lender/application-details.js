@@ -25,6 +25,12 @@ const LoanApplicationDetailsPage = () => {
   const [showMissingFieldsModal, setShowMissingFieldsModal] = useState(false);
   const [missingFields, setMissingFields] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showGhlOpportunityModal, setShowGhlOpportunityModal] = useState(false);
+  const [ghlPipelines, setGhlPipelines] = useState([]);
+  const [ghlPipelineId, setGhlPipelineId] = useState('');
+  const [ghlPipelineStageId, setGhlPipelineStageId] = useState('');
+  const [ghlOpportunityStatus, setGhlOpportunityStatus] = useState('open');
+  const [syncingToGhl, setSyncingToGhl] = useState(false);
   
   useEffect(() => {
     if (id) {
@@ -44,6 +50,28 @@ const LoanApplicationDetailsPage = () => {
       setLoading(false);
     }
   };
+
+  const openGhlOpportunityDialog = async () => {
+    try {
+      setShowGhlOpportunityModal(true);
+      const res = await lenderService.getGhlOpportunityPipelines();
+      const pipelines = res?.data?.data?.pipelines || [];
+      setGhlPipelines(pipelines);
+      if (pipelines.length && !ghlPipelineId) {
+        setGhlPipelineId(pipelines[0]._id || pipelines[0].id || '');
+      }
+    } catch (error) {
+      console.error('Error loading GHL pipelines:', error);
+      toast.error(error?.response?.data?.message || 'Failed to load GHL pipelines');
+    }
+  };
+
+  const selectedPipeline = ghlPipelines.find((p) => String(p?._id || p?.id) === String(ghlPipelineId));
+  const pipelineStages =
+    selectedPipeline?.stages ||
+    selectedPipeline?.pipelineStages ||
+    selectedPipeline?.stagesList ||
+    [];
   
   const handleStatusChange = async (newStatus) => {
     // If moving to Declined, open denial reasons modal first
@@ -290,6 +318,119 @@ const LoanApplicationDetailsPage = () => {
                 </div>
               </div>
             )}
+
+            {/* GHL Opportunity Sync Modal */}
+            {showGhlOpportunityModal && (
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Add Loan to GHL Pipeline</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select a pipeline stage and opportunity status. The opportunity will be assigned to you automatically.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Pipeline</label>
+                      <select
+                        value={ghlPipelineId}
+                        onChange={(e) => {
+                          setGhlPipelineId(e.target.value);
+                          setGhlPipelineStageId('');
+                        }}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select pipeline</option>
+                        {ghlPipelines.map((p) => {
+                          const pid = p._id || p.id;
+                          return (
+                            <option key={pid} value={pid}>
+                              {p.name || pid}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Pipeline Stage</label>
+                      <select
+                        value={ghlPipelineStageId}
+                        onChange={(e) => setGhlPipelineStageId(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={!ghlPipelineId}
+                      >
+                        <option value="">Select stage</option>
+                        {pipelineStages.map((s) => {
+                          const sid = s._id || s.id;
+                          return (
+                            <option key={sid} value={sid}>
+                              {s.name || sid}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Opportunity Status</label>
+                      <select
+                        value={ghlOpportunityStatus}
+                        onChange={(e) => setGhlOpportunityStatus(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="open">Open</option>
+                        <option value="won">Won</option>
+                        <option value="lost">Lost</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowGhlOpportunityModal(false)}
+                      className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                      disabled={syncingToGhl}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!ghlPipelineId) {
+                          toast.error('Please select a pipeline.');
+                          return;
+                        }
+                        if (!ghlPipelineStageId) {
+                          toast.error('Please select a pipeline stage.');
+                          return;
+                        }
+                        try {
+                          setSyncingToGhl(true);
+                          await lenderService.syncLoanToGhlOpportunity({
+                            loanId: loan._id,
+                            pipelineId: ghlPipelineId,
+                            pipelineStageId: ghlPipelineStageId,
+                            opportunityStatus: ghlOpportunityStatus
+                          });
+                          toast.success('Loan added to GHL pipeline');
+                          setShowGhlOpportunityModal(false);
+                        } catch (error) {
+                          console.error('Error syncing loan to GHL:', error);
+                          toast.error(error?.response?.data?.message || 'Failed to sync loan to GHL');
+                        } finally {
+                          setSyncingToGhl(false);
+                        }
+                      }}
+                      className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                      disabled={syncingToGhl}
+                    >
+                      {syncingToGhl ? 'Syncing…' : 'Add to Pipeline'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Header */}
             <div className="bg-white shadow rounded-lg p-6 mb-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -307,23 +448,32 @@ const LoanApplicationDetailsPage = () => {
                   </p>
                 </div>
                 <div className="mt-4 md:mt-0">
-                  <select
-                    value={loan.status}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                    className="max-w-lg block w-full shadow-sm focus:ring-primary focus:border-primary sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  >
-                    <option value="Application Started">Application Started</option>
-                    <option value="Application Submitted">Application Submitted</option>
-                    <option value="Processing">Processing</option>
-                    <option value="Conditional Approval">Conditional Approval</option>
-                    <option value="Approved-Not-Accepted">Approved but not Accepted</option>
-                    <option value="Clear to Close">Clear to Close</option>
-                    <option value="Closed">Closed</option>
-                    <option value="Funded">Funded</option>
-                    <option value="Declined">Denied</option>
-                    <option value="Withdrawn">Withdrawn</option>
-                    <option value="Closed-Incomplete">Closed for Incompleteness</option>
-                  </select>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <button
+                      type="button"
+                      onClick={openGhlOpportunityDialog}
+                      className="px-4 py-2 text-sm rounded-md border border-blue-600 text-blue-700 bg-white hover:bg-blue-50"
+                    >
+                      Sync to GHL
+                    </button>
+                    <select
+                      value={loan.status}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="max-w-lg block w-full shadow-sm focus:ring-primary focus:border-primary sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
+                    >
+                      <option value="Application Started">Application Started</option>
+                      <option value="Application Submitted">Application Submitted</option>
+                      <option value="Processing">Processing</option>
+                      <option value="Conditional Approval">Conditional Approval</option>
+                      <option value="Approved-Not-Accepted">Approved but not Accepted</option>
+                      <option value="Clear to Close">Clear to Close</option>
+                      <option value="Closed">Closed</option>
+                      <option value="Funded">Funded</option>
+                      <option value="Declined">Denied</option>
+                      <option value="Withdrawn">Withdrawn</option>
+                      <option value="Closed-Incomplete">Closed for Incompleteness</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               

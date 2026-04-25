@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   Eye,
   User,
   DollarSign,
   Phone,
-  Mail
+  Mail,
+  Link2
 } from 'lucide-react';
 
 const LendersTable = ({ 
@@ -13,7 +14,25 @@ const LendersTable = ({
   onSort, 
   onViewStats, 
   onViewBorrowers,
+  onLinkToGhl
 }) => {
+  const [linkingUserIds, setLinkingUserIds] = useState(() => new Set());
+
+  const linkToGhl = async (lender) => {
+    const userId = lender?.user?.id;
+    if (!userId || !onLinkToGhl) return;
+    setLinkingUserIds((prev) => new Set(prev).add(String(userId)));
+    try {
+      await onLinkToGhl(lender);
+    } finally {
+      setLinkingUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(userId));
+        return next;
+      });
+    }
+  };
+
   if (lenders.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
@@ -93,6 +112,35 @@ const LendersTable = ({
                   <Phone className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                   <span>{lender?.user?.phone || 'N/A'}</span>
                 </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                      lender?.user?.ghlUserId ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                    }`}
+                    title={lender?.user?.ghlUserId || 'Not Linked'}
+                  >
+                    {lender?.user?.ghlUserId ? 'GHL Linked' : 'GHL Not Linked'}
+                  </span>
+                  {lender?.user?.ghlUserId ? (
+                    <span
+                      className="text-[11px] text-gray-500 max-w-[160px] truncate"
+                      title={lender?.user?.ghlUserId}
+                    >
+                      {lender?.user?.ghlUserId}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => linkToGhl(lender)}
+                      disabled={linkingUserIds.has(String(lender?.user?.id))}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                      title="Link this loan officer to GHL"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      <span>{linkingUserIds.has(String(lender?.user?.id)) ? 'Linking...' : 'Link'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="col-span-2 flex items-center">
@@ -113,7 +161,7 @@ const LendersTable = ({
                 </div>
               </div>
 
-              <div className="col-span-2 flex justify-end items-center space-x-3">
+              <div className="col-span-2 flex justify-end items-center gap-4 whitespace-nowrap">
                 <button
                   onClick={() => onViewStats(lender?.id)}
                   className="text-sm text-primary hover:text-primary-dark font-medium flex items-center"
@@ -203,10 +251,42 @@ const LendersTable = ({
                       ${lender?.metrics?.totalLoanAmount?.toLocaleString() || '0'}
                     </div>
                   </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      <span>GHL ID</span>
+                    </div>
+                    <div className="flex items-center gap-2 max-w-[220px]">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          lender?.user?.ghlUserId ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                        }`}
+                        title={lender?.user?.ghlUserId || 'Not Linked'}
+                      >
+                        {lender?.user?.ghlUserId ? 'Linked' : 'Not Linked'}
+                      </span>
+                      <span
+                        className="text-xs text-gray-900 font-medium truncate"
+                        title={lender?.user?.ghlUserId || 'Not Linked'}
+                      >
+                        {lender?.user?.ghlUserId || '—'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Card Footer - Action Buttons */}
                 <div className="mt-4 pt-3 border-t border-gray-100">
+                  {!lender?.user?.ghlUserId ? (
+                    <button
+                      onClick={() => linkToGhl(lender)}
+                      disabled={linkingUserIds.has(String(lender?.user?.id))}
+                      className="w-full mb-2 flex items-center justify-center text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 font-medium text-sm rounded-lg py-2 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed border border-emerald-200"
+                    >
+                      <Link2 className="h-4 w-4 mr-1" />
+                      <span>{linkingUserIds.has(String(lender?.user?.id)) ? 'Linking...' : 'Link to GHL'}</span>
+                    </button>
+                  ) : null}
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => onViewStats(lender?.id)}

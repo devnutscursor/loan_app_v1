@@ -145,6 +145,7 @@ export const useLenders = (user) => {
     handleSortByChange,
     handleSortOrderChange,
     handleSearchChange,
-    handlePageChangeClick
+    handlePageChangeClick,
+    reloadLenders: fetchLenders
   };
 };

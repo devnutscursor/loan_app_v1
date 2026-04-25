@@ -47,6 +47,28 @@ const lenderService = {
     }
   },
 
+  // GHL Opportunities (Phase 4 - manual sync)
+  getGhlOpportunityPipelines: async (companyId) => {
+    try {
+      return await API.get('/ghl/opportunity/pipelines', { params: companyId ? { companyId } : {} });
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  syncLoanToGhlOpportunity: async ({ loanId, pipelineId, pipelineStageId, opportunityStatus }) => {
+    try {
+      return await API.post('/ghl/opportunity/sync-loan', {
+        loanId,
+        pipelineId,
+        pipelineStageId,
+        opportunityStatus
+      });
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
   // Borrower Management
   getBorrowers: async (filters = {}) => {
     try {

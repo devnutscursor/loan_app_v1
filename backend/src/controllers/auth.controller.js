@@ -10,6 +10,8 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const emailService = require('../utils/email/emailService');
 const config = require('../config');
+const { resolveOrCreateBorrowerContact } = require('../services/ghlContact.service');
+const GhlUserMap = require('../models/ghlUserMap.model');
 
 /**
  * Create default loan programs for a new lender
@@ -860,7 +862,8 @@ exports.registerBorrower = async (req, res, next) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = (email || '').toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return next(new ApiError('User already exists with this email', 400));
     }
@@ -869,16 +872,17 @@ exports.registerBorrower = async (req, res, next) => {
     const user = await User.create({
       firstName,
       lastName,
-      email,
+      email: normalizedEmail,
       password,
       phone,
       role: 'borrower',
       isEmailVerified: false  // Set email as unverified
     });
 
+    let borrowerDoc = null;
     try {
       // Create borrower linked to lender
-      await Borrower.create({
+      borrowerDoc = await Borrower.create({
         user: user._id,
         lender: lenderId
       });
@@ -886,6 +890,28 @@ exports.registerBorrower = async (req, res, next) => {
       // Roll back user if borrower creation fails
       await User.findByIdAndDelete(user._id);
       throw borrowerError;
+    }
+
+    // Best-effort: create/dedupe borrower contact in GHL upon registration via lender referral link
+    // This should never block borrower signup.
+    try {
+      const lenderCompanyId = lender.company?.toString();
+      if (lenderCompanyId) {
+        const map = await GhlUserMap.findOne({
+          companyId: lenderCompanyId,
+          appUserId: lender.user
+        })
+          .select('ghlUserId')
+          .lean();
+
+        await resolveOrCreateBorrowerContact({
+          companyId: lenderCompanyId,
+          borrowerId: borrowerDoc._id,
+          assignedToGhlUserId: map?.ghlUserId || null
+        });
+      }
+    } catch (ghlError) {
+      logger.warn(`GHL contact sync skipped/failed for new borrower ${user._id}: ${ghlError.message}`);
     }
 
     // Generate tokens
