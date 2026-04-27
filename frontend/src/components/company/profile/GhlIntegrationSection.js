@@ -86,18 +86,24 @@ const GhlIntegrationSection = ({ companyId }) => {
   const handleConnect = async () => {
     if (!companyId) return;
     setConnectLoading(true);
+    // Open a blank tab synchronously so browsers treat it as a direct user action.
+    const popup = window.open('', '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      toast.error('Popup blocked by browser. Please allow popups for this site and try again.');
+      setConnectLoading(false);
+      return;
+    }
+
     try {
       const response = await companyService.getGhlConnectUrl(companyId);
       const connectUrl = response?.data?.data?.connectUrl;
       if (!connectUrl) {
         throw new Error('Connect URL was not returned');
       }
-      const opened = window.open(connectUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        throw new Error('Popup blocked by browser');
-      }
+      popup.location.href = connectUrl;
       toast.success('GHL connect flow opened in a new tab. Complete it there, then return here.');
     } catch (error) {
+      popup.close();
       // eslint-disable-next-line no-console
       console.error('Error generating connect URL:', error);
       toast.error(
