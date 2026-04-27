@@ -86,13 +86,9 @@ const GhlIntegrationSection = ({ companyId }) => {
   const handleConnect = async () => {
     if (!companyId) return;
     setConnectLoading(true);
-    // Open a blank tab synchronously so browsers treat it as a direct user action.
+    // Attempt to open a blank tab synchronously so browsers treat it as a direct user action.
+    // Some browsers/policies can still return null even when popups are allowed.
     const popup = window.open('', '_blank', 'noopener,noreferrer');
-    if (!popup) {
-      toast.error('Popup blocked by browser. Please allow popups for this site and try again.');
-      setConnectLoading(false);
-      return;
-    }
 
     try {
       const response = await companyService.getGhlConnectUrl(companyId);
@@ -100,10 +96,15 @@ const GhlIntegrationSection = ({ companyId }) => {
       if (!connectUrl) {
         throw new Error('Connect URL was not returned');
       }
-      popup.location.href = connectUrl;
-      toast.success('GHL connect flow opened in a new tab. Complete it there, then return here.');
+      if (popup) {
+        popup.location.href = connectUrl;
+        toast.success('GHL connect flow opened in a new tab. Complete it there, then return here.');
+      } else {
+        // Fallback: continue in current tab when popup handles are blocked/unavailable.
+        window.location.assign(connectUrl);
+      }
     } catch (error) {
-      popup.close();
+      if (popup) popup.close();
       // eslint-disable-next-line no-console
       console.error('Error generating connect URL:', error);
       toast.error(
