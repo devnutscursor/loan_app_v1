@@ -2,6 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const { parseString } = require('xml2js');
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
+
+/** Redact sensitive query params for logs */
+function redactMortechQueryString(queryString) {
+  if (!queryString || typeof queryString !== 'string') return '';
+  return queryString
+    .replace(/(licenseKey=)[^&]*/gi, '$1***REDACTED***')
+    .replace(/(emailAddress=)[^&]*/gi, '$1***REDACTED***');
+}
 
 /** Path to private.pem in backend folder (project-specific, not env) */
 const PRIVATE_PEM_PATH = path.join(__dirname, '..', '..', 'private.pem');
@@ -80,22 +89,81 @@ class MortechAPI {
   }
 
   async getRates(request, options = {}) {
+    const startedAt = Date.now();
     try {
-      const params = new URLSearchParams({
+      logger.info(
+        `[Mortech] getRates incoming (sanitized): ${JSON.stringify({
+          propertyZip: request.propertyZip,
+          appraisedvalue: request.appraisedvalue,
+          loan_amount: request.loan_amount,
+          fico: request.fico,
+          loanpurpose: request.loanpurpose,
+          proptype: request.proptype,
+          occupancy: request.occupancy,
+          loanProduct1: request.loanProduct1,
+          productList: request.productList,
+          financeMI: request.financeMI,
+          vaType: request.vaType,
+          subsequentUse: request.subsequentUse,
+          targetPrice: request.targetPrice,
+        })}`
+      );
+
+      const targetPrice =
+        request.targetPrice !== undefined && request.targetPrice !== null ? request.targetPrice : -999;
+
+      const str = (v) => v != null ? String(v) : undefined;
+
+      const baseEntries = {
         request_id: '1',
         customerId: this.customerId,
         thirdPartyName: this.thirdPartyName,
         licenseKey: this.licenseKey,
         emailAddress: this.emailAddress,
-        targetPrice: (request.targetPrice !== undefined && request.targetPrice !== null ? request.targetPrice : -999).toString(),
+        targetPrice: String(targetPrice),
+        ...(request.propertyState && { propertyState: request.propertyState }),
         propertyZip: request.propertyZip,
+        ...(request.propertyCounty && { propertyCounty: request.propertyCounty }),
         appraisedvalue: request.appraisedvalue.toString(),
         loan_amount: request.loan_amount.toString(),
+        ...(request.downPayment > 0 && { downPayment: str(request.downPayment) }),
         fico: request.fico.toString(),
-        loanpurpose: request.loanpurpose,
-        proptype: request.proptype,
-        occupancy: request.occupancy,
-        loanProduct1: request.loanProduct1,
+        loanpurpose: String(request.loanpurpose),
+        proptype: String(request.proptype),
+        occupancy: String(request.occupancy),
+
+        // Lien position
+        ...(request.lienPosition && { lienPosition: str(request.lienPosition) }),
+        // DTI
+        ...(request.DTIPercent > 0 && { DTIPercent: str(request.DTIPercent) }),
+        // CLTV
+        ...(request.cltv > 0 && { cltv: str(request.cltv) }),
+        // Closing & payment dates
+        ...(request.closingDate && { closingDate: request.closingDate }),
+        ...(request.firstPaymentDate && { firstPaymentDate: request.firstPaymentDate }),
+        // Monthly taxes & insurance
+        ...(request.taxes > 0 && { taxes: str(request.taxes) }),
+        ...(request.insurance > 0 && { insurance: str(request.insurance) }),
+        // Borrower flags
+        ...(request.firstTimeHomeBuyer === 1 && { firstTimeHomeBuyer: '1' }),
+        ...(request.selfEmployed === 1 && { selfEmployed: '1' }),
+        ...(request.amiIlpaWaiver === 1 && { amiIlpaWaiver: '1' }),
+        // Interest-only
+        ...(request.interestOnly === 1 && { interestOnly: '1' }),
+        // Lender-paid compensation
+        ...(request.lenderPaidYSP === 1 && { lenderPaidYSP: '1' }),
+        // Restrict to specific investors
+        ...(request.parent_id && { parent_id: request.parent_id }),
+
+        // Subordinate financing
+        ...(request.program !== undefined && { program: str(request.program) }),
+        // Borrower annual income
+        ...(request.annualIncome > 0 && { annualIncome: str(request.annualIncome) }),
+        // MI coverage type
+        ...(request.coverageType > 0 && { coverageType: str(request.coverageType) }),
+        // Include FHA MIP / VA funding fee in fee_list
+        ...(request.includeUpfrontFee === true && { includeUpfrontFee: 'True' }),
+
         ...(request.view !== undefined && { view: request.view.toString() }),
         ...(request.filterId && { filterId: request.filterId }),
         ...(request.pmiCompany && { pmiCompany: request.pmiCompany.toString() }),
@@ -105,11 +173,26 @@ class MortechAPI {
         ...(request.subsequentUse !== undefined && { subsequentUse: request.subsequentUse.toString() }),
         ...(request.waiveescrow !== undefined && { waiveescrow: request.waiveescrow.toString() }),
         ...(request.militaryVeteran === true && { militaryVeteran: 'true' }),
-        ...(request.lockindays && request.lockindays !== '30' && { lockindays: request.lockindays.toString() }),
+        ...(request.lockindays !== undefined &&
+          request.lockindays !== null && { lockindays: String(request.lockindays) }),
         ...(typeof request.secondMortgageAmount === 'number' && request.secondMortgageAmount > 0
           ? { secondMortgageAmount: request.secondMortgageAmount.toString() }
           : {}),
-      });
+      };
+
+      // Mortech: send productList OR loanProduct1, not both (matches loan-officer-platform).
+      if (request.productList) {
+        baseEntries.productList = request.productList;
+      } else if (request.loanProduct1) {
+        baseEntries.loanProduct1 = request.loanProduct1;
+      }
+
+      const params = new URLSearchParams(baseEntries);
+      const queryString = params.toString();
+      const fullUrl = `${this.baseUrl}?${queryString}`;
+      logger.info(
+        `[Mortech] HTTP GET url=${this.baseUrl} queryRedacted=${redactMortechQueryString(queryString)}`
+      );
 
       const accessToken = await this.getAccessToken();
       const headers = {
@@ -119,7 +202,7 @@ class MortechAPI {
         ...(this.xApiKey && { 'x-api-key': this.xApiKey }),
       };
 
-      let response = await fetch(`${this.baseUrl}?${params.toString()}`, {
+      let response = await fetch(fullUrl, {
         method: 'GET',
         headers,
       });
@@ -133,29 +216,54 @@ class MortechAPI {
             ...headers,
             authorizationtoken: refreshedToken,
           };
-          response = await fetch(`${this.baseUrl}?${params.toString()}`, {
+          response = await fetch(fullUrl, {
             method: 'GET',
             headers: retryHeaders,
           });
         }
       }
 
+      const httpMs = Date.now() - startedAt;
       if (!response.ok) {
-        throw new Error(`Mortech API error: ${response.status} ${response.statusText}`);
+        const errBody = await response.text().catch(() => '');
+        logger.error(
+          `[Mortech] HTTP error status=${response.status} ${response.statusText} ms=${httpMs} queryRedacted=${redactMortechQueryString(queryString)} bodyPreview=${(errBody || '').slice(0, 1500)}`
+        );
+        throw new Error(
+          `Mortech HTTP ${response.status} ${response.statusText}${errBody ? `: ${errBody.slice(0, 300)}` : ''}`
+        );
       }
 
       const xmlData = await response.text();
+      logger.info(
+        `[Mortech] XML received httpStatus=${response.status} ms=${Date.now() - startedAt} xmlLength=${xmlData.length} preview=${xmlData.slice(0, 400).replace(/\s+/g, ' ')}`
+      );
+
       const parsedResponse = await this.parseXMLResponse(xmlData);
 
       if (options.includeRawXml) {
         parsedResponse.rawXml = xmlData;
       }
 
+      if (!parsedResponse.success) {
+        logger.error(
+          `[Mortech] parse failed: ${parsedResponse.error} ms=${Date.now() - startedAt} xmlHead=${xmlData.slice(0, 800)}`
+        );
+      } else {
+        logger.info(
+          `[Mortech] OK quotes=${(parsedResponse.quotes && parsedResponse.quotes.length) || 0} totalMs=${Date.now() - startedAt}`
+        );
+      }
+
       return parsedResponse;
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error(
+        `[Mortech] getRates exception ms=${Date.now() - startedAt} error=${msg} stack=${error instanceof Error ? error.stack : ''}`
+      );
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: msg,
       };
     }
   }
@@ -164,22 +272,40 @@ class MortechAPI {
     return new Promise((resolve) => {
       parseString(xmlData, (err, result) => {
         if (err) {
+          logger.error(
+            `[Mortech] xml2js parse error: ${err.message} xmlPreview=${xmlData && xmlData.slice ? xmlData.slice(0, 600) : ''}`
+          );
           resolve({
             success: false,
-            error: 'Failed to parse XML response',
+            error: `Failed to parse XML response: ${err.message}`,
           });
           return;
         }
 
         try {
           const mortech = result.mortech;
+          if (!mortech || !mortech.header || !mortech.header[0]) {
+            logger.error(
+              `[Mortech] missing mortech.header keys=${result ? Object.keys(result).join(',') : 'none'}`
+            );
+            resolve({
+              success: false,
+              error: 'Unexpected Mortech XML: missing header',
+            });
+            return;
+          }
+
           const errorNum = parseInt(mortech.header[0].errorNum[0], 10);
           const errorDesc = mortech.header[0].errorDesc[0];
 
           if (errorNum !== 0) {
+            const errMsg = `Mortech errorNum=${errorNum}: ${errorDesc}`;
+            logger.error(`[Mortech] Business error errorNum=${errorNum} errorDesc=${errorDesc}`);
             resolve({
               success: false,
-              error: errorDesc,
+              error: errMsg,
+              mortechErrorNum: errorNum,
+              mortechErrorDesc: errorDesc,
             });
             return;
           }
@@ -331,9 +457,12 @@ class MortechAPI {
             quotes,
           });
         } catch (parseError) {
+          logger.error(
+            `[Mortech] parseXMLResponse inner catch: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+          );
           resolve({
             success: false,
-            error: 'Failed to parse response data',
+            error: `Failed to parse response data: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
           });
         }
       });
