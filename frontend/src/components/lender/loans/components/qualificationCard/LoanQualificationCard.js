@@ -855,12 +855,118 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   };
 
 
-    if (
-  isLoading ||
-  isProcessing ||
-  !hasFetchedLoan ) {
-  return <LoadingSkeleton />;
-}
+  if (
+    isLoading ||
+    isProcessing ||
+    !hasFetchedLoan
+  ) {
+    return <LoadingSkeleton />;
+  }
+
+  const toNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const propertyValueForLtv = (() => {
+    const purpose = String(loan?.loanDetails?.loanType || "").toLowerCase();
+    const pp = toNum(loan?.loanDetails?.purchasePrice);
+    const av = toNum(loan?.property?.propertyValue);
+    const isPurchase = purpose.includes("purchase");
+    if (isPurchase) {
+      if (pp > 0 && av > 0) return Math.min(pp, av);
+      if (pp > 0) return pp;
+      if (av > 0) return av;
+      return 0;
+    }
+    if (av > 0) return av;
+    if (pp > 0) return pp;
+    return 0;
+  })();
+
+  const ltvPct = (() => {
+    const la = toNum(calculations.loanAmount);
+    const pv = toNum(propertyValueForLtv);
+    if (la <= 0 || pv <= 0) return 0;
+    return (la / pv) * 100;
+  })();
+
+  const closingCostsTotal = (() => {
+    const lp = loan?.loanParameters || {};
+    const base = toNum(calculations.loanAmount);
+    const feeToDollar = (val, unit) => {
+      const n = toNum(val);
+      if (n <= 0) return 0;
+      return String(unit).toLowerCase() === "percent" ? (base * n) / 100 : n;
+    };
+    // FTC definition (client): Closing costs + down payment.
+    // Here we treat closing costs as the sum of saved one-time fees.
+    return (
+      feeToDollar(lp.closingCosts, lp.closingCostsUnit) +
+      feeToDollar(lp.originationFees, lp.originationFeesUnit) +
+      feeToDollar(lp.otherFees, lp.otherFeesUnit)
+    );
+  })();
+
+  const fundsToClose = (() => {
+    const dp = toNum(calculations.downPayment);
+    const cc = toNum(closingCostsTotal);
+    return dp + cc;
+  })();
+
+  const monthlyIncomeForDisplay = (() => {
+    const fcIncome = toNum(loan?.financialCalculations?.totalIncome);
+    if (fcIncome > 0) return fcIncome;
+    const incomeMonthly = toNum(calculateTotalIncome(loan?.income));
+    if (incomeMonthly > 0) return incomeMonthly;
+    const annual = toNum(loan?.loanParameters?.annualIncome);
+    return annual > 0 ? annual / 12 : 0;
+  })();
+
+  const MetricCircle = ({ valueText, label, progressPct = 100, stroke = "#10b981" }) => {
+    const p = Number(progressPct);
+    const clamped = Number.isFinite(p) ? Math.max(0, Math.min(100, p)) : 0;
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-24 h-24">
+          <svg className="w-24 h-24" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke="#f3f4f6"
+              strokeWidth="10"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke={stroke}
+              strokeWidth="10"
+              strokeDasharray={`${clamped * 2.83} 283`}
+              strokeDashoffset="0"
+              strokeLinecap="round"
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl font-bold text-center px-1 leading-tight">{valueText}</span>
+            <span className="text-xs text-gray-500">{label}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const fmtCompactMoney = (n) => {
+    const v = toNum(n);
+    if (!v) return "—";
+    if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+    if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
+    return formatCurrency(v);
+  };
   return (
     <div className="bg-white rounded-lg hover:shadow-md transition-shadow duration-300">
       <div className="p-5">
@@ -882,14 +988,30 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           </button>
         </div>
 
+        <div className="grid grid-cols-3 gap-4 items-start justify-items-center mb-5">
+          <MetricCircle
+            valueText={ltvPct > 0 ? `${ltvPct.toFixed(0)}%` : "—"}
+            label="LTV"
+            progressPct={ltvPct > 0 ? ltvPct : 0}
+            stroke="#2563eb"
+          />
+
+          <DTICircleIndicator
+            dti={calculations.dti}
+            downPaymentPercent={calculations.downPaymentPercent}
+            isQualified={calculations.isQualified}
+            size={24}
+          />
+
+          <MetricCircle
+            valueText={fundsToClose > 0 ? fmtCompactMoney(fundsToClose) : "—"}
+            label="FTC"
+            progressPct={100}
+            stroke="#10b981"
+          />
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-          <div className="col-span-2 md:col-span-1 flex justify-center">
-            <DTICircleIndicator
-              dti={calculations.dti}
-              downPaymentPercent={calculations.downPaymentPercent}
-              isQualified={calculations.isQualified}
-            />
-          </div>
 
           <div>
             <div className="space-y-3">
@@ -918,6 +1040,12 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
                 <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Down Payment</div>
                 <div className="font-medium text-gray-900 text-xs sm:text-base">
                   {formatCurrency(calculations.downPayment)} <span className="text-xs text-gray-400">({calculations.downPaymentPercent}%)</span>
+                </div>
+              </div>
+              <div className="group">
+                <div className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">Income (Monthly)</div>
+                <div className="font-medium text-gray-900 text-xs sm:text-base">
+                  {monthlyIncomeForDisplay > 0 ? formatCurrency(monthlyIncomeForDisplay) : "—"}
                 </div>
               </div>
               <div className="group">

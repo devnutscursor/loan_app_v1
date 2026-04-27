@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Panel (PACE/Lease) Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --blue: #2f85d0;
+      --blue-dark: #2878bd;
+      --blue-light: #4ba0e7;
+      --gray-track-top: #d8dbe0;
+      --gray-track-bottom: #bfc4cb;
+      --gray-border: #b7bec7;
+      --panel-border: #d7dbe1;
+      --panel-bg: #ffffff;
+      --warning-bg: #fbf1df;
+      --warning-border: #dfbf85;
+      --header-top: #e9f5ff;
+      --header-bottom: #dcecf8;
+      --text: #111827;
+      --muted: #4b5563;
+      --light-muted: #a8afb8;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 24, 39, 0.60);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 660px;
+      border-radius: 15px;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #cfd7df;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.32);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 24px;
+      background: linear-gradient(180deg, var(--header-top) 0%, var(--header-bottom) 100%);
+      border-bottom: 1px solid #cedce8;
+    }
+
+    .modal-header h1 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+      font-weight: 500;
+      color: #1f2937;
+    }
+
+    .content {
+      padding: 14px 14px 0;
+      background: #fff;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 14px 16px 16px;
+      box-shadow: 0 1px 0 rgba(17, 24, 39, 0.03);
+      margin-bottom: 16px;
+    }
+
+    .panel.warning {
+      background: var(--warning-bg);
+      border-color: var(--warning-border);
+    }
+
+    .panel-title {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .warning-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #aa6417;
+    }
+
+    .panel-copy {
+      margin: 0 0 16px;
+      font-size: 13px;
+      line-height: 1.42;
+      color: #111827;
+      max-width: 585px;
+    }
+
+    .panel-copy strong { font-weight: 700; }
+
+    .subcopy {
+      margin: 0 0 14px;
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .toggle-row,
+    .radio-toggle-row,
+    .lease-top,
+    .lease-line,
+    .toggle-pair {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .lease-top {
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .lease-line {
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .toggle-label,
+    .inline-label,
+    .lease-question {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .lease-question.tight {
+      margin-right: 4px;
+    }
+
+    .choice,
+    .radio-choice {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      color: #111827;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .choice.large {
+      font-size: 15px;
+    }
+
+    .choice.disabled,
+    .radio-choice.disabled {
+      color: var(--light-muted);
+    }
+
+    .choice input,
+    .radio-choice input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .toggle-pill {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+      border-radius: 999px;
+      border: 2px solid var(--gray-border);
+      background: linear-gradient(180deg, var(--gray-track-top) 0%, var(--gray-track-bottom) 100%);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.5);
+      transition: all .18s ease;
+      flex: 0 0 auto;
+    }
+
+    .toggle-pill::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+      transition: all .18s ease;
+    }
+
+    .choice input:checked + .toggle-pill {
+      background: linear-gradient(180deg, var(--blue-light) 0%, var(--blue) 100%);
+      border-color: var(--blue);
+    }
+
+    .choice input:checked + .toggle-pill::after {
+      transform: translateX(22px);
+    }
+
+    .choice.small .toggle-pill {
+      width: 34px;
+      height: 20px;
+      border-width: 1px;
+    }
+
+    .choice.small .toggle-pill::after {
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+    }
+
+    .choice.small input:checked + .toggle-pill::after {
+      transform: translateX(15px);
+    }
+
+    .radio-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .radio-choice {
+      font-size: 13px;
+    }
+
+    .radio-mark {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #9ca3af;
+      position: relative;
+      background: #fff;
+      flex: 0 0 auto;
+    }
+
+    .radio-mark::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--blue);
+      transform: scale(0);
+      transition: transform .15s ease;
+    }
+
+    .radio-choice input:checked + .radio-mark {
+      border-color: var(--blue);
+    }
+
+    .radio-choice input:checked + .radio-mark::after {
+      transform: scale(1);
+    }
+
+    .amount-input {
+      width: 100%;
+      height: 37px;
+      border-radius: 8px;
+      border: 1px solid #d3d7de;
+      background: #f9fafb;
+      padding: 0 12px;
+      font-family: inherit;
+      font-size: 13px;
+      color: #6b7280;
+      outline: none;
+    }
+
+    .amount-input:focus {
+      border-color: var(--blue);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(47,133,208,0.12);
+    }
+
+    .lease-details {
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 2px solid #edf1f4;
+      display: grid;
+      gap: 12px;
+    }
+
+    .payment {
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .payment strong {
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .helper-box {
+      margin-top: 12px;
+      border: 1px solid #d7dbe1;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 12px 14px;
+    }
+
+    .helper-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .helper-copy {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: #4b5563;
+    }
+
+    .footer {
+      display: flex;
+      gap: 12px;
+      padding: 18px 16px 16px;
+      background: #f6f8fb;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .btn {
+      flex: 1;
+      height: 50px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #cfd5dc;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #3692e0 0%, #2f85d0 100%);
+      color: #fff;
+      border: 1px solid #2f85d0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 700px) {
+      body { padding: 12px; }
+      .lease-top, .lease-line, .footer { flex-direction: column; align-items: stretch; }
+      .toggle-pair { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:24px; line-height:1;">☀️</span>
+      <h1>Solar Panel (PACE/Lease) Details</h1>
+    </div>
+
+    <div class="content">
+      <section class="panel warning">
+        <div class="warning-title">
+          <span style="font-size:17px; line-height:1;">⚠️</span>
+          <span>PACE Lien Check</span>
+        </div>
+        <p class="panel-copy">
+          Is there an existing PACE/HERO Lien (Property Assessed Clean Energy) attached to this property tax bill? <strong>If Yes, Agency (FNMA/FHLMC) requirements state it must be paid off for eligibility.</strong>
+        </p>
+        <div class="toggle-row">
+          <label class="choice large">
+            <input type="radio" name="paceLien" id="paceYes" checked>
+            <span class="toggle-pill"></span>
+            <span>Yes</span>
+          </label>
+          <label class="choice large">
+            <input type="radio" name="paceLien" id="paceNo">
+            <span class="toggle-pill"></span>
+            <span>No</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="paceDetails" class="panel">
+        <h2 class="panel-title">PACE/HERO Payoff Details</h2>
+        <p class="subcopy">If Yes, will this lien be paid off at or before closing?</p>
+        <div class="radio-group">
+          <label class="choice small">
+            <input type="radio" name="payoffOption" id="payoffNewLoan" checked>
+            <span class="toggle-pill"></span>
+            <span>Yes, paid off with new loan</span>
+          </label>
+          <label class="choice small">
+            <input type="radio" name="payoffOption" id="payoffOtherFunds">
+            <span class="toggle-pill"></span>
+            <span>Yes, paid off with other funds</span>
+          </label>
+          <label class="choice small disabled">
+            <input type="radio" name="payoffOption" id="payoffRemain">
+            <span class="toggle-pill"></span>
+            <span>No, lien will remain</span>
+          </label>
+        </div>
+        <input class="amount-input" value="PACE Lien Balance ($25,000)" />
+
+        <div class="helper-box">
+          <p class="helper-title">Agency / Government overlays</p>
+          <p class="helper-copy" id="agencyHelpText">FNMA/FHLMC generally require payoff of first-lien PACE obligations because a super-priority or first-lien PACE assessment can make the loan ineligible for purchase or refinance eligibility. [web:6][page:1]</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="lease-top">
+          <h2 class="panel-title" style="margin:0;">Solar Lease Information</h2>
+          <div class="toggle-pair">
+            <span class="lease-question">Are the solar panels leased?</span>
+            <label class="choice large">
+              <input type="radio" name="leased" id="leaseYes" checked>
+              <span class="toggle-pill"></span>
+              <span>Yes</span>
+            </label>
+            <label class="choice large">
+              <input type="radio" name="leased" id="leaseNo">
+              <span class="toggle-pill"></span>
+              <span>No</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="leaseDetails" class="lease-details">
+          <div class="lease-line">
+            <span class="lease-question tight">Will this Lease be Assumed by the Buyer?</span>
+            <div class="toggle-pair">
+              <label class="choice small">
+                <input type="radio" name="leaseAssumed" id="leaseAssumedYes" checked>
+                <span class="toggle-pill"></span>
+                <span>Yes</span>
+              </label>
+              <label class="choice small">
+                <input type="radio" name="leaseAssumed" id="leaseAssumedNo">
+                <span class="toggle-pill"></span>
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+          <div class="payment hidden" id="leasePaymentDisplay">Current Monthly Lease Payment: <strong id="leasePaymentText">[$215.00]</strong></div>
+          <input class="amount-input" id="leaseAmountInput" value="$215.00" placeholder="Enter assumed lease payment" />
+        </div>
+
+        <div class="helper-box">
+          <p class="helper-title">Loan program notes</p>
+          <p class="helper-copy" id="programHelpText">VA previously allowed some properties with certain PACE structures to remain eligible under Circular 26-16-18, but that circular expressly rescinded itself effective July 1, 2018; FHA guidance also turned against senior PACE obligations, so current overlays typically require review or payoff where lien priority affects first-lien position. [page:2][web:15][web:11]</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-secondary">Cancel</button>
+      <button class="btn btn-primary">Continue to Pricing</button>
+    </div>
+  </div>
+
+  <script>
+    const paceYes = document.getElementById('paceYes');
+    const paceNo = document.getElementById('paceNo');
+    const leaseYes = document.getElementById('leaseYes');
+    const leaseNo = document.getElementById('leaseNo');
+    const paceDetails = document.getElementById('paceDetails');
+    const leaseDetails = document.getElementById('leaseDetails');
+    const agencyHelpText = document.getElementById('agencyHelpText');
+    const programHelpText = document.getElementById('programHelpText');
+    const leaseAssumedYes = document.getElementById('leaseAssumedYes');
+    const leaseAssumedNo = document.getElementById('leaseAssumedNo');
+    const leaseAmountInput = document.getElementById('leaseAmountInput');
+    const leasePaymentDisplay = document.getElementById('leasePaymentDisplay');
+    const leasePaymentText = document.getElementById('leasePaymentText');
+
+    function syncSections() {
+      paceDetails.classList.toggle('hidden', !paceYes.checked);
+      leaseDetails.classList.toggle('hidden', !leaseYes.checked);
+      leaseAmountInput.classList.toggle('hidden', !leaseYes.checked || !leaseAssumedYes.checked);
+      leasePaymentDisplay.classList.toggle('hidden', !leaseYes.checked || !leaseAssumedYes.checked);
+    }
+
+    function syncGuidance() {
+      if (paceYes.checked) {
+        agencyHelpText.textContent = 'FNMA/FHLMC generally require payoff of first-lien PACE obligations because a super-priority or first-lien PACE assessment can make the loan ineligible for purchase or refinance eligibility.';
+      } else {
+        agencyHelpText.textContent = 'No active PACE/HERO lien selected. Standard solar review still applies, but no PACE payoff warning is displayed.';
+      }
+
+      if (leaseYes.checked) {
+        programHelpText.textContent = leaseAssumedYes.checked
+          ? 'Include lease review, assumption terms, and the assumed monthly lease payment. For VA/FHA scenarios, review whether any PACE or solar obligation affects lien priority, transferability, or underwriting overlays.'
+          : 'Solar is marked as leased but not assumed by the buyer. Review payoff, transfer, or removal requirements, plus any VA/FHA lien-priority or title overlays.';
+      } else {
+        programHelpText.textContent = 'Panels are not marked as leased. For VA/FHA scenarios, still review any separate PACE/HERO financing, title exceptions, or property-tax-based assessments.';
+      }
+    }
+
+    function syncLeasePayment() {
+      const value = leaseAmountInput.value.trim() || '$215.00';
+      leasePaymentText.textContent = `[${value}]`;
+    }
+
+    [paceYes, paceNo, leaseYes, leaseNo, leaseAssumedYes, leaseAssumedNo].forEach(el => {
+      el.addEventListener('change', () => {
+        syncSections();
+        syncGuidance();
+        syncLeasePayment();
+      });
+    });
+
+    leaseAmountInput.addEventListener('input', syncLeasePayment);
+
+    syncSections();
+    syncGuidance();
+    syncLeasePayment();
+  </script>
+</body>
+</html>
