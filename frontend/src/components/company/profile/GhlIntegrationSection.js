@@ -86,9 +86,10 @@ const GhlIntegrationSection = ({ companyId }) => {
   const handleConnect = async () => {
     if (!companyId) return;
     setConnectLoading(true);
-    // Attempt to open a blank tab synchronously so browsers treat it as a direct user action.
-    // Some browsers/policies can still return null even when popups are allowed.
-    const popup = window.open('', '_blank', 'noopener,noreferrer');
+    // Open a blank tab synchronously so browser treats this as direct user action.
+    // Avoid noopener/noreferrer here because some browsers return a null handle
+    // even when popups are allowed, which causes false "popup blocked" errors.
+    const popup = window.open('about:blank', '_blank');
 
     try {
       const response = await companyService.getGhlConnectUrl(companyId);
@@ -98,10 +99,10 @@ const GhlIntegrationSection = ({ companyId }) => {
       }
       if (popup) {
         popup.location.href = connectUrl;
+        popup.focus?.();
         toast.success('GHL connect flow opened in a new tab. Complete it there, then return here.');
       } else {
-        // Fallback: continue in current tab when popup handles are blocked/unavailable.
-        window.location.assign(connectUrl);
+        throw new Error('Popup blocked by browser');
       }
     } catch (error) {
       if (popup) popup.close();
