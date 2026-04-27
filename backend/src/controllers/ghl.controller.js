@@ -49,6 +49,17 @@ function decodeState(state, secret) {
   return decoded;
 }
 
+function getSafeFrontendUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    return url.origin;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function resolveAuthorizedCompanyId(req) {
   const companyId = req.query.companyId || req.body.companyId;
   if (!companyId) {
@@ -124,6 +135,7 @@ exports.getConnectUrl = async (req, res, next) => {
       {
         companyId,
         userId: req.user._id.toString(),
+        frontendUrl: getSafeFrontendUrl(req.headers.origin) || getSafeFrontendUrl(process.env.FRONTEND_URL),
         ts: Date.now()
       },
       cfg.oauthStateSecret
@@ -177,76 +189,13 @@ exports.oauthCallback = async (req, res, next) => {
 
     const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
     if (acceptsHtml) {
-      const safePayload = JSON.stringify(responsePayload).replace(/</g, '\\u003c');
-      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      const frontendUrl =
+        getSafeFrontendUrl(parsedState.frontendUrl) ||
+        getSafeFrontendUrl(process.env.FRONTEND_URL) ||
+        'http://localhost:3000';
       const successRedirectUrl = `${frontendUrl}/company/profile?ghlConnected=success`;
 
-      // Keep opener access available for the OAuth popup even though frontend and backend
-      // are on different origins in production.
-      res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-
-      return res.status(200).send(`<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GHL Connected</title>
-    <style>
-      body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #0f172a; }
-      .card { max-width: 560px; margin: 60px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-      .title { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #16a34a; }
-      .desc { font-size: 14px; color: #475569; margin-bottom: 12px; }
-      .small { font-size: 12px; color: #64748b; }
-      .btn { margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 8px; background: #2563eb; color: white; text-decoration: none; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div class="title">GoHighLevel connected successfully</div>
-      <p class="desc">Your company is now connected. Returning you to the app...</p>
-      <p class="small">If this window does not close automatically, use the button below.</p>
-      <button class="btn" onclick="returnToApp()">Return to app</button>
-    </div>
-    <script>
-      (function () {
-        var appUrl = ${JSON.stringify(successRedirectUrl)};
-        var notified = false;
-        window.returnToApp = function () {
-          try {
-            window.close();
-          } catch (e) {}
-          setTimeout(function () {
-            window.location.replace(appUrl);
-          }, 250);
-        };
-
-        try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(
-              { type: 'GHL_OAUTH_CONNECTED', payload: ${safePayload} },
-              ${JSON.stringify(frontendUrl)}
-            );
-            notified = true;
-          }
-        } catch (e) {}
-
-        try {
-          window.close();
-        } catch (e) {}
-
-        if (notified) {
-          setTimeout(function () {
-            window.close();
-          }, 800);
-        } else {
-          setTimeout(function () {
-            window.location.replace(appUrl);
-          }, 1000);
-        }
-      })();
-    </script>
-  </body>
-</html>`);
+      return res.redirect(302, successRedirectUrl);
     }
 
     res.status(200).json({
