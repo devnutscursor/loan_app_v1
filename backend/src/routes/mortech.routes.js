@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authenticate);
 router.post('/search', authorize('lender'), mortechController.searchRates);
 router.get('/catalog/products', authorize('lender'), mortechController.catalogProducts);
+router.get('/catalog/usda-products', authorize('lender'), mortechController.catalogUsdaProducts);
 router.post('/catalog/sync', authorize('lender'), mortechController.catalogSync);
 
 module.exports = router;

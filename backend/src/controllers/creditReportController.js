@@ -4,7 +4,10 @@ const catchAsync = require('../utils/catchAsync');
 const Loan = require('../models/loan.model');
 const Company = require('../models/company.model');
 const Lender = require('../models/lender.model');
+const CreditReport = require('../models/creditReport.model');
 const logger = require('../utils/logger');
+const { extractBankruptcySummaryFromRawXml } = require('../utils/creditReportBankruptcy');
+const { extractMortgageLatesSummaryFromRawXml } = require('../utils/creditReportMortgageLates');
 
 const creditReportService = new CreditReportService();
 
@@ -154,6 +157,74 @@ const getCreditReport = catchAsync(async (req, res) => {
         
         throw new ApiError(`Failed to get credit report: ${error.message}`, 500);
     }
+});
+
+/**
+ * Get bankruptcy summary from saved credit report raw XML
+ * GET /api/credit-report/:loanId/:lenderId/bankruptcy-summary
+ */
+const getCreditReportBankruptcySummary = catchAsync(async (req, res) => {
+    const { loanId, lenderId } = req.params;
+
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId);
+
+    const creditReport = await CreditReport.findActiveByLoan(loanId).lean();
+    if (!creditReport) {
+        throw new ApiError('Credit report not found. Please create credit report first.', 404);
+    }
+    const raw = creditReport.smartApiData?.rawResponse || '';
+    if (!raw || String(raw).trim() === '') {
+        throw new ApiError('Credit report raw response missing.', 422);
+    }
+
+    const summary = extractBankruptcySummaryFromRawXml(raw, { asOf: new Date() });
+
+    return res.status(200).json({
+        success: true,
+        creditReportId: creditReport._id,
+        found: summary.found,
+        bkCount: summary.bkCount,
+        bkType: summary.bkType,
+        bkStatus: summary.bkStatus,
+        dischargeDate: summary.dischargeDate,
+        matchedRecords: summary.matchedRecords,
+    });
+});
+
+/**
+ * Get mortgage late-count summary from saved credit report raw XML
+ * GET /api/credit-report/:loanId/:lenderId/mortgage-lates-summary
+ */
+const getCreditReportMortgageLatesSummary = catchAsync(async (req, res) => {
+    const { loanId, lenderId } = req.params;
+
+    // Verify authorization
+    await verifyLoanAuthorization(loanId, lenderId);
+
+    const creditReport = await CreditReport.findActiveByLoan(loanId).lean();
+    if (!creditReport) {
+        throw new ApiError('Credit report not found. Please create credit report first.', 404);
+    }
+    const raw = creditReport.smartApiData?.rawResponse || '';
+    if (!raw || String(raw).trim() === '') {
+        throw new ApiError('Credit report raw response missing.', 422);
+    }
+
+    const summary = extractMortgageLatesSummaryFromRawXml(raw);
+
+    return res.status(200).json({
+        success: true,
+        creditReportId: creditReport._id,
+        found: summary.found,
+        mortgageLiabilityCount: summary.mortgageLiabilityCount,
+        total30: summary.total30,
+        total60: summary.total60,
+        total90: summary.total90,
+        max30: summary.max30,
+        max60: summary.max60,
+        max90: summary.max90,
+    });
 });
 
 /**
@@ -498,6 +569,8 @@ const upgradeCreditReport = catchAsync(async (req, res) => {
 module.exports = {
     createCreditReport,
     getCreditReport,
+    getCreditReportBankruptcySummary,
+    getCreditReportMortgageLatesSummary,
     refreshCreditReport,
     getCreditReportHistory,
     getCreditReportFile,

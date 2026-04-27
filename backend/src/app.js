@@ -34,6 +34,7 @@ const testRoutes = require('./routes/test.routes'); // Import test routes
 const mortechRoutes = require('./routes/mortech.routes');
 const mcrRoutes = require('./routes/mcr.routes');
 const loanCompensationRoutes = require('./routes/loanCompensation.routes');
+const affordableRoutes = require('./routes/affordable.routes');
 const ghlRoutes = require('./routes/ghl.routes');
 const oauthRoutes = require('./routes/oauth.routes');
 
@@ -258,6 +259,7 @@ app.use('/api/v1/notes', noteRoutes);
 app.use('/api/v1/mortech', mortechRoutes);
 app.use('/api/v1/mcr', mcrRoutes);
 app.use('/api/v1/loan-compensation', loanCompensationRoutes);
+app.use('/api/v1/affordable', affordableRoutes);
 app.use('/api/v1/test', testRoutes); // Register test routes
 app.use('/api/v1/ghl', ghlRoutes);
 app.use('/api/ghl', ghlRoutes);
