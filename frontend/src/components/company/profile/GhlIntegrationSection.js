@@ -86,10 +86,32 @@ const GhlIntegrationSection = ({ companyId }) => {
   const handleConnect = async () => {
     if (!companyId) return;
     setConnectLoading(true);
-    // Open a blank tab synchronously so browser treats this as direct user action.
-    // Avoid noopener/noreferrer here because some browsers return a null handle
-    // even when popups are allowed, which causes false "popup blocked" errors.
-    const popup = window.open('about:blank', '_blank');
+    const popupFeatures = [
+      'popup=yes',
+      'width=1100',
+      'height=850',
+      'left=120',
+      'top=60',
+      'resizable=yes',
+      'scrollbars=yes'
+    ].join(',');
+
+    // Open a named popup synchronously from the click event. There is no same-tab
+    // fallback because losing the app tab breaks the OAuth recovery flow.
+    const popup = window.open('about:blank', 'ghl_oauth_connect', popupFeatures);
+    if (popup) {
+      popup.document.write(`
+        <!doctype html>
+        <html>
+          <head><title>Opening GoHighLevel...</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 24px;">
+            <h3>Opening GoHighLevel...</h3>
+            <p>Please complete the connection in this window.</p>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    }
 
     try {
       const response = await companyService.getGhlConnectUrl(companyId);
@@ -98,9 +120,8 @@ const GhlIntegrationSection = ({ companyId }) => {
         throw new Error('Connect URL was not returned');
       }
       if (popup) {
-        popup.location.href = connectUrl;
-        popup.focus?.();
-        toast.success('GHL connect flow opened in a new tab. Complete it there, then return here.');
+        popup.location.replace(connectUrl);
+        toast.success('GHL connect flow opened in a separate window. Complete it there, then return here.');
       } else {
         throw new Error('Popup blocked by browser');
       }

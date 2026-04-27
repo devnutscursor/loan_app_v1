@@ -196,20 +196,27 @@ exports.oauthCallback = async (req, res, next) => {
   <body>
     <div class="card">
       <div class="title">GoHighLevel connected successfully</div>
-      <p class="desc">Your company is now connected. Please return to the previous tab to continue.</p>
-      <p class="small">You can close this tab safely.</p>
-      <button class="btn" onclick="window.close()">Close tab</button>
+      <p class="desc">Your company is now connected. This popup will close automatically.</p>
+      <p class="small">If it does not close, you can close this window safely and return to the app.</p>
+      <button class="btn" onclick="window.close()">Close window</button>
     </div>
     <script>
       (function () {
+        var notified = false;
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage(
               { type: 'GHL_OAUTH_CONNECTED', payload: ${safePayload} },
               '*'
             );
+            notified = true;
           }
         } catch (e) {}
+        if (notified) {
+          setTimeout(function () {
+            window.close();
+          }, 800);
+        }
       })();
     </script>
   </body>
