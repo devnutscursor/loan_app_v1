@@ -228,11 +228,11 @@ export default function EditLoanProgram() {
       const updatedFormData = { ...formData, [field]: value };
       
       // Set program-specific default values
-      if (value === 'usda') {
-        updatedFormData.fundingFee = 1.0; // USDA upfront guarantee fee
-        updatedFormData.mortgageInsurance = 0.4; // USDA annual fee
-        updatedFormData.restrictions.downPaymentRestriction.min = 0; // USDA allows 0% down
-        updatedFormData.loanHelpText = "A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas."; // Default help text
+      if (value === 'fsa_rhs' || value === 'usda') {
+        updatedFormData.fundingFee = 1.0; // Upfront guarantee fee
+        updatedFormData.mortgageInsurance = 0.4; // Annual fee
+        updatedFormData.restrictions.downPaymentRestriction.min = 0;
+        updatedFormData.loanHelpText = "FSA/RHS-Guaranteed loans (including USDA Single Family Housing Guaranteed) may offer zero down payment for eligible borrowers in qualified rural areas.";
       } else if (value === 'va') {
         updatedFormData.fundingFee = 2.3; // VA funding fee
         updatedFormData.mortgageInsurance = 0; // VA has no monthly MI

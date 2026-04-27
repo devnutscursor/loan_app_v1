@@ -57,7 +57,13 @@ const LoanCard = ({ loan, borrowerId, lenderId, onView }) => {
             </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusStyle(loan.status)}`}>
-            {loan.status?.toLowerCase() === 'conditional approval' ? 'Approved' : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || 'Status'}
+            {loan.status?.toLowerCase() === 'conditional approval'
+              ? 'Approved'
+              : loan.status?.toLowerCase() === 'declined'
+                ? 'Denied'
+                : loan.status?.toLowerCase() === 'underwriting'
+                  ? 'Processing'
+                  : loan.status?.charAt(0).toUpperCase() + loan.status?.slice(1) || 'Status'}
           </span>
         </div>
         

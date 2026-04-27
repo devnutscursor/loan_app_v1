@@ -133,7 +133,7 @@ exports.createDefaultLoanRates = async (userId, lenderId = null, companyId = nul
       { programType: 'conventional', rate: 6.75 }, // 30-year fixed conventional (Freddie Mac July 17, 2025)
       { programType: 'fha', rate: 6.50 },          // FHA typically 0.25% lower than conventional
       { programType: 'va', rate: 6.25 },           // VA typically 0.5% lower than conventional
-      { programType: 'usda', rate: 6.25 },         // USDA similar to VA rates
+      { programType: 'fsa_rhs', rate: 6.25 },         // FSA/RHS-Guaranteed — similar to VA rates
       { programType: 'jumbo', rate: 7.00 }         // Jumbo typically 0.25% higher than conventional
     ];
 
@@ -169,7 +169,7 @@ exports.createDefaultLoanRates = async (userId, lenderId = null, companyId = nul
         { programType: 'conventional', rate: 6.75 }, // Current market rates (July 2025)
         { programType: 'fha', rate: 6.50 },
         { programType: 'va', rate: 6.25 },
-        { programType: 'usda', rate: 6.25 },
+        { programType: 'fsa_rhs', rate: 6.25 },
         { programType: 'jumbo', rate: 7.00 }
       ];
       

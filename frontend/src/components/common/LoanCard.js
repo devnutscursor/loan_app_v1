@@ -55,7 +55,8 @@ const LoanCard = ({ loan, userRole = 'borrower' }) => {
     
     const statusLower = status.toLowerCase();
     if (statusLower === 'conditional approval') return 'Approved';
-    if (statusLower === 'declined') return 'Rejected';
+    if (statusLower === 'declined') return 'Denied';
+    if (statusLower === 'underwriting') return 'Processing';
     
     return status.charAt(0).toUpperCase() + status.slice(1);
   };

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { getLoanProgramDisplayLabel } from '@/utils/programType';
 
 /**
  * Component for loan program guidelines section
@@ -38,7 +39,7 @@ const ProgramGuidelinesSection = ({
         originalHandleInputChange(e);
         
         // Log that we're loading program-specific guidelines
-        console.log(`[DEBUG] Loading program-specific guidelines for: ${newProgram.displayName}`);
+        console.log(`[DEBUG] Loading program-specific guidelines for: ${getLoanProgramDisplayLabel(newProgram)}`);
       } else {
         // Just handle the normal change
         originalHandleInputChange(e);
@@ -72,7 +73,7 @@ const ProgramGuidelinesSection = ({
           >
             {loanPrograms.map(program => (
               <option key={program._id} value={program._id}>
-                {program.displayName}
+                {getLoanProgramDisplayLabel(program)}
               </option>
             ))}
           </select>

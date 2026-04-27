@@ -1,4 +1,5 @@
 import React from 'react';
+import { isFsaRhsGuaranteed } from '../../../utils/programType';
 import { ChevronDown, Trash2, PlusCircle } from 'lucide-react';
 
 /**
@@ -283,10 +284,10 @@ const MortgageInsuranceSection = ({ formData, onChange, isLoading, readOnly = fa
           </div>
         )}
         
-        {/* USDA Program */}
-        {formData.programType === 'usda' && (
+        {/* FSA/RHS-Guaranteed */}
+        {isFsaRhsGuaranteed(formData.programType) && (
           <div>
-            {/* USDA Funding Fee */}
+            {/* Upfront guarantee fee */}
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Funding Fee (%)
@@ -309,10 +310,10 @@ const MortgageInsuranceSection = ({ formData, onChange, isLoading, readOnly = fa
                   style={{ height: '38px' }}
                 />
               </div>
-              <p className="mt-1 text-sm text-gray-500">USDA funding fee for new loans.</p>
+              <p className="mt-1 text-sm text-gray-500">Upfront guarantee fee for FSA/RHS-Guaranteed loans.</p>
             </div>
             
-            {/* USDA Mortgage Insurance */}
+            {/* Annual guarantee / MI */}
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 MI (%)
@@ -335,7 +336,7 @@ const MortgageInsuranceSection = ({ formData, onChange, isLoading, readOnly = fa
                   style={{ height: '38px' }}
                 />
               </div>
-              <p className="mt-1 text-sm text-gray-500">USDA annual mortgage insurance premium.</p>
+              <p className="mt-1 text-sm text-gray-500">Annual guarantee / mortgage insurance (FSA/RHS-Guaranteed).</p>
             </div>
           </div>
         )}

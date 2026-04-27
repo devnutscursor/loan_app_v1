@@ -87,7 +87,7 @@ export const useCompanyBorrowerLoans = () => {
     } else if (activeFilter === 'approved') {
       results = results.filter(loan => ['Conditional Approval', 'Clear to Close', 'Closed', 'Funded'].includes(loan.status));
     } else if (activeFilter === 'rejected') {
-      results = results.filter(loan => ['Rejected', 'Withdrawn'].includes(loan.status));
+      results = results.filter(loan => ['Declined', 'Rejected', 'Withdrawn'].includes(loan.status));
     }
     results.sort((a, b) => {
       let compareA, compareB;
@@ -129,6 +129,7 @@ export const useCompanyBorrowerLoans = () => {
       case 'Closed':
       case 'Funded':
         return 'bg-blue-100 text-blue-800';
+      case 'Declined':
       case 'Rejected':
       case 'Withdrawn':
         return 'bg-red-100 text-red-800';

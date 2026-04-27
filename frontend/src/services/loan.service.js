@@ -718,7 +718,7 @@ class LoanService {
           { id: 'conventional', name: 'Conventional', description: 'Traditional mortgage loan' },
           { id: 'fha', name: 'FHA', description: 'Federal Housing Administration loan' },
           { id: 'va', name: 'VA', description: 'Veterans Affairs loan' },
-          { id: 'usda', name: 'USDA', description: 'USDA Rural Development loan' },
+          { id: 'fsa_rhs', name: 'FSA/RHS-Guaranteed', description: 'FSA/RHS-Guaranteed (USDA SFH Guaranteed / RHS)' },
           { id: 'jumbo', name: 'Jumbo', description: 'Loan exceeding conforming loan limits' }
         ]
       };

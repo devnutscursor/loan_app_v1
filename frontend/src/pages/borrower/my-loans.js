@@ -265,13 +265,12 @@ const MyLoans = () => {
                     <option value="Application Submitted">Application Submitted</option>
                     <option value="Pending">Pending</option>
                     <option value="Processing">Processing</option>
-                    <option value="Underwriting">Underwriting</option>
                     <option value="Approved">Approved</option>
                     <option value="Conditional Approval">Approved (Conditional)</option>
                     <option value="Clear to Close">Clear to Close</option>
                     <option value="Funded">Funded</option>
                     <option value="Closed">Closed</option>
-                    <option value="Rejected">Rejected</option>
+                    <option value="Declined">Denied</option>
                   </select>
                   
                   <select
@@ -502,7 +501,7 @@ const MyLoans = () => {
                           )}
                           {selectedLoan.rejectedAt && (
                             <li className="py-2">
-                              <span className="font-medium">Rejected:</span> {formatDate(selectedLoan.rejectedAt)}
+                              <span className="font-medium">Denied:</span> {formatDate(selectedLoan.rejectedAt)}
                             </li>
                           )}
                           {selectedLoan.fundedAt && (

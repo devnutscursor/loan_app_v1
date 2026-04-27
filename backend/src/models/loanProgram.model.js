@@ -80,7 +80,8 @@ const loanProgramSchema = new mongoose.Schema({
   },
   programType: {
     type: String,
-    enum: ['conventional', 'fha', 'va', 'usda', 'jumbo', 'other'],
+    // fsa_rhs = FSA/RHS-Guaranteed (USDA SFH Guaranteed); usda = legacy stored value (migrate to fsa_rhs)
+    enum: ['conventional', 'fha', 'va', 'usda', 'fsa_rhs', 'jumbo', 'other'],
     required: true
   },
   isAvailableToBorrower: {

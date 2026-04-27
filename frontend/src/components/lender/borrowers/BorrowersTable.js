@@ -1,14 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Phone, Calendar, FileText, ExternalLink, User } from 'lucide-react';
+import { Mail, Phone, Calendar, FileText, ExternalLink, Link2 } from 'lucide-react';
 
 const BorrowersTable = ({ 
   filteredBorrowers, 
   borrowerLoans, 
   formatDate, 
   getSortIcon, 
-  onSortChange 
+  onSortChange,
+  onLinkToGhl
 }) => {
+  const [linkingBorrowerIds, setLinkingBorrowerIds] = useState(() => new Set());
+
+  const linkToGhl = async (borrower) => {
+    const borrowerId = borrower?._id;
+    if (!borrowerId || !onLinkToGhl) return;
+    setLinkingBorrowerIds((prev) => new Set(prev).add(String(borrowerId)));
+    try {
+      await onLinkToGhl(borrower);
+    } finally {
+      setLinkingBorrowerIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(borrowerId));
+        return next;
+      });
+    }
+  };
+
   return (
     <>
       {/* Desktop Table View */}
@@ -72,6 +90,35 @@ const BorrowersTable = ({
                 <div className="flex items-center text-sm text-gray-500">
                   <Phone className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
                   <span>{borrower.user?.phone || 'N/A'}</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                      borrower?.ghlContactId ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                    }`}
+                    title={borrower?.ghlContactId || 'Not Linked'}
+                  >
+                    {borrower?.ghlContactId ? 'GHL Linked' : 'GHL Not Linked'}
+                  </span>
+                  {borrower?.ghlContactId ? (
+                    <span
+                      className="text-[11px] text-gray-500 max-w-[160px] truncate"
+                      title={borrower?.ghlContactId}
+                    >
+                      {borrower?.ghlContactId}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => linkToGhl(borrower)}
+                      disabled={linkingBorrowerIds.has(String(borrower?._id))}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                      title="Link this borrower contact to GHL"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      <span>{linkingBorrowerIds.has(String(borrower?._id)) ? 'Linking...' : 'Link'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -162,17 +209,60 @@ const BorrowersTable = ({
                       {borrowerLoans[borrower._id] || 0}
                     </div>
                   </div>
+
+                  {/* GHL Contact */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        borrower?.ghlContactId ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {borrower?.ghlContactId ? 'GHL Linked' : 'GHL Not Linked'}
+                      </span>
+                    </div>
+                    {borrower?.ghlContactId ? (
+                      <div className="text-[11px] text-gray-700 max-w-[180px] truncate" title={borrower?.ghlContactId}>
+                        {borrower?.ghlContactId}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => linkToGhl(borrower)}
+                        disabled={linkingBorrowerIds.has(String(borrower?._id))}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                        title="Link this borrower contact to GHL"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        <span>{linkingBorrowerIds.has(String(borrower?._id)) ? 'Linking...' : 'Link'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Card Footer - Action Button */}
                 <div className="mt-4 pt-3 border-t border-gray-100">
-                  <Link
-                    href={`/lender/loans?borrowerId=${borrower._id}`}
-                    className="w-full flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium text-sm rounded-lg py-2 transition-all duration-200"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    <span>View Loans</span>
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/lender/loans?borrowerId=${borrower._id}`}
+                      className="flex-1 flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium text-sm rounded-lg py-2 transition-all duration-200"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      <span>View Loans</span>
+                    </Link>
+                    {!borrower?.ghlContactId && (
+                      <button
+                        type="button"
+                        onClick={() => linkToGhl(borrower)}
+                        disabled={linkingBorrowerIds.has(String(borrower?._id))}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-emerald-700 border border-emerald-200 hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                        title="Link this borrower contact to GHL"
+                      >
+                        <Link2 className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          {linkingBorrowerIds.has(String(borrower?._id)) ? 'Linking...' : 'Link'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

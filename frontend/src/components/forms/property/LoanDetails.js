@@ -222,6 +222,8 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
             <option value="">Select</option>
             <option value="Purchase">Purchase</option>
             <option value="Refinance">Refinance</option>
+            <option value="Cash-Out Refinance">Cash-Out Refinance</option>
+            <option value="Home Improvement">Home Improvement</option>
             <option value="Construction">Construction</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -396,6 +398,63 @@ const LoanDetails = ({ loanInfo = {}, onChange, loanTypes = [], errors = {}, use
                     <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                   </svg>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Home Improvement (MCR AC310) */}
+      {loanType === 'Home Improvement' && (
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Home Improvement</h3>
+          {userType === 'borrower' && (
+            <p className="text-sm text-gray-500 mb-4">
+              Loan proceeds used to improve your existing home.
+            </p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="loanAmount" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                Loan Amount<RequiredFieldIndicator />
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 text-xs">$</span>
+                </div>
+                <input
+                  type="text"
+                  id="loanAmount"
+                  name="loanAmount"
+                  value={formatCurrency(loanAmount || '')}
+                  onChange={handleCurrencyChange}
+                  className={`text-xs pl-7 w-full border ${errors['loanInfo.loanAmount'] ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  style={{ '--focus-ring-color': theme.colors.primary }}
+                  placeholder="0.00"
+                />
+              </div>
+              {errors['loanInfo.loanAmount'] && (
+                <p className="text-red-500 text-xs mt-1">{errors['loanInfo.loanAmount']}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="costOfImprovements" className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                Cost of Improvements (optional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 text-xs">$</span>
+                </div>
+                <input
+                  type="text"
+                  id="costOfImprovements"
+                  name="costOfImprovements"
+                  value={formatCurrency(costOfImprovements || '')}
+                  onChange={handleCurrencyChange}
+                  className="text-xs pl-7 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ '--focus-ring-color': theme.colors.primary }}
+                  placeholder="0.00"
+                />
               </div>
             </div>
           </div>

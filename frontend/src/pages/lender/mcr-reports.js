@@ -44,6 +44,9 @@ const REPORT_TABS = [
 
 const currentYear = new Date().getFullYear();
 
+/** Set NEXT_PUBLIC_ENABLE_MCR_PLUG_TEST=true in frontend .env.local to show QA controls for AC065 / AC063 (requires backend ENABLE_MCR_PLUG_TEST). */
+const MCR_PLUG_TEST_UI = process.env.NEXT_PUBLIC_ENABLE_MCR_PLUG_TEST === 'true';
+
 
 const US_STATES = { AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming" };
 
@@ -130,8 +133,20 @@ const MCRClosedLoanHeader = () => (
 );
 
 const MCRClosedLoanRow = ({ code, label, val, isTotal, required }) => {
-  const b  = val?.brokered     || (val?.amount !== undefined ? { amount: val.amount, count: val.count || 0 } : { amount: 0, count: 0 });
-  const nd = val?.nonDelegated || { amount: 0, count: 0 };
+  const coalesceCh = (ch) =>
+    ch && typeof ch === "object"
+      ? { amount: Number(ch.amount) || 0, count: Number(ch.count) || 0 }
+      : null;
+  const br = coalesceCh(val?.brokered);
+  const ndRaw = coalesceCh(val?.nonDelegated);
+  let b = { amount: 0, count: 0 };
+  let nd = { amount: 0, count: 0 };
+  if (br !== null || ndRaw !== null) {
+    b = br ?? { amount: 0, count: 0 };
+    nd = ndRaw ?? { amount: 0, count: 0 };
+  } else if (val?.amount !== undefined) {
+    b = { amount: val.amount, count: val.count || 0 };
+  }
   return (
     <tr className={`border-b border-gray-100 ${isTotal ? "bg-gray-50 font-semibold" : "hover:bg-blue-50/30"}`}>
       <td className={`px-3 py-2 text-xs font-mono ${isTotal ? "text-gray-900 font-bold" : "text-blue-600 font-semibold"}`}>
@@ -318,8 +333,8 @@ const RevenueDataView = ({ data }) => {
           <MCRSectionRow label="GROSS REVENUE" colSpan={5} />
           <SRow code="AC1100" label={data.AC1100?.label || "Gross Revenue from Mortgage Origination Operations"} amount={data.AC1100?.amount} isBold />
           <MCRSectionRow label="SERVICING DISPOSITION" colSpan={5} />
-          <SRow code="AC1200" label={data.AC1200?.label || "Servicing Released"} amount={data.AC1200?.amount} count={data.AC1200?.count} />
-          <SRow code="AC1210" label={data.AC1210?.label || "Servicing Retained"} amount={data.AC1210?.amount} count={data.AC1210?.count} />
+          <SRow code="AC1200" label={data.AC1200?.label || "Servicing Retained"} amount={data.AC1200?.amount} count={data.AC1200?.count} />
+          <SRow code="AC1210" label={data.AC1210?.label || "Servicing Released"} amount={data.AC1210?.amount} count={data.AC1210?.count} />
         </tbody>
       </table>
     </div>
@@ -368,6 +383,7 @@ const RMLADataView = ({ data }) => {
   const pt = data.productType || {};
   const ch = data.channel || {};
   const rc = data.riskCharacteristics || {};
+  const om = data.otherMortgages || {};
   const purpose = data.purpose || {};
   const ltv = data.ltvDistribution || {};
   const wa = data.weightedAverages || {};
@@ -375,6 +391,10 @@ const RMLADataView = ({ data }) => {
   const i100 = {
     count: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.count||0), 0),
     amount: ["governmentFixed","governmentARM","conventionalFixed","conventionalARM","jumboFixed","jumboARM","otherFixed","otherARM"].reduce((s,k) => s+(pt[k]?.amount||0), 0),
+  };
+  const i200 = {
+    count: ["closedEndSecond","heloc","reverse","construction1to4","construction5plus","constructionCommercial","commercialMortgage","landContract"].reduce((s,k) => s+(om[k]?.count||0), 0),
+    amount: ["closedEndSecond","heloc","reverse","construction1to4","construction5plus","constructionCommercial","commercialMortgage","landContract"].reduce((s,k) => s+(om[k]?.amount||0), 0),
   };
   const Row = ({ code, label, val, isBold }) => (
     <tr className={`border-b border-gray-100 ${isBold ? "bg-gray-50" : "hover:bg-blue-50/30"}`}>
@@ -408,15 +428,15 @@ const RMLADataView = ({ data }) => {
           <Row code="I080" label="Other ARM" val={pt.otherARM} />
           <Row code="I100" label="Total Residential First Mortgages" val={i100} isBold />
           <MCRSectionRow label="OTHER MORTGAGES" colSpan={5} />
-          <Row code="I110" label="Closed-End Second Mortgages" val={{ amount: 0, count: 0 }} />
-          <Row code="I120" label="HELOCs (include the credit line amount)" val={{ amount: 0, count: 0 }} />
-          <Row code="I130" label="Reverse Mortgages" val={{ amount: 0, count: 0 }} />
-          <Row code="I140" label="Construction, 1-4 Unit Residential" val={{ amount: 0, count: 0 }} />
-          <Row code="I150" label="Construction, 5+ Unit Residential" val={{ amount: 0, count: 0 }} />
-          <Row code="I160" label="Construction, Commercial" val={{ amount: 0, count: 0 }} />
-          <Row code="I170" label="Commercial Mortgage" val={{ amount: 0, count: 0 }} />
-          <Row code="I180" label="Land Contract" val={{ amount: 0, count: 0 }} />
-          <Row code="I200" label="Total Other Mortgages" val={{ amount: 0, count: 0 }} isBold />
+          <Row code="I110" label="Closed-End Second Mortgages" val={om.closedEndSecond} />
+          <Row code="I120" label="HELOCs (include the credit line amount)" val={om.heloc} />
+          <Row code="I130" label="Reverse Mortgages" val={om.reverse} />
+          <Row code="I140" label="Construction, 1-4 Unit Residential" val={om.construction1to4} />
+          <Row code="I150" label="Construction, 5+ Unit Residential" val={om.construction5plus} />
+          <Row code="I160" label="Construction, Commercial" val={om.constructionCommercial} />
+          <Row code="I170" label="Commercial Mortgage" val={om.commercialMortgage} />
+          <Row code="I180" label="Land Contract" val={om.landContract} />
+          <Row code="I200" label="Total Other Mortgages" val={i200} isBold />
           <MCRSectionRow label="ORIGINATION CHANNEL" colSpan={5} />
           <Row code="I210" label="Brokered" val={ch.brokered} />
           <Row code="I220" label="Closed – Retail" val={ch.closedRetail} />
@@ -478,6 +498,9 @@ const MCRReports = () => {
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [plugTestApply, setPlugTestApply] = useState(false);
+  const [plugTestAc065, setPlugTestAc065] = useState('');
+  const [plugTestAc063, setPlugTestAc063] = useState('');
 
   useEffect(() => {
     loadReports();
@@ -516,10 +539,21 @@ const MCRReports = () => {
     }
     setGenerating(true);
     try {
+      let testPlugOverrides = null;
+      if (MCR_PLUG_TEST_UI && plugTestApply) {
+        const o = {};
+        if (plugTestAc065 !== '' && Number.isFinite(Number(plugTestAc065))) o.ac065Amount = Number(plugTestAc065);
+        if (plugTestAc063 !== '' && Number.isFinite(Number(plugTestAc063))) o.ac063Count = Number(plugTestAc063);
+        if (Object.keys(o).length) testPlugOverrides = o;
+      }
       const res = await MCRService.generateReport(
         selectedYear,
         selectedPeriod,
-        selectedStates.length > 0 ? selectedStates : undefined
+        selectedStates.length > 0 ? selectedStates : undefined,
+        undefined,
+        null,
+        null,
+        testPlugOverrides
       );
       setActiveReport(res.data);
       setActiveTab("application");
@@ -699,6 +733,47 @@ const MCRReports = () => {
                     />
                   </div>
                 </div>
+                {MCR_PLUG_TEST_UI && (
+                  <div className="mb-5 p-4 rounded-xl border border-amber-200 bg-amber-50/80 text-sm">
+                    <p className="font-semibold text-amber-900 mb-2">QA: pipeline plug overrides (AC065 / AC063)</p>
+                    <p className="text-xs text-amber-800 mb-3">
+                      Backend must set <code className="bg-amber-100 px-1 rounded">ENABLE_MCR_PLUG_TEST=true</code>.
+                      Values replace computed plugs for this generation only; <strong className="font-semibold">AC066</strong> is recalculated.
+                      Turn off to return to real plugs.
+                    </p>
+                    <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={plugTestApply}
+                        onChange={(e) => setPlugTestApply(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-800">Apply overrides on Generate</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">AC065 amount ($)</label>
+                        <input
+                          type="number"
+                          value={plugTestAc065}
+                          onChange={(e) => setPlugTestAc065(e.target.value)}
+                          placeholder="e.g. 50000"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">AC063 count</label>
+                        <input
+                          type="number"
+                          value={plugTestAc063}
+                          onChange={(e) => setPlugTestAc063(e.target.value)}
+                          placeholder="e.g. 2"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
@@ -823,13 +898,6 @@ const MCRReports = () => {
                       <Send className="h-4 w-4" /> Filed with NMLS
                     </span>
                   )}
-                  <button
-                    onClick={() => setShowValidation((v) => !v)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition"
-                  >
-                    <ClipboardCheck className="h-3.5 w-3.5" />
-                    {showValidation ? "Hide" : "Validate"}
-                  </button>
                   <button
                     onClick={() => setShowExportModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition shadow-sm whitespace-nowrap"
@@ -1014,3 +1082,4 @@ const MCRReports = () => {
 };
 
 export default MCRReports;
+

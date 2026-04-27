@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { fetchAPI } from '@/utils/api';
+import { getLoanProgramDisplayLabel } from '@/utils/programType';
 import Link from 'next/link';
 
 // Custom circular progress component with label
@@ -303,7 +304,7 @@ export default function BorrowerScenario({ loanId, refreshTrigger }) {
             {programs.map(program => (
               <Chip
                 key={program._id}
-                label={program.displayName}
+                label={getLoanProgramDisplayLabel(program)}
                 onClick={() => changeProgram(program._id)}
                 color={selectedProgram._id === program._id ? "primary" : "default"}
                 variant={selectedProgram._id === program._id ? "filled" : "outlined"}

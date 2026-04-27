@@ -235,6 +235,70 @@ const companySchema = new mongoose.Schema({
       }
     }
   },
+  ghlIntegration: {
+    connected: {
+      type: Boolean,
+      default: false
+    },
+    locationId: {
+      type: String,
+      trim: true
+    },
+    ghlCompanyId: {
+      type: String,
+      trim: true
+    },
+    scope: {
+      type: String,
+      trim: true
+    },
+    accessTokenEnc: {
+      type: String,
+      select: false
+    },
+    accessTokenIv: {
+      type: String,
+      select: false
+    },
+    accessTokenAuthTag: {
+      type: String,
+      select: false
+    },
+    refreshTokenEnc: {
+      type: String,
+      select: false
+    },
+    refreshTokenIv: {
+      type: String,
+      select: false
+    },
+    refreshTokenAuthTag: {
+      type: String,
+      select: false
+    },
+    tokenExpiresAt: {
+      type: Date
+    },
+    lastTokenRefreshAt: {
+      type: Date
+    },
+    connectedAt: {
+      type: Date
+    },
+    lastSyncError: {
+      type: String
+    },
+    lastSyncErrorAt: {
+      type: Date
+    },
+    opportunityConfig: {
+      pipelineId: { type: String, trim: true },
+      // Map our loan.status -> GHL pipelineStageId
+      stageByStatus: { type: Object, default: {} },
+      // Optional mapping of our loan.status -> GHL opportunity.status ("open" | "won" | "lost")
+      opportunityStatusByLoanStatus: { type: Object, default: {} }
+    }
+  },
   isActive: {
     type: Boolean,
     default: true

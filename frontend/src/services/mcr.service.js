@@ -8,9 +8,16 @@ const API_BASE = '/api/v1';
 class MCRService {
   // ===== Report Generation & Management =====
 
-  async generateReport(year, period, states, reportType, loanOfficerId = null, lenderId = null) {
+  /**
+   * @param {object|null} testPlugOverrides - Only applied when backend ENABLE_MCR_PLUG_TEST=true.
+   *   { ac065Amount?: number, ac063Count?: number } — forces AC065.amount and/or AC063.count after pipeline plugs (QA).
+   */
+  async generateReport(year, period, states, reportType, loanOfficerId = null, lenderId = null, testPlugOverrides = null) {
     const body = { year, period, states, reportType, loanOfficerId };
     if (lenderId) body.lenderId = lenderId;
+    if (testPlugOverrides && typeof testPlugOverrides === 'object' && Object.keys(testPlugOverrides).length > 0) {
+      body.testPlugOverrides = testPlugOverrides;
+    }
     const response = await customAxios.post(`${API_BASE}/mcr/generate`, body);
     return response.data;
   }

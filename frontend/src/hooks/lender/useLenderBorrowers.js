@@ -193,6 +193,7 @@ export const useLenderBorrowers = () => {
     sortDirection,
     borrowerLoans,
     filteredBorrowers,
+    reloadBorrowers: fetchBorrowers,
     handleShowReferralLink,
     handleCloseReferralModal,
     handleSearchChange,

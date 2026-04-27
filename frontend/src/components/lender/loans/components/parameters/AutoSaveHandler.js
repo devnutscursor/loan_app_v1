@@ -83,7 +83,10 @@ const AutoSaveHandler = ({
         interestRate: localParams.interestRate,
         rateAdjustment: localParams.rateAdjustment, // Add rate adjustment to saved parameters
         loanTerm: localParams.loanTerm,
-        selectedProgramId: localParams.selectedProgramId,
+        // Normalize selectedProgramId - extract _id if it's a populated object
+        selectedProgramId: (localParams.selectedProgramId && typeof localParams.selectedProgramId === 'object' && localParams.selectedProgramId._id) 
+          ? localParams.selectedProgramId._id 
+          : localParams.selectedProgramId,
         propertyType: localParams.propertyType,
         propertyUse: localParams.propertyUse,
         propertyValue: localParams.propertyValue,
@@ -93,8 +96,11 @@ const AutoSaveHandler = ({
         employmentStatus: localParams.employmentStatus
       };
       
-      // Get the current program ID
-      const currentProgramId = localParams.selectedProgramId;
+      // Get the current program ID - normalize if it's a populated object
+      let currentProgramId = localParams.selectedProgramId;
+      if (currentProgramId && typeof currentProgramId === 'object' && currentProgramId._id) {
+        currentProgramId = currentProgramId._id;
+      }
       
       // Prepare program guidelines for saving - specifically for the selected program
       let programGuidelines = {};

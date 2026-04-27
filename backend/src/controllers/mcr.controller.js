@@ -1,7 +1,9 @@
+const mongoose = require('mongoose');
 const MCRReport = require('../models/mcrReport.model');
 const MCRStateConfig = require('../models/mcrStateConfig.model');
 const FinancialCondition = require('../models/financialCondition.model');
 const Loan = require('../models/loan.model');
+const LoanProgram = require('../models/loanProgram.model');
 const LoanCompensation = require('../models/loanCompensation.model');
 const LoanStatusHistory = require('../models/loanStatusHistory.model');
 const Lender = require('../models/lender.model');
@@ -9,6 +11,128 @@ const User = require('../models/user.model');
 const ApiError = require('../utils/apiError');
 const { isJumbo } = require('../config/conformingLimits');
 const mcrExport = require('../services/mcrExport.service');
+const { isFsaRhsGuaranteed } = require('../utils/programType');
+
+/**
+ * Nested populate of loanParameters.selectedProgramId sometimes leaves only an ObjectId.
+ * Batch-load programs so AC100–AC130 classify FHA/VA/FSA/RHS correctly in closed-loan data.
+ */
+async function ensureLoanProgramsOnLoans(loans) {
+  if (!loans?.length) return;
+  const ids = new Set();
+  for (const loan of loans) {
+    const sid = loan.loanParameters?.selectedProgramId;
+    if (!sid) continue;
+    if (typeof sid === 'object' && sid !== null && sid.programType) continue;
+    const id =
+      typeof sid === 'string'
+        ? sid
+        : sid._id
+        ? sid._id.toString()
+        : String(sid);
+    if (mongoose.Types.ObjectId.isValid(id)) ids.add(id);
+  }
+  if (ids.size === 0) return;
+  const programs = await LoanProgram.find({ _id: { $in: [...ids] } })
+    .select('programType programName displayName')
+    .lean();
+  const pmap = {};
+  programs.forEach((p) => {
+    pmap[p._id.toString()] = p;
+  });
+  for (const loan of loans) {
+    const sid = loan.loanParameters?.selectedProgramId;
+    if (!sid || (typeof sid === 'object' && sid.programType)) continue;
+    const id =
+      typeof sid === 'string'
+        ? sid
+        : sid._id
+        ? sid._id.toString()
+        : String(sid);
+    const p = pmap[id];
+    if (p && loan.loanParameters) {
+      loan.loanParameters.selectedProgramId = p;
+    }
+  }
+}
+
+/**
+ * Normalize fundingMethod for MCR splits (Closed Loan: Brokered vs Non-Delegated Correspondent).
+ * Accepts legacy UI spellings and punctuation so loans are not misrouted to the Brokered column.
+ */
+function normalizeLoanFundingMethodForMcr(loan) {
+  const raw = loan?.fundingMethod;
+  if (raw == null || raw === '') return 'Brokered';
+  const s = String(raw)
+    .trim()
+    .replace(/[\u2013\u2014]/g, '-');
+  const compact = s.replace(/[\s_-]/g, '').toLowerCase();
+  const byKey = {
+    brokered: 'Brokered',
+    retail: 'Retail',
+    nondelegated: 'Non-Delegated',
+    delegated: 'Delegated',
+    tablefunded: 'Table-Funded',
+    unknown: 'Unknown'
+  };
+  if (byKey[compact]) return byKey[compact];
+  return 'Brokered';
+}
+
+/** AC210 Manufactured Housing — match common URLA / LOS labels */
+function isManufacturedPropertyType(propertyType) {
+  if (!propertyType) return false;
+  const s = String(propertyType).toLowerCase();
+  return (
+    s.includes('manufactured') ||
+    s.includes('mobile home') ||
+    s === 'mh' ||
+    s.includes('factory-built')
+  );
+}
+
+/** AC200 One-to-Four Family Dwelling — conservative residential matcher */
+function isOneToFourFamilyPropertyType(propertyType) {
+  if (!propertyType) return false;
+  const s = String(propertyType).toLowerCase();
+  return (
+    s.includes('single family') ||
+    s.includes('single-family') ||
+    s.includes('condo') ||
+    s.includes('townhome') ||
+    s.includes('townhouse') ||
+    s.includes('duplex') ||
+    s.includes('triplex') ||
+    s.includes('fourplex') ||
+    s.includes('1-4') ||
+    s.includes('one to four') ||
+    s.includes('one-to-four') ||
+    s.includes('multifamily') ||
+    s.includes('multi-family')
+  );
+}
+
+/** AC300 / AC310 / AC320 — normalize loan purpose strings from forms */
+function classifyMcrLoanPurpose(loanType) {
+  const t = String(loanType || '').trim();
+  const lower = t.toLowerCase();
+  if (!t) return 'purchase';
+  if (lower === 'purchase' || lower === 'home purchase') return 'purchase';
+  // Construction behaves as acquisition/new build and should roll to purchase.
+  if (lower === 'construction') return 'purchase';
+  // HELOC should roll to refinance for closed-loan purpose reporting.
+  if (lower === 'heloc' || lower.includes('home equity line of credit')) return 'refinance';
+  if (lower.includes('improvement')) return 'improvement';
+  if (
+    lower.includes('refinance') ||
+    lower.includes('refinancing') ||
+    lower.includes('cash-out') ||
+    lower.includes('cash out')
+  ) {
+    return 'refinance';
+  }
+  return 'purchase';
+}
 
 // =====================================================
 // MCR REPORT GENERATION & MANAGEMENT
@@ -113,13 +237,11 @@ exports.generateReport = async (req, res, next) => {
     const compMap = {};
     compensations.forEach(c => { compMap[c.loan.toString()] = c; });
 
-    // Filter loans to only those that belong to this specific period:
-    // A loan is included only if its applicationDate (or createdAt fallback) falls WITHIN the period.
-    // Loans from previous periods are NOT carried forward.
+    // Loans that affect this period: new apps in period, carry-over pipeline (AC010/AC080),
+    // and prior-period apps with an exit (fund/close/deny/withdraw/incomplete) dated in period.
     const periodLoans = loans.filter(loan => {
       const comp = compMap[loan._id.toString()];
-      const relevantDate = comp?.applicationDate || loan.createdAt;
-      return relevantDate >= startDate && relevantDate <= endDate;
+      return loanIsInMcrReportingPeriod(loan, comp, startDate, endDate);
     });
     const periodLoanIds = periodLoans.map(l => l._id);
 
@@ -149,9 +271,12 @@ exports.generateReport = async (req, res, next) => {
       }
     }
 
+    await ensureLoanProgramsOnLoans(periodLoans);
+
     // Calculate all 5 MCR tabs (using only period-relevant loans)
     let applicationData = calculateApplicationData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     applicationData = applyPipelinePlugs(applicationData);
+    applicationData = applyMcrPlugTestOverrides(applicationData, req.body.testPlugOverrides || {});
     const closedLoanData = calculateClosedLoanData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const revenueData = calculateRevenueData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate);
     const mloData = calculateMLOData(periodLoans, compMap, statusAtEndDate, statusDuringPeriod, startDate, endDate, fallbackLO);
@@ -204,8 +329,11 @@ exports.generateReport = async (req, res, next) => {
         const lid = l._id.toString();
         if (compMap[lid]) stateCompMap[lid] = compMap[lid];
       });
-      const stateApplicationData = applyPipelinePlugs(
-        calculateApplicationData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate)
+      const stateApplicationData = applyMcrPlugTestOverrides(
+        applyPipelinePlugs(
+          calculateApplicationData(stateLoans, stateCompMap, statusAtEndDate, statusDuringPeriod, startDate, endDate)
+        ),
+        req.body.testPlugOverrides || {}
       );
       perStateData[state] = {
         applicationData: stateApplicationData,
@@ -582,6 +710,52 @@ function getPeriodDates(year, period) {
 }
 
 /**
+ * Application “received” date for MCR — same precedence for pipeline rows (AC010, AC020).
+ */
+function getMcrApplicationDate(loan, comp) {
+  return (
+    (comp && comp.applicationDate) ||
+    loan?.loanDetails?.applicationDate ||
+    loan?.applicationDate ||
+    loan?.createdAt ||
+    null
+  );
+}
+
+/**
+ * Whether a loan is included when generating MCR for [startDate, endDate].
+ *
+ * Previously only applications with date inside the period were included, which dropped
+ * carry-over pipeline (AC010) and any prior-quarter application that funded/denied/closed
+ * in the current period — inconsistent with NMLS pipeline definitions.
+ */
+function loanIsInMcrReportingPeriod(loan, comp, startDate, endDate) {
+  const appDate = getMcrApplicationDate(loan, comp);
+  if (!appDate || appDate > endDate) return false;
+
+  if (appDate >= startDate && appDate <= endDate) return true;
+
+  const inRange = (d) => d && d >= startDate && d <= endDate;
+  if (comp) {
+    if (
+      inRange(comp.fundedDate) ||
+      inRange(comp.closingDate) ||
+      inRange(comp.denialDate) ||
+      inRange(comp.withdrawnDate) ||
+      inRange(comp.closedIncompleteDate)
+    ) {
+      return true;
+    }
+  }
+
+  const status = loan.status || '';
+  const terminal = ['Declined', 'Withdrawn', 'Closed', 'Funded', 'Closed-Incomplete'];
+  if (!terminal.includes(status)) return true;
+
+  return false;
+}
+
+/**
  * Helper: Get closed/funded loans in period
  *
  * For MCR, a loan is considered closed/funded for the quarter ONLY when:
@@ -688,13 +862,7 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
     const currentStatus = statusAtEndDate[loanIdStr] || loan.status;
 
     // AC020: Applications received — loans whose application was received during this period
-    // Use compensation.applicationDate when available, otherwise fall back to the loan's own
-    // application date or createdAt so that loans without a comp record are still counted.
-    const applicationDate =
-      (comp && comp.applicationDate) ||
-      loan.loanDetails?.applicationDate ||
-      loan.applicationDate ||
-      loan.createdAt;
+    const applicationDate = getMcrApplicationDate(loan, comp);
 
     if (applicationDate && applicationDate >= startDate && applicationDate <= endDate) {
       result.AC020.count++;
@@ -772,7 +940,7 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
 
   for (const loan of loans) {
     const comp = compMap[loan._id.toString()];
-    const appDate = comp?.applicationDate || loan.createdAt;
+    const appDate = getMcrApplicationDate(loan, comp);
     if (!appDate || appDate >= startDate) continue;
 
     const statusAtEnd = statusAtEndDate[loan._id.toString()] || loan.status;
@@ -785,6 +953,71 @@ function calculateApplicationData(loans, compMap, statusAtEndDate, statusDuringP
   }
 
   return result;
+}
+
+/**
+ * Recalculate AC066 from AC010–AC060 and current AC065 / AC063 plugs.
+ */
+function recalculateAC066(appData) {
+  if (!appData) return appData;
+  const num = (val) => Number(val) || 0;
+  const ac010 = appData.AC010 || {};
+  const ac020 = appData.AC020 || {};
+  const ac030 = appData.AC030 || {};
+  const ac040 = appData.AC040 || {};
+  const ac050 = appData.AC050 || {};
+  const ac060 = appData.AC060 || {};
+  const ac065 = appData.AC065 || {};
+  const ac063 = appData.AC063 || {};
+
+  const ac066Amount = num(ac010.amount) + num(ac020.amount)
+    - num(ac030.amount) - num(ac040.amount) - num(ac050.amount) - num(ac060.amount)
+    + num(ac065.amount) + num(ac063.amount);
+  const ac066Count = num(ac010.count) + num(ac020.count)
+    - num(ac030.count) - num(ac040.count) - num(ac050.count) - num(ac060.count)
+    + num(ac063.count);
+
+  appData.AC066 = { amount: ac066Amount, count: ac066Count };
+  return appData;
+}
+
+/**
+ * When ENABLE_MCR_PLUG_TEST=true, you can force AC065 / AC063 for QA (UI + exports).
+ * Sources (body wins over env): req.testPlugOverrides, MCR_PLUG_TEST_AC065, MCR_PLUG_TEST_AC063.
+ * After override, AC066 is recomputed from plugs. Pipeline dollar identity vs AC080 will no longer hold unless values match.
+ */
+function isMcrPlugTestEnabled() {
+  const v = process.env.ENABLE_MCR_PLUG_TEST;
+  return v === '1' || v === 'true';
+}
+
+function parsePlugNumber(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : null;
+}
+
+function applyMcrPlugTestOverrides(appData, bodyOverrides = {}) {
+  if (!appData || !isMcrPlugTestEnabled()) return appData;
+
+  const ac065FromBody = parsePlugNumber(bodyOverrides.ac065Amount);
+  const ac063FromBody = parsePlugNumber(bodyOverrides.ac063Count);
+  const ac065FromEnv = parsePlugNumber(process.env.MCR_PLUG_TEST_AC065);
+  const ac063FromEnv = parsePlugNumber(process.env.MCR_PLUG_TEST_AC063);
+
+  const ac065Amount = ac065FromBody !== null ? ac065FromBody : ac065FromEnv;
+  const ac063Count = ac063FromBody !== null ? ac063FromBody : ac063FromEnv;
+
+  if (ac065Amount === null && ac063Count === null) return appData;
+
+  if (ac065Amount !== null) {
+    appData.AC065 = { ...(appData.AC065 || {}), amount: ac065Amount };
+  }
+  if (ac063Count !== null) {
+    appData.AC063 = { amount: 0, ...(appData.AC063 || {}), count: ac063Count };
+  }
+
+  return recalculateAC066(appData);
 }
 
 /**
@@ -825,17 +1058,7 @@ function applyPipelinePlugs(appData) {
   appData.AC065 = ac065;
   appData.AC063 = ac063;
 
-  // AC066: Total Application Pipeline (should equal AC070 + AC080)
-  const ac066Amount = num(ac010.amount) + num(ac020.amount)
-    - num(ac030.amount) - num(ac040.amount) - num(ac050.amount) - num(ac060.amount)
-    + num(ac065.amount) + num(ac063.amount);
-  const ac066Count = num(ac010.count) + num(ac020.count)
-    - num(ac030.count) - num(ac040.count) - num(ac050.count) - num(ac060.count)
-    + num(ac063.count);
-
-  appData.AC066 = { amount: ac066Amount, count: ac066Count };
-
-  return appData;
+  return recalculateAC066(appData);
 }
 
 /**
@@ -907,7 +1130,7 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
     const comp = compMap[loan._id.toString()] || {};
 
     // Determine funding method routing: Brokered vs Non-Delegated/Delegated
-    const fundingMethod = loan.fundingMethod || 'Brokered';
+    const fundingMethod = normalizeLoanFundingMethodForMcr(loan);
     const isBrokered = fundingMethod === 'Brokered';
 
     // Determine if reverse mortgage
@@ -920,7 +1143,7 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
         add('AC110', isBrokered, amount);
       } else if (programType === 'va') {
         add('AC120', isBrokered, amount);
-      } else if (programType === 'usda') {
+      } else if (isFsaRhsGuaranteed(programType)) {
         add('AC130', isBrokered, amount);
       } else {
         // conventional, jumbo, other, or unknown → Conventional
@@ -942,23 +1165,23 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
       }
     }
 
-    // PROPERTY TYPE
-    if (loan.property?.propertyType === 'Manufactured Home') {
+    // PROPERTY TYPE (AC200 one-to-four family vs AC210 manufactured)
+    if (isManufacturedPropertyType(loan.property?.propertyType)) {
       add('AC210', isBrokered, amount);
+    } else if (isOneToFourFamilyPropertyType(loan.property?.propertyType)) {
+      add('AC200', isBrokered, amount);
     } else {
-      add('AC200', isBrokered, amount); // all other residential = One to Four Family
+      // Intentionally uncategorized for AC200/AC210; dimensional checks vs AC990 catch this.
     }
 
     // PURPOSE OF LOAN OR APPLICATION
-    const loanType = loan.loanDetails?.loanType || '';
-    if (loanType === 'Purchase') {
+    const purpose = classifyMcrLoanPurpose(loan.loanDetails?.loanType);
+    if (purpose === 'purchase') {
       add('AC300', isBrokered, amount);
-    } else if (loanType === 'Home Improvement' || loanType === 'HELOC') {
+    } else if (purpose === 'improvement') {
       add('AC310', isBrokered, amount);
-    } else if (['Refinance', 'Cash-Out Refinance', 'Construction'].includes(loanType)) {
-      add('AC320', isBrokered, amount);
     } else {
-      add('AC300', isBrokered, amount); // default to purchase
+      add('AC320', isBrokered, amount);
     }
 
     // HOEPA
@@ -970,9 +1193,9 @@ function calculateClosedLoanData(loans, compMap, statusAtEndDate, statusDuringPe
     const lienPos = comp.lienPosition || '1st';
     if (['1st', 'First', 'First Lien', 'first'].includes(lienPos)) {
       add('AC500', isBrokered, amount);
-    } else if (['2nd', 'Second', 'Subordinate', 'second'].includes(lienPos)) {
+    } else if (['2nd', 'Second', 'Subordinate', 'second', 'Subordinate Lien', '2nd Lien'].includes(lienPos)) {
       add('AC510', isBrokered, amount);
-    } else if (['Not Secured', 'Not Secured by Lien', 'Unsecured'].includes(lienPos)) {
+    } else if (['Not Secured', 'Not Secured by Lien', 'Unsecured', 'Not Secured by a Lien'].includes(lienPos)) {
       add('AC520', isBrokered, amount);
     } else {
       add('AC500', isBrokered, amount); // default first lien
@@ -1040,8 +1263,8 @@ function calculateRevenueData(loans, compMap, statusAtEndDate, statusDuringPerio
     AC1090: { amount: 0, label: 'Lender Fees Collected' },
     AC1100: { amount: 0, label: 'Gross Revenue from Mortgage Origination Operations' },
     // Servicing Disposition
-    AC1200: { count: 0, amount: 0, label: 'Servicing Released' },
-    AC1210: { count: 0, amount: 0, label: 'Servicing Retained' }
+    AC1200: { count: 0, amount: 0, label: 'Servicing Retained' },
+    AC1210: { count: 0, amount: 0, label: 'Servicing Released' }
   };
 
   for (const loan of funded) {
@@ -1058,10 +1281,10 @@ function calculateRevenueData(loans, compMap, statusAtEndDate, statusDuringPerio
     result.AC1090.amount += comp.lenderFeesCollected || 0;
 
     // Servicing Disposition
-    if (comp.servicingDisposition === 'Released') {
+    if (comp.servicingDisposition === 'Retained') {
       result.AC1200.count++;
       result.AC1200.amount += getLoanAmount(loan);
-    } else if (comp.servicingDisposition === 'Retained') {
+    } else if (comp.servicingDisposition === 'Released') {
       result.AC1210.count++;
       result.AC1210.amount += getLoanAmount(loan);
     }
@@ -1132,6 +1355,17 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
       otherFixed: { count: 0, amount: 0 },          // I070
       otherARM: { count: 0, amount: 0 }             // I080
     },
+    // Other Mortgages (I110–I180)
+    otherMortgages: {
+      closedEndSecond: { count: 0, amount: 0 },     // I110
+      heloc: { count: 0, amount: 0 },               // I120
+      reverse: { count: 0, amount: 0 },             // I130
+      construction1to4: { count: 0, amount: 0 },    // I140
+      construction5plus: { count: 0, amount: 0 },   // I150
+      constructionCommercial: { count: 0, amount: 0 }, // I160
+      commercialMortgage: { count: 0, amount: 0 },  // I170
+      landContract: { count: 0, amount: 0 }         // I180
+    },
     // Channel (I210–I240)
     channel: {
       brokered: { count: 0, amount: 0 },           // I210
@@ -1194,34 +1428,113 @@ function calculateRMLAData(loans, compMap, statusAtEndDate, statusDuringPeriod, 
     }
     const programType = loan.loanParameters?.selectedProgramId?.programType || '';
     const isARM = comp.amortizationType === 'ARM' || comp.amortizationType === 'Option ARM';
-    const isGov = ['fha', 'va', 'usda'].includes(programType);
+    const isGov = ['fha', 'va'].includes(programType) || isFsaRhsGuaranteed(programType);
     const isConventional = programType === 'conventional';
     const isJumboLoan = programType === 'jumbo' || isJumbo(amount);
 
-    // Product Type
-    if (isGov && !isARM) result.productType.governmentFixed.count++, result.productType.governmentFixed.amount += amount;
-    else if (isGov && isARM) result.productType.governmentARM.count++, result.productType.governmentARM.amount += amount;
-    else if (isConventional && !isARM) result.productType.conventionalFixed.count++, result.productType.conventionalFixed.amount += amount;
-    else if (isConventional && isARM) result.productType.conventionalARM.count++, result.productType.conventionalARM.amount += amount;
-    else if (isJumboLoan && !isARM) result.productType.jumboFixed.count++, result.productType.jumboFixed.amount += amount;
-    else if (isJumboLoan && isARM) result.productType.jumboARM.count++, result.productType.jumboARM.amount += amount;
-    else if (!isARM) result.productType.otherFixed.count++, result.productType.otherFixed.amount += amount;
-    else result.productType.otherARM.count++, result.productType.otherARM.amount += amount;
-
-    // Channel: use fundingMethod for high-level routing, with leadSource as secondary hint
+    // Channel: route from fundingMethod only.
     const channelMap = {
       Brokered: 'brokered',
+      Retail: 'closedRetail',
+      // Per RMLA feedback definitions, non-delegated correspondent rolls into Closed-Retail
+      // because the lender worked directly with the consumer.
       'Non-Delegated': 'closedRetail',
-      Delegated: 'closedCorrespondent'
+      Delegated: 'closedCorrespondent',
+      // Keep explicit table-funded support available via funding method.
+      'Table-Funded': 'tableFunded'
     };
-    const fm = loan.fundingMethod || 'Brokered';
-    let ch = channelMap[fm] || 'closedRetail';
-    // For table-funded scenarios, prefer Table-Funded bucket when indicated
-    if (loan.leadSource === 'Table-Funded') {
-      ch = 'tableFunded';
-    }
+    const fm = normalizeLoanFundingMethodForMcr(loan);
+    const ch = channelMap[fm] || 'closedRetail';
     result.channel[ch].count++;
     result.channel[ch].amount += amount;
+
+    // First Mortgages definition (doc-aligned):
+    // - 1st lien
+    // - 1-4 unit residential property
+    const loanTypeLower = String(loan.loanDetails?.loanType || '').toLowerCase();
+    const constructionTypeLower = String(loan.loanDetails?.constructionType || '').toLowerCase();
+    const propertyTypeLower = String(loan.property?.propertyType || '').toLowerCase();
+    const units = Number(loan.property?.numberOfUnits || 1);
+    const isResidentialPropertyType =
+      propertyTypeLower.includes('single family') ||
+      propertyTypeLower.includes('condominium') ||
+      propertyTypeLower.includes('townhouse') ||
+      propertyTypeLower.includes('multi-family') ||
+      propertyTypeLower.includes('manufactured') ||
+      propertyTypeLower.includes('cooperative') ||
+      propertyTypeLower.includes('planned unit development') ||
+      propertyTypeLower.includes('(pud)');
+    const isFirstLien = comp.lienPosition === '1st';
+    const isOneToFourUnit = units >= 1 && units <= 4;
+    const isReverseMortgageProfile = loan.isReverseMortgage || loanTypeLower === 'reverse mortgage';
+    const isLandContractProfile =
+      loanTypeLower.includes('land contract') ||
+      propertyTypeLower.includes('land contract');
+    // Construction profile should not be classified in "Residential First Mortgages"
+    // even when lien is 1st and units are 1-4.
+    const isConstructionProfile =
+      loanTypeLower.includes('construction') ||
+      (!loanTypeLower && constructionTypeLower.includes('construction'));
+    const isStandardFirstMortgage =
+      isFirstLien &&
+      isOneToFourUnit &&
+      isResidentialPropertyType &&
+      !isConstructionProfile &&
+      !isReverseMortgageProfile &&
+      !isLandContractProfile;
+
+    // Product Type applies only to standard first mortgages.
+    if (isStandardFirstMortgage) {
+      if (isGov && !isARM) result.productType.governmentFixed.count++, result.productType.governmentFixed.amount += amount;
+      else if (isGov && isARM) result.productType.governmentARM.count++, result.productType.governmentARM.amount += amount;
+      else if (isConventional && !isARM) result.productType.conventionalFixed.count++, result.productType.conventionalFixed.amount += amount;
+      else if (isConventional && isARM) result.productType.conventionalARM.count++, result.productType.conventionalARM.amount += amount;
+      else if (isJumboLoan && !isARM) result.productType.jumboFixed.count++, result.productType.jumboFixed.amount += amount;
+      else if (isJumboLoan && isARM) result.productType.jumboARM.count++, result.productType.jumboARM.amount += amount;
+      else if (!isARM) result.productType.otherFixed.count++, result.productType.otherFixed.amount += amount;
+      else result.productType.otherARM.count++, result.productType.otherARM.amount += amount;
+    }
+
+    // Other Mortgages (mutually exclusive buckets) applies to everything else
+    // outside the standard 1st-lien 1-4 unit residential bucket.
+    if (!isStandardFirstMortgage) {
+      const isCommercialProperty =
+        propertyTypeLower.includes('commercial') ||
+        propertyTypeLower.includes('mixed use') ||
+        propertyTypeLower.includes('mixed-use') ||
+        propertyTypeLower.includes('office') ||
+        propertyTypeLower.includes('retail') ||
+        propertyTypeLower.includes('industrial');
+      if (isReverseMortgageProfile) {
+        result.otherMortgages.reverse.count++;
+        result.otherMortgages.reverse.amount += amount;
+      } else if (comp.lienPosition === '2nd' || comp.lienPosition === 'Subordinate Lien') {
+        if (comp.secondLienType === 'HELOC') {
+          result.otherMortgages.heloc.count++;
+          result.otherMortgages.heloc.amount += amount;
+        } else {
+          result.otherMortgages.closedEndSecond.count++;
+          result.otherMortgages.closedEndSecond.amount += amount;
+        }
+      } else if (isConstructionProfile) {
+        if (isCommercialProperty) {
+          result.otherMortgages.constructionCommercial.count++;
+          result.otherMortgages.constructionCommercial.amount += amount;
+        } else if (units >= 5) {
+          result.otherMortgages.construction5plus.count++;
+          result.otherMortgages.construction5plus.amount += amount;
+        } else {
+          result.otherMortgages.construction1to4.count++;
+          result.otherMortgages.construction1to4.amount += amount;
+        }
+      } else if (isLandContractProfile) {
+        result.otherMortgages.landContract.count++;
+        result.otherMortgages.landContract.amount += amount;
+      } else if (isCommercialProperty) {
+        result.otherMortgages.commercialMortgage.count++;
+        result.otherMortgages.commercialMortgage.amount += amount;
+      }
+    }
 
     // Risk Characteristics
     if (loan.docType && loan.docType !== 'Full Doc') {
@@ -1352,6 +1665,8 @@ exports.getLendersForMCR = async (req, res, next) => {
 // Export internal functions for unit testing
 exports._internal = {
   getPeriodDates,
+  getMcrApplicationDate,
+  loanIsInMcrReportingPeriod,
   getFundedLoansInPeriod,
   getLoanAmount,
   calculateApplicationData,

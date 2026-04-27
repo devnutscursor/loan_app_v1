@@ -21,13 +21,12 @@ const LoanApplicationSettingsModal = ({
   const statusOptions = [
     'Application Submitted',
     'Processing',
-    'Underwriting',
     'Approved',
     'Approved but not Accepted',
     'Clear to Close',
     'Closed',
     'Funded',
-    'Rejected',
+    'Denied',
     'Withdrawn',
     'Closed-Incomplete'
   ];
@@ -49,15 +48,16 @@ const LoanApplicationSettingsModal = ({
       'Application Started': 'Application Submitted',
       'Application Submitted': 'Application Submitted',
       'Processing': 'Processing',
-      'Underwriting': 'Underwriting',
+      'Underwriting': 'Processing',
       'Conditional Approval': 'Approved',
       'Approved': 'Approved',
       'Approved-Not-Accepted': 'Approved but not Accepted',
       'Clear to Close': 'Clear to Close',
       'Closed': 'Closed',
       'Funded': 'Funded',
-      'Declined': 'Rejected',
-      'Rejected': 'Rejected',
+      'Declined': 'Denied',
+      'Rejected': 'Denied',
+      'Denied': 'Denied',
       'Withdrawn': 'Withdrawn',
       'Closed-Incomplete': 'Closed-Incomplete',
     };
@@ -69,13 +69,13 @@ const LoanApplicationSettingsModal = ({
     const map = {
       'Application Submitted': 'Application Submitted',
       'Processing': 'Processing',
-      'Underwriting': 'Underwriting',
       'Approved': 'Approved',
       'Approved but not Accepted': 'Approved-Not-Accepted',
       'Clear to Close': 'Clear to Close',
       'Closed': 'Closed',
       'Funded': 'Funded',
-      'Rejected': 'Rejected',
+      'Denied': 'Declined',
+      'Rejected': 'Declined',
       'Withdrawn': 'Withdrawn',
       'Closed-Incomplete': 'Closed-Incomplete',
     };
@@ -83,7 +83,7 @@ const LoanApplicationSettingsModal = ({
   };
 
   // Check if the selected status requires an adverse action modal
-  const isAdverseStatus = (status) => status === 'Withdrawn' || status === 'Rejected';
+  const isAdverseStatus = (status) => status === 'Withdrawn' || status === 'Denied' || status === 'Rejected';
 
   // Handle both edit permission toggle and status change
   const handleSaveSettings = async (adverseAction = null) => {
@@ -243,11 +243,10 @@ const LoanApplicationSettingsModal = ({
               className={`block w-full rounded-md border border-gray-300 py-2.5 pl-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm appearance-none font-medium ${
                 currentStatus === 'Application Submitted' ? 'bg-yellow-50 text-yellow-800' :
                 currentStatus === 'Processing' ? 'bg-blue-50 text-blue-800' :
-                currentStatus === 'Underwriting' ? 'bg-indigo-50 text-indigo-800' :
                 currentStatus === 'Approved' ? 'bg-green-50 text-green-800' :
                 currentStatus === 'Clear to Close' ? 'bg-emerald-50 text-emerald-800' :
                 currentStatus === 'Funded' ? 'bg-green-100 text-green-900' :
-                currentStatus === 'Rejected' ? 'bg-red-50 text-red-800' :
+                currentStatus === 'Denied' ? 'bg-red-50 text-red-800' :
                 currentStatus === 'Withdrawn' ? 'bg-orange-50 text-orange-800' :
                 currentStatus === 'Closed-Incomplete' ? 'bg-amber-50 text-amber-800' :
                 currentStatus === 'Closed' ? 'bg-gray-50 text-gray-800' :
@@ -294,7 +293,7 @@ const LoanApplicationSettingsModal = ({
       </div>
     </Modal>
 
-    {/* Adverse Loan Modal — shown when changing to Withdrawn or Rejected */}
+    {/* Adverse Loan Modal — shown when changing to Withdrawn or Denied */}
     <AdverseLoanModal
       isOpen={showAdverseModal}
       onClose={() => { setShowAdverseModal(false); setSaving(false); }}

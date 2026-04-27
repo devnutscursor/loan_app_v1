@@ -3,6 +3,7 @@ const Lender = require('../models/lender.model');
 const Borrower = require('../models/borrower.model');
 const Loan = require('../models/loan.model');
 const User = require('../models/user.model');
+const GhlUserMap = require('../models/ghlUserMap.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 const { getSignedUrl, getPublicUrl, USE_S3 } = require('../services/s3.service');
@@ -494,6 +495,21 @@ exports.getCompanyLenders = async (req, res, next) => {
     
     // Filter out lenders where user doesn't match search criteria
     const filteredLenders = lenders.filter(lender => lender.user !== null);
+
+    const loanOfficerUserIds = filteredLenders
+      .map((lender) => lender?.user?._id)
+      .filter(Boolean);
+    const ghlMappings = await GhlUserMap.find({
+      companyId,
+      role: 'loan_officer',
+      provisionStatus: 'provisioned',
+      appUserId: { $in: loanOfficerUserIds }
+    })
+      .select('appUserId ghlUserId')
+      .lean();
+    const ghlUserMapByAppUserId = new Map(
+      ghlMappings.map((item) => [String(item.appUserId), item.ghlUserId])
+    );
     
     // Get additional metrics for each lender
     const lendersWithMetrics = await Promise.all(
@@ -542,6 +558,7 @@ exports.getCompanyLenders = async (req, res, next) => {
             lastLogin: lender.user.lastLogin,
             company: lender.user.company,
             phone: lender.user.phone,
+            ghlUserId: ghlUserMapByAppUserId.get(String(lender.user._id)) || null
           },
           nmls: lender.nmls,
           title: lender.title,
@@ -887,6 +904,24 @@ exports.createCompanyLender = async (req, res, next) => {
       officePhoneExt,
       mobilePhone: mobilePhone || phone
     });
+
+    // Keep local system and GHL in sync: if GHL user creation fails, roll back local records.
+    try {
+      const { syncLoanOfficerToGhl } = require('../services/ghlUserProvisioning.service');
+      await syncLoanOfficerToGhl({
+        companyId: company._id,
+        appUser: user
+      });
+    } catch (syncError) {
+      await Lender.findByIdAndDelete(lender._id);
+      await User.findByIdAndDelete(user._id);
+      return next(
+        new ApiError(
+          `Loan officer was not created because GHL user creation failed: ${syncError.message}`,
+          400
+        )
+      );
+    }
     
     // Create loan programs and rates for the new lender
     try {

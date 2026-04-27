@@ -12,6 +12,7 @@ import LogoCard from '@/components/company/profile/LogoCard';
 import CompanyInfoSection from '@/components/company/profile/CompanyInfoSection';
 import StatsSection from '@/components/company/profile/StatsSection';
 import PrimaryContactSection from '@/components/company/profile/PrimaryContactSection';
+import GhlIntegrationSection from '@/components/company/profile/GhlIntegrationSection';
 
 const CompanyProfile = () => {
   const {
@@ -36,6 +37,14 @@ const CompanyProfile = () => {
   const companyId = useMemo(() => company?._id, [company]);
   const creds = useCompanyCredentials({ companyId });
   const [activeTab, setActiveTab] = useState('profile');
+  const tabs = useMemo(
+    () => [
+      { key: 'profile', label: 'Profile' },
+      { key: 'credentials', label: 'Credentials' },
+      { key: 'ghl', label: 'GHL Integration' }
+    ],
+    []
+  );
 
   if (loading) {
     return (
@@ -51,7 +60,7 @@ const CompanyProfile = () => {
     <CompanyLayout title="Company Profile">
       <div className="max-w-[1215px] mx-auto space-y-6">
         {/* Tabs */}
-        <LenderProfileTabs active={activeTab} onChange={setActiveTab} />
+        <LenderProfileTabs active={activeTab} onChange={setActiveTab} tabs={tabs} />
 
         {activeTab === 'profile' && (
           <>
@@ -93,6 +102,10 @@ const CompanyProfile = () => {
               onDelete={creds.remove}
             />
           </div>
+        )}
+
+        {activeTab === 'ghl' && (
+          <GhlIntegrationSection companyId={company?._id} />
         )}
       </div>
       {/* Add/Edit Modals (reuse lender modals) */}

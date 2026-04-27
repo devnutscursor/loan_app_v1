@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
 /**
- * AdverseLoanModal — Shown when lender changes loan status to Withdrawn or Rejected.
+ * AdverseLoanModal — Shown when lender changes loan status to Withdrawn or Denied.
  * Collects adverse action details required for NMLS MCR reporting.
  *
  * Props:
  *  - isOpen: boolean
  *  - onClose: () => void  (cancel / close without saving)
  *  - onConfirm: (adverseData) => void  (proceed with status change + adverse data)
- *  - targetStatus: 'Withdrawn' | 'Rejected'
+ *  - targetStatus: 'Withdrawn' | 'Denied'
  */
 
 const ADVERSE_REASONS = [
@@ -42,7 +42,7 @@ const DENIED_REASONS = [
 
 const AdverseLoanModal = ({ isOpen, onClose, onConfirm, targetStatus }) => {
   const isWithdrawn = targetStatus === 'Withdrawn';
-  const isDenied = targetStatus === 'Rejected';
+  const isDenied = targetStatus === 'Denied' || targetStatus === 'Rejected';
 
   const [adverseDate, setAdverseDate] = useState('');
   const [adverseReason, setAdverseReason] = useState(

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, FileText, Calendar, Tag, CheckCircle, XCircle } from 'lucide-react';
+import { getLoanProgramDisplayLabel } from '@/utils/programType';
 
 const ProgramsTable = ({ programs, onViewProgram }) => {
   return (
@@ -105,7 +106,7 @@ const ProgramsTable = ({ programs, onViewProgram }) => {
                         {program.programName}
                       </div>
                       <div className="text-sm text-gray-500 truncate">
-                        {program.displayName}
+                        {getLoanProgramDisplayLabel(program)}
                       </div>
                     </div>
                   </div>
