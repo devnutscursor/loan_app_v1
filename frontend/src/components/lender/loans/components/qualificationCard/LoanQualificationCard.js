@@ -13,13 +13,22 @@ import {
   calculateUSDAFees
 } from "./LoanQualificationUtils";
 import LoanParametersModal from "../../LoanParametersModal";
-
-// Import calculation utilities from the modal's dependencies
+import {
+  isFsaRhsGuaranteed,
+  normalizeSelectedProgramId,
+  getLoanProgramDisplayLabel,
+} from "../../../../../utils/programType";
 import {
   getTotalIncome as calculateTotalIncome,
   getTotalDebts as calculateTotalDebts,
   getTotalAssets as calculateTotalAssets,
 } from "../../utils/LoanCalculationUtils";
+
+function findLoanProgramBySelection(loanPrograms, selectedProgramIdRaw) {
+  const pid = normalizeSelectedProgramId(selectedProgramIdRaw);
+  if (!pid) return undefined;
+  return loanPrograms.find((p) => String(p._id) === pid);
+}
 
 const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
   const [hasFetchedLoan, setHasFetchedLoan] = useState(false);
@@ -73,14 +82,19 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     fetchProgramsAndRates();
   }, []);
 
+  const loanSelectedProgramIdKey =
+    normalizeSelectedProgramId(loan?.loanParameters?.selectedProgramId) || "";
+
   useEffect(() => {
-    if (loan && selectedProgram && hasFetchedLoan) {
-      console.log("@@@@@2222222");
-      setIsLoading(true);
-      console.log("111111111111111111111111111111");
-      calculateLoanValues();
-    }
-  }, [loan?._id, selectedProgram, hasFetchedLoan]);
+    if (!loan || !hasFetchedLoan || loanPrograms.length === 0) return;
+    const matched = findLoanProgramBySelection(
+      loanPrograms,
+      loan.loanParameters?.selectedProgramId
+    );
+    if (matched) setSelectedProgram(matched);
+    setIsLoading(true);
+    calculateLoanValues(loan);
+  }, [loan?._id, loanSelectedProgramIdKey, hasFetchedLoan, loanPrograms.length]);
 
   // Reset processing flag when loan ID changes
   useEffect(() => {
@@ -105,11 +119,11 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             loanCalculations: response.data.loanCalculations || {},
           };
 
-          const programId = updatedLoan.loanParameters?.selectedProgramId;
-          if (programId) {
-            const matchedProgram = loanPrograms.find(p => p._id === programId);
-            if (matchedProgram) setSelectedProgram(matchedProgram);
-          }
+          const matchedProgram = findLoanProgramBySelection(
+            loanPrograms,
+            updatedLoan.loanParameters?.selectedProgramId
+          );
+          if (matchedProgram) setSelectedProgram(matchedProgram);
           console.log("333333333333333333333333333333333");
 
           calculateLoanValues(updatedLoan);
@@ -303,8 +317,9 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
 
       let interestRate = hasStoredParams ? parseFloat(currentLoan.loanParameters.interestRate || 0) : 0;
       if (!interestRate || interestRate === 0) {
-        const selectedProg = loanPrograms.find(
-          (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
+        const selectedProg = findLoanProgramBySelection(
+          loanPrograms,
+          currentLoan?.loanParameters?.selectedProgramId
         );
         if (selectedProg) {
           const programRate = loanRates.find(
@@ -321,6 +336,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
               case 'conventional': interestRate = 6.75; break;
               case 'fha': interestRate = 6.5; ;break;
               case 'va': interestRate = 6.25; break;
+              case 'fsa_rhs':
               case 'usda': interestRate = 6.25; break;
               case 'jumbo': interestRate = 7.25; break;
               default: interestRate = 6.75;
@@ -338,11 +354,15 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       const computedDti = monthlyIncome > 0 ? ((monthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
 
       // Determine qualification against the program DTI cap (fallback to 43%)
-      const selectedProgForQual = loanPrograms.find(
-        (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
-      ) || loanPrograms.find(
-        (program) => program.programType === "conventional" || program.isDefaultForIntegrations
-      ) || loanPrograms[0];
+      const selectedProgForQual =
+        findLoanProgramBySelection(
+          loanPrograms,
+          currentLoan?.loanParameters?.selectedProgramId
+        ) ||
+        loanPrograms.find(
+          (program) => program.programType === "conventional" || program.isDefaultForIntegrations
+        ) ||
+        loanPrograms[0];
 
       const dtiLimit = selectedProgForQual?.restrictions?.dtiRestriction?.max ?? 43;
       const minDownPayment = currentLoan?.loanParameters?.downPaymentMin || (selectedProgForQual?.restrictions?.downPaymentRestriction?.min ?? 3);
@@ -364,7 +384,9 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
         mortgageInsurance: parseFloat(calcs.mortgageInsurance || 0),
         hoa: parseFloat(calcs.hoa || 0),
         isQualified: isQualifiedComputed,
-        programName: selectedProgForQual?.displayName || "Conventional",
+        programName: selectedProgForQual
+          ? getLoanProgramDisplayLabel(selectedProgForQual)
+          : "Conventional",
         interestRate,
         loanTerm: selectedProgForQual?.loanTerm || 30,
       });
@@ -377,11 +399,15 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     } else 
     {
       //calculate interestrate here if not already defined adn then pass it in parameters,
-      const selectedProgram = loanPrograms.find(
-        (program) => program._id === currentLoan?.loanParameters?.selectedProgramId
-      ) || loanPrograms.find(
-        (program) => program.programType === "conventional" || program.isDefaultForIntegrations
-      ) || loanPrograms[0];
+      const selectedProgram =
+        findLoanProgramBySelection(
+          loanPrograms,
+          currentLoan?.loanParameters?.selectedProgramId
+        ) ||
+        loanPrograms.find(
+          (program) => program.programType === "conventional" || program.isDefaultForIntegrations
+        ) ||
+        loanPrograms[0];
       if (!selectedProgram) {
         console.error("[LoanQualificationCard] No loan program available to calculate values");
         return;
@@ -416,12 +442,11 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
 
           console.log("Response data:", response.data);
           
-          // Update the program if needed
-          const programId = updatedLoan.loanParameters?.selectedProgramId;
-          if (programId) {
-            const matchedProgram = loanPrograms.find(p => p._id === programId);
-            if (matchedProgram) setSelectedProgram(matchedProgram);
-          }
+          const matchedProgram = findLoanProgramBySelection(
+            loanPrograms,
+            updatedLoan.loanParameters?.selectedProgramId
+          );
+          if (matchedProgram) setSelectedProgram(matchedProgram);
           
           console.log("Before update:");
           // Calculate and update values
@@ -569,11 +594,15 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
       }
       
       // Select a program (same logic as in LoanParametersModal)
-      const selectedProgram = loanPrograms.find(
-        (p) => p._id === loanData.loanParameters?.selectedProgramId
-      ) || loanPrograms.find(
-        (p) => p.programType === "conventional" || p.isDefaultForIntegrations
-      ) || loanPrograms[0];
+      const selectedProgram =
+        findLoanProgramBySelection(
+          loanPrograms,
+          loanData.loanParameters?.selectedProgramId
+        ) ||
+        loanPrograms.find(
+          (p) => p.programType === "conventional" || p.isDefaultForIntegrations
+        ) ||
+        loanPrograms[0];
       
       if (!selectedProgram) {
         console.error("[LoanQualificationCard] No loan program available");
@@ -672,6 +701,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
             case 'conventional': interestRate = 6.75; break;
             case 'fha': interestRate = 6.5; break;
             case 'va': interestRate = 6.25; break;
+            case 'fsa_rhs':
             case 'usda': interestRate = 6.25; break;
             case 'jumbo': interestRate = 7.25; break;
             default: interestRate = 6.75;
@@ -744,8 +774,7 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           mortgageInsurance = (selectedProgram.mortgageInsurance / 100 * principal) / 12;
           // Plus upfront MIP (not included in monthly payment)
           upfrontFee = (selectedProgram.upfrontMortgageInsurance / 100) * principal;
-        } else if (selectedProgram.programType === 'usda') {
-          // USDA loans have upfront fee and annual fee
+        } else if (isFsaRhsGuaranteed(selectedProgram.programType)) {
           const usdaFees = calculateUSDAFees(principal, selectedProgram);
           upfrontFee = usdaFees.upfrontFee;
           mortgageInsurance = usdaFees.annualFee;

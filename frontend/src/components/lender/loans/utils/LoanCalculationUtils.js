@@ -155,7 +155,9 @@ export const calculateVAFundingFee = (loanAmount, downPaymentPercent, selectedPr
  * @returns {Object} - Object containing upfront fee and annual fee
  */
 export const calculateUSDAFees = (loanAmount, selectedProgram) => {
-  if (!selectedProgram || selectedProgram.programType !== 'usda') {
+  const pt = selectedProgram?.programType;
+  const isRhs = pt === 'fsa_rhs' || pt === 'usda';
+  if (!selectedProgram || !isRhs) {
     return { upfrontFee: 0, annualFee: 0 };
   }
   

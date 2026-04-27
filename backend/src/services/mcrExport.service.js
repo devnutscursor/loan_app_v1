@@ -158,6 +158,7 @@ function mapRMLAToICodes(rmla) {
   const pt = r.productType || {};
   const ch = r.channel || {};
   const rc = r.riskCharacteristics || {};
+  const om = r.otherMortgages || {};
   const purpose = r.purpose || {};
 
   // Total from all product types for I460
@@ -175,10 +176,17 @@ function mapRMLAToICodes(rmla) {
     I030: pt.conventionalFixed || z, I040: pt.conventionalARM || z,
     I050: pt.jumboFixed || z,        I060: pt.jumboARM || z,
     I070: pt.otherFixed || z,        I080: pt.otherARM || z,
-    // Government subtypes — not tracked separately
-    I110: z, I120: z, I130: z, I140: z, I170: z,
+    // Other Mortgages (I110–I180)
+    I110: om.closedEndSecond || z,
+    I120: om.heloc || z,
+    I130: om.reverse || z,
+    I140: om.construction1to4 || z,
+    I150: om.construction5plus || z,
+    I160: om.constructionCommercial || z,
+    I170: om.commercialMortgage || z,
+    I180: om.landContract || z,
     // Channel
-    I210: ch.brokered || z, I220: ch.closedRetail || z, I230: ch.closedCorrespondent || z,
+    I210: ch.brokered || z, I220: ch.closedRetail || z, I230: ch.closedCorrespondent || z, I240: ch.tableFunded || z,
     // LTV Ranges (not broken out in NMLS I-codes by us)
     I250: z, I251: z,
     // Credit Score / Documentation
@@ -391,8 +399,8 @@ function buildSectionIIXML(rmlaData) {
   // Standard _1/_2 I-codes
   const standardCodes = [
     'I010', 'I020', 'I030', 'I040', 'I050', 'I060', 'I070', 'I080',
-    'I110', 'I120', 'I130', 'I140', 'I170',
-    'I210', 'I220', 'I230',
+    'I110', 'I120', 'I130', 'I140', 'I150', 'I160', 'I170', 'I180',
+    'I210', 'I220', 'I230', 'I240',
     'I250', 'I251',
     'I260', 'I261', 'I270', 'I271', 'I280', 'I281', 'I290', 'I291',
     'I300', 'I301',
@@ -659,8 +667,8 @@ function buildRevenueSheet(wb, revData) {
   totalRow1.getCell('amount').numFmt = '#,##0';
 
   addSectionHeader(ws, 'Servicing Disposition');
-  addRevRow('AC1200', r.AC1200?.label || 'Servicing Released', r.AC1200?.amount, r.AC1200?.count);
-  addRevRow('AC1210', r.AC1210?.label || 'Servicing Retained', r.AC1210?.amount, r.AC1210?.count);
+  addRevRow('AC1200', r.AC1200?.label || 'Servicing Retained', r.AC1200?.amount, r.AC1200?.count);
+  addRevRow('AC1210', r.AC1210?.label || 'Servicing Released', r.AC1210?.amount, r.AC1210?.count);
 }
 
 
@@ -712,6 +720,7 @@ function buildRMLASheet(wb, rmlaData) {
 
   const r = rmlaData || {};
   const pt = r.productType || {};
+  const om = r.otherMortgages || {};
   const ch = r.channel || {};
   const rc = r.riskCharacteristics || {};
   const purpose = r.purpose || {};
@@ -731,10 +740,21 @@ function buildRMLASheet(wb, rmlaData) {
   addIRow('I070', 'Other Fixed', pt.otherFixed);
   addIRow('I080', 'Other ARM', pt.otherARM);
 
+  addSectionHeader(ws, 'Other Mortgages');
+  addIRow('I110', 'Closed-End Second Mortgages', om.closedEndSecond);
+  addIRow('I120', 'HELOCs', om.heloc);
+  addIRow('I130', 'Reverse Mortgages', om.reverse);
+  addIRow('I140', 'Construction, 1-4 Unit Residential', om.construction1to4);
+  addIRow('I150', 'Construction, 5+ Unit Residential', om.construction5plus);
+  addIRow('I160', 'Construction, Commercial', om.constructionCommercial);
+  addIRow('I170', 'Commercial Mortgage', om.commercialMortgage);
+  addIRow('I180', 'Land Contract', om.landContract);
+
   addSectionHeader(ws, 'Channel');
   addIRow('I210', 'Brokered (Table-Funded or Non Table-Funded)', ch.brokered);
   addIRow('I220', 'Retail (Directly Funded)', ch.closedRetail);
   addIRow('I230', 'Correspondent', ch.closedCorrespondent);
+  addIRow('I240', 'Table Funded', ch.tableFunded);
 
   addSectionHeader(ws, 'Risk Characteristics');
   addIRow('I270', 'Alternative / Reduced Documentation', rc.altDoc);

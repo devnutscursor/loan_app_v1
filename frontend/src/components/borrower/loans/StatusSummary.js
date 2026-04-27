@@ -31,7 +31,7 @@ const StatusSummary = ({
           Approved: {statusGroups.approved.length}
         </span>
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 mr-2">
-          Rejected: {statusGroups.rejected.length}
+          Denied: {statusGroups.rejected.length}
         </span>
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 mr-2">
           Closed: {statusGroups.closed.length}

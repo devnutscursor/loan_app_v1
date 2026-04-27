@@ -3,6 +3,7 @@ const User = require('../models/user.model');
 const Loan = require('../models/loan.model');
 const Borrower = require('../models/borrower.model');
 const Company = require('../models/company.model');
+const GhlContactMap = require('../models/ghlContactMap.model');
 const ApiError = require('../utils/apiError');
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
@@ -828,6 +829,7 @@ exports.updateLenderStatus = async (req, res, next) => {
 exports.getLenderBorrowers = async (req, res, next) => {
   try {
     let lenderId;
+    let lenderCompanyId = null;
     
     // Check if we're getting borrowers for the current user or a specific lender
     if (req.params.lenderId) {
@@ -841,6 +843,10 @@ exports.getLenderBorrowers = async (req, res, next) => {
         if (!userLender || userLender._id.toString() !== lenderId) {
           return next(new ApiError('You are not authorized to view these borrowers', 403));
         }
+        lenderCompanyId = userLender.company?.toString() || null;
+      } else {
+        const lender = await Lender.findById(lenderId).select('company');
+        lenderCompanyId = lender?.company?.toString() || null;
       }
     } else {
       // For current user
@@ -851,6 +857,7 @@ exports.getLenderBorrowers = async (req, res, next) => {
       }
       
       lenderId = lender._id;
+      lenderCompanyId = lender.company?.toString() || null;
     }
     
     // Implement pagination
@@ -864,20 +871,37 @@ exports.getLenderBorrowers = async (req, res, next) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
+
+    let borrowersWithGhl = borrowers.map(b => b.toObject());
+    if (lenderCompanyId && borrowersWithGhl.length > 0) {
+      const borrowerIds = borrowersWithGhl.map(b => b._id);
+      const maps = await GhlContactMap.find({ companyId: lenderCompanyId, borrowerId: { $in: borrowerIds } })
+        .select('borrowerId ghlContactId')
+        .lean();
+
+      const mapByBorrowerId = new Map(
+        maps.map(m => [String(m.borrowerId), m.ghlContactId])
+      );
+
+      borrowersWithGhl = borrowersWithGhl.map(b => ({
+        ...b,
+        ghlContactId: mapByBorrowerId.get(String(b._id)) || null
+      }));
+    }
     
     // Get total count for pagination
     const total = await Borrower.countDocuments({ lender: lenderId });
     
     res.status(200).json({
       status: 'success',
-      results: borrowers.length,
+      results: borrowersWithGhl.length,
       pagination: {
         total,
         page,
         pages: Math.ceil(total / limit),
         limit
       },
-      data: borrowers
+      data: borrowersWithGhl
     });
   } catch (error) {
     next(error);

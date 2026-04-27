@@ -180,7 +180,7 @@ const LoanManagement = () => {
                       <option value="pending">Pending</option>
                       <option value="reviewing">Reviewing</option>
                       <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
+                      <option value="rejected">Denied</option>
                       <option value="funded">Funded</option>
                       <option value="closed">Closed</option>
                     </select>

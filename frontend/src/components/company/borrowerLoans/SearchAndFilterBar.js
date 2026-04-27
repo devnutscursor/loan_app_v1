@@ -27,7 +27,7 @@ const SearchAndFilterBar = ({ searchTerm, onSearchChange, activeFilter, onFilter
           Approved
         </button>
         <button type="button" onClick={() => onFilterChange('rejected')} className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${activeFilter === 'rejected' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-          Rejected
+          Denied
         </button>
       </div>
     </div>

@@ -590,6 +590,11 @@ const LenderManualLoanCreation = () => {
         }
         
         // For construction loans, check loan amount
+        if (loanData.loanType === "Home Improvement") {
+          if (!loanData.loanAmount) {
+            newErrors["loanInfo.loanAmount"] = "Loan amount is required for home improvement loans";
+          }
+        }
         if (loanData.loanType === "Construction") {
           if (!loanData.loanAmount) {
             newErrors["loanInfo.loanAmount"] = "Loan amount is required for construction loans";

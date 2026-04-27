@@ -66,6 +66,7 @@ const LoanSummaryCard = ({ loan, formatCurrency }) => {
                 'conventional': 6.75,
                 'fha': 7.25,
                 'va': 6.25,
+                'fsa_rhs': 6.5,
                 'usda': 6.5,
                 'jumbo': 7.5,
                 'Purchase': 6.85, // Use this if the loan type is 'Purchase'
@@ -190,7 +191,7 @@ const LoanSummaryCard = ({ loan, formatCurrency }) => {
                 <dd className="mt-0.5 text-sm font-semibold">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     {loan?.status?.toLowerCase() === 'conditional approval' ? 'Approved' : 
-                     loan?.status?.toLowerCase() === 'declined' ? 'Rejected' : 
+                     loan?.status?.toLowerCase() === 'declined' ? 'Denied' : 
                      loan?.status || 'N/A'}
                   </span>
                 </dd>

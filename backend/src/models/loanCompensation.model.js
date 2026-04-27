@@ -106,7 +106,7 @@ const LoanCompensationSchema = new Schema({
   // ===== LOAN CLASSIFICATION (MCR Tab 2 & Section II) =====
   lienPosition: {
     type: String,
-    enum: ['1st', '2nd', 'Not Secured by Lien'],  // AC500, AC510, AC520
+    enum: ['1st', '2nd', 'Subordinate Lien', 'Not Secured by Lien'],  // AC500, AC510, AC520 (2nd / Subordinate Lien → subordinate)
     default: '1st'
   },
   // Second-lien subtype, used for RMLA and HELOC reporting

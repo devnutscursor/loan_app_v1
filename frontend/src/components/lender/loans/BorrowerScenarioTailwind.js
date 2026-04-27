@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchAPI } from '@/utils/api';
+import { getLoanProgramDisplayLabel } from '@/utils/programType';
 import Link from 'next/link';
 
 export default function BorrowerScenarioTailwind({ loanId, refreshTrigger }) {
@@ -318,7 +319,7 @@ export default function BorrowerScenarioTailwind({ loanId, refreshTrigger }) {
                                 : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                               }`}
                           >
-                            {program.displayName}
+                            {getLoanProgramDisplayLabel(program)}
                           </button>
                         ))}
                       </div>

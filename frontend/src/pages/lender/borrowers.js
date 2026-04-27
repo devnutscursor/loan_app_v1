@@ -8,6 +8,8 @@ import BorrowersSearchAndFilters from '../../components/lender/borrowers/Borrowe
 import { NoBorrowers, NoResults } from '../../components/lender/borrowers/BorrowersEmptyStates';
 import BorrowersTable from '../../components/lender/borrowers/BorrowersTable';
 import ReferralLinkModal from '../../components/lender/borrowers/ReferralLinkModal';
+import { toast } from 'react-hot-toast';
+import { lenderService } from '../../services/api';
 
 const LenderBorrowers = () => {
   const {
@@ -23,6 +25,7 @@ const LenderBorrowers = () => {
     sortDirection,
     borrowerLoans,
     filteredBorrowers,
+    reloadBorrowers,
     handleShowReferralLink,
     handleCloseReferralModal,
     handleSearchChange,
@@ -32,6 +35,20 @@ const LenderBorrowers = () => {
     getSortIcon,
     clearFilters
   } = useLenderBorrowers();
+
+  const handleLinkBorrowerToGhl = async (borrower) => {
+    const borrowerId = borrower?._id;
+    if (!borrowerId) return;
+    try {
+      const res = await lenderService.linkBorrowerContactToGhl(borrowerId);
+      const ghlContactId = res?.data?.data?.ghlContactId || null;
+      toast.success(ghlContactId ? `Linked to GHL (${ghlContactId})` : 'Linked to GHL');
+      await reloadBorrowers();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to link borrower to GHL';
+      toast.error(msg);
+    }
+  };
 
   return (
     <MainLayout>
@@ -63,6 +80,7 @@ const LenderBorrowers = () => {
                 formatDate={formatDate}
                 getSortIcon={getSortIcon}
                 onSortChange={handleSortChange}
+                onLinkToGhl={handleLinkBorrowerToGhl}
               />
             )}
           </div>

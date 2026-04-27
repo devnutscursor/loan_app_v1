@@ -250,7 +250,7 @@ const PaymentTracking = () => {
                         </h4>
                         <p className="mt-1 text-lg font-semibold text-gray-900">
                           {loan.status.toLowerCase() === 'conditional approval' ? 'Approved' : 
-                           loan.status.toLowerCase() === 'declined' ? 'Rejected' : 
+                           loan.status.toLowerCase() === 'declined' ? 'Denied' : 
                            loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
                         </p>
                       </div>

@@ -18,6 +18,8 @@ import {
   KeyRound,
   Landmark,
 } from "lucide-react";
+import { formatProgramTypeLabel } from "../../../../utils/programType";
+import { fetchAPI } from "../../../../utils/api";
 
 const isoDate = (v) => {
   if (!v) return "";
@@ -43,6 +45,7 @@ const EDITABLE_KEYS = [
 
 const AuditDatesTab = ({ loan, loanId, fetchLoanDetails }) => {
   const [compensation, setCompensation] = useState(null);
+  const [resolvedProgram, setResolvedProgram] = useState(null);
   const [statusHistory, setStatusHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +59,46 @@ const AuditDatesTab = ({ loan, loanId, fetchLoanDetails }) => {
   useEffect(() => {
     setExcludeFromMCR(loan?.excludeFromMCR || false);
   }, [loan?.excludeFromMCR]);
+
+  // Loan API may return selectedProgramId as an id string; resolve program for Product Info.
+  useEffect(() => {
+    const sid = loan?.loanParameters?.selectedProgramId;
+    if (!sid) {
+      setResolvedProgram(null);
+      return;
+    }
+    if (
+      typeof sid === "object" &&
+      sid !== null &&
+      (sid.programType != null || sid.displayName || sid.programName)
+    ) {
+      setResolvedProgram(null);
+      return;
+    }
+    const id =
+      typeof sid === "string"
+        ? sid
+        : sid?._id
+        ? String(sid._id)
+        : null;
+    if (!id) {
+      setResolvedProgram(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const res = await fetchAPI(`/loan-programs/${id}`);
+      if (cancelled) return;
+      if (res?.status === "success" && res.data) {
+        setResolvedProgram(res.data);
+      } else {
+        setResolvedProgram(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loan?.loanParameters?.selectedProgramId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -139,8 +182,23 @@ const AuditDatesTab = ({ loan, loanId, fetchLoanDetails }) => {
 
   const finalRate = compensation?.finalRate
     || loan?.loanDetails?.interestRate || loan?.loanParameters?.interestRate || null;
-  const productLabel = loan?.loanParameters?.selectedProgramId?.programType || "Conventional";
-  const productName = loan?.loanParameters?.selectedProgramId?.programName || "—";
+  const selectedProg = loan?.loanParameters?.selectedProgramId;
+  const progDoc =
+    resolvedProgram ||
+    (selectedProg &&
+    typeof selectedProg === "object" &&
+    selectedProg !== null &&
+    (selectedProg.programType != null ||
+      selectedProg.displayName ||
+      selectedProg.programName)
+      ? selectedProg
+      : null);
+  const productLabel = progDoc?.programType
+    ? formatProgramTypeLabel(progDoc.programType)
+    : "—";
+  const productName = progDoc
+    ? progDoc.displayName || progDoc.programName || "—"
+    : "—";
   const loanAmount = loan?.loanDetails?.loanAmount || loan?.loanParameters?.loanAmount || 0;
   const loanPurpose = loan?.loanDetails?.loanType || "—";
   const occupancy = loan?.loanDetails?.occupancyType || loan?.property?.occupancyType || "—";
@@ -200,7 +258,15 @@ const AuditDatesTab = ({ loan, loanId, fetchLoanDetails }) => {
 
           {/* Product Info */}
           <AuditColumn title="Product Info" color="blue" last={false}>
-            <AuditLine label="" value={`${productLabel} · ${productName}`} bold />
+            <AuditLine
+              label="Loan Program"
+              value={
+                progDoc
+                  ? `${productLabel} · ${productName}`
+                  : "—"
+              }
+              bold
+            />
             <AuditLine label="Final Rate" value={finalRate ? `${finalRate}%` : "—"} highlight />
             <AuditLine label="Discount Points" value={compensation?.discountPoints ? fc(compensation.discountPoints) : "—"} />
             <AuditLine label="Rate Lock Period" value={compensation?.rateLockPeriod ? `${compensation.rateLockPeriod} days` : "—"} />

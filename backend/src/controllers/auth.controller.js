@@ -10,6 +10,8 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const emailService = require('../utils/email/emailService');
 const config = require('../config');
+const { resolveOrCreateBorrowerContact } = require('../services/ghlContact.service');
+const GhlUserMap = require('../models/ghlUserMap.model');
 
 /**
  * Create default loan programs for a new lender
@@ -162,13 +164,13 @@ exports.createDefaultLoanPrograms = async (userId, lenderId = null, companyId = 
       createdBy: userId
     });
     
-    // 4. USDA Loan Program
+    // 4. FSA/RHS-Guaranteed (USDA SFH Guaranteed / RHS)
     await LoanProgram.create({
-      programName: 'USDA',
-      displayName: 'USDA Rural Development',
-      programType: 'usda',
+      programName: 'FSA/RHS-Guaranteed',
+      displayName: 'FSA/RHS-Guaranteed',
+      programType: 'fsa_rhs',
       isAvailableToBorrower: true,
-      loanHelpText: 'A USDA home loan (Rural Development) is a zero down payment mortgage for eligible moderate income households buying in qualified rural areas.',
+      loanHelpText: 'FSA/RHS-Guaranteed loans (including USDA Single Family Housing Guaranteed) offer zero down payment options for eligible borrowers in qualified rural areas.',
       rateAdjustment: 0,
       loanTerm: 30,
       restrictions: {
@@ -185,8 +187,8 @@ exports.createDefaultLoanPrograms = async (userId, lenderId = null, companyId = 
         }
       },
       upfrontMortgageInsurance: 0,
-      mortgageInsurance: 0.4, // USDA annual fee
-      fundingFee: 1.0, // USDA upfront guarantee fee
+      mortgageInsurance: 0.4, // Annual guarantee fee
+      fundingFee: 1.0, // Upfront guarantee fee
       originationFees: {
         type: 'percentage',
         value: 1,
@@ -344,7 +346,7 @@ const autoSaveLenderRates = async (userId) => {
         { programType: 'conventional', rate: 6.75 }, // Current market rates (July 2025)
         { programType: 'fha', rate: 6.50 },
         { programType: 'va', rate: 6.25 },
-        { programType: 'usda', rate: 6.25 },
+        { programType: 'fsa_rhs', rate: 6.25 },
         { programType: 'jumbo', rate: 7.00 }
       ];
       
@@ -860,7 +862,8 @@ exports.registerBorrower = async (req, res, next) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = (email || '').toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return next(new ApiError('User already exists with this email', 400));
     }
@@ -869,16 +872,17 @@ exports.registerBorrower = async (req, res, next) => {
     const user = await User.create({
       firstName,
       lastName,
-      email,
+      email: normalizedEmail,
       password,
       phone,
       role: 'borrower',
       isEmailVerified: false  // Set email as unverified
     });
 
+    let borrowerDoc = null;
     try {
       // Create borrower linked to lender
-      await Borrower.create({
+      borrowerDoc = await Borrower.create({
         user: user._id,
         lender: lenderId
       });
@@ -886,6 +890,28 @@ exports.registerBorrower = async (req, res, next) => {
       // Roll back user if borrower creation fails
       await User.findByIdAndDelete(user._id);
       throw borrowerError;
+    }
+
+    // Best-effort: create/dedupe borrower contact in GHL upon registration via lender referral link
+    // This should never block borrower signup.
+    try {
+      const lenderCompanyId = lender.company?.toString();
+      if (lenderCompanyId) {
+        const map = await GhlUserMap.findOne({
+          companyId: lenderCompanyId,
+          appUserId: lender.user
+        })
+          .select('ghlUserId')
+          .lean();
+
+        await resolveOrCreateBorrowerContact({
+          companyId: lenderCompanyId,
+          borrowerId: borrowerDoc._id,
+          assignedToGhlUserId: map?.ghlUserId || null
+        });
+      }
+    } catch (ghlError) {
+      logger.warn(`GHL contact sync skipped/failed for new borrower ${user._id}: ${ghlError.message}`);
     }
 
     // Generate tokens

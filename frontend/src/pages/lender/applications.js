@@ -341,7 +341,7 @@ const ApplicationsPage = () => {
                       <option value="pending">Pending</option>
                       <option value="under_review">Under Review</option>
                       <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
+                      <option value="rejected">Denied</option>
                       <option value="funded">Funded</option>
                     </select>
                   </div>

@@ -35,6 +35,8 @@ const mortechRoutes = require('./routes/mortech.routes');
 const mcrRoutes = require('./routes/mcr.routes');
 const loanCompensationRoutes = require('./routes/loanCompensation.routes');
 const affordableRoutes = require('./routes/affordable.routes');
+const ghlRoutes = require('./routes/ghl.routes');
+const oauthRoutes = require('./routes/oauth.routes');
 
 // Import error handlers
 const { errorConverter, errorHandler, notFound } = require('./middleware/error.middleware');
@@ -259,6 +261,9 @@ app.use('/api/v1/mcr', mcrRoutes);
 app.use('/api/v1/loan-compensation', loanCompensationRoutes);
 app.use('/api/v1/affordable', affordableRoutes);
 app.use('/api/v1/test', testRoutes); // Register test routes
+app.use('/api/v1/ghl', ghlRoutes);
+app.use('/api/ghl', ghlRoutes);
+app.use('/api/oauth', oauthRoutes);
 
 // Root route
 app.get('/', (req, res) => {

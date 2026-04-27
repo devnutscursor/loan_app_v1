@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
@@ -49,11 +49,11 @@ import MobileExpandableNavigation from "../../../components/lender/loans/MobileE
 import LoanDetailsSkeleton from "../../../components/lender/loans/LoanDetailsSkeleton";
 import AdditionalInfo from "../../../components/lender/loans/AdditionalInfo";
 import LoanApplicationSettingsModal from "../../../components/lender/loans/LoanApplicationSettingsModal";
+import LoanMessagesPanel from "../../../components/lender/messages/LoanMessagesPanel";
 import ProductsPricingTab from "../../../components/lender/loans/ProductsPricingTab";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
-import Modal from "../../../components/common/Modal";
 import customAxios from '../../../utils/axios';
 // Settings is now properly imported above with other icons
 
@@ -2134,6 +2134,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const [activeTab, setActiveTab] = useState("dashboard"); // Change this line
   // At the top of your component
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedLoan, setLastSavedLoan] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [cachedData, setCachedData] = useState(null);
 
@@ -2145,8 +2146,10 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
   // Call this to cancel changes
   const handleCancel = () => {
-    // Reset form fields to their original values
-    // You may need to refetch or reset state here
+    // Revert unsaved edits to last persisted snapshot
+    if (lastSavedLoan) {
+      setLoan(lastSavedLoan);
+    }
     setHasUnsavedChanges(false);
   };
 
@@ -2154,7 +2157,10 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   const saveLoan = async () => {
     try {
       setSaving(true);
-      await lenderService.updateLoan(id, loan);
+      const response = await lenderService.updateLoan(id, loan);
+      const savedLoan = response?.data?.data || loan;
+      setLoan(savedLoan);
+      setLastSavedLoan(savedLoan);
       toast.success("Loan details saved successfully");
       setSaving(false);
       setHasUnsavedChanges(false);
@@ -2263,31 +2269,34 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
   const isSubTabActive = false;
 
-  // Uncomment and modify this useEffect to handle tab changes from URL
+  // Sync active tab from URL query without overriding immediate user clicks.
   useEffect(() => {
     if (!router.isReady || !id) return;
 
-    // Check if there's a tab in the URL query
-    const tabFromUrl = router.query.tab;
-
-    // Check if this is a valid tab
+    const tabFromUrl =
+      typeof router.query.tab === "string" ? router.query.tab : null;
     const isValidTab = allTabs.includes(tabFromUrl);
 
-    if (isValidTab) {
-      // Set active tab based on URL query
-      setActiveTab(tabFromUrl);
+    if (tabFromUrl && isValidTab) {
+      // Only update state when URL tab actually changed.
+      if (tabFromUrl !== activeTab) {
+        setActiveTab(tabFromUrl);
+      }
 
-      // If it's a subtab, ensure the accordion is expanded
-      if (applicationSubTabs.some((tab) => tab.id === tabFromUrl)) {
+      // If it's a sub-tab, keep accordion expanded.
+      if (
+        applicationSubTabs.some((tab) => tab.id === tabFromUrl) &&
+        !isApplicationExpanded
+      ) {
         setIsApplicationExpanded(true);
       }
-    } else if (!tabFromUrl) {
-      // If no tab is specified, use default tab and update URL
+    } else if (!tabFromUrl && activeTab !== "dashboard") {
+      // If no tab is specified, set URL default once.
       router.push(`/lender/loans/${id}?tab=dashboard`, undefined, {
         shallow: true,
       });
     }
-  }, [router.isReady, router.query, id]);
+  }, [router.isReady, router.query.tab, id, activeTab, isApplicationExpanded]);
 
   // Inside the LoanDetails component, add a new state for parameters data
   const [parametersData, setParametersData] = useState(null);
@@ -2331,6 +2340,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
       if (!forceRefresh && cachedData && cacheValid) {
         console.log("Using cached data (age:", cacheAge, "ms)");
         setLoan(cachedData.loan);
+        setLastSavedLoan(cachedData.loan);
         setDocuments(cachedData.documents);
         return;
       }
@@ -2393,6 +2403,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
 
         console.log("Normalized data structure:", normalizedData);
         setLoan(normalizedData);
+        setLastSavedLoan(normalizedData);
         
         // Set documents and milestones from the same response
         setDocuments(Array.isArray(docsData) ? docsData : []);
@@ -2586,7 +2597,22 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   };
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Phase 4: GHL opportunity manual sync (button-driven)
+  const [showGhlOpportunityModal, setShowGhlOpportunityModal] = useState(false);
+  const [ghlPipelines, setGhlPipelines] = useState([]);
+  const [ghlPipelineId, setGhlPipelineId] = useState('');
+  const [ghlPipelineStageId, setGhlPipelineStageId] = useState('');
+  const [ghlOpportunityStatus, setGhlOpportunityStatus] = useState('open');
+  const [syncingToGhl, setSyncingToGhl] = useState(false);
+  const [ghlOppError, setGhlOppError] = useState('');
+  const [linkingBorrowerToGhl, setLinkingBorrowerToGhl] = useState(false);
+  const [openGhlSelect, setOpenGhlSelect] = useState(null); // 'pipeline' | 'stage' | 'status' | null
+  const ghlModalRef = useRef(null);
+  const [ghlContacts, setGhlContacts] = useState([]);
+  const [ghlContactId, setGhlContactId] = useState('');
   
   // Status colors are now defined directly in the className with Tailwind
 
@@ -2594,10 +2620,131 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     debug('Opening note modal', { loanId: id });
     setIsNoteModalOpen(true);
   };
+
+  const handleMessageButtonClick = () => {
+    debug('Opening message modal', { loanId: id });
+    setIsMessageModalOpen(true);
+  };
   
   const handleSettingsButtonClick = () => {
     debug('Opening settings modal', { loanId: id });
     setIsSettingsModalOpen(true);
+  };
+
+  const openGhlOpportunityDialog = async () => {
+    try {
+      setShowGhlOpportunityModal(true);
+      setGhlOppError('');
+      const [pRes, cRes] = await Promise.all([
+        lenderService.getGhlOpportunityPipelines(),
+        lenderService.getGhlLoanOfficerContacts()
+      ]);
+      const pipelines = pRes?.data?.data?.pipelines || [];
+      const contacts = cRes?.data?.data?.contacts || [];
+      setGhlPipelines(pipelines);
+      setGhlContacts(contacts);
+      if (pipelines.length && !ghlPipelineId) {
+        setGhlPipelineId(pipelines[0]._id || pipelines[0].id || '');
+      }
+      // Default contact to the current loan's borrower contact if present in list
+      if (!ghlContactId && loan?._id) {
+        const borrowerId = loan?.borrower?._id || loan?.borrower;
+        const match = contacts.find((c) => String(c.borrowerId) === String(borrowerId));
+        if (match?.ghlContactId) setGhlContactId(match.ghlContactId);
+      }
+    } catch (e) {
+      console.error('Error loading GHL pipelines:', e);
+      const msg = e?.response?.data?.message || 'Failed to load GHL pipelines';
+      setGhlOppError(msg);
+      toast.error(msg);
+    }
+  };
+
+  const selectedPipeline = ghlPipelines.find((p) => String(p?._id || p?.id) === String(ghlPipelineId));
+  const pipelineStages =
+    selectedPipeline?.stages ||
+    selectedPipeline?.pipelineStages ||
+    selectedPipeline?.stagesList ||
+    [];
+
+  useEffect(() => {
+    if (!showGhlOpportunityModal) return;
+    const onDocMouseDown = (e) => {
+      if (!ghlModalRef.current) return;
+      if (!ghlModalRef.current.contains(e.target)) {
+        setOpenGhlSelect(null);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [showGhlOpportunityModal]);
+
+  const Dropdown = ({
+    id,
+    label,
+    value,
+    onChange,
+    options,
+    placeholder = 'Select...',
+    disabled = false
+  }) => {
+    const isOpen = openGhlSelect === id;
+    const selected = options.find((o) => String(o.value) === String(value)) || null;
+    return (
+      <div className="relative">
+        <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpenGhlSelect((prev) => (prev === id ? null : id))}
+          className="w-full text-left bg-white border border-gray-300 rounded-lg px-3 pr-9 py-2.5 text-sm text-gray-900 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:border-gray-300"
+        >
+          <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <svg
+            className="pointer-events-none absolute right-3 top-9 h-4 w-4 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+
+        {isOpen && !disabled && (
+          <div className="absolute z-50 mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <div className="max-h-56 overflow-auto py-1">
+              {options.map((opt) => {
+                const active = String(opt.value) === String(value);
+                return (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setOpenGhlSelect(null);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
+                      active ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-800'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              {!options.length && (
+                <div className="px-3 py-2 text-sm text-gray-500">No options</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
   
   
@@ -2631,40 +2778,6 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     });
   };
   
-  // Monitor changes in forms for different tabs
-  useEffect(() => {
-    // Add event listener for radio button and select element changes when in specific tabs
-    const handleFormElementChange = () => {
-      // Check if we're in a tab that needs save functionality
-      if (SAVE_TABS.includes(activeTab)) {
-        debug(`Setting hasUnsavedChanges to true from form element change in ${activeTab} tab`);
-        setHasUnsavedChanges(true);
-      }
-    };
-    
-    // Add event listeners for form elements
-    const formElements = document.querySelectorAll('input[type=radio], input[type=checkbox], select');
-    formElements.forEach(element => {
-      element.addEventListener('change', handleFormElementChange);
-    });
-    
-    // Add event listeners for buttons within forms (like Yes/No toggle buttons)
-    const formButtons = document.querySelectorAll('.border-t.border-gray-200 button');
-    formButtons.forEach(button => {
-      button.addEventListener('click', handleFormElementChange);
-    });
-    
-    // Cleanup listeners when component unmounts or tab changes
-    return () => {
-      formElements.forEach(element => {
-        element.removeEventListener('change', handleFormElementChange);
-      });
-      formButtons.forEach(button => {
-        button.removeEventListener('click', handleFormElementChange);
-      });
-    };
-  }, [activeTab]);
-
   // Monitor changes to hasUnsavedChanges
   useEffect(() => {
     console.log(`hasUnsavedChanges changed to: ${hasUnsavedChanges}`, {
@@ -2739,6 +2852,160 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
               </div>
             ) : loan ? (
               <>
+                {/* GHL Opportunity Sync Modal */}
+                {showGhlOpportunityModal && (
+                  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+                    <div ref={ghlModalRef} className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 border border-gray-100">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-2">Add Loan to GHL Pipeline</h2>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Select a pipeline stage and opportunity status. The opportunity will be assigned to you automatically.
+                      </p>
+
+                      {ghlOppError && (
+                        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                          {ghlOppError}
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        <Dropdown
+                          id="contact"
+                          label="Contact"
+                          value={ghlContactId}
+                          onChange={(val) => setGhlContactId(val)}
+                          options={ghlContacts.map((c) => ({
+                            value: c.ghlContactId,
+                            label: `${c.name}${c.email ? ` • ${c.email}` : ''}`
+                          }))}
+                          placeholder="Select contact"
+                        />
+
+                        <Dropdown
+                          id="pipeline"
+                          label="Pipeline"
+                          value={ghlPipelineId}
+                          onChange={(val) => {
+                            setGhlPipelineId(val);
+                            setGhlPipelineStageId('');
+                          }}
+                          options={ghlPipelines.map((p) => ({ value: p._id || p.id, label: p.name || (p._id || p.id) }))}
+                          placeholder="Select pipeline"
+                        />
+
+                        <Dropdown
+                          id="stage"
+                          label="Pipeline Stage"
+                          value={ghlPipelineStageId}
+                          onChange={(val) => setGhlPipelineStageId(val)}
+                          options={pipelineStages.map((s) => ({ value: s._id || s.id, label: s.name || (s._id || s.id) }))}
+                          placeholder="Select stage"
+                          disabled={!ghlPipelineId}
+                        />
+
+                        <Dropdown
+                          id="status"
+                          label="Opportunity Status"
+                          value={ghlOpportunityStatus}
+                          onChange={(val) => setGhlOpportunityStatus(val)}
+                          options={[
+                            { value: 'open', label: 'Open' },
+                            { value: 'won', label: 'Won' },
+                            { value: 'lost', label: 'Lost' }
+                          ]}
+                          placeholder="Select status"
+                        />
+                      </div>
+
+                      <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => setShowGhlOpportunityModal(false)}
+                          className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                          disabled={syncingToGhl}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!ghlPipelineId) {
+                              toast.error('Please select a pipeline.');
+                              return;
+                            }
+                            if (!ghlPipelineStageId) {
+                              toast.error('Please select a pipeline stage.');
+                              return;
+                            }
+                            if (!ghlContactId) {
+                              toast.error('Please select a contact.');
+                              return;
+                            }
+                            try {
+                              setSyncingToGhl(true);
+                              setGhlOppError('');
+                              await lenderService.syncLoanToGhlOpportunity({
+                                loanId: loan._id,
+                                pipelineId: ghlPipelineId,
+                                pipelineStageId: ghlPipelineStageId,
+                                opportunityStatus: ghlOpportunityStatus,
+                                contactId: ghlContactId
+                              });
+                              toast.success('Loan added to GHL pipeline');
+                              setShowGhlOpportunityModal(false);
+                              await fetchLoanDetails(true);
+                            } catch (e) {
+                              console.error('Error syncing loan to GHL:', e);
+                              const msg = e?.response?.data?.message || 'Failed to sync loan to GHL';
+                              setGhlOppError(msg);
+                              toast.error(msg);
+                            } finally {
+                              setSyncingToGhl(false);
+                            }
+                          }}
+                          className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                          disabled={syncingToGhl}
+                        >
+                          {syncingToGhl ? 'Syncing…' : 'Add to Pipeline'}
+                        </button>
+                      </div>
+
+                      {ghlOppError && ghlOppError.toLowerCase().includes('linked ghl contact') && (
+                        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                          <div className="text-sm text-amber-800">
+                            Borrower isn’t linked to GHL yet. Link the borrower contact first, then try again.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setLinkingBorrowerToGhl(true);
+                                setGhlOppError('');
+                                const borrowerId = loan?.borrower?._id || loan?.borrower;
+                                if (!borrowerId) {
+                                  setGhlOppError('Unable to resolve borrowerId for this loan.');
+                                  return;
+                                }
+                                await lenderService.linkBorrowerContactToGhl(borrowerId);
+                                toast.success('Borrower linked to GHL');
+                              } catch (e) {
+                                const msg = e?.response?.data?.message || 'Failed to link borrower to GHL';
+                                setGhlOppError(msg);
+                                toast.error(msg);
+                              } finally {
+                                setLinkingBorrowerToGhl(false);
+                              }
+                            }}
+                            className="shrink-0 px-3 py-1.5 text-sm rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
+                            disabled={linkingBorrowerToGhl || syncingToGhl}
+                          >
+                            {linkingBorrowerToGhl ? 'Linking…' : 'Link Borrower'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-w-7xl mx-auto overflow-hidden">
                   <div className="flex items-center gap-3 mb-3 min-h-[2.5rem]">
 
@@ -2808,9 +3075,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                               </button>
                               <button
                                 title="Send Message"
-                                onClick={() => {
-                                  router.push("/lender/messages");
-                                }}
+                                onClick={handleMessageButtonClick}
                                 className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition"
                               >
                                 <MessageCircle className="h-5 w-5" />
@@ -2862,6 +3127,44 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                           
                         </div>
                         <div className="w-full lg:w-auto flex items-center col-span-1 sm:col-span-2 lg:col-span-1">
+                          {loan?.ghlOpportunityId ? (
+                            <div className="inline-flex items-center gap-1.5">
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] lg:text-xs font-semibold bg-green-50 text-green-800 border border-green-200 max-w-[170px]"
+                                title={`GHL Opportunity ID: ${loan.ghlOpportunityId}`}
+                              >
+                                <span>GHL Synced</span>
+                                <span className="font-mono text-[9px] lg:text-[10px] text-green-700 truncate max-w-[78px]">
+                                  {String(loan.ghlOpportunityId).slice(0, 10)}…
+                                </span>
+                              </span>
+                              <button
+                                onClick={openGhlOpportunityDialog}
+                                className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md font-semibold border border-green-600 text-green-700 bg-white hover:bg-green-50 shadow-sm transition-all duration-200 text-[10px] lg:text-xs leading-none"
+                                title="Update this existing GHL opportunity"
+                              >
+                                Update
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={openGhlOpportunityDialog}
+                              disabled={Boolean(loan?.ghlPipelineSlotBlocked)}
+                              className={`inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-semibold border shadow-sm transition-all duration-200 text-xs lg:text-sm ${
+                                loan?.ghlPipelineSlotBlocked
+                                  ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                                  : 'border-blue-600 text-blue-700 bg-white hover:bg-blue-50'
+                              }`}
+                              title={
+                                loan?.ghlPipelineSlotBlocked
+                                  ? loan?.ghlPipelineSlotBlockReason ||
+                                    "Another loan for this borrower's GHL contact is already active in the pipeline. A new one can be added only after the previous loan is Closed, Funded, or Rejected."
+                                  : 'Sync this loan to GHL pipeline'
+                              }
+                            >
+                              Sync to GHL
+                            </button>
+                          )}
                           <button
                             onClick={handleSendPreApprovalLetter}
                             className="ml-2 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-semibold bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow transition-all duration-200 min-w-[300px] sm:min-w-0 text-center text-xs lg:text-sm"
@@ -2968,48 +3271,70 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                               {/* Funding Method */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Funding Method</label>
-                                <select
-                                  value={loan?.fundingMethod || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, fundingMethod: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="Brokered">Broker</option>
-                                  <option value="Non-Delegated">Non-Delegated</option>
-                                  <option value="Delegated">Delegated Lender</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.fundingMethod || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, fundingMethod: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="Brokered">Broker</option>
+                                    <option value="Retail">Retail (Direct)</option>
+                                    <option value="Non-Delegated">Non-Delegated</option>
+                                    <option value="Delegated">Delegated Lender</option>
+                                    <option value="Table-Funded">Table Funded</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                               {/* Doc Type */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">Documentation Type</label>
-                                <select
-                                  value={loan?.docType || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, docType: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="Full Doc">Full Documentation</option>
-                                  <option value="Alt Doc">Alternative Documentation</option>
-                                  <option value="Stated Income">Stated Income</option>
-                                  <option value="No Doc">No Documentation</option>
-                                  <option value="Streamline">Streamline</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.docType || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, docType: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="Full Doc">Full Documentation</option>
+                                    <option value="Alt/Reduced Doc">Alt / Reduced Documentation</option>
+                                    <option value="Bank Statement">Bank Statement</option>
+                                    <option value="DSCR">DSCR</option>
+                                    <option value="Stated">Stated</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                               {/* QM Status */}
                               <div>
                                 <label className="block text-xs uppercase font-medium text-gray-500 mb-1">QM Status</label>
-                                <select
-                                  value={loan?.qmStatus || ""}
-                                  onChange={(e) => { setLoan(prev => ({ ...prev, qmStatus: e.target.value })); setHasUnsavedChanges(true); }}
-                                  className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">— Select —</option>
-                                  <option value="QM-Safe Harbor">QM — Safe Harbor</option>
-                                  <option value="QM-Rebuttable Presumption">QM — Rebuttable Presumption</option>
-                                  <option value="Non-QM">Non-QM</option>
-                                  <option value="Exempt">Exempt from QM</option>
-                                  <option value="Not Subject to QM">Not Subject to QM</option>
-                                </select>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.qmStatus || ""}
+                                    onChange={(e) => { setLoan(prev => ({ ...prev, qmStatus: e.target.value })); setHasUnsavedChanges(true); }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="QM-Safe Harbor">QM — Safe Harbor</option>
+                                    <option value="QM-Rebuttable Presumption">QM — Rebuttable Presumption</option>
+                                    <option value="Non-QM">Non-QM</option>
+                                    <option value="Not Subject to QM">Not Subject to QM</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             {/* Boolean toggles */}
@@ -3027,7 +3352,16 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                                     type="checkbox"
                                     checked={loan?.[key] || false}
                                     onChange={(e) => {
-                                      setLoan(prev => ({ ...prev, [key]: e.target.checked }));
+                                      const checked = e.target.checked;
+                                      if (key === "isReverseMortgage") {
+                                        setLoan((prev) => ({
+                                          ...prev,
+                                          isReverseMortgage: checked,
+                                          ...(!checked ? { reverseMortgageType: null } : {}),
+                                        }));
+                                      } else {
+                                        setLoan((prev) => ({ ...prev, [key]: checked }));
+                                      }
                                       setHasUnsavedChanges(true);
                                     }}
                                     className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
@@ -3036,6 +3370,34 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                                 </label>
                               ))}
                             </div>
+                            {loan?.isReverseMortgage && (
+                              <div className="mt-4 max-w-md">
+                                <label className="block text-xs uppercase font-medium text-gray-500 mb-1">
+                                  Reverse mortgage program (MCR AC700–AC720)
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={loan?.reverseMortgageType || ""}
+                                    onChange={(e) => {
+                                      const v = e.target.value || null;
+                                      setLoan((prev) => ({ ...prev, reverseMortgageType: v }));
+                                      setHasUnsavedChanges(true);
+                                    }}
+                                    className="text-xs appearance-none w-full border border-gray-300 rounded-md p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">— Select —</option>
+                                    <option value="HECM-Standard">HECM-Standard</option>
+                                    <option value="HECM-Saver">HECM-Saver</option>
+                                    <option value="Proprietary/Other">Proprietary/Other</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -3508,6 +3870,33 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
           onClose={() => setIsNoteModalOpen(false)} 
           loanId={id}
         />
+
+        {isMessageModalOpen && (
+          <>
+            <div
+              className="fixed inset-y-0 right-0 left-0 md:left-16 bg-black/30 z-40"
+              onClick={() => setIsMessageModalOpen(false)}
+            />
+            <div className="fixed inset-y-0 right-0 left-0 md:left-16 z-50 p-3 md:p-6">
+              <div className="h-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-gray-900">Borrower Communications</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsMessageModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                    aria-label="Close communications modal"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="flex-1 p-3 bg-gray-50 min-h-0">
+                  <LoanMessagesPanel />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
         
         <LoanApplicationSettingsModal
           isOpen={isSettingsModalOpen}
@@ -3528,25 +3917,26 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
           handleTabClick={handleTabClick}
         />
         
-        {/* Existing unsaved changes bar */}
-        {hasUnsavedChanges && !NO_SAVE_TABS.includes(activeTab) && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-gray-100 border-t border-gray-200 shadow-lg flex justify-end px-6 py-3 space-x-3 animate-fade-in">
-            <button
-              type="button"
-              className="gap-1 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-smtext-gray-700 font-medium shadow-sm hover:bg-gray-100 transition"
-              onClick={handleCancel}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="gap-1 px-3 py-1.5 rounded-md border border-transparent bg-gradient-to-r from-blue-600 to-blue-800 text-sm text-white font-medium shadow-sm hover:from-blue-700 hover:to-blue-900 transition"
-              onClick={saveLoan}
-              disabled={saving}
-            >
-              {saving ? "Saving Changes..." : "Save All Changes"}
-            </button>
+        {/* Application tabs: sticky save/discard bar (matches Funding/Revenue UX) */}
+        {hasUnsavedChanges && SAVE_TABS.includes(activeTab) && (
+          <div className="sticky bottom-0 z-50 bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 px-6 py-3.5 flex items-center justify-between">
+            <span className="text-sm text-gray-500 font-medium">Unsaved changes</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button
+                onClick={saveLoan}
+                disabled={saving}
+                className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition shadow-sm"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         )}
       </MainLayout>

@@ -14,6 +14,215 @@ const { USE_S3, s3 } = require('../services/s3.service');
 const Document = require("../models/document.model");
 const Milestone = require("../models/milestone.model");
 const LoanCompensation = require("../models/loanCompensation.model");
+const LoanProgram = require("../models/loanProgram.model");
+const GhlUserMap = require("../models/ghlUserMap.model");
+const GhlContactMap = require("../models/ghlContactMap.model");
+const { resolveOrCreateBorrowerContact } = require("../services/ghlContact.service");
+const GhlOpportunityMap = require("../models/ghlOpportunityMap.model");
+const {
+  getPipelineSlotState,
+  buildBlockMessage,
+} = require("../services/ghlPipelineEligibility.service");
+// Phase 4 opportunities are triggered manually via UI button (see `backend/src/routes/ghl.routes.js`)
+
+async function resolveCompanyIdForLoanLender(lenderRef) {
+  const lenderId = lenderRef?._id || lenderRef;
+  if (!lenderId) return null;
+  const lenderDoc = await Lender.findById(lenderId).select("company user").lean();
+  if (!lenderDoc) return null;
+  let companyId = lenderDoc.company || null;
+  if (!companyId && lenderDoc.user) {
+    const lenderUser = await User.findById(lenderDoc.user).select("company").lean();
+    companyId = lenderUser?.company || null;
+  }
+  if (!companyId && lenderDoc.user) {
+    const anyMap = await GhlUserMap.findOne({
+      appUserId: lenderDoc.user,
+      provisionStatus: "provisioned",
+    })
+      .select("companyId")
+      .lean();
+    companyId = anyMap?.companyId || null;
+  }
+  return companyId;
+}
+
+/**
+ * GHL opportunity id + pipeline slot rule (one active non-Funded mapped loan per contact).
+ */
+async function attachGhlFieldsForLoanResponse(populatedLoan) {
+  populatedLoan.ghlOpportunityId = null;
+  populatedLoan.ghlPipelineSlotBlocked = false;
+  populatedLoan.ghlPipelineSlotBlockReason = null;
+  populatedLoan.ghlPipelineBlockingLoanId = null;
+  populatedLoan.ghlPipelineBlockingLoanNumber = null;
+  populatedLoan.ghlPipelineBlockingLoanStatus = null;
+
+  try {
+    const companyId = await resolveCompanyIdForLoanLender(populatedLoan.lender);
+    if (!companyId) return;
+
+    const oppMap = await GhlOpportunityMap.findOne({
+      companyId,
+      loanId: populatedLoan._id,
+    })
+      .select("ghlOpportunityId")
+      .lean();
+    populatedLoan.ghlOpportunityId = oppMap?.ghlOpportunityId || null;
+
+    if (populatedLoan.ghlOpportunityId) return;
+
+    const borrowerId = populatedLoan.borrower?._id || populatedLoan.borrower;
+    if (!borrowerId) return;
+
+    const contactMap = await GhlContactMap.findOne({ companyId, borrowerId })
+      .select("ghlContactId")
+      .lean();
+    const ghlContactId = contactMap?.ghlContactId
+      ? String(contactMap.ghlContactId).trim()
+      : null;
+    if (!ghlContactId) return;
+
+    const slot = await getPipelineSlotState({
+      companyId,
+      ghlContactId,
+      requestingLoanId: populatedLoan._id,
+    });
+    if (!slot.allowed) {
+      populatedLoan.ghlPipelineSlotBlocked = true;
+      populatedLoan.ghlPipelineSlotBlockReason = buildBlockMessage({
+        blockingLoanNumber: slot.blockingLoanNumber,
+        blockingStatus: slot.blockingStatus,
+      });
+      populatedLoan.ghlPipelineBlockingLoanId = slot.blockingLoanId;
+      populatedLoan.ghlPipelineBlockingLoanNumber = slot.blockingLoanNumber;
+      populatedLoan.ghlPipelineBlockingLoanStatus = slot.blockingStatus;
+    }
+  } catch (e) {
+    logger.warn(`attachGhlFieldsForLoanResponse failed for loan ${populatedLoan?._id}: ${e.message}`);
+    populatedLoan.ghlOpportunityId = null;
+    populatedLoan.ghlPipelineSlotBlocked = false;
+    populatedLoan.ghlPipelineSlotBlockReason = null;
+    populatedLoan.ghlPipelineBlockingLoanId = null;
+    populatedLoan.ghlPipelineBlockingLoanNumber = null;
+    populatedLoan.ghlPipelineBlockingLoanStatus = null;
+  }
+}
+
+const DISALLOWED_LOAN_TYPES = new Set([
+  "HELOC",
+  "Reverse Mortgage",
+  "Land Contract",
+]);
+
+function assertLoanTypeAllowed(inputLoanDetails, existingLoanDetails = null) {
+  const loanType = inputLoanDetails?.loanType;
+  if (!loanType) return;
+  if (DISALLOWED_LOAN_TYPES.has(loanType)) {
+    const existingLoanType = existingLoanDetails?.loanType;
+    // Allow saving legacy loans when their deprecated loanType is unchanged.
+    if (existingLoanType && existingLoanType === loanType) return;
+    throw new ApiError(
+      `Invalid loan type "${loanType}". Use Purchase, Refinance, Cash-Out Refinance, Home Improvement, or Construction.`,
+      400
+    );
+  }
+}
+
+function normalizeMcrClassificationFields(updateData = {}) {
+  if (!updateData || typeof updateData !== "object") return updateData;
+
+  if (updateData.docType) {
+    console.log("[DEBUG] normalizeMcrClassificationFields - incoming docType:", updateData.docType);
+    const docTypeMap = {
+      'Alt Doc': 'Alt/Reduced Doc',
+      'Alternative Documentation': 'Alt/Reduced Doc',
+      'Stated Income': 'Stated',
+      'No Doc': 'Stated',
+      'Streamline': 'Alt/Reduced Doc',
+      'Full Documentation': 'Full Doc',
+    };
+    updateData.docType = docTypeMap[updateData.docType] || updateData.docType;
+    console.log("[DEBUG] normalizeMcrClassificationFields - normalized docType:", updateData.docType);
+  }
+
+  if (updateData.fundingMethod != null && updateData.fundingMethod !== '') {
+    console.log("[DEBUG] normalizeMcrClassificationFields - incoming fundingMethod:", updateData.fundingMethod);
+    const s = String(updateData.fundingMethod)
+      .trim()
+      .replace(/[\u2013\u2014]/g, '-');
+    const compact = s.replace(/[\s_-]/g, '').toLowerCase();
+    const fmMap = {
+      broker: 'Brokered',
+      brokered: 'Brokered',
+      retail: 'Retail',
+      nondelegated: 'Non-Delegated',
+      delegated: 'Delegated',
+      tablefunded: 'Table-Funded',
+      unknown: 'Unknown'
+    };
+    if (fmMap[compact]) {
+      updateData.fundingMethod = fmMap[compact];
+    }
+    console.log("[DEBUG] normalizeMcrClassificationFields - normalized fundingMethod:", updateData.fundingMethod);
+  }
+
+  return updateData;
+}
+
+function normalizeLoanParametersForUpdate(updateData = {}) {
+  if (!updateData || typeof updateData !== "object") return updateData;
+  const lp = updateData.loanParameters;
+  if (!lp || typeof lp !== "object") return updateData;
+
+  const selected = lp.selectedProgramId;
+  if (selected && typeof selected === "object" && selected._id) {
+    updateData.loanParameters = {
+      ...lp,
+      selectedProgramId: selected._id,
+    };
+  }
+
+  return updateData;
+}
+
+/**
+ * Ensure loan.loanParameters.selectedProgramId is a plain program document.
+ * Nested .populate("loanParameters.selectedProgramId") is not always applied; this always resolves the ref.
+ */
+async function attachSelectedProgramToLoan(loan) {
+  if (!loan?.loanParameters?.selectedProgramId) return loan;
+  const raw = loan.loanParameters.selectedProgramId;
+  const alreadyLoaded =
+    raw &&
+    typeof raw === "object" &&
+    !(raw instanceof mongoose.Types.ObjectId) &&
+    (raw.programType != null || raw.displayName || raw.programName);
+  if (alreadyLoaded) return loan;
+
+  let id;
+  if (typeof raw === "string") id = raw;
+  else if (raw instanceof mongoose.Types.ObjectId) id = raw.toString();
+  else if (raw && raw._id) id = raw._id.toString();
+  else id = String(raw);
+
+  if (!mongoose.Types.ObjectId.isValid(id)) return loan;
+
+  try {
+    const prog = await LoanProgram.findById(id)
+      .select("programName displayName programType loanTerm")
+      .lean();
+    if (prog) {
+      loan.loanParameters = {
+        ...loan.loanParameters,
+        selectedProgramId: prog,
+      };
+    }
+  } catch (e) {
+    logger.warn("attachSelectedProgramToLoan:", e.message);
+  }
+  return loan;
+}
 
 // Check if we should use S3 or local storage
 // const USE_S3 = process.env.USE_S3 === 'true' || false;
@@ -181,6 +390,8 @@ exports.removeDocument = async (req, res, next) => {
 
     // Save the loan
     await loan.save();
+
+    // Phase 4 opportunities are triggered manually via UI button
 
     // Log the document removal
     logger.info(
@@ -367,6 +578,7 @@ exports.createLoan = async (req, res, next) => {
     const primaryBorrower = parseJsonField("borrowerDetails");
     const property = parseJsonField("property");
     const loanDetails = parseJsonField("loanDetails");
+    assertLoanTypeAllowed(loanDetails);
     const assets = parseJsonField("assets");
     const income = parseJsonField("income");
     const debts = parseJsonField("debts");
@@ -712,6 +924,51 @@ exports.createLoan = async (req, res, next) => {
     // Log the new loan creation
     logger.info(`New loan application created: ${loan.loanNumber}`);
 
+    // Phase 3: Borrower Contact Dedupe + Create (best-effort)
+    try {
+      const lender = await Lender.findById(lenderId).select("company user").lean();
+      let companyId = lender?.company;
+      if (!companyId && lender?.user) {
+        const lenderUser = await User.findById(lender.user).select("company").lean();
+        companyId = lenderUser?.company || null;
+      }
+      // Fallback: if lender/company links are missing, infer company from existing GHL user mapping
+      if (!companyId && lender?.user) {
+        const anyMap = await GhlUserMap.findOne({
+          appUserId: lender.user,
+          provisionStatus: "provisioned"
+        })
+          .select("companyId")
+          .lean();
+        companyId = anyMap?.companyId || null;
+      }
+      let assignedToGhlUserId = null;
+      if (companyId && lender?.user) {
+        const map = await GhlUserMap.findOne({
+          companyId,
+          appUserId: lender.user,
+          role: "loan_officer",
+          provisionStatus: "provisioned"
+        })
+          .select("ghlUserId")
+          .lean();
+        assignedToGhlUserId = map?.ghlUserId || null;
+      }
+      if (companyId) {
+        const existing = await GhlContactMap.findOne({ companyId, borrowerId })
+          .select("ghlContactId")
+          .lean();
+        if (!existing?.ghlContactId) {
+          await resolveOrCreateBorrowerContact({ companyId, borrowerId, assignedToGhlUserId });
+        }
+
+      }
+    } catch (ghlError) {
+      logger.warn(
+        `GHL contact resolve skipped/failed for loan ${loan._id}: ${ghlError.message}`
+      );
+    }
+
     // Add default milestones for the new loan
     try {
       await createDefaultMilestonesForLoan(loan._id);
@@ -985,12 +1242,19 @@ exports.getLoan = async (req, res, next) => {
         },
       })
       .populate("assignedLoanOfficer", "firstName lastName email phone")
+      .populate({
+        path: "loanParameters.selectedProgramId",
+        select: "programName displayName programType loanTerm",
+      })
       .lean(); // Use lean() for better performance
 
     // If the loan doesn't exist after population, return error
     if (!populatedLoan) {
       return next(new ApiError("Loan not found", 404));
     }
+
+    await attachSelectedProgramToLoan(populatedLoan);
+    await attachGhlFieldsForLoanResponse(populatedLoan);
 
     // ── DTI DEBUG: dump fields the ProductsPricingTab DTI formula consumes ──
     try {
@@ -1003,10 +1267,8 @@ exports.getLoan = async (req, res, next) => {
         : Array.isArray(lp.income) ? lp.income : [];
       const po = populatedLoan.propertiesOwned || {};
       const sumMonthlyPayments = (arr) =>
-        arr.reduce(
-          (acc, d) => acc + (Number(d?.monthlyPayment) || 0),
-          0
-        );
+        arr.reduce((acc, d) => acc + (Number(d?.monthlyPayment) || 0), 0);
+
       logger.info("[DTI-DEBUG] getLoan", {
         loanId: String(populatedLoan._id),
         inputs_used_for_DTI_numerator: {
@@ -1139,6 +1401,8 @@ exports.updateLoan = async (req, res, next) => {
       // Borrowers can only update certain fields
       // const allowedFields = ['property', 'loanDetails', 'loanParameters', 'loanCalculations'];
       const updateData = req.body;
+      assertLoanTypeAllowed(updateData.loanDetails, loan.loanDetails);
+      normalizeLoanParametersForUpdate(updateData);
 
       // Update the loan
       const updatedLoan = await Loan.findByIdAndUpdate(id, updateData, {
@@ -1187,6 +1451,11 @@ exports.updateLoan = async (req, res, next) => {
       let updateData = {
         ...otherData,
       };
+      assertLoanTypeAllowed(updateData.loanDetails, loan.loanDetails);
+
+      // Normalize legacy docType aliases to current enum values to prevent
+      // validation failures when older UI values are submitted.
+      normalizeMcrClassificationFields(updateData);
 
       if (
         Object.keys(updateData).length === 0 &&
@@ -1208,6 +1477,7 @@ exports.updateLoan = async (req, res, next) => {
       if (loanParameters) {
         console.log("Loan parameters received:", loanParameters);
         updateData.loanParameters = loanParameters;
+        normalizeLoanParametersForUpdate(updateData);
 
         // Keep key application-facing amounts in sync with the qualification scenario
         const hasNumeric = (val) => typeof val === 'number' && !Number.isNaN(val);
@@ -1306,28 +1576,40 @@ exports.updateLoan = async (req, res, next) => {
       }
 
       // Update the loan
-      const updatedLoan = await Loan.findByIdAndUpdate(id, updateData, {
-        new: true,
-        runValidators: true,
-      });
+      try {
+        console.log("[DEBUG] About to call findByIdAndUpdate with updateData keys:", Object.keys(updateData));
+        console.log("[DEBUG] docType:", updateData.docType);
+        console.log("[DEBUG] fundingMethod:", updateData.fundingMethod);
+        console.log("[DEBUG] loanDetails.loanType:", updateData.loanDetails?.loanType);
+        
+        const updatedLoan = await Loan.findByIdAndUpdate(id, updateData, {
+          new: true,
+          runValidators: true,
+        });
 
-      // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
-      if (updateData.status !== undefined && updateData.status !== loan.status) {
-        await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+        // When status was updated via this endpoint, hooks don't run — auto-fill compensation date
+        if (updateData.status !== undefined && updateData.status !== loan.status) {
+          await applyStatusDateToCompensation(updatedLoan._id, updatedLoan.status);
+        }
+
+        console.log("[DEBUG] Updated loan parameters:", updatedLoan.loanParameters);
+
+        // Log the update
+        logger.info(
+          `Loan ${updatedLoan.loanNumber} updated by ${req.user.role} ${req.user._id}`
+        );
+
+        return res.status(200).json({
+          status: "success",
+          message: "Loan updated successfully",
+          data: updatedLoan,
+        });
+      } catch (updateError) {
+        console.error("[DEBUG] findByIdAndUpdate failed:", updateError.message);
+        console.error("[DEBUG] Error name:", updateError.name);
+        console.error("[DEBUG] Validation errors:", updateError.errors);
+        throw updateError;
       }
-
-      console.log("[DEBUG] Updated loan parameters:", updatedLoan.loanParameters);
-
-      // Log the update
-      logger.info(
-        `Loan ${updatedLoan.loanNumber} updated by ${req.user.role} ${req.user._id}`
-      );
-
-      return res.status(200).json({
-        status: "success",
-        message: "Loan updated successfully",
-        data: updatedLoan,
-      });
     }
 
     // Fallback
@@ -1335,6 +1617,7 @@ exports.updateLoan = async (req, res, next) => {
       new ApiError("You are not authorized to update this loan", 403)
     );
   } catch (error) {
+    console.error("[DEBUG] updateLoan caught error:", error.message);
     next(error);
   }
 };
@@ -1389,6 +1672,9 @@ exports.updateLoanByNumber = async (req, res, next) => {
         // add any other fields you need
       ];
       const updateData = req.body;
+      normalizeMcrClassificationFields(updateData);
+      assertLoanTypeAllowed(updateData.loanDetails, loan.loanDetails);
+      normalizeLoanParametersForUpdate(updateData);
 
       console.log("updateData", updateData);
       // const updateData = {};
@@ -1436,6 +1722,9 @@ exports.updateLoanByNumber = async (req, res, next) => {
       // });
 
       const updateData = req.body;
+      normalizeMcrClassificationFields(updateData);
+      assertLoanTypeAllowed(updateData.loanDetails, loan.loanDetails);
+      normalizeLoanParametersForUpdate(updateData);
       console.log("updateData", updateData);
 
       // Update the loan
@@ -2402,7 +2691,7 @@ exports.getLoanTypes = async (req, res, next) => {
         description: "Federal Housing Administration loan",
       },
       { id: "va", name: "VA", description: "Veterans Affairs loan" },
-      { id: "usda", name: "USDA", description: "USDA Rural Development loan" },
+      { id: "fsa_rhs", name: "FSA/RHS-Guaranteed", description: "FSA/RHS-Guaranteed (USDA SFH Guaranteed / RHS)" },
       {
         id: "jumbo",
         name: "Jumbo",
@@ -2589,6 +2878,7 @@ exports.createLoanData = async (req, res, next) => {
     const primaryBorrower = req.body.borrowerDetails || (req.body.borrowers && req.body.borrowers[0]) || {};
     const property = req.body.property || req.body.propertyInfo || {};
     const loanDetails = req.body.loanDetails || req.body.loanInfo || {};
+    assertLoanTypeAllowed(loanDetails);
     const assets = req.body.assets || {};
     const income = req.body.income || {};
     const debts = req.body.debts || [];
@@ -2732,6 +3022,51 @@ exports.createLoanData = async (req, res, next) => {
     // Save the loan application (loan number will be auto-generated by the pre-save hook)
     await newLoan.save();
     
+    // Phase 3: Borrower Contact Dedupe + Create (best-effort)
+    try {
+      const lender = await Lender.findById(lenderId).select("company user").lean();
+      let companyId = lender?.company;
+      if (!companyId && lender?.user) {
+        const lenderUser = await User.findById(lender.user).select("company").lean();
+        companyId = lenderUser?.company || null;
+      }
+      // Fallback: if lender/company links are missing, infer company from existing GHL user mapping
+      if (!companyId && lender?.user) {
+        const anyMap = await GhlUserMap.findOne({
+          appUserId: lender.user,
+          provisionStatus: "provisioned"
+        })
+          .select("companyId")
+          .lean();
+        companyId = anyMap?.companyId || null;
+      }
+      let assignedToGhlUserId = null;
+      if (companyId && lender?.user) {
+        const map = await GhlUserMap.findOne({
+          companyId,
+          appUserId: lender.user,
+          role: "loan_officer",
+          provisionStatus: "provisioned"
+        })
+          .select("ghlUserId")
+          .lean();
+        assignedToGhlUserId = map?.ghlUserId || null;
+      }
+      if (companyId) {
+        const existing = await GhlContactMap.findOne({ companyId, borrowerId })
+          .select("ghlContactId")
+          .lean();
+        if (!existing?.ghlContactId) {
+          await resolveOrCreateBorrowerContact({ companyId, borrowerId, assignedToGhlUserId });
+        }
+
+      }
+    } catch (ghlError) {
+      console.warn(
+        `GHL contact resolve skipped/failed for loan ${newLoan._id}: ${ghlError.message}`
+      );
+    }
+
     // Create default milestones for the new loan
     try {
       await createDefaultMilestonesForLoan(newLoan._id);
@@ -3336,11 +3671,11 @@ exports.updateLoanStatus = async (req, res, next) => {
     const statusMapping = {
       'Application Submitted': 'Application Submitted',
       'Processing': 'Processing',
-      'Underwriting': 'Underwriting',
       'Approved': 'Conditional Approval', // Map to existing backend enum
       'Approved but not Accepted': 'Approved-Not-Accepted',
       'Clear to Close': 'Clear to Close',
-      'Rejected': 'Declined',  // Map "Rejected" to "Declined"
+      'Denied': 'Declined',
+      'Rejected': 'Declined',  // Backward compatibility
       'Withdrawn': 'Withdrawn',
       'Closed': 'Closed',
       'Funded': 'Funded',
@@ -3602,6 +3937,10 @@ exports.getLoanWithDetails = async (req, res, next) => {
           },
         })
         .populate("assignedLoanOfficer", "firstName lastName email phone")
+        .populate({
+          path: "loanParameters.selectedProgramId",
+          select: "programName displayName programType loanTerm",
+        })
         .lean(),
       
       // Get documents
@@ -3620,6 +3959,9 @@ exports.getLoanWithDetails = async (req, res, next) => {
     if (!populatedLoan) {
       return next(new ApiError("Loan not found", 404));
     }
+
+    await attachSelectedProgramToLoan(populatedLoan);
+    await attachGhlFieldsForLoanResponse(populatedLoan);
 
     console.log("Sending response from getLoanWithDetails:", {
       loanId: id,

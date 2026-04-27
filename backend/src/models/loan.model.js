@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { isFsaRhsGuaranteed } = require('../utils/programType');
 
 const propertySchema = new mongoose.Schema({
   
@@ -55,7 +56,13 @@ const propertySchema = new mongoose.Schema({
       'Multi-Family',
       'Manufactured Home',
       'Cooperative',
-      'Planned Unit Development (PUD)'
+      'Planned Unit Development (PUD)',
+      'Mixed-Use',
+      'Commercial',
+      'Office',
+      'Retail',
+      'Industrial',
+      'Land Contract'
     ]
   },
   occupancyType: {
@@ -66,7 +73,7 @@ const propertySchema = new mongoose.Schema({
     type: Number,
     default: 1,
     min: 1,
-    max: 4
+    max: 100
   },
   yearBuilt: {
     type: Number
@@ -92,7 +99,8 @@ const loanDetailSchema = new mongoose.Schema({
       'Construction',
       'Home Improvement',
       'HELOC',
-      'Reverse Mortgage'
+      'Reverse Mortgage',
+      'Land Contract'
     ],
     required: true
   },
@@ -1119,7 +1127,7 @@ const loanSchema = new mongoose.Schema({
   // This is distinct from leadSource, which is a marketing channel.
   fundingMethod: {
     type: String,
-    enum: ['Brokered', 'Non-Delegated', 'Delegated', 'Unknown'],
+    enum: ['Brokered', 'Retail', 'Non-Delegated', 'Delegated', 'Table-Funded', 'Unknown'],
     default: 'Brokered'
   },
 
@@ -1260,7 +1268,7 @@ loanSchema.pre('save', async function(next) {
           const program = await LoanProgram.findById(this.loanParameters.selectedProgramId).lean();
           if (program) {
             const pType = (program.programType || '').toLowerCase();
-            if (pType === 'fha' || pType === 'va' || pType === 'usda') {
+            if (pType === 'fha' || pType === 'va' || isFsaRhsGuaranteed(program.programType)) {
               this.qmStatus = 'Exempt';
               // FHA always has MI
               if (pType === 'fha') this.hasMortgageInsurance = true;
@@ -1408,3 +1416,4 @@ loanSchema.index({ 'property.state': 1, status: 1 });
 loanSchema.index({ leadSource: 1 });
 
 module.exports = mongoose.model('Loan', loanSchema);
+

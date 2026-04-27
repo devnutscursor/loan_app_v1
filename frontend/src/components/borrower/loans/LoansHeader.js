@@ -34,7 +34,7 @@ const LoansHeader = ({
             <option value="Application Submitted">Application Submitted</option>
             <option value="Processing">Processing</option>
             <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
+            <option value="Declined">Denied</option>
             <option value="Closed">Closed</option>
           </select>
         </div>
