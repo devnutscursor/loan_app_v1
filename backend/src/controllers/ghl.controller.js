@@ -178,6 +178,13 @@ exports.oauthCallback = async (req, res, next) => {
     const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
     if (acceptsHtml) {
       const safePayload = JSON.stringify(responsePayload).replace(/</g, '\\u003c');
+      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      const successRedirectUrl = `${frontendUrl}/company/profile?ghlConnected=success`;
+
+      // Keep opener access available for the OAuth popup even though frontend and backend
+      // are on different origins in production.
+      res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+
       return res.status(200).send(`<!doctype html>
 <html>
   <head>
@@ -196,26 +203,45 @@ exports.oauthCallback = async (req, res, next) => {
   <body>
     <div class="card">
       <div class="title">GoHighLevel connected successfully</div>
-      <p class="desc">Your company is now connected. This popup will close automatically.</p>
-      <p class="small">If it does not close, you can close this window safely and return to the app.</p>
-      <button class="btn" onclick="window.close()">Close window</button>
+      <p class="desc">Your company is now connected. Returning you to the app...</p>
+      <p class="small">If this window does not close automatically, use the button below.</p>
+      <button class="btn" onclick="returnToApp()">Return to app</button>
     </div>
     <script>
       (function () {
+        var appUrl = ${JSON.stringify(successRedirectUrl)};
         var notified = false;
+        window.returnToApp = function () {
+          try {
+            window.close();
+          } catch (e) {}
+          setTimeout(function () {
+            window.location.replace(appUrl);
+          }, 250);
+        };
+
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage(
               { type: 'GHL_OAUTH_CONNECTED', payload: ${safePayload} },
-              '*'
+              ${JSON.stringify(frontendUrl)}
             );
             notified = true;
           }
         } catch (e) {}
+
+        try {
+          window.close();
+        } catch (e) {}
+
         if (notified) {
           setTimeout(function () {
             window.close();
           }, 800);
+        } else {
+          setTimeout(function () {
+            window.location.replace(appUrl);
+          }, 1000);
         }
       })();
     </script>

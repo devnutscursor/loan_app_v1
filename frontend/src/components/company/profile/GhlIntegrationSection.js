@@ -217,6 +217,20 @@ const GhlIntegrationSection = ({ companyId }) => {
   }, [companyId]);
 
   React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ghlConnected') !== 'success') return;
+
+    toast.success('GHL connected successfully. Status refreshed.');
+    loadStatus();
+
+    params.delete('ghlConnected');
+    const query = params.toString();
+    const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', cleanUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  React.useEffect(() => {
     const onMessage = async (event) => {
       if (event?.data?.type !== 'GHL_OAUTH_CONNECTED') return;
       toast.success('GHL connected successfully. Status refreshed.');
