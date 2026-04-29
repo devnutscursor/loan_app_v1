@@ -2,6 +2,8 @@ const express = require('express');
 const {
     createCreditReport,
     getCreditReport,
+    getCreditReportBankruptcySummary,
+    getCreditReportMortgageLatesSummary,
     refreshCreditReport,
     getCreditReportHistory,
     getCreditReportFile,
@@ -34,6 +36,20 @@ router.post('/:loanId/:lenderId', verifyCreditReportConsent, createCreditReport)
  * @access  Private (Lender only)
  */
 router.get('/:loanId/:lenderId', getCreditReport);
+
+/**
+ * @route   GET /api/credit-report/:loanId/:lenderId/bankruptcy-summary
+ * @desc    Parse saved SmartAPI XML and return bankruptcy summary
+ * @access  Private (Lender only)
+ */
+router.get('/:loanId/:lenderId/bankruptcy-summary', getCreditReportBankruptcySummary);
+
+/**
+ * @route   GET /api/credit-report/:loanId/:lenderId/mortgage-lates-summary
+ * @desc    Parse saved SmartAPI XML and return mortgage late-count summary
+ * @access  Private (Lender only)
+ */
+router.get('/:loanId/:lenderId/mortgage-lates-summary', getCreditReportMortgageLatesSummary);
 
 /**
  * @route   PUT /api/credit-report/:loanId/:lenderId/refresh

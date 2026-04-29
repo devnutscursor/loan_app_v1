@@ -807,7 +807,73 @@ const loanSchema = new mongoose.Schema({
       lastUpdate: String,
       basePrice: Number,
       adjustments: [{ name: String, rate: Number, points: Number, amount: Number }],
+      // Compensation (Borrower Paid / Lender Paid) — captured per
+      // Compensation Type SOP. See utils/compensationRouting.js for the
+      // thin / Section A PFC math. `sectionAFee` is present only for BPC.
+      compensation: new mongoose.Schema({
+        type: {
+          type: String,
+          enum: ['Borrower Paid', 'Lender Paid'],
+          default: 'Borrower Paid',
+        },
+        lenderPaidDefaultPct: { type: Number, default: 1.25 },
+        borrowerPaidFeePct: { type: Number, default: 0.75 },
+        thinPctApplied: { type: Number, default: 0 },
+        rawPrice: { type: Number, default: null },
+        finalPrice: { type: Number, default: null },
+        bpcApr: { type: Number, default: null },
+        sectionAFee: {
+          name: { type: String, default: 'Borrower Paid Compensation' },
+          amount: { type: Number, default: 0 },
+          section: { type: String, default: 'Origination Charges' },
+          isPFC: { type: Boolean, default: true },
+        },
+        appliedAt: { type: Date, default: Date.now },
+      }, { _id: false }),
       appliedAt: { type: Date, default: Date.now },
+    }, { _id: false }),
+    default: null,
+  },
+  // Mortgage Insurance (MI) Estimator — captured from the Products & Pricing
+  // tab. See utils/miRouting.js for the Mortech parameter mapping (pmiCompany,
+  // noMI, financeMI, coverageType) per the MI Pricing SOP.
+  miDetails: {
+    type: new mongoose.Schema({
+      enabled: { type: Boolean, default: false },
+      company: { type: Number, default: -999 }, // -999 = Best Execution
+      coverageType: {
+        type: String,
+        enum: ['monthly', 'single', 'split'],
+        default: 'monthly',
+      },
+      noMIMode: {
+        type: String,
+        // 'standard' = regular MI, 'lpmi' = lender-paid, 'rate_pct_N' = reduced coverage (HomeReady/HomePossible)
+        default: 'standard',
+      },
+      financeMI: { type: Boolean, default: false },
+      estimatedMonthlyPremium: { type: Number, default: 0, min: 0 },
+      updatedAt: { type: Date, default: Date.now },
+    }, { _id: false }),
+    default: null,
+  },
+  // Solar Panel (PACE/HERO Lien + Solar Lease) — captured from the Products &
+  // Pricing modal. See utils/solarRouting.js for the rules engine.
+  solar: {
+    type: new mongoose.Schema({
+      hasSolar: { type: Boolean, default: false },
+      hasPaceLien: { type: Boolean, default: false },
+      paceLienBalance: { type: Number, default: 0, min: 0 },
+      pacePayoff: {
+        type: String,
+        enum: ['', 'new_loan', 'other_funds', 'none'],
+        default: '',
+      },
+      noteIncludesFinancedPace: { type: Boolean, default: false },
+      hasLease: { type: Boolean, default: false },
+      leaseAssumed: { type: Boolean, default: false },
+      monthlyLeasePayment: { type: Number, default: 0, min: 0 },
+      updatedAt: { type: Date, default: Date.now },
     }, { _id: false }),
     default: null,
   },

@@ -134,8 +134,7 @@ class MortechAPI {
 
         // Lien position
         ...(request.lienPosition && { lienPosition: str(request.lienPosition) }),
-        // DTI
-        ...(request.DTIPercent > 0 && { DTIPercent: str(request.DTIPercent) }),
+        // DTI intentionally omitted for now.
         // CLTV
         ...(request.cltv > 0 && { cltv: str(request.cltv) }),
         // Closing & payment dates
@@ -332,12 +331,32 @@ class MortechAPI {
                   const num = parseFloat(typeof raw === 'string' ? raw : raw.toString?.() ?? '');
                   if (!Number.isNaN(num)) borrowerRebate = num;
                 }
+                // XML shape (xml2js default with explicitArray=true):
+                //   feesBlock.fee_list   = [ { fee: [ {$:{...}}, {$:{...}} ] } ]
+                // i.e. fee_list is the container element and the actual <fee> rows
+                // live on its `fee` property. Older code treated the fee_list array
+                // itself as the list of fees, which silently dropped every row.
                 if (feesBlock.fee_list) {
-                  const feeList = feesBlock.fee_list;
-                  if (Array.isArray(feeList)) {
-                    for (const feeItem of feeList) {
-                      const feeData = feeItem.$ || feeItem;
-                      if (feeData && (feeData.description || feeData.feeamount !== undefined)) {
+                  const rawContainer = feesBlock.fee_list;
+                  const containerArr = Array.isArray(rawContainer)
+                    ? rawContainer
+                    : [rawContainer];
+                  for (const container of containerArr) {
+                    if (!container) continue;
+                    let feeRows = container.fee;
+                    if (feeRows === undefined && container.$) {
+                      // Edge case: XML served a single <fee/> directly where we
+                      // expected a <fee_list>; treat it as one row.
+                      feeRows = [container];
+                    }
+                    if (!feeRows) continue;
+                    const rowArr = Array.isArray(feeRows) ? feeRows : [feeRows];
+                    for (const row of rowArr) {
+                      const feeData = row?.$ || row;
+                      if (
+                        feeData &&
+                        (feeData.description || feeData.feeamount !== undefined)
+                      ) {
                         fees.push({
                           hudline: feeData.hudline || '',
                           description: feeData.description || '',
@@ -348,15 +367,6 @@ class MortechAPI {
                         });
                       }
                     }
-                  } else if (feeList.$) {
-                    fees.push({
-                      hudline: feeList.$.hudline || '',
-                      description: feeList.$.description || '',
-                      feeamount: parseFloat(feeList.$.feeamount || '0'),
-                      section: feeList.$.section || '',
-                      paymenttype: feeList.$.paymenttype || '',
-                      prepaid: feeList.$.prepaid === 'true',
-                    });
                   }
                 }
               }

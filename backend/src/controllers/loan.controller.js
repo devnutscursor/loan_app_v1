@@ -1256,6 +1256,51 @@ exports.getLoan = async (req, res, next) => {
     await attachSelectedProgramToLoan(populatedLoan);
     await attachGhlFieldsForLoanResponse(populatedLoan);
 
+    // ── DTI DEBUG: dump fields the ProductsPricingTab DTI formula consumes ──
+    try {
+      const lp = populatedLoan.loanParameters || {};
+      const fc = populatedLoan.financialCalculations || {};
+      const debtsArr = Array.isArray(populatedLoan.debts) ? populatedLoan.debts : [];
+      const lpDebtsArr = Array.isArray(lp.debts) ? lp.debts : [];
+      const incomeArr = Array.isArray(populatedLoan.income)
+        ? populatedLoan.income
+        : Array.isArray(lp.income) ? lp.income : [];
+      const po = populatedLoan.propertiesOwned || {};
+      const sumMonthlyPayments = (arr) =>
+        arr.reduce((acc, d) => acc + (Number(d?.monthlyPayment) || 0), 0);
+
+      logger.info("[DTI-DEBUG] getLoan", {
+        loanId: String(populatedLoan._id),
+        inputs_used_for_DTI_numerator: {
+          "loanParameters.interestRate": lp.interestRate,
+          "loanParameters.loanTerm": lp.loanTerm,
+          "loanParameters.baseLoanAmount": lp.baseLoanAmount,
+          "loanParameters.propertyTaxes": lp.propertyTaxes,
+          "loanParameters.homeownersInsurance": lp.homeownersInsurance,
+          "loanParameters.hoaFees": lp.hoaFees,
+          "propertiesOwned.hoaDues": po.hoaDues,
+          "loanParameters.mortgageInsurance": lp.mortgageInsurance,
+          "loanParameters.suppPropertyInsurance": lp.suppPropertyInsurance,
+          debts_count_root: debtsArr.length,
+          debts_count_loanParameters: lpDebtsArr.length,
+          monthlyPayment_sum_root: sumMonthlyPayments(debtsArr),
+          monthlyPayment_sum_loanParameters: sumMonthlyPayments(lpDebtsArr),
+        },
+        inputs_used_for_DTI_denominator: {
+          "loanParameters.annualIncome": lp.annualIncome,
+          "financialCalculations.totalIncome_MONTHLY": fc.totalIncome,
+          income_entries_count: incomeArr.length,
+          income_amount_sample: incomeArr.slice(0, 5).map((i) => ({
+            type: i?.incomeType,
+            amount: i?.amount,
+            frequency: i?.frequency,
+          })),
+        },
+      });
+    } catch (dbgErr) {
+      logger.warn("[DTI-DEBUG] failed to build debug block", { err: dbgErr?.message });
+    }
+
     res.status(200).json({
       status: "success",
       data: populatedLoan,

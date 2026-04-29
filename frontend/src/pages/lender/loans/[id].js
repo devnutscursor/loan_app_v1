@@ -2190,7 +2190,8 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
   };
 
   // Add new state to track accordion expansion
-  const [isApplicationExpanded, setIsApplicationExpanded] = useState(true);
+  // Legacy accordion state (Application tab) removed; keep true for layout components expecting it.
+  const [isApplicationExpanded] = useState(true);
   
   // State for mobile navigation drawer
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -2234,77 +2235,39 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     setHasUnsavedChanges(true);
   };
 
-  // Modify tabs structure to include Application tab + MCR tabs
+  // Tab order (per spec): keep a single flat list in the left nav
   const mainTabs = [
     { id: "dashboard", label: "Loan Dashboard", icon: BarChart2 },
-    { id: "documents", label: "Documents", icon: Files },
-    { id: "milestones", label: "Milestones", icon: Trophy },
-    { id: "products-pricing", label: "Products & Pricing", icon: SlidersHorizontal },
-    { id: "application", label: "Application", icon: FileSpreadsheet }, // Parent tab
-    // MCR Tabs (separator handled in VerticalTabNavigation)
-    { id: "audit-dates", label: "Audit & Dates", icon: CalendarClock, isMCR: true },
-    { id: "funding-revenue", label: "Funding / Revenue", icon: DollarSign, isMCR: true },
-    { id: "mcr-audit", label: "MCR Data Audit", icon: ShieldCheck, isMCR: true },
-  ];
-
-  // Define sub-tabs under Application
-  const applicationSubTabs = [
     { id: "borrower", label: "Borrower Information", icon: User },
     { id: "loan", label: "Loan Details", icon: FileText },
     { id: "property", label: "Property Information", icon: Home },
     { id: "financial", label: "Financial Information", icon: Wallet },
+    { id: "documents", label: "Documents", icon: Files },
+    { id: "products-pricing", label: "PPE", icon: SlidersHorizontal },
+    { id: "milestones", label: "Milestones", icon: Trophy },
+    // MCR Tabs (separator handled in VerticalTabNavigation)
+    { id: "audit-dates", label: "Audits and Dates", icon: CalendarClock, isMCR: true },
+    { id: "funding-revenue", label: "Funding and Revenue", icon: DollarSign, isMCR: true },
+    { id: "mcr-audit", label: "MCR Data", icon: ShieldCheck, isMCR: true },
     { id: "additional", label: "Additional Information", icon: ClipboardList },
   ];
+
+  const applicationSubTabs = [];
   // Create a flat array of all valid tabs for validation
   const allTabs = [
     ...mainTabs.map((tab) => tab.id),
     ...applicationSubTabs.map((tab) => tab.id),
   ];
 
-  // Function to handle tab clicks with accordion logic
+  // Function to handle tab clicks
   const handleTabClick = (tabId) => {
-    if (tabId === "application") {
-      // Toggle the accordion state
-      const newExpandedState = !isApplicationExpanded;
-      setIsApplicationExpanded(newExpandedState);
-
-      // Only handle navigation when opening
-      if (newExpandedState) {
-        const currentTabIsSubTab = applicationSubTabs.some(
-          (tab) => tab.id === activeTab
-        );
-
-        if (!currentTabIsSubTab) {
-          const firstSubTab = applicationSubTabs[0].id;
-          setActiveTab(firstSubTab);
-          router.push(`/lender/loans/${id}?tab=${firstSubTab}`, undefined, {
-            shallow: true,
-          });
-        }
-      } else {
-        // When closing, set the active tab to "application" itself
-        setActiveTab("application");
-        router.push(`/lender/loans/${id}?tab=application`, undefined, {
-          shallow: true,
-        });
-      }
-    } else {
-      router.push(`/lender/loans/${id}?tab=${tabId}`, undefined, {
-        shallow: true,
-      });
-      setActiveTab(tabId);
-    }
+    router.push(`/lender/loans/${id}?tab=${tabId}`, undefined, {
+      shallow: true,
+    });
+    setActiveTab(tabId);
   };
 
-  // Determine if a subtab is currently active
-  const isSubTabActive = applicationSubTabs.some((tab) => tab.id === activeTab);
-
-  // If so, make sure the accordion is expanded when page loads
-  useEffect(() => {
-    if (isSubTabActive && !isApplicationExpanded) {
-      setIsApplicationExpanded(true);
-    }
-  }, [activeTab, isSubTabActive, isApplicationExpanded]);
+  const isSubTabActive = false;
 
   // Sync active tab from URL query without overriding immediate user clicks.
   useEffect(() => {

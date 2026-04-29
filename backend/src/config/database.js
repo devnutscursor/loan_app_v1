@@ -1,17 +1,24 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+
+// Node on Windows can use a resolver that fails SRV for mongodb+srv; Compass/Electron often does not.
+function applyAtlasSrvDnsWorkaround() {
+  if (!process.env.MONGODB_URI?.startsWith('mongodb+srv://')) return;
+  const servers = (process.env.NODE_DNS_SERVERS || '8.8.8.8,1.1.1.1')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (servers.length) dns.setServers(servers);
+}
 
 // Database connection function
 const connectDatabase = async () => {
   try {
+    applyAtlasSrvDnsWorkaround();
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/loan-app-system';
     
-    const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    };
-    
-    await mongoose.connect(mongoURI, options);
+    await mongoose.connect(mongoURI);
     
     logger.info('MongoDB connected successfully');
     
