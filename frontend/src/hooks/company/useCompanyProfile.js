@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { companyService } from '@/services/api';
 
 export const useCompanyProfile = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
 
@@ -32,12 +32,14 @@ export const useCompanyProfile = () => {
   const [logoDeleting, setLogoDeleting] = useState(false);
 
   useEffect(() => {
+    // Wait for auth bootstrap on refresh; otherwise we can redirect prematurely.
+    if (authLoading) return;
     if (!user || user.role !== 'company') {
       router.push('/login');
       return;
     }
     fetchCompanyProfile();
-  }, [user, router]);
+  }, [user, router, authLoading]);
 
   const fetchCompanyProfile = async () => {
     try {
