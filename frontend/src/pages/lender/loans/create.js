@@ -64,6 +64,12 @@ const sanitizeMoneyFields = (node) => {
 
 const LenderManualLoanCreation = () => {
   const router = useRouter();
+  const devQueryParam = Array.isArray(router.query?.dev)
+    ? router.query.dev[0]
+    : router.query?.dev;
+  const showDevTools =
+    process.env.NODE_ENV === "development" ||
+    String(devQueryParam || "").toLowerCase() === "true";
   const [currentStep, setCurrentStep] = useState(1);
   const [currentSubStep, setCurrentSubStep] = useState("personalDetails");
   const [loading, setLoading] = useState(false);
@@ -1554,7 +1560,7 @@ const LenderManualLoanCreation = () => {
 
               {/* Development Tools and Back Button */}
               <div className="flex flex-wrap items-center gap-2">
-                {process.env.NODE_ENV === "development" && (
+                {showDevTools && (
                   <>
                     <button
                       type="button"

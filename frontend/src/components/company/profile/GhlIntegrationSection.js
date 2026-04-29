@@ -46,6 +46,9 @@ const ActionButton = ({ onClick, label, loading, disabled = false, variant = 'pr
 };
 
 const GhlIntegrationSection = ({ companyId }) => {
+  const TOAST_IDS = {
+    loadStatusError: 'ghl-load-status-error'
+  };
   const [statusData, setStatusData] = useState(null);
   const [tokenStorageData, setTokenStorageData] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -77,7 +80,9 @@ const GhlIntegrationSection = ({ companyId }) => {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error loading GHL status:', error);
-      toast.error(error?.response?.data?.message || 'Failed to load GHL status');
+      toast.error(error?.response?.data?.message || 'Failed to load GHL status', {
+        id: TOAST_IDS.loadStatusError
+      });
     } finally {
       setLoadingStatus(false);
     }

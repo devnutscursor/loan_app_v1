@@ -1,11 +1,12 @@
 import React from 'react';
+import { useRouter } from 'next/router';
 import CompanyLayout from '../../components/layout/CompanyLayout';
 import { useCompanyProfile } from '@/hooks/company/useCompanyProfile';
 import CredentialList from '@/components/lender/credentials/CredentialList';
 import AddCredentialModal from '@/components/lender/credentials/AddCredentialModal';
 import EditCredentialModal from '@/components/lender/credentials/EditCredentialModal';
 import { useCompanyCredentials } from '@/hooks/company/useCompanyCredentials';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import LenderProfileTabs from '@/components/lender/profile/LenderProfileTabs';
 import ProfileHeader from '@/components/company/profile/ProfileHeader';
 import LogoCard from '@/components/company/profile/LogoCard';
@@ -15,6 +16,7 @@ import PrimaryContactSection from '@/components/company/profile/PrimaryContactSe
 import GhlIntegrationSection from '@/components/company/profile/GhlIntegrationSection';
 
 const CompanyProfile = () => {
+  const router = useRouter();
   const {
     loading,
     saving,
@@ -45,6 +47,32 @@ const CompanyProfile = () => {
     ],
     []
   );
+  const allowedTabKeys = useMemo(() => new Set(tabs.map((t) => t.key)), [tabs]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    const normalized = typeof queryTab === 'string' ? queryTab.trim().toLowerCase() : '';
+    const nextTab = allowedTabKeys.has(normalized) ? normalized : 'profile';
+    if (activeTab !== nextTab) {
+      setActiveTab(nextTab);
+    }
+  }, [router.isReady, router.query.tab, allowedTabKeys, activeTab]);
+
+  const handleTabChange = (nextTab) => {
+    setActiveTab(nextTab);
+    if (!router.isReady) return;
+    const currentQueryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    if (currentQueryTab === nextTab) return;
+    router.replace(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, tab: nextTab }
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
 
   if (loading) {
     return (
@@ -60,7 +88,7 @@ const CompanyProfile = () => {
     <CompanyLayout title="Company Profile">
       <div className="max-w-[1215px] mx-auto space-y-6">
         {/* Tabs */}
-        <LenderProfileTabs active={activeTab} onChange={setActiveTab} tabs={tabs} />
+        <LenderProfileTabs active={activeTab} onChange={handleTabChange} tabs={tabs} />
 
         {activeTab === 'profile' && (
           <>
