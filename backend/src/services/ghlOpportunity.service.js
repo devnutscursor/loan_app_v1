@@ -180,8 +180,11 @@ async function createOpportunity(companyId, payload) {
 }
 
 async function updateOpportunity(companyId, ghlOpportunityId, payload) {
+  // GHL rejects `locationId` on PUT /opportunities/{id} for this API version.
+  // Keep accepting it from callers for compatibility, but strip it before sending.
+  const { locationId: _ignoredLocationId, ...updatePayload } = payload || {};
   await request(companyId, 'PUT', `/opportunities/${ghlOpportunityId}`, {
-    data: payload,
+    data: updatePayload,
     headers: { 'Content-Type': 'application/json' }
   });
 }
