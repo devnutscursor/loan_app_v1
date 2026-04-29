@@ -86,32 +86,13 @@ const GhlIntegrationSection = ({ companyId }) => {
   const handleConnect = async () => {
     if (!companyId) return;
     setConnectLoading(true);
-    const popupFeatures = [
-      'popup=yes',
-      'width=1100',
-      'height=850',
-      'left=120',
-      'top=60',
-      'resizable=yes',
-      'scrollbars=yes'
-    ].join(',');
 
-    // Open a named popup synchronously from the click event. There is no same-tab
-    // fallback because losing the app tab breaks the OAuth recovery flow.
-    const popup = window.open('about:blank', 'ghl_oauth_connect', popupFeatures);
-    if (popup) {
-      popup.document.write(`
-        <!doctype html>
-        <html>
-          <head><title>Opening GoHighLevel...</title></head>
-          <body style="font-family: Arial, sans-serif; padding: 24px;">
-            <h3>Opening GoHighLevel...</h3>
-            <p>Please complete the connection in this window.</p>
-          </body>
-        </html>
-      `);
-      popup.document.close();
-    }
+    // Open a blank tab synchronously here — this is the only moment browsers
+    // treat window.open as a direct user gesture and allow it.
+    // IMPORTANT: do NOT pass 'noopener' — that flag returns null for the handle
+    // AND sets window.opener=null in the child tab, which breaks the postMessage
+    // callback that notifies this page when OAuth completes.
+    const popup = window.open('about:blank', '_blank');
 
     try {
       const response = await companyService.getGhlConnectUrl(companyId);
@@ -119,20 +100,24 @@ const GhlIntegrationSection = ({ companyId }) => {
       if (!connectUrl) {
         throw new Error('Connect URL was not returned');
       }
-      if (popup) {
-        popup.location.replace(connectUrl);
-        toast.success('GHL connect flow opened in a separate window. Complete it there, then return here.');
+
+      if (popup && !popup.closed) {
+        // Happy path: new tab opened, redirect it to GHL OAuth.
+        popup.location.href = connectUrl;
+        toast.success('GHL connect flow opened in a new tab. Complete the steps there, then return here.');
       } else {
-        throw new Error('Popup blocked by browser');
+        // Fallback: popup was blocked despite permissions — navigate the current
+        // tab. The backend callback will redirect back to this page automatically.
+        window.location.assign(connectUrl);
       }
     } catch (error) {
-      if (popup) popup.close();
+      if (popup && !popup.closed) popup.close();
       // eslint-disable-next-line no-console
       console.error('Error generating connect URL:', error);
       toast.error(
         error?.response?.data?.message ||
           error.message ||
-          'Failed to start GHL connect flow. Please allow popups and try again.'
+          'Failed to start GHL connect flow. Please try again.'
       );
     } finally {
       setConnectLoading(false);
@@ -213,20 +198,6 @@ const GhlIntegrationSection = ({ companyId }) => {
 
   React.useEffect(() => {
     loadStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
-
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('ghlConnected') !== 'success') return;
-
-    toast.success('GHL connected successfully. Status refreshed.');
-    loadStatus();
-
-    params.delete('ghlConnected');
-    const query = params.toString();
-    const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
-    window.history.replaceState({}, '', cleanUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 

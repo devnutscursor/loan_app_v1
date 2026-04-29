@@ -49,17 +49,6 @@ function decodeState(state, secret) {
   return decoded;
 }
 
-function getSafeFrontendUrl(value) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
-    return url.origin;
-  } catch (error) {
-    return null;
-  }
-}
-
 async function resolveAuthorizedCompanyId(req) {
   const companyId = req.query.companyId || req.body.companyId;
   if (!companyId) {
@@ -135,7 +124,6 @@ exports.getConnectUrl = async (req, res, next) => {
       {
         companyId,
         userId: req.user._id.toString(),
-        frontendUrl: getSafeFrontendUrl(req.headers.origin) || getSafeFrontendUrl(process.env.FRONTEND_URL),
         ts: Date.now()
       },
       cfg.oauthStateSecret
@@ -189,13 +177,74 @@ exports.oauthCallback = async (req, res, next) => {
 
     const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
     if (acceptsHtml) {
-      const frontendUrl =
-        getSafeFrontendUrl(parsedState.frontendUrl) ||
-        getSafeFrontendUrl(process.env.FRONTEND_URL) ||
-        'http://localhost:3000';
-      const successRedirectUrl = `${frontendUrl}/company/profile?ghlConnected=success`;
+      const safePayload = JSON.stringify(responsePayload).replace(/</g, '\\u003c');
+      // The frontend profile URL where we redirect back in the same-tab fallback flow.
+      const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+      const profileUrl = `${frontendUrl}/company/profile`;
+      return res.status(200).send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GHL Connected</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #0f172a; }
+      .card { max-width: 560px; margin: 60px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+      .title { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #16a34a; }
+      .desc { font-size: 14px; color: #475569; margin-bottom: 12px; }
+      .small { font-size: 12px; color: #64748b; }
+      .btn { margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 8px; background: #2563eb; color: white; font-size: 14px; border: none; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="title">GoHighLevel connected successfully</div>
+      <p class="desc" id="msg">Finishing up...</p>
+      <p class="small" id="sub"></p>
+      <button class="btn" id="actionBtn" style="display:none"></button>
+    </div>
+    <script>
+      (function () {
+        var payload = ${safePayload};
+        var profileUrl = '${profileUrl}';
 
-      return res.redirect(302, successRedirectUrl);
+        function showFallback() {
+          document.getElementById('msg').textContent =
+            'Your GHL account is connected. Click below to return to your dashboard.';
+          document.getElementById('sub').textContent =
+            'Or navigate back manually to the Company Profile > GHL Integration tab.';
+          var btn = document.getElementById('actionBtn');
+          btn.textContent = 'Return to dashboard';
+          btn.style.display = 'inline-block';
+          btn.onclick = function () { window.location.replace(profileUrl); };
+          // Auto-redirect after 3 seconds
+          setTimeout(function () { window.location.replace(profileUrl); }, 3000);
+        }
+
+        try {
+          if (window.opener && !window.opener.closed) {
+            // New-tab OAuth flow: notify parent and close this tab.
+            window.opener.postMessage({ type: 'GHL_OAUTH_CONNECTED', payload: payload }, '*');
+            document.getElementById('msg').textContent =
+              'GoHighLevel connected. This tab will close automatically.';
+            document.getElementById('sub').textContent =
+              'You can also close it manually.';
+            var btn = document.getElementById('actionBtn');
+            btn.textContent = 'Close tab now';
+            btn.style.display = 'inline-block';
+            btn.onclick = function () { window.close(); };
+            setTimeout(function () { window.close(); }, 1500);
+          } else {
+            // Same-tab fallback flow: redirect back to company profile.
+            showFallback();
+          }
+        } catch (e) {
+          showFallback();
+        }
+      })();
+    </script>
+  </body>
+</html>`);
     }
 
     res.status(200).json({

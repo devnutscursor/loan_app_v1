@@ -16,6 +16,28 @@ function safeParseResponseData(data) {
   }
 }
 
+function normalizeErrorMessage(value, fallback = 'Unknown error') {
+  if (value == null) return fallback;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+      .filter(Boolean)
+      .join('; ');
+    return joined || fallback;
+  }
+  if (value instanceof Error) return value.message || fallback;
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string' && value.message) return value.message;
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return fallback;
+    }
+  }
+  return String(value);
+}
+
 function getCompanyTokenFieldsQuery() {
   return '+ghlIntegration.accessTokenEnc +ghlIntegration.accessTokenIv +ghlIntegration.accessTokenAuthTag +ghlIntegration.refreshTokenEnc +ghlIntegration.refreshTokenIv +ghlIntegration.refreshTokenAuthTag';
 }
@@ -184,12 +206,13 @@ async function refreshCompanyToken(companyId, options = {}) {
     };
   } catch (error) {
     const remote = safeParseResponseData(error?.response?.data);
-    const message =
+    const message = normalizeErrorMessage(
       remote?.message ||
       remote?.error_description ||
       remote?.error ||
       error.message ||
-      'Token refresh failed';
+      'Token refresh failed'
+    );
     company.ghlIntegration.lastSyncError = message;
     company.ghlIntegration.lastSyncErrorAt = new Date();
 
@@ -271,7 +294,7 @@ async function getValidAccessToken(companyId) {
 async function markSyncError(companyId, message) {
   await Company.findByIdAndUpdate(companyId, {
     $set: {
-      'ghlIntegration.lastSyncError': message,
+      'ghlIntegration.lastSyncError': normalizeErrorMessage(message),
       'ghlIntegration.lastSyncErrorAt': new Date()
     }
   });
