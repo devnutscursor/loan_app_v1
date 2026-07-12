@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import { PPE_ENABLED } from '../../config/featureFlags';
 
 const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
   const router = useRouter();
@@ -31,7 +32,9 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed, user }) => {
         // { name: 'Loan Applications', href: '/lender/applications', icon: 'clipboard-list' },
         { name: 'Active Loans', href: '/lender/loans', icon: 'cash' },
         { name: 'Loan Programs', href: '/lender/programs', icon: 'template' },
-        { name: 'Loan Rates', href: '/lender/loan-rates', icon: 'calculator' },
+        ...(PPE_ENABLED
+          ? [{ name: 'Loan Rates', href: '/lender/loan-rates', icon: 'calculator' }]
+          : []),
         // { name: 'Conditions', href: '/lender/conditions', icon: 'check-circle' },
         { name: 'Borrowers', href: '/lender/borrowers', icon: 'users' },
         { name: 'Messages', href: '/lender/messages', icon: 'chat' },

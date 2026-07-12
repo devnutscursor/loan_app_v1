@@ -232,34 +232,54 @@ const LoanDashboard = ({ loan, setLoan, fetchLoanDetails, id, documents, milesto
       {/* Status pipeline */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {!isTerminalStatus && (
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              {statusPipeline.map((step, index) => {
-                const isCompleted = index <= currentStatusIndex;
-                const isCurrent = index === currentStatusIndex;
-                return (
-                  <div key={step.code} className="flex flex-col items-center flex-1">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isCompleted
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-500"
-                    } ${isCurrent ? "ring-4 ring-blue-100" : ""}`}>
-                      {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-                    </div>
-                    <span className={`mt-1 text-[10px] text-center leading-tight ${
-                      isCurrent ? "font-bold text-blue-700" : "text-gray-500"
-                    }`}>
-                      {step.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 -z-10">
+          <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0 pb-1">
+            <div className="relative min-w-[640px] sm:min-w-0">
               <div
-                className="h-full bg-blue-600 transition-all duration-500"
-                style={{ width: `${Math.max(0, (currentStatusIndex / (statusPipeline.length - 1)) * 100)}%` }}
+                className="absolute top-4 left-[5%] right-[5%] h-0.5 bg-gray-200"
+                aria-hidden="true"
               />
+              <div
+                className="absolute top-4 left-[5%] h-0.5 bg-blue-600 transition-all duration-500"
+                style={{
+                  width: `${Math.max(0, (currentStatusIndex / (statusPipeline.length - 1)) * 90)}%`,
+                }}
+                aria-hidden="true"
+              />
+              <div className="flex">
+                {statusPipeline.map((step, index) => {
+                  const isCompleted = index <= currentStatusIndex;
+                  const isCurrent = index === currentStatusIndex;
+                  return (
+                    <div key={step.code} className="flex-1 min-w-[64px] flex justify-center">
+                      <div
+                        className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                          isCompleted
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-gray-500"
+                        } ${isCurrent ? "ring-4 ring-blue-100" : ""}`}
+                      >
+                        {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex mt-1">
+                {statusPipeline.map((step, index) => {
+                  const isCurrent = index === currentStatusIndex;
+                  return (
+                    <div key={`${step.code}-label`} className="flex-1 min-w-[64px] px-0.5">
+                      <span
+                        className={`block text-[10px] text-center leading-tight min-h-[28px] ${
+                          isCurrent ? "font-bold text-blue-700" : "text-gray-500"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

@@ -51,6 +51,7 @@ import AdditionalInfo from "../../../components/lender/loans/AdditionalInfo";
 import LoanApplicationSettingsModal from "../../../components/lender/loans/LoanApplicationSettingsModal";
 import LoanMessagesPanel from "../../../components/lender/messages/LoanMessagesPanel";
 import ProductsPricingTab from "../../../components/lender/loans/ProductsPricingTab";
+import { PPE_ENABLED } from "../../../config/featureFlags";
 import { PDFDocument } from "pdf-lib";
 import { generateMismoXml, downloadXmlFile } from "../../../utils/xmlGenerator";
 import NoteModal from "../../../components/common/NoteModal";
@@ -2243,7 +2244,9 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
     { id: "property", label: "Property Information", icon: Home },
     { id: "financial", label: "Financial Information", icon: Wallet },
     { id: "documents", label: "Documents", icon: Files },
-    { id: "products-pricing", label: "PPE", icon: SlidersHorizontal },
+    ...(PPE_ENABLED
+      ? [{ id: "products-pricing", label: "PPE", icon: SlidersHorizontal }]
+      : []),
     { id: "milestones", label: "Milestones", icon: Trophy },
     // MCR Tabs (separator handled in VerticalTabNavigation)
     { id: "audit-dates", label: "Audits and Dates", icon: CalendarClock, isMCR: true },
@@ -2295,6 +2298,11 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
       router.push(`/lender/loans/${id}?tab=dashboard`, undefined, {
         shallow: true,
       });
+    } else if (tabFromUrl === "products-pricing" && !PPE_ENABLED) {
+      router.push(`/lender/loans/${id}?tab=dashboard`, undefined, {
+        shallow: true,
+      });
+      setActiveTab("dashboard");
     }
   }, [router.isReady, router.query.tab, id, activeTab, isApplicationExpanded]);
 
@@ -3786,7 +3794,7 @@ const LoanDetails = ({ backUrl, isCompanyView } = {}) => {
                       )}
 
                       {/* Products & Pricing Tab */}
-                      {activeTab === "products-pricing" && (
+                      {PPE_ENABLED && activeTab === "products-pricing" && (
                         <ProductsPricingTab loan={loan} />
                       )}
 

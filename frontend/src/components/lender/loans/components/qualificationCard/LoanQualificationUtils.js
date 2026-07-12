@@ -302,21 +302,11 @@ export const calculateDefaultLoanValues = (loan, loanPrograms, selectedProgram) 
   
   // Calculate monthly payment
   const monthlyPayment = principalAndInterest + taxes + insurance + mortgageInsurance + hoaFees;
-    // Calculate DTI
-  // Note: getTotalIncome returns yearly income, so divide by 12 for monthly
-  const yearlyIncome = getTotalIncome(loan?.income);
-  const monthlyIncome = yearlyIncome / 12;
+
+  // DTI: income and debt fields are stored as monthly amounts
+  const monthlyIncome = getTotalIncome(loan?.income);
   const monthlyDebts = getTotalDebts(loan?.debts);
   const dti = monthlyIncome > 0 ? ((monthlyPayment + monthlyDebts) / monthlyIncome) * 100 : 0;
-  
-  // Add debugging log
-  console.log("[LoanQualificationUtils] Default DTI Calculation:", {
-    yearlyIncome,
-    monthlyIncome,
-    monthlyDebts,
-    monthlyPayment,
-    calculatedDTI: dti
-  });
   
   // Determine qualification
   const dtiLimit = selectedProgram?.restrictions?.dtiRestriction?.max || 43;

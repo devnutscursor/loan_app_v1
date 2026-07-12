@@ -913,11 +913,23 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
     return 0;
   })();
 
-  const ltvPct = (() => {
+  const financedAmountForLtv = (() => {
     const la = toNum(calculations.loanAmount);
+    const dp = toNum(calculations.downPayment);
+    const pp = toNum(loan?.loanDetails?.purchasePrice);
+    if (la <= 0) return 0;
+    // When loan amount + down payment equals purchase price, loan amount is already the financed balance.
+    if (pp > 0 && Math.abs(la + dp - pp) < 1) return la;
+    if (dp > 0 && dp < la) return la - dp;
+    const dpPct = toNum(calculations.downPaymentPercent);
+    if (dpPct > 0 && dpPct < 100) return la * (1 - dpPct / 100);
+    return la;
+  })();
+
+  const ltvPct = (() => {
     const pv = toNum(propertyValueForLtv);
-    if (la <= 0 || pv <= 0) return 0;
-    return (la / pv) * 100;
+    if (financedAmountForLtv <= 0 || pv <= 0) return 0;
+    return (financedAmountForLtv / pv) * 100;
   })();
 
   const closingCostsTotal = (() => {
@@ -1017,19 +1029,17 @@ const LoanQualificationCard = ({ loan, onUpdate, enablePolling = false }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 items-start justify-items-center mb-5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 items-center justify-items-center mb-5">
           <MetricCircle
             valueText={ltvPct > 0 ? `${ltvPct.toFixed(0)}%` : "—"}
             label="LTV"
-            progressPct={ltvPct > 0 ? ltvPct : 0}
+            progressPct={ltvPct > 0 ? Math.min(ltvPct, 100) : 0}
             stroke="#2563eb"
           />
 
           <DTICircleIndicator
             dti={calculations.dti}
-            downPaymentPercent={calculations.downPaymentPercent}
             isQualified={calculations.isQualified}
-            size={24}
           />
 
           <MetricCircle
